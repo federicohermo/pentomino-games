@@ -1,0 +1,11 @@
+# Netlify: despliega la app Vite del subdirectorio `my-app-vite`.
+# Las rutas son relativas a `base`, por eso `publish = "dist"` y no "my-app-vite/dist".
+
+[build]
+  base = "my-app-vite"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+# Vite 7 requiere node ^20.19.0 || >=22.12.0.
+  NODE_VERSION = "22"
