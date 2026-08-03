@@ -8,7 +8,7 @@ import {
  * Pentomino Music — minimal playable prototype
  * - Left: palette of 12 pentomino pieces (F, I, L, N, P, T, U, V, W, X, Y, Z)
  * - Center: grid (10x6 by default). Click a cell to place the selected piece if it fits.
- * - Right: controls for rotation (0/90/180/270), reflection (on/off), transport, tempo.
+ * - Right: controls for rotation (0/90/180/270), reflection (on/off), clock, tempo.
  * - Audio: when a piece is placed, we generate its 5-note pentatonic sequence according to the rotation/reflection policy
  *          and play it. Optionally "Loop placed" makes each placed piece re-trigger every bar.
  *
@@ -185,7 +185,7 @@ export default function App(){
   // efecto de arriba ya volvió a agendar, y cancelaría los jobs nuevos.
   useEffect(()=> ()=>{ stopClock(); clearJobs(); }, []);
 
-  function toggleTransport(){
+  function toggleClock(){
     if (clockRunning()) stopClock(); else startClock();
   }
 
@@ -243,7 +243,7 @@ export default function App(){
                 <span className="tabular-nums w-10 text-right">{tempo}</span>
               </div>
               <div className="flex gap-2">
-                <button onClick={toggleTransport} className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700">Loop</button>
+                <button onClick={toggleClock} className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700">Loop</button>
                 <button onClick={resetBoard} className="px-3 py-1 rounded bg-slate-200 hover:bg-slate-300">Reset</button>
               </div>
               <label className="flex items-center gap-2 text-sm">

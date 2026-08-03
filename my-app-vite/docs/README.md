@@ -44,11 +44,13 @@ npm run dev      # Dev server de Vite
 npm run build    # tsc -b && vite build
 npm run lint     # ESLint (flat config v9)
 npm run preview  # Sirve el build de dist/
+npm test         # Vitest — tests de audio con OfflineAudioContext
 ```
 
-**No hay comando `test`.** El proyecto no tiene runner configurado — ver
-[troubleshooting](./guides/troubleshooting.md#no-hay-runner-de-tests) y el
-[spec 001](../specs/001-notas-por-celda-en-orden-angular/plan.md), que lo incluye en su alcance.
+Los tests corren en `environment: 'node'` contra `node-web-audio-api`, **no en jsdom**: jsdom no
+implementa Web Audio. Todavía no hay tests de componentes — ver
+[troubleshooting](./guides/troubleshooting.md#offlineaudiocontext-is-not-defined-en-un-test) si hace
+falta agregarlos.
 
 ---
 
