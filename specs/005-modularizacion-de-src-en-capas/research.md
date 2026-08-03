@@ -3,6 +3,12 @@
 Todo lo de acá está **medido** o **citado de la documentación oficial**. Los principios de diseño se
 investigaron con context7 sobre Vite, React y bulletproof-react; no hay nada supuesto.
 
+> **Los `$ npx …` y `npm test` de este archivo quedan como se corrieron**, antes de que el repo migrara
+> a pnpm. Son transcripciones de una sesión real y reescribirlas sería inventar una medición que no se
+> hizo. Siguen siendo reproducibles —`npx` resuelve desde `node_modules/.bin`, que pnpm también
+> puebla—; el equivalente de hoy es `pnpm exec …` y `pnpm test`. Los comandos **a ejecutar** —los del
+> `spec.md`, el `plan.md` y el `tasks.md`— sí están en pnpm.
+
 ## 1. Estado actual, medido
 
 ```

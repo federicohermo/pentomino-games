@@ -72,7 +72,7 @@ parseo de los specs y el armado de las respuestas.
 
 El server de bait indexa porque allá localizar es el costo dominante: 135 archivos, 11 versiones casi
 idénticas. Acá `src/` entero entra en un solo read. Un índice de símbolos sobre 8 archivos ahorraría
-del orden de nada y traería todo el precio: `ts-morph` como dependencia, un `npm run index` que hay que
+del orden de nada y traería todo el precio: `ts-morph` como dependencia, un `pnpm index` que hay que
 acordarse de correr, staleness, un `generatedAt` que sellar en cada respuesta y dos clases de error
 nuevas (`IndexMissingError`, `IndexUnreadableError`).
 
@@ -161,9 +161,9 @@ hacer; el bucle responde lo que **hace**, incluida la guarda de recuperación y 
   total de su `tasks.md`, sin hardcodear la lista de specs, y **contando aparte** las tareas bajo un
   encabezado `Seguimiento` (medido: el spec 002 está `Implementado` con 7 sin marcar, 6 de ellas de
   seguimiento).
-- **AC10** — `npm run mcp:test` en verde (typecheck + `node --test`) cubriendo el render ASCII, el
-  formato de respuesta de un tablero inválido y el parseo de checkboxes. `npx tsc --noEmit` del server
-  en 0.
+- **AC10** — `pnpm mcp:test` en verde (typecheck + `node --test`) cubriendo el render ASCII, el
+  formato de respuesta de un tablero inválido y el parseo de checkboxes. `pnpm exec tsc --noEmit` del
+  server en 0.
 - **AC11** — Verificación de la promesa: responder *"¿qué notas y qué forma da la `Z` en 270°
   reflejada, y qué onsets produce si la pongo en `x=0` y otra en `x=5`?"* con las tools consume
   **menos** tokens que leyendo el dominio y el scheduler. Se anota el antes/después medido, como hizo
@@ -187,8 +187,8 @@ hacer; el bucle responde lo que **hace**, incluida la guarda de recuperación y 
 | Riesgo | Mitigación |
 |---|---|
 | **Depende del spec 005**, que es un refactor grande. Si 005 se atrasa o se corta, este spec no arranca. | La dependencia es solo de las fases 1–3 de 005 (tipos, dominio, tablero, invariantes, audio). La fase 4 —los componentes— **no afecta** a este spec: si 005 se corta ahí, este sigue viable. |
-| **Acoplamiento a la API de `src/`** (D2): un cambio de firma en `isValid` o en `collectHits` rompe el server. | Es acoplamiento a módulos puros y testeados, no a la UI. Y `npm run mcp:test` corre el typecheck, así que `tsc` grita cuando la firma cambia, no en runtime. |
+| **Acoplamiento a la API de `src/`** (D2): un cambio de firma en `isValid` o en `collectHits` rompe el server. | Es acoplamiento a módulos puros y testeados, no a la UI. Y `pnpm mcp:test` corre el typecheck, así que `tsc` grita cuando la firma cambia, no en runtime. |
 | **El spec 004 reescribe `collectHits`** (`ClockState` pasa a `origin` + `scheduledUntil`, `Job` gana `phase`). | Si 004 va primero, `simulate_board` se escribe contra la firma nueva. Si va primero este spec, 004 actualiza la tool — y ahí **la usa**: la línea de tiempo de onsets es la forma de verificar sus AC1–AC7 sin escuchar. |
-| **Los módulos que el server carga con node crudo no pueden usar imports sin extensión.** Un `import "./music"` dentro de `src/domain/` rompe el server y **no** rompe la app, porque Vite lo resuelve. | La regla es del spec 005 (su D4), queda escrita en `conventions.md`, y la ataja el arranque del server — lo primero que hace `npm run mcp:test`. |
-| **El piso de Node sube a 22.18 para el server** (D3). | Documentado en el README del server y en el quickstart. La app y el deploy no se tocan. Si molesta, el escape es un `npm run mcp:build` opcional con `tsc`; no entra al MVP. |
+| **Los módulos que el server carga con node crudo no pueden usar imports sin extensión.** Un `import "./music"` dentro de `src/domain/` rompe el server y **no** rompe la app, porque Vite lo resuelve. | La regla es del spec 005 (su D4), queda escrita en `conventions.md`, y la ataja el arranque del server — lo primero que hace `pnpm mcp:test`. |
+| **El piso de Node sube a 22.18 para el server** (D3). | Documentado en el README del server y en el quickstart. La app y el deploy no se tocan. Si molesta, el escape es un `pnpm mcp:build` opcional con `tsc`; no entra al MVP. |
 | **El agente no usa las tools y sigue leyendo el código.** Es la "condición crítica" que remarcan las implementaciones de referencia: sin adopción no hay ahorro. | Descripciones escritas por intención (*"antes de simular a mano qué notas suenan, preguntá"*), una fila en `CLAUDE.md` y `docs/guides/mcp-domain.md` con las recetas. AC11 mide si sirvió. |

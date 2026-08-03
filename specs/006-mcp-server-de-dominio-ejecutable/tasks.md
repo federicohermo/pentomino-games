@@ -14,7 +14,10 @@
 ## Paso 1 — Andamiaje
 - [ ] `mcp-server/package.json` — `type: module`, `engines.node >= 22.18`, deps
       `@modelcontextprotocol/server@^2.0.0` + `zod@^4.2.0`, devDeps `typescript` + `@types/node`
-- [ ] `cd mcp-server && npm install` (**no** `npm --prefix mcp-server install` desde la raíz)
+- [ ] Agregar `packages: ['.', 'mcp-server']` al `pnpm-workspace.yaml` de la raíz, y `pnpm install`
+      **una sola vez desde la raíz** (el workspace instala los dos paquetes; no hay `cd` ni `--prefix`)
+- [ ] Confirmar el aislamiento: `zod` y `@modelcontextprotocol/server` están en
+      `mcp-server/node_modules` y **no** en el `node_modules` de la raíz
 - [ ] `mcp-server/tsconfig.json` con la combinación verificada — incluido `lib: ["ES2023", "DOM"]`, que
       hace falta por la cadena `scheduler.ts → voice.ts` y no por el server (§5 de `research.md`)
 - [ ] `src/tools/types.ts` (`ToolDef` + helper de respuesta) y `src/tools/index.ts` (el array)
@@ -64,24 +67,23 @@
       rompe cada vez que alguien marca una tarea)
 
 ## Verificación
-- [ ] `npm run mcp:test` en verde (typecheck + `node --test`) — AC10
+- [ ] `pnpm mcp:test` en verde (typecheck + `node --test`) — AC10
 - [ ] Las cuatro tools llamadas desde Claude Code, una vez cada una, contra el repo real
 - [ ] Argumento inválido (`piece: "Q"`, `rotation: 7`): el error dice qué valores son válidos
 - [ ] **Revisar que ninguna regla esté escrita dos veces** (AC3): buscar en `mcp-server/` cualquier
       cálculo de rotación, validez, escala o invariante que debería venir de `src/domain/`
 - [ ] **Prueba del import sin extensión**: sacarle el `.ts` a un import de `src/domain/` y confirmar que
-      el server falla y `npm run build` de la app **no**. Volver a ponerlo. Verlo una vez vale más que
+      el server falla y `pnpm build` de la app **no**. Volver a ponerlo. Verlo una vez vale más que
       leerlo
 - [ ] AC11 — medir el antes/después de una pregunta real ("¿qué notas y forma da `Z` en 270° reflejada,
       y qué onsets produce con otra pieza en `x=5`?") y **anotar los números acá**
 
 ## Documentación
 - [ ] `docs/guides/mcp-domain.md` — setup, catálogo de tools, cuándo preferirlas a leer código
-- [ ] `mcp-server/README.md` — comandos, estructura, cómo agregar una tool, advertencia del
-      `--prefix install`
+- [ ] `mcp-server/README.md` — comandos, estructura, cómo agregar una tool
 - [ ] `CLAUDE.md` — el server, y que **las tools son una fachada sobre `src/domain/`**, no una copia
 - [ ] `docs/architecture/directory-structure.md` — `mcp-server/` en el árbol
-- [ ] `docs/guides/quickstart.md` — `npm run mcp:test` y el piso de Node 22.18
+- [ ] `docs/guides/quickstart.md` — `pnpm mcp:test` y el piso de Node 22.18
 - [ ] `specs/log.md` — estado de 006 a `Implementado`
 
 ## PR

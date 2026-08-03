@@ -87,3 +87,17 @@ Registro de todo el trabajo especificado, en orden. La convención de formato es
   sobre `enum`: **no hay ninguno y el repo no los admite** — `erasableSyntaxOnly` los rechaza con
   `TS1294`, que es la misma opción que hace type-strippable al código y por lo tanto sostiene al spec
   006. El reemplazo es const-object en `constants/` + union type en `types/`.
+- **2026-08-03 — El repo migró de npm a pnpm, y el que más cambia es el 006.** Se midió antes de
+  decidir, sobre este mismo `package.json` y en el mismo volumen: install en frío `pnpm` **2,2 s** ·
+  `bun` 5,6 s · `npm ci` 6,9 s; y `node_modules` con **19 entradas directas** contra las 196 planas de
+  npm. Bun se descartó con evidencia, no por gusto: falla al migrar el `package-lock.json` de este repo
+  (`Could not resolve package 'tslib' … NotAllPackagesGotResolved`), **ignora el lockfile en silencio**
+  y resuelve versiones nuevas —subió vite 7.1.5 → 7.3.6 y react 19.1.1 → 19.2.8 sin pedirlo—, además de
+  ser más lento que pnpm en Windows y de dejar el `node_modules` plano, que es justo lo que no sirve
+  acá. El beneficio grande no es el disco: el **spec 006** tenía toda una estrategia montada alrededor
+  de un bug de npm (`npm --prefix mcp-server install` ensucia el `package.json` del server con un
+  `file:..`, de ahí el `cd mcp-server` obligatorio). Con el workspace de pnpm eso desaparece — un
+  `pnpm install` desde la raíz, el aislamiento garantizado por el gestor y un solo lockfile. Verificado
+  sobre un prototipo del layout de dos paquetes antes de reescribir el plan. El `node_modules` estricto
+  además ataja de antemano el riesgo que el 006 ya tenía anotado: un import fantasma que Vite resuelve
+  y `node` no.

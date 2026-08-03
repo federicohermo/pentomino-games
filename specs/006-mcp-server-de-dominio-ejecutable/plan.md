@@ -38,8 +38,25 @@ el mismo motivo no hay módulo de invariantes propio: `checkInvariants.ts` es un
 deps de la app**. La dirección de dependencia es una sola: `mcp-server/` importa de `src/`, nunca al
 revés (AC1).
 
-`.gitignore` **no se toca**: `node_modules` sin barra ya matchea a cualquier profundidad, y sin build no
-hay `dist/` que ignorar.
+**El aislamiento lo da pnpm, no la disciplina.** El repo migró a pnpm, así que `mcp-server/` entra como
+segundo paquete del workspace: en `pnpm-workspace.yaml` de la raíz se agrega
+
+```yaml
+packages:
+  - '.'
+  - 'mcp-server'
+```
+
+y con eso `zod` y el SDK viven en `mcp-server/node_modules` y **no** aparecen en la raíz. Verificado
+sobre un prototipo de este mismo layout: `ls node_modules | grep zod` en la raíz no devuelve nada. Con
+npm el aislamiento dependía de acordarse de no instalar en el lugar equivocado; acá lo garantiza el
+gestor.
+
+**Hay un solo lockfile**, el `pnpm-lock.yaml` de la raíz, que cubre los dos paquetes. `mcp-server/` no
+tiene lockfile propio.
+
+`.gitignore` **no se toca**: `node_modules` sin barra ya matchea a cualquier profundidad —incluido
+`mcp-server/node_modules`, que pnpm también crea— y sin build no hay `dist/` que ignorar.
 
 ## Stack
 
@@ -272,7 +289,7 @@ En `mcp-server/package.json`:
   "scripts": {
     "start": "node src/index.ts",
     "typecheck": "tsc",                                       // noEmit está en el tsconfig
-    "test": "npm run typecheck && node --test \"src/**/*.test.ts\""
+    "test": "pnpm run typecheck && node --test \"src/**/*.test.ts\""
   }
 }
 ```
@@ -280,14 +297,18 @@ En `mcp-server/package.json`:
 En el `package.json` de la raíz, delegaciones para no entrar a la carpeta:
 
 ```jsonc
-"mcp:test": "npm --prefix mcp-server run test",
-"mcp:typecheck": "npm --prefix mcp-server run typecheck"
+"mcp:test": "pnpm --filter mcp-server test",
+"mcp:typecheck": "pnpm --filter mcp-server typecheck"
 ```
 
-**El `install` va entrando a la carpeta** (`cd mcp-server && npm install`). En bait se midió que
-`npm --prefix mcp-server install` desde la raíz le agrega una dependencia `file:..` al `package.json`
-del server y ensucia su lockfile; el bug es del subcomando `install`, con `run <script>` el `--prefix`
-está bien. No está verificado acá, y no hace falta: entrar a la carpeta cuesta nada.
+**El `install` es uno solo y desde la raíz**: `pnpm install` instala los dos paquetes del workspace. No
+hay que entrar a `mcp-server/` ni pasar prefijos.
+
+Esto era una trampa con npm y dejó de serlo: `npm --prefix mcp-server install` desde la raíz le agregaba
+una dependencia `file:..` al `package.json` del server y le ensuciaba el lockfile —bug del subcomando
+`install`, no de `run`—, así que el plan anterior obligaba a un `cd mcp-server && npm install`. Con el
+workspace de pnpm el problema no existe: verificado sobre un prototipo de este layout, un `pnpm install`
+desde la raíz deja el `package.json` del server intacto, sin `file:..`.
 
 ## Fases
 
@@ -315,6 +336,6 @@ pueden mergear sueltas.
 | `docs/guides/mcp-domain.md` (nuevo) | setup en ≤10 líneas, catálogo de tools, cuándo preferirlas a leer código |
 | `CLAUDE.md` | sección corta: existe el server, qué responde, y que **no reimplementa nada** — las tools son una fachada sobre `src/domain/` |
 | `docs/architecture/directory-structure.md` | `mcp-server/` en el árbol de la raíz; fila en "dónde crear cada cosa" |
-| `docs/guides/quickstart.md` | `npm run mcp:test` y el piso de Node 22.18 |
-| `mcp-server/README.md` | comandos, estructura, cómo agregar una tool, y la advertencia del `--prefix install` |
+| `docs/guides/quickstart.md` | `pnpm mcp:test` y el piso de Node 22.18 |
+| `mcp-server/README.md` | comandos, estructura y cómo agregar una tool |
 | `specs/log.md` | estado de 006 |

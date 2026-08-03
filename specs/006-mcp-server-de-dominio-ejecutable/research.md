@@ -2,6 +2,10 @@
 
 Todo lo de acá está **medido**, no supuesto. Los comandos que produjeron cada número están citados.
 
+> **Los `$ npm view` de §6 quedan como se corrieron**, antes de que el repo migrara a pnpm: son la
+> transcripción real que fijó las versiones del SDK. `pnpm view` devuelve lo mismo. Lo que sí cambió
+> —el aislamiento del paquete y cómo se instala— está actualizado en el `plan.md`.
+
 ## 1. La referencia: qué es el server de `bait-landing-frontend`
 
 `raw/repos/bait-landing-frontend/mcp-server/` — 1.279 líneas de TypeScript, spec 026 de ese repo,
@@ -23,7 +27,7 @@ implementado y con ahorro medido (**80.8% agregado, 90–95% en queries puntuale
   es solo un array. Agregar una tool no toca el entrypoint.
 - Tests fuera de `src/`, con su propio tsconfig.
 - Descripciones de tools escritas por intención (*"usar en lugar de grep para…"*), no por mecanismo.
-- Errores con instrucción de salida, no solo diagnóstico ("regeneralo con: `npm run index`").
+- Errores con instrucción de salida, no solo diagnóstico ("regeneralo con: `pnpm index`").
 
 **Lo que no se hereda, y por qué:** todo el eje del índice (§2), la validación de argumentos a mano
 (§6) y el paso de build (§5).
@@ -46,7 +50,7 @@ $ cat src/App.tsx src/audio/engine.ts | wc -c   →  25.189 bytes  (~6,3k tokens
 | Preguntas del tipo "quién usa X" | constantes | ~1 consumidor por símbolo |
 
 Un `search_symbol` sobre 8 archivos compite contra `grep`, y pierde: cuesta un índice, un
-`npm run index` que hay que acordarse de correr, staleness, un `generatedAt` que sellar en cada
+`pnpm index` que hay que acordarse de correr, staleness, un `generatedAt` que sellar en cada
 respuesta y dos clases de error (`IndexMissingError`, `IndexUnreadableError`) que existen solo por
 el índice. **Copiar el diseño literal traería el 100% del precio para un ahorro de ~0.**
 

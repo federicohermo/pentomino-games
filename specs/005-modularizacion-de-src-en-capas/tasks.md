@@ -67,7 +67,7 @@
       `integration.test.ts` (2), **sin editar aserciones**
 - [ ] `scheduler.test.ts` con su propio `const SPREAD = 0.15`, sin importar `ARPEGGIO_SPREAD` (AC10)
 - [ ] Borrar `audio/engine.test.ts`
-- [ ] `npm test` sigue reportando **17** (AC9)
+- [ ] `pnpm test` sigue reportando **17** (AC9)
 - [ ] Verificación completa
 
 ## Fase 4 — Componentes *(la única fase opcional)*
@@ -97,7 +97,7 @@
 ## Fase 6 — Linter y documentación
 - [ ] Overrides de `@typescript-eslint/no-restricted-imports` para `src/domain/**` y `src/audio/**`,
       con los patrones `../` **y** `../../`
-- [ ] **Probar que la regla falla**: import prohibido desde un módulo y desde un test, `npm run lint`
+- [ ] **Probar que la regla falla**: import prohibido desde un módulo y desde un test, `pnpm lint`
       en rojo con el mensaje del override en los dos casos (AC3). Revertir después
 - [ ] Confirmar que no hay ningún `index.ts` de re-exportación y que **todos** los imports locales
       llevan extensión (AC4)
@@ -123,15 +123,15 @@
 - [ ] `specs/log.md` — estado de 005 a `Implementado`
 
 ## Verificación final
-- [ ] `npx tsc -b --noEmit` en 0
-- [ ] `npm run lint` en 0
-- [ ] `npm test` en verde con **17 tests de audio + los nuevos del dominio**
-- [ ] `npm run build` en verde
+- [ ] `pnpm exec tsc -b --noEmit` en 0
+- [ ] `pnpm lint` en 0
+- [ ] `pnpm test` en verde con **17 tests de audio + los nuevos del dominio**
+- [ ] `pnpm build` en verde
 - [ ] **Las 96 combinaciones a mano en la app**: recorrer las 12 piezas con las 4 rotaciones y el
       mirror, comparando forma, ancla y notas contra los valores de referencia del `research.md`. Es la
       verificación que decide si AC1 se cumplió
 - [ ] Colocar 3–4 piezas, prender el loop, cambiar el tempo: suena igual que antes
-- [ ] `npm run dev` y editar un componente: **Fast Refresh sin recarga completa** y sin perder el
+- [ ] `pnpm dev` y editar un componente: **Fast Refresh sin recarga completa** y sin perder el
       tablero armado (es lo que D14 promete)
 
 ## PR

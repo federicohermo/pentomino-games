@@ -130,7 +130,7 @@ Dos detalles que no son obvios:
   algún día aparece un tercer nivel, hay que agregar el patrón — está anotado en `conventions.md`.
 
 **Verificación obligatoria:** agregar a mano un import prohibido desde un módulo **y desde un test**, y
-confirmar que `npm run lint` falla en los dos casos con el mensaje del override. Una regla que no se
+confirmar que `pnpm lint` falla en los dos casos con el mensaje del override. Una regla que no se
 probó fallar no es una regla (AC3).
 
 ## Contenido módulo por módulo

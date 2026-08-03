@@ -180,7 +180,7 @@ Un override por carpeta con `@typescript-eslint/no-restricted-imports` (la varia
 
 bulletproof-react usa `import/no-restricted-paths` de `eslint-plugin-import`, que expresa zonas más
 ricas; se descarta para no agregar una dependencia por dos reglas. La arquitectura pasa de ser un
-párrafo de documentación a ser **ejecutable**: romperla falla el `npm run lint`, igual que hoy falla
+párrafo de documentación a ser **ejecutable**: romperla falla el `pnpm lint`, igual que hoy falla
 exportar una constante desde un `.tsx`.
 
 **D3 — Sin barrel files.**
@@ -413,14 +413,14 @@ Dos alternativas evaluadas y descartadas:
 
 ## Criterios de Aceptación
 
-- **AC1 — Cero cambio de comportamiento.** `npx tsc -b --noEmit`, `npm run lint`, `npm test` y
-  `npm run build` en verde, y en la app: la misma paleta, el mismo fantasma, la misma celda de agarre
+- **AC1 — Cero cambio de comportamiento.** `pnpm exec tsc -b --noEmit`, `pnpm lint`, `pnpm test` y
+  `pnpm build` en verde, y en la app: la misma paleta, el mismo fantasma, la misma celda de agarre
   y **las mismas notas** para las 96 combinaciones de pieza × rotación × reflexión.
 - **AC2** — `App.tsx` no contiene ninguna función pura ni ningún literal de dominio, y no exporta
   nada que no sea el componente.
 - **AC3** — `domain/` no importa React, ni `audio/`, ni `components/`. `audio/` no importa React, ni
   `domain/`, ni `components/`. **Verificado por el linter**: agregar a mano un import prohibido tiene
-  que fallar `npm run lint` con el mensaje del override (la misma prueba que se hizo con
+  que fallar `pnpm lint` con el mensaje del override (la misma prueba que se hizo con
   `react-refresh/only-export-components`).
 - **AC4** — No hay ningún archivo `index.ts` de re-exportación en `src/`, y **todos** los imports
   locales llevan extensión explícita.
@@ -452,7 +452,7 @@ Dos alternativas evaluadas y descartadas:
 - **AC9** — `audio/` queda en tres módulos y los tests siguen en verde, repartidos en
   `audio/__tests__/` según los `describe` actuales: `voice.test.ts` (`midiToHz` + `sintesis`, 7),
   `scheduler.test.ts` (`scheduler`, 8) e `integration.test.ts` (`scheduler + sintesis integrados`, 2).
-  **El conteo total no baja de 17** — el valor de hoy, verificado con `npm test`.
+  **El conteo total no baja de 17** — el valor de hoy, verificado con `pnpm test`.
 - **AC10** — `scheduler.test.ts` no importa nada de `engine.ts` (usa su propio spread literal en vez
   de `ARPEGGIO_SPREAD`): el test de la capa 2 no alcanza a la capa 3.
 - **AC11** — `components/` tiene cuatro componentes presentacionales, uno por archivo, sin estado ni
