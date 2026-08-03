@@ -9,10 +9,11 @@
 ## Instalación
 
 ```bash
-cd my-app-vite
 npm install
 npm run dev
 ```
+
+Desde la raíz del repo: no hay subdirectorio de app.
 
 El dev server queda en `http://localhost:5173`. Para fijar otro puerto:
 

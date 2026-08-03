@@ -167,8 +167,8 @@ porque correr el algoritmo sobre las 12 piezas × 4 rotaciones desmintió tres s
 
 ## Deploy
 
-`netlify.toml` está en la **raíz del repo**, un nivel arriba de esta carpeta. `base = "my-app-vite"`,
-`publish = "dist"` (relativo a `base`, no a la raíz), `NODE_VERSION = "22"`.
+`netlify.toml` está en la **raíz del repo**, junto al `package.json`. Sin `base` (la app vive en la
+raíz), `publish = "dist"`, `NODE_VERSION = "22"`.
 
 Detalle y los dos errores ya cometidos en
 [docs/infra/deploy.md](./docs/infra/deploy.md).

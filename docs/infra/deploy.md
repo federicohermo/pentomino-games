@@ -2,12 +2,11 @@
 
 ## Dónde vive la configuración
 
-`netlify.toml` está en la **raíz del repositorio**, un nivel arriba de `my-app-vite/`. Es el único
+`netlify.toml` está en la **raíz del repositorio**, junto al `package.json` de la app. Es el único
 archivo de config de deploy y no hay ninguno anidado.
 
 ```toml
 [build]
-  base = "my-app-vite"
   command = "npm run build"
   publish = "dist"
 
@@ -17,14 +16,20 @@ archivo de config de deploy y no hay ninguno anidado.
 
 | Campo | Valor | Por qué |
 |---|---|---|
-| `base` | `my-app-vite` | Netlify corre `npm install` y el build **dentro** de esa carpeta |
-| `command` | `npm run build` | Expande a `tsc -b && vite build`. Sin `cd`: `base` ya puso el cwd |
-| `publish` | `dist` | Relativo a `base`, no a la raíz del repo |
+| `command` | `npm run build` | Expande a `tsc -b && vite build`. Corre en la raíz del repo |
+| `publish` | `dist` | La app vive en la raíz, así que no hay prefijo de carpeta |
 | `NODE_VERSION` | `22` | Vite 7 exige `^20.19.0 \|\| >=22.12.0` |
+
+No hay `base`: la app dejó de vivir en un subdirectorio. Si el campo *Base directory* quedó cargado a
+mano en la UI de Netlify, **hay que vaciarlo** — la UI pisa al archivo (ver más abajo).
 
 ## Los dos errores que ya se cometieron acá
 
 ### `publish` duplicando el path
+
+*(Histórico: pasó cuando la app vivía en el subdirectorio `my-app-vite/`. Hoy no hay `base`, así que
+el error ya no es reproducible — pero la regla de Netlify que lo causó sigue valiendo si algún día se
+vuelve a anidar la app.)*
 
 Estuvo configurado como `publish = "my-app-vite/dist"` junto con `base = "my-app-vite"`. Netlify
 resuelve **todas** las rutas del `netlify.toml` relativas al `base`, así que buscaba
@@ -76,7 +81,6 @@ está declarada en el archivo.
 Reproduce exactamente lo que hace Netlify:
 
 ```bash
-cd my-app-vite
 rm -rf dist
 npm run build
 find dist -type f

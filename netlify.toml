@@ -1,8 +1,7 @@
-# Netlify: despliega la app Vite del subdirectorio `my-app-vite`.
-# Las rutas son relativas a `base`, por eso `publish = "dist"` y no "my-app-vite/dist".
+# Netlify: despliega la app Vite, que vive en la raíz del repo.
+# Sin `base`, las rutas se resuelven desde la raíz: por eso `publish = "dist"`.
 
 [build]
-  base = "my-app-vite"
   command = "npm run build"
   publish = "dist"
 

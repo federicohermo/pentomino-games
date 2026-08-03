@@ -3,7 +3,7 @@
 ## Organización General
 
 ```
-my-app-vite/
+pentomino-games/           # raíz del repo: la app vive acá, sin subdirectorio
 ├── CLAUDE.md              # Guía para Claude Code
 ├── docs/                  # Esta documentación
 ├── specs/                 # Trabajo planificado (ver specs/README.md)
@@ -12,11 +12,10 @@ my-app-vite/
 ├── index.html             # Entry point de Vite (en la raíz, no en public/)
 ├── vite.config.ts         # Plugins: react() + tailwindcss()
 ├── eslint.config.js       # Flat config v9
+├── netlify.toml           # Config de deploy (ver infra/deploy.md)
+├── LICENSE
 └── tsconfig{,.app,.node}.json
 ```
-
-El `netlify.toml` **no** está acá: vive en la raíz del repositorio, un nivel arriba. Ver
-[infra/deploy.md](../infra/deploy.md).
 
 ## `src/`
 
