@@ -9,7 +9,7 @@ Registro de todo el trabajo especificado, en orden. La convención de formato es
 | Spec | Fecha | Estado | Descripción |
 |------|-------|--------|-------------|
 | [001](./001-notas-por-celda-en-orden-angular/spec.md) | 2026-08-02 | Propuesto | Asignar cada nota a una celda de la pieza, en orden angular alrededor del centroide |
-| [002](./002-motor-de-audio-propio-sobre-web-audio/spec.md) | 2026-08-02 | Propuesto | Reemplazar Tone.js por un motor propio sobre Web Audio: síntesis, scheduler con lookahead y audio testeable |
+| [002](./002-motor-de-audio-propio-sobre-web-audio/spec.md) | 2026-08-02 | Implementado | Reemplazar Tone.js por un motor propio sobre Web Audio: síntesis, scheduler con lookahead y audio testeable |
 | [003](./003-visualizacion-de-la-senal-con-analysernode/spec.md) | 2026-08-02 | Propuesto | Visualizar la señal con `AnalyserNode`: espectro en canvas, con el mapeo bins→barras como función pura testeable |
 | [004](./004-fase-por-pieza-la-columna-como-posicion-en-el-compas/spec.md) | 2026-08-02 | Propuesto | La columna de la celda de agarre determina en qué momento del compás arranca la pieza: el tablero pasa a ser un secuenciador |
 
@@ -17,14 +17,13 @@ Registro de todo el trabajo especificado, en orden. La convención de formato es
 
 - **001 y 002 son ortogonales.** Uno decide qué nota va en qué celda; el otro, cómo se produce el
   sonido. Se pueden implementar en cualquier orden.
-- **003 depende de 002.** Con Tone el grafo es interno a la librería y no hay dónde insertar el
-  analizador. Su paso 1 (el mapeo puro) sí es independiente y mergeable solo.
-- **El prerrequisito de Vitest ya está resuelto.** `vitest` y `node-web-audio-api` están instalados y
-  verificados; falta versionar el bloque `test` en `vite.config.ts`.
-- **El gate de 002 ya pasó.** Se ejecutó durante el review del spec: los cuatro tests propuestos en
-  verde, con números idénticos a Chrome dentro del 2%. Ver su `research.md`.
+- **003 dependía de 002, y ya está desbloqueado.** Con Tone el grafo era interno a la librería y no
+  había dónde insertar el analizador; con el motor propio, `master.connect(analyser)` es una línea. Su
+  paso 1 (el mapeo puro) es independiente y mergeable solo.
+- **El prerrequisito de Vitest está resuelto y versionado** por el spec 002: `vitest` +
+  `node-web-audio-api`, bloque `test` en `vite.config.ts`, `environment: 'node'`. El spec 001 lo hereda.
 - **004 depende de 002, y más fuerte que 003.** No solo se apoya en el motor propio: **reescribe
-  `collectHits`**. Abrir su rama antes de que 002 esté mergeado garantiza el conflicto.
+  `collectHits`**. Con 002 ya mergeado, su rama se puede abrir.
 - **004 y 003 se refuerzan pero no se bloquean.** 004 hace que la posición en el tablero suene
   distinto; 003 trae el canvas donde se podría *ver* esa posición. Sin 003, la fase de 004 se oye pero
   no se lee — está anotado como su limitación consciente.

@@ -1,178 +1,177 @@
 # Capa de Audio
 
-Cómo se integra Tone.js. Es la parte del código con más decisiones no obvias, y la que ya produjo un bug
-real de loops huérfanos.
+El motor vive en `src/audio/engine.ts` y está construido directamente sobre Web Audio, sin librerías.
+Es la parte del código con más decisiones no obvias.
 
-## Carga diferida
+## El grafo
 
-Tone.js **no** se importa arriba del archivo. Se carga con `import()` dinámico dentro de `ensureTone()`,
-que además construye el sintetizador la primera vez:
-
-```ts
-let toneModule: ToneModule | null = null;
-let synth: any = null;
-
-async function ensureTone(){
-  if (!toneModule) toneModule = await import('tone');
-  if (toneModule && !synth) synth = new toneModule.PolySynth(toneModule.Synth).toDestination();
-  return toneModule;
-}
+```
+scheduleVoice()  ──┐
+   osc → env       │
+                   ├──→  master (gain 0.3)  ──→  ctx.destination
+scheduleVoice()  ──┘
+   osc → env
 ```
 
-Dos motivos:
+Una voz por nota, creada y descartada. El `master` existe para tener un punto único de volumen y —a
+futuro— de inserción de efectos o de un `AnalyserNode`
+([spec 003](../../specs/003-visualizacion-de-la-senal-con-analysernode/spec.md)).
 
-1. **Tone toca el `AudioContext` al importarse.** Cargarlo en el arranque crea un contexto suspendido
-   antes de cualquier gesto del usuario, que es justo lo que las políticas de autoplay de los
-   navegadores penalizan.
-2. **Peso.** Tone son ~340 kB del bundle. Al ser dinámico, Vite lo separa en su propio chunk y la app
-   pinta antes de bajarlo. Se ve en el output del build: dos chunks, no uno.
+## Las tres capas del módulo
 
-`ensureTone()` es idempotente y todos los caminos que necesitan audio pasan por ahí. Falla de forma
-suave: si el import se cae, loguea un warning y devuelve `null`, y cada llamador debe chequearlo. **La
-app sigue siendo usable sin audio** — se pueden colocar piezas, solo que no suenan.
+El archivo está ordenado en tres bloques, y el orden importa:
 
-## Singletons de módulo, no estado
+| Bloque | Qué hace | Recibe el contexto |
+|---|---|---|
+| **1. Síntesis** | `midiToHz`, `scheduleVoice` | por parámetro |
+| **2. Scheduler** | `collectHits` — decide qué suena y cuándo | por parámetro |
+| **3. App** | singletons, `playNow`, `startClock`, jobs | usa el singleton |
 
-`toneModule` y `synth` viven a nivel de módulo, fuera de React. No son `useState` ni `useRef`.
+**Los bloques 1 y 2 nunca tocan el singleton.** Es lo que permite renderizarlos con un
+`OfflineAudioContext` en los tests, y es la razón por la que el audio de este proyecto es verificable.
 
-Es deliberado: hay **un** `AudioContext` y **un** sintetizador por pestaña, no uno por instancia del
-componente. Meterlos en estado los ataría al ciclo de vida de React y en StrictMode se construirían dos
-veces. Como contrapartida, sobreviven al desmontaje del componente — de ahí la limpieza explícita que se
-describe abajo.
-
-## `Tone.start()` necesita un gesto
+## Síntesis
 
 ```ts
-await Tone.start();
+env.gain.setValueAtTime(0, at);                              // ancla
+env.gain.linearRampToValueAtTime(vel, at + attack);
+env.gain.linearRampToValueAtTime(vel * sustain, at + attack + decay);
+env.gain.setValueAtTime(vel * sustain, at + dur);
+env.gain.linearRampToValueAtTime(0, at + dur + release);
 ```
 
-En `playNotesNow`, antes de disparar. Los navegadores exigen que el `AudioContext` se reanude desde un
-handler de evento originado por el usuario. Como `playNotesNow` sale del click en el tablero, la cadena
-de gesto se preserva.
+Dos detalles que parecen redundantes y no lo son:
 
-**Esto se rompe fácil**: si alguna vez se quiere que suene algo sin click previo —un preview al pasar el
-mouse, una nota al cambiar de pieza con el teclado— el audio va a quedar en silencio hasta que el
-usuario haga click en algo. No es un bug del código sino una restricción del navegador.
+- **El `setValueAtTime(0, at)` inicial.** Las rampas de Web Audio interpolan desde el *último evento
+  agendado*, no desde cero. Sin ese ancla, la rampa de ataque arranca en el valor que haya quedado de
+  una nota anterior y se oye un click.
+- **Rampas lineales, no exponenciales.** `exponentialRampToValueAtTime` lanza si el target es `0`, así
+  que para el release habría que rampar a un épsilon y cortar. La lineal es correcta y suficiente.
 
-## Transport y tempo
+Las voces son *fire-and-forget*: `osc.onended` desconecta los nodos. Los `OscillatorNode` son de un
+solo uso por diseño de la API; no hay pool ni voice stealing, y a cinco notas por pieza no hace falta.
+
+## Scheduler con lookahead
+
+`setTimeout` tiene jitter de decenas de milisegundos. El reloj de audio
+(`AudioContext.currentTime`) es preciso a nivel de sample, pero no se puede "esperar" sobre él.
+
+La solución es el patrón de *A Tale of Two Clocks*: un temporizador grueso que despierta cada **25 ms**
+y agenda todo lo que caiga en los próximos **100 ms**, con tiempos absolutos del reloj de audio.
+
+**El temporizador no dispara notas: decide cuándo mirar.** Por eso su jitter no se oye.
 
 ```ts
-function useTransport(tempo: number){
-  useEffect(()=>{
-    let mounted = true;
-    ensureTone().then(Tone => { if (Tone && mounted) Tone.Transport.bpm.value = tempo; });
-    return ()=>{ mounted = false; };
-  },[tempo]);
-}
+if (state.nextBar < fromTime) state.nextBar = fromTime + 0.05;   // recuperación
+while (state.nextBar < fromTime + horizon) { … state.nextBar += bar; }
 ```
 
-El flag `mounted` evita escribir el BPM después de desmontar, si el import de Tone resuelve tarde.
-
-El botón "Loop" arranca y para el Transport. **El Transport solo afecta a los loops de piezas
-colocadas**: el arpegio de colocación usa `Tone.now()` y suena tenga o no el Transport corriendo.
+La guarda de recuperación evita que, si la pestaña estuvo oculta y el temporizador se estranguló, el
+`while` intente recuperar cientos de compases atrasados de golpe. **Solo actúa cuando el reloj ya pasó
+el próximo compás**; en marcha normal `nextBar` va por delante y el offset de `0.05` no se aplica.
 
 ## Reconciliación de loops
 
-El patrón central de esta capa, y el que reemplazó al bug.
-
-### El bug que había
-
-El id del evento del Transport se guardaba dentro de `PlacedPiece._sched`, y se escribía **mutando el
-objeto después de habérselo pasado a `setPlaced`**. Consecuencias:
-
-- La limpieza de "Quitar" y "Reset" buscaba un id que muchas veces no estaba → loops huérfanos sonando
-  para siempre.
-- Apagar el checkbox no cancelaba nada de lo ya agendado.
-- Encenderlo no agendaba las piezas ya colocadas.
-
-Cada camino (colocar, quitar, resetear, togglear) tenía que acordarse de limpiar por su cuenta, y
-ninguno lo hacía del todo bien.
-
-### El patrón actual
-
-Los ids viven en un `useRef<Map<string, number>>` —fuera del estado, porque cambiarlos no debe
-re-renderizar— y **un solo efecto reconcilia** contra el tablero:
+Un único `useEffect` en `App.tsx` observa `[placed, loopPlaced]` y lleva los jobs del motor a donde
+deben estar. Los handlers solo cambian estado.
 
 ```ts
 useEffect(()=>{
-  let cancelled = false;
-  const sched = schedRef.current;
-
-  ensureTone().then(Tone => {
-    if (!Tone || cancelled) return;
-    const wanted = new Set(loopPlaced ? placed.map(p=>p.id) : []);
-
-    for (const [pieceId, eventId] of sched){          // cancelar lo que sobra
-      if (!wanted.has(pieceId)){ Tone.Transport.clear(eventId); sched.delete(pieceId); }
-    }
-    for (const p of placed){                          // agendar lo que falta
-      if (!loopPlaced || sched.has(p.id)) continue;
-      sched.set(p.id, Tone.Transport.scheduleRepeat(/* … */, "1m"));
-    }
-  });
-
-  return ()=>{ cancelled = true; };
+  clearJobs();
+  if (!loopPlaced) return;
+  for (const p of placed) addJob({ id: p.id, notes: p.notes, spread: ARPEGGIO_SPREAD });
 }, [placed, loopPlaced]);
 ```
 
-Los cuatro caminos quedan cubiertos por la misma lógica. Colocar, quitar, resetear y togglear son todos
-el mismo problema —"que el Transport refleje el tablero"— y ahora se resuelven en un solo lugar.
+**Por qué limpiar y re-agregar es seguro acá**, cuando con Tone habría reiniciado la fase: los jobs son
+datos puros que `tick()` lee, no eventos agendados. La fase vive en `clock.nextBar`, que es compartido y
+no se toca. Con Tone cada job cargaba su propio ID de evento del Transport y perderlo dejaba loops
+huérfanos — de hecho ese fue un bug real.
 
-`PlacedPiece.id` existe para esto: identifica la pieza de forma estable, cosa que el índice del array no
-hace cuando se puede borrar del medio.
+Tampoco hace falta flag de cancelación: `addJob` y `clearJobs` son sincrónicos, así que no hay promesa
+que pueda resolver después de que el efecto se limpió.
 
-### La limpieza de desmontaje es sincrónica a propósito
+## `AudioContext` y el gesto del usuario
+
+El contexto vive en un singleton de módulo —hay uno por pestaña, no uno por componente— y se crea
+perezosamente:
 
 ```ts
-useEffect(()=> ()=>{
-  const sched = schedRef.current;
-  if (toneModule){
-    for (const eventId of sched.values()) toneModule.Transport.clear(eventId);
-  }
-  sched.clear();
-}, []);
+if (c.state === 'suspended') void c.resume();
 ```
 
-Usa `toneModule` directo en vez de `await ensureTone()`. **Si fuera asincrónica, en StrictMode podría
-correr después de que el efecto de reconciliación ya reagendó, y cancelaría los eventos nuevos.** React
-ejecuta todas las limpiezas y después todos los efectos; una limpieza que resuelve una promesa se sale
-de ese orden.
+Los navegadores exigen que el contexto se reanude desde un handler originado por el usuario. Como
+`playNow` y `startClock` salen de clicks, la cadena de gesto se preserva.
 
-Si `toneModule` es `null` no hay nada que cancelar, porque nunca se agendó nada.
+**Esto se rompe fácil**: cualquier feature que quiera sonar sin click previo —un preview al pasar el
+mouse, una nota al cambiar de pieza con el teclado— va a quedar muda hasta que el usuario haga click en
+algo. Es una restricción del navegador, no del código.
+
+`audio()` devuelve `null` si Web Audio no está disponible; la app queda usable pero muda, y cada
+llamador tiene que chequearlo.
 
 ## Los dos caminos de reproducción
 
-Hoy hay **dos** lugares que disparan notas, con lógica duplicada:
+Hay **dos** funciones que producen sonido, y conviene saber cuál es cuál:
 
-| Camino | Dónde | Referencia temporal |
+| Camino | Quién lo usa | Cómo llega a `scheduleVoice` |
 |---|---|---|
-| Arpegio al colocar | `playNotesNow()` | `Tone.now()` — inmediato |
-| Loop por compás | callback de `scheduleRepeat` en el efecto | `time` del Transport |
+| `playNotes()` | `playNow()`, al colocar una pieza | expande el arpegio y agenda |
+| `tick()` | el loop por compás | `collectHits()` ya devolvió los instantes; agenda directo |
 
-Ambos usan el mismo espaciado de `0.15 s` y la misma duración `"8n"`, pero son código separado. Unificar
-los dos caminos está anotado como seguimiento en el
-[spec 001](../../specs/001-notas-por-celda-en-orden-angular/tasks.md) y es la razón por la que un cambio
-en cómo suena una pieza hay que aplicarlo en dos lugares. **Al tocar uno, verificar el otro.**
+**No están unificados en una sola función, y es a propósito**: `collectHits` tiene que ser pura para
+poder testear el scheduler, así que devuelve instantes en vez de producir sonido. Volver a pasar por
+`playNotes` obligaría a recalcular el espaciado que el scheduler ya aplicó.
 
-## Cómo verificar el audio sin oírlo
+Lo que **sí** está unificado es lo que importa para cambiar el sonido:
 
-Los eventos agendados son inspeccionables desde la consola del navegador en dev. Importando el mismo
-módulo que sirve Vite se obtiene el singleton del Transport:
+- `scheduleVoice()` — la única función que crea un oscilador.
+- `DEFAULT_VOICE` — el timbre y la ADSR.
+- `ARPEGGIO_SPREAD` y `NOTE_DUR` — el espaciado y la duración.
+
+**La consecuencia práctica:** tocar el timbre en `DEFAULT_VOICE` alcanza para los dos caminos, pero
+cambiar *cómo se expande un arpegio* dentro de `playNotes` **no afecta al loop**. Ese cambio va en
+`collectHits`, o en los dos lugares.
+
+## Cómo verificar el audio
+
+### En tests: `OfflineAudioContext`
+
+Renderiza a un `AudioBuffer` en memoria, más rápido que tiempo real y de forma determinística. Los
+helpers están en `src/audio/test-context.ts`:
+
+| Helper | Para qué |
+|---|---|
+| `offline(secs)` | contexto de render |
+| `zeroCrossHz(d, from, to)` | frecuencia por cruces por cero **interpolados** |
+| `peakNear(d, t)` | pico en una ventana |
+| `firstAudible(d)` | instante de la primera muestra audible |
+| `detectOnsets(d)` | onsets por seguidor de envolvente con histéresis |
+
+Dos trampas que costaron un ciclo de tests cada una:
+
+- **`zeroCrossHz` debe interpolar.** Contar cruces y dividir por la duración de la ventana cuantiza:
+  en 0.1 s el error es de ~5 Hz, suficiente para leer 261.6 Hz como 263.2. Se mide entre el primer y el
+  último cruce interpolados.
+- **`detectOnsets` no puede ser un umbral sobre la muestra cruda.** Cada cruce por cero de la onda
+  parece silencio: medido, 21 falsos onsets para 3 notas. Hace falta envolvente por ventanas de 5 ms
+  con dos umbrales (0.05 para disparar, 0.01 para rearmar).
+
+### En el navegador
 
 ```js
-const url = performance.getEntriesByType('resource')
-  .map(e=>e.name).find(n=>/tone/.test(n));
-const T = await import(url);
-const tr = T.getTransport();
-
-Object.values(tr._scheduledEvents)
-  .filter(r => ((r.event ?? r)?.constructor?.name) === '_TransportRepeatEvent')
-  .length;   // ← cuántos loops vivos hay
+const m = await import('/src/audio/engine.ts');   // en dev, mismo singleton
+m.jobCount();                                      // loops vivos
+m.clockRunning();                                  // reloj
+m.audio().state;                                   // 'running' | 'suspended'
 ```
 
-El filtro por `_TransportRepeatEvent` no es opcional: Tone crea `_TransportEvent` internos para
-re-armar cada repeat, así que el conteo crudo de `_scheduledEvents` da más de lo esperado. Un loop
-propio son tres entradas.
+Para comprobar que el scheduler realmente dispara, contar osciladores creados:
 
-Es la técnica con la que se verificó la reconciliación (1 pieza → 1 loop; apagar → 0; "Quitar" → 0;
-"Reset" → 0).
+```js
+const c = m.audio(), orig = c.createOscillator.bind(c);
+let n = 0; c.createOscillator = () => { n++; return orig(); };
+// esperar N segundos…  n ≈ (segundos / duraciónCompás) * notasPorPieza
+```
+
+Medido: 10 voces en 5.02 s a 110 bpm con una pieza = exactamente 2 compases × 5 notas.

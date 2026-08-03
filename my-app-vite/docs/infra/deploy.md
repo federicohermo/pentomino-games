@@ -82,8 +82,13 @@ npm run build
 find dist -type f
 ```
 
-`dist/` tiene que contener `index.html`, `assets/` con dos chunks JS (el segundo es Tone.js, separado
-por el import dinámico) y `_redirects`. Después:
+`dist/` tiene que contener `index.html`, `assets/` con **un** chunk JS y uno CSS, y `_redirects`.
+
+Antes había dos chunks JS: el segundo eran los 340 kB de Tone.js, separados por el import dinámico. Con
+el motor propio ese chunk no existe. **Si aparece un segundo chunk JS, algo volvió a introducir un
+import dinámico** — no es un error, pero conviene saber qué es.
+
+Después:
 
 ```bash
 npm run preview

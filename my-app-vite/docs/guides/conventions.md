@@ -4,18 +4,14 @@
 
 ### Nada de `any`
 
-Hay **un** `any` en el repo, en `synth`, con su `@ts-ignore` correspondiente:
+**Cero `any` y cero `@ts-ignore` en el repo.** No es aspiracional: es el estado actual.
 
-```ts
-// @ts-ignore dynamic constructor types
-synth = new toneModule.PolySynth(toneModule.Synth).toDestination();
-```
+Los tres que hubo desaparecieron sin que nadie los atacara de frente. Dos estaban alrededor de la
+gestión de loops y se fueron cuando esa lógica se volvió declarativa; el tercero era el `synth` de
+Tone, con su `@ts-ignore` por los tipos de constructor genérico, y se fue con Tone.
 
-Es legítimo: los tipos de constructor genérico de Tone no resuelven bien con import dinámico. **Es el
-único aceptado.** Había otros dos, alrededor de la gestión de loops, y desaparecieron cuando esa lógica
-se hizo declarativa — los `@ts-ignore` estaban tapando el bug, no un problema de tipos.
-
-Si aparece la tentación de un `@ts-ignore` nuevo, sospechar del diseño antes que de TypeScript.
+Los tres estaban tapando un problema de diseño, no de tipos. **Si aparece la tentación de uno nuevo,
+sospechar del diseño antes que de TypeScript.**
 
 ### Tipos de dominio
 
@@ -49,9 +45,9 @@ mal, pero es la clase de cosa que alguien "arregla" por error.
 ## Estado
 
 - **Sin estado global.** No hay Context, Redux ni Zustand. Todo es `useState` local en `App`.
-- **Lo que no es estado de UI, no va en estado.** Los ids de eventos del Transport viven en un `useRef`
-  porque cambiarlos no debe re-renderizar. Los singletons de Tone viven a nivel de módulo porque hay uno
-  por pestaña, no uno por componente.
+- **Lo que no es estado de UI, no va en estado.** El contador de ids vive en un `useRef` porque
+  cambiarlo no debe re-renderizar. El `AudioContext` y los jobs del motor viven en singletons de módulo
+  porque hay uno por pestaña, no uno por componente.
 - **Nunca mutar objetos ya entregados a React.** Es literalmente el bug que tuvieron los loops:
   `newPiece._sched = id` después de `setPlaced(prev => [...prev, newPiece])`. Si un dato tiene que
   cambiar después, o va en el estado con su propio `set`, o va afuera de React.
@@ -61,20 +57,20 @@ mal, pero es la clase de cosa que alguien "arregla" por error.
 ## Efectos
 
 Los efectos **reconcilian**, no ejecutan comandos. El efecto de audio observa `[placed, loopPlaced]` y
-lleva el Transport a donde debe estar, agendando lo que falta y cancelando lo que sobra. Los handlers
-solo cambian estado.
+lleva los jobs del motor a donde deben estar: limpia todo y re-agrega. Los handlers solo cambian estado.
 
-Cuando un efecto hace trabajo asincrónico, protegerlo con un flag de cancelación:
+Que limpiar y re-agregar sea aceptable no es casualidad, es una propiedad del diseño: los jobs son
+**datos puros** y la fase de los loops vive en el cursor del reloj, que el efecto no toca. Con Tone,
+donde cada job era un evento con identidad, el mismo patrón habría reiniciado la fase de todos.
 
-```ts
-let cancelled = false;
-ensureTone().then(Tone => { if (!Tone || cancelled) return; /* … */ });
-return ()=>{ cancelled = true; };
-```
+Hoy **ningún efecto del repo hace trabajo asincrónico**, así que no hay flag de cancelación en ningún
+lado. Si vuelve a hacer falta, el patrón es el de siempre (`let cancelled = false` capturado en el
+closure, chequeado después del `await`, seteado en la limpieza).
 
 Y ojo con las limpiezas asincrónicas: en StrictMode pueden correr **después** del siguiente efecto. Si
-la limpieza tiene que ganarle al re-montaje, tiene que ser sincrónica — ver el efecto de desmontaje en
-[audio.md](../architecture/audio.md#la-limpieza-de-desmontaje-es-sincrónica-a-propósito).
+la limpieza tiene que ganarle al re-montaje, tiene que ser sincrónica — es el caso del efecto de
+desmontaje que llama a `stopClock()` y `clearJobs()`. Ver
+[audio.md](../architecture/audio.md#reconciliación-de-loops).
 
 ## Comentarios
 

@@ -23,11 +23,14 @@ El `netlify.toml` **no** está acá: vive en la raíz del repositorio, un nivel 
 ```
 src/
 ├── index.tsx          # createRoot().render(<App/>) + import de index.css
-├── App.tsx            # ~400 líneas: dominio + componente + audio
+├── App.tsx            # dominio (geometría + música) + componente
 ├── index.css          # @import "tailwindcss" + estilos globales de body/code
 ├── setupTests.ts      # import de @testing-library/jest-dom
-├── App.test.tsx       # Smoke test heredado de CRA — no hay runner que lo corra
-└── vite-env.d.ts      # Tipos de Vite
+├── vite-env.d.ts      # Tipos de Vite
+└── audio/
+    ├── engine.ts        # motor Web Audio: síntesis, scheduler, singletons
+    ├── engine.test.ts   # 16 tests con OfflineAudioContext
+    └── test-context.ts  # helpers de render y medición (solo tests)
 ```
 
 Todos los archivos de `src/` están vivos. Los residuos de las plantillas de Create React App y de Vite
@@ -39,14 +42,17 @@ Si al agregar un archivo se quiere confirmar que efectivamente se usa:
 grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 ```
 
-### `App.test.tsx` no corre
+### Tests
 
-Existe, importa `@testing-library/react` y hace un smoke test de `App`, pero **no hay runner
-configurado**: `package.json` no tiene script `test` ni Vitest ni Jest. Es un test que nadie ejecuta y
-que probablemente falle si se lo ejecutara, porque busca texto de la plantilla CRA.
+`npm test` corre Vitest en `environment: 'node'` contra `node-web-audio-api`. Los 16 tests actuales son
+todos del motor de audio.
 
-Montar el runner es parte del alcance del
-[spec 001](../../specs/001-notas-por-celda-en-orden-angular/plan.md) §1.
+**No hay tests de componentes.** El `App.test.tsx` heredado de CRA se eliminó al montar el runner:
+buscaba el texto "learn react" de la plantilla, que la app nunca renderizó. Agregar tests de componentes
+va a requerir `jsdom` en su propio bloque de config — sin cambiar el `environment` global, que rompería
+los de audio.
+
+`setupTests.ts` y las `@testing-library/*` quedaron sin usar hasta que eso pase.
 
 ## `public/`
 
