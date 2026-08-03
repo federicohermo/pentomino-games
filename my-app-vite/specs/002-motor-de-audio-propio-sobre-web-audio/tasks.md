@@ -5,14 +5,14 @@
 - [ ] **Crear rama** `feature/002-motor-de-audio-propio-sobre-web-audio`
 
 ## Gate — `OfflineAudioContext` corriendo en tests
-> Si este gate no pasa, **parar y replantear el spec**. Sin tests de audio el cambio pierde su
-> principal justificación técnica.
+> **PASADO** durante el review del spec. La opción A alcanza; el browser mode se descartó.
 
-- [ ] `npm i -D vitest` + bloque `test` en `vite.config.ts` (compartido con el spec 001)
-- [ ] Opción A: `node-web-audio-api` — test mínimo que renderiza 440 Hz y verifica `buf.length`
-- [ ] Si A falla, opción B: browser mode de Vitest (`@vitest/browser` + Playwright)
+- [x] `npm i -D vitest node-web-audio-api` — instaladas (`vitest@^4.1.10`, `node-web-audio-api@^2.1.0`)
+- [x] Opción A verificada: render de 440 Hz en Node, idéntico a Chrome dentro del 2%
+- [x] Opción B (browser mode) descartada por innecesaria
+- [x] Los cuatro tests propuestos escritos y en verde
+- [ ] Bloque `test` en `vite.config.ts` (compartido con el spec 001) — falta versionarlo
 - [ ] Helper `offline(secs, sr)` en `src/audio/test-context.ts`
-- [ ] Gate verde antes de seguir
 
 ## Motor — síntesis
 - [ ] `src/audio/engine.ts`: `midiToHz`
@@ -32,7 +32,9 @@
 - [ ] `tick()` separado de `scheduleVoice()` — es lo que hace testeable al scheduler
 - [ ] Guarda `nextBar < ctx.currentTime` para recuperarse del throttling de pestañas ocultas
 - [ ] `jobCount()` expuesto para verificación manual (paso 5 del plan)
-- [ ] AC5 — N compases → N disparos en los instantes esperados, sin depender de tiempo real
+- [ ] AC5 — N compases → N disparos, cada uno a ±6 ms, sin depender de tiempo real
+- [ ] La detección de onsets usa seguidor de envolvente (ventanas de 5 ms) con histéresis de dos
+      umbrales. **Un umbral sobre la muestra cruda no sirve**: dio 21 falsos onsets para 3 notas
 
 ## Integración
 - [ ] `audio()`: singleton del `AudioContext`, creado en el primer gesto (D4)
@@ -66,7 +68,6 @@
 - [ ] `/pr-review` antes de pedir revisión
 
 ## Seguimiento (no bloquea)
-- [ ] `AnalyserNode` para visualizar la señal — barato una vez que el grafo es propio
 - [ ] Efectos: filtro, reverb, delay
 - [ ] Diseño sonoro fino del patch (este spec entrega una ADSR correcta, no trabajada)
 - [ ] Si el conteo de voces simultáneas crece, revisar D2 (pool / voice stealing)

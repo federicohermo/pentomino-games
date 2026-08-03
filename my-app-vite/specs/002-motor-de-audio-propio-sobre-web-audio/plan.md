@@ -13,6 +13,10 @@ Los pasos 1–3 no tocan `App.tsx`: son mergeables solos si la integración se d
 
 ## 1. Gate — `OfflineAudioContext` en el runner
 
+> **Este gate ya se ejecutó durante el review del spec y pasó.** `node-web-audio-api@2.1.0` +
+> `vitest@4.1.10`, los cuatro tests en verde, ambas dependencias ya instaladas como devDependencies.
+> Lo que sigue queda como registro de por qué existía el gate y de qué se descartó.
+
 **Este paso decide si el spec sigue.** El render se verificó en Chrome real; **jsdom no implementa Web
 Audio**, así que el entorno por defecto de Vitest no sirve.
 
@@ -146,8 +150,13 @@ function tick(ctx: AudioContext, dest: AudioNode) {
 }
 ```
 
-La guarda `nextBar < ctx.currentTime` es la que evita que, si la pestaña estuvo en segundo plano y el
-temporizador se estranguló, el `while` intente recuperar cientos de compases atrasados de golpe.
+La guarda `nextBar < ctx.currentTime` evita que, si la pestaña estuvo en segundo plano y el temporizador
+se estranguló, el `while` intente recuperar cientos de compases atrasados de golpe.
+
+**Ojo con su semántica**: solo se dispara cuando el reloj **ya pasó** el próximo compás. En marcha
+normal `nextBar` va por delante de `currentTime` y el offset de `0.05` **no** se aplica — el primer
+disparo cae exactamente en `nextBar`. El primer test escrito durante el review falló por asumir lo
+contrario.
 
 **API pública del scheduler** — se elige para que el efecto de reconciliación de `App.tsx` no cambie de
 forma, solo de destinatario:
@@ -162,6 +171,19 @@ Con `OfflineAudioContext` no hay temporizador: se llama a la función de agendad
 tiempos crecientes y se cuentan los disparos en el buffer renderizado. Es lo que hace al test
 determinístico y no dependiente de tiempo real — la razón de separar `tick()` (decide *cuándo*) de
 `scheduleVoice()` (produce *sonido*).
+
+**La detección de onsets necesita un seguidor de envolvente**, no un umbral sobre la muestra cruda.
+Verificado durante el review: el detector ingenuo cuenta cada cruce por cero de la onda como silencio y
+dio 21 onsets para 3 notas.
+
+```ts
+const W = Math.floor(0.005 * SR);            // ventana de 5 ms
+// envolvente = pico por ventana
+// onset = envolvente cruza 0.05 hacia arriba, con rearme por debajo de 0.01 (histéresis)
+```
+
+Los dos umbrales son lo que evita el retrigger dentro de una misma nota. La tolerancia resultante es
+**±6 ms**, fijada por el ancho de ventana — la precisión de agendado en sí es la de AC4.
 
 ## 4. Integración y retiro de Tone
 

@@ -99,8 +99,13 @@ idénticos): es un cambio audible esperado, y en un instrumento, una oportunidad
   release. Verificado alcanzable: desviaciones medidas de 1.0% y 1.8%.
 - **AC4** — **Posición temporal**: una nota agendada en `t` produce su primera muestra no nula en
   `t ± 1 ms`.
-- **AC5** — **Scheduler**: renderizando N compases a un BPM dado, se cuentan exactamente N disparos, en
-  los instantes esperados. El test no depende de tiempo real.
+- **AC5** — **Scheduler**: renderizando N compases a un BPM dado se cuentan exactamente N disparos,
+  cada uno dentro de **±6 ms** del instante agendado. La detección de onsets debe usar un **seguidor de
+  envolvente** (ventanas de 5 ms) con histéresis de dos umbrales: un detector ingenuo de
+  "silencio → señal" cuenta cada cruce por cero de la onda como un onset nuevo — medido, dio **21
+  falsos onsets para 3 notas**. La tolerancia de ±6 ms es consecuencia del ancho de ventana del
+  detector, **no** de la precisión del scheduler, que es la de AC4 (±1 ms). El test no depende de
+  tiempo real.
 - **AC6** — **Un solo camino de reproducción**: el arpegio al colocar y el loop por compás llaman a la
   misma función del motor. No queda espaciado ni duración duplicados.
 - **AC7** — Los seis comportamientos de loops verificados en el spec anterior siguen valiendo: colocar
@@ -112,8 +117,10 @@ idénticos): es un cambio audible esperado, y en un instrumento, una oportunidad
 ## Fuera de Alcance
 
 - **Efectos** (filtro, reverb, delay). El grafo propio los habilita, pero son otro spec.
-- **Visualización con `AnalyserNode`.** La extensión natural, y barata una vez hecho esto. Su propio
-  spec.
+- **Visualización con `AnalyserNode`.** Es el
+  [spec 003](../003-visualizacion-de-la-senal-con-analysernode/spec.md), que depende de este. Se
+  separó en vez de absorberse acá para que 002 siga siendo mergeable solo — pero **no es opcional ni de
+  baja prioridad**: ver la justificación de alineación en su `research.md`.
 - **Cambiar el modelo musical.** Escalas, tónicas y retrógrado quedan igual (D5).
 - **El mapeo celda↔nota del spec 001.** Ortogonal: uno decide *qué nota va en qué celda*, este decide
   *cómo se produce el sonido*. Se pueden hacer en cualquier orden.

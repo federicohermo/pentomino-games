@@ -85,6 +85,53 @@ silencio fuera de la nota y posición temporal son todas asertables numéricamen
 > es que Tone lo impida, sino que la implementación actual no está escrita para eso (singletons de
 > módulo, `Tone.now()`, sin inyección del contexto), y adoptarlo dejaría igual los 340 kB.
 
+### El gate ya se ejecutó: pasa
+
+El paso 1 del `plan.md` se corrió durante el review del spec, con `node-web-audio-api@2.1.0` +
+`vitest@4.1.10`. **La opción A alcanza**; no hace falta el browser mode.
+
+| Medición | Chrome | Node | Teórico | AC |
+|---|---|---|---|---|
+| Frecuencia (cruces por cero) | 440 Hz | **440 Hz** | 440 | AC2 ±1 Hz ✅ |
+| Pico del ataque | 0.2356 | **0.2351** | 0.24 | AC3 ±5% ✅ |
+| Nivel de sostenido | 0.1188 | **0.1197** | 0.12 | AC3 ±5% ✅ |
+| Primera muestra no nula | — | **+0.023 ms** | 0 | AC4 ±1 ms ✅ |
+
+Se escribieron y corrieron los cuatro tests propuestos (síntesis, conteo de compases, onsets audibles,
+recuperación de throttling): **los cuatro pasan**.
+
+#### Lo que el ejercicio corrigió del spec
+
+Escribir los tests reveló dos cosas que leyendo el plan no se veían:
+
+1. **La detección de onsets no es trivial.** El primer detector —"silencio → señal" sobre la muestra
+   cruda— contó **21 onsets para 3 notas**: cada cruce por cero de la onda triangular parece silencio.
+   Hace falta un seguidor de envolvente con histéresis, y eso fija la tolerancia de AC5 en ±6 ms (el
+   ancho de ventana), no en ±1 ms.
+2. **La guarda de recuperación del scheduler solo actúa cuando el reloj ya pasó el próximo compás.**
+   El pseudocódigo del plan la describía de forma ambigua y el primer test asumió que el offset de
+   0.05 s se aplicaba siempre. Corregido en `plan.md` §3.
+
+## Alineación con lo que ElevenLabs realmente implementa
+
+Consultado vía Context7 sobre `/elevenlabs/packages` y `/elevenlabs/ui`:
+
+| Hallazgo | Fuente |
+|---|---|
+| El SDK expone `getInputByteFrequencyData()` / `getOutputByteFrequencyData()` → `Uint8Array`, *"focused on 100–8000 Hz"* | `packages/react` — `ConversationControlsValue` |
+| Transporte por WebRTC (LiveKit) y WebSocket, formatos `pcm_48000` | `packages/client` — `WebRTCConnection`, `WebSocketConnection` |
+| `LiveWaveform` y `BarVisualizer`: canvas + Web Audio, props `fftSize`, `smoothingTimeConstant`, `historySize`, HiDPI, `ResizeObserver`, `requestAnimationFrame`, limpieza al desmontar | `@elevenlabs/ui` |
+
+Dos conclusiones para este spec:
+
+1. **El análisis de frecuencia está en su superficie pública de API y en su librería de componentes.**
+   Por eso la visualización con `AnalyserNode` dejó de ser un "seguimiento" vago y pasó a ser el
+   [spec 003](../003-visualizacion-de-la-senal-con-analysernode/spec.md).
+2. **La síntesis por `AudioWorklet` se evaluó y se descarta.** Su cliente **no sintetiza nada**: usa
+   WebRTC para transporte y `AnalyserNode` para visualización. Un procesador DSP muestra a muestra
+   impresionaría, pero apunta a un eje que ellos no ejercitan, y agrega riesgo real de bundling. El
+   núcleo de este spec —ADSR + scheduler con lookahead— es el correcto.
+
 ## Estado actual del código
 
 | Aspecto | Hoy | Archivo |
