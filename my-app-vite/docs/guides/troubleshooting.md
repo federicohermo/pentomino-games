@@ -58,7 +58,7 @@ Ya pasó una vez que el archivo quedó truncado en los imports, sin la llamada a
 compila sin quejarse —los imports son válidos— y el `<div id="root">` queda vacío.
 
 **Señal diagnóstica:** si el build emite un solo chunk JS en vez de dos, `App` no es alcanzable desde el
-entry y por lo tanto Tone.js nunca entra al grafo de módulos.
+entry y por lo tanto la app no se monta.
 
 ### `Error: Port XXXX is already in use`
 
@@ -73,36 +73,49 @@ Suele ser un dev server anterior que quedó vivo, y sirve reusarlo.
 
 ## Tests
 
-### No hay runner de tests
+### `OfflineAudioContext is not defined` en un test
 
-`package.json` no tiene script `test` ni Vitest ni Jest, aunque sí arrastra `@testing-library/*` y
-`@types/jest` de la época Create React App. `src/App.test.tsx` existe pero nadie lo corre.
+El entorno de tests es `node`, no `jsdom`, **a propósito**: jsdom no implementa Web Audio en absoluto.
+Los tests importan `OfflineAudioContext` de `node-web-audio-api`, no de globales del entorno.
 
-Montar Vitest está en el alcance del
-[spec 001](../../specs/001-notas-por-celda-en-orden-angular/plan.md) §1. Al hacerlo hay que sacar
-`@types/jest`: con `globals: true` los tipos los provee Vitest y tener ambos declara `expect` dos veces
-con firmas distintas.
+Si hace falta un test de componentes React, va a necesitar `jsdom` y su propio bloque de config — no
+cambiar el `environment` global, que rompería los tests de audio.
+
+### Los tests no ven `describe` / `it` / `expect`
+
+`globals` está **desactivado** en `vite.config.ts`: hay que importarlos de `vitest`.
+
+```ts
+import { describe, it, expect } from 'vitest';
+```
+
+Es deliberado: `@types/jest` sigue en el árbol de dependencias y declara las mismas globales con firmas
+distintas.
 
 ## Audio
 
 ### No suena nada
 
-1. **¿Hubo un click primero?** `Tone.start()` necesita un gesto del usuario para reanudar el
-   `AudioContext`. Nada suena hasta el primer click en el tablero.
-2. **¿Falló el import de Tone?** `ensureTone()` falla de forma suave: loguea
-   `"Tone.js failed to load"` y devuelve `null`. La app queda usable pero muda. Revisar la consola.
-3. **¿Es el loop y el Transport está parado?** Los loops de piezas colocadas dependen del Transport; el
-   botón "Loop" lo arranca. El arpegio de colocación, en cambio, usa `Tone.now()` y suena siempre.
+1. **¿Hubo un click primero?** `ctx.resume()` necesita un gesto del usuario. Nada suena hasta el
+   primer click en el tablero. Verificable: `(await import('/src/audio/engine.ts')).audio().state`
+   debe decir `'running'`, no `'suspended'`.
+2. **¿Web Audio está disponible?** `audio()` falla de forma suave: loguea `"Web Audio no disponible"` y
+   devuelve `null`. La app queda usable pero muda. Revisar la consola.
+3. **¿Es el loop y el reloj está parado?** Los loops dependen del reloj; el botón "Loop" lo arranca.
+   Verificable con `clockRunning()`. El arpegio de colocación no depende del reloj y suena siempre.
+4. **¿Hay jobs?** `jobCount()` debe ser mayor que 0 con el checkbox activo y piezas colocadas.
 
 ### Loops que siguen sonando después de borrar la pieza
 
 Era un bug real, corregido. Si reaparece, el sospechoso es que alguien haya vuelto a agendar o cancelar
-eventos **fuera** del efecto de reconciliación. Toda la gestión de eventos del Transport tiene que pasar
-por ese efecto — ver [audio.md](../architecture/audio.md#reconciliación-de-loops).
+jobs **fuera** del efecto de reconciliación. Toda la gestión de jobs tiene que pasar por ese efecto —
+ver [audio.md](../architecture/audio.md#reconciliación-de-loops).
 
-Para contar loops vivos desde la consola, ver
-[audio.md](../architecture/audio.md#cómo-verificar-el-audio-sin-oírlo). Recordar filtrar por
-`_TransportRepeatEvent`: Tone crea eventos internos y el conteo crudo engaña.
+Para contar loops vivos desde la consola:
+
+```js
+(await import('/src/audio/engine.ts')).jobCount()
+```
 
 ## Deploy
 

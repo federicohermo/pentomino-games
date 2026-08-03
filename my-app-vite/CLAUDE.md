@@ -11,7 +11,7 @@ La documentación completa vive en `docs/`. Consultarla antes de hacer cambios a
 | Visión general | [docs/architecture/overview.md](./docs/architecture/overview.md) | Capas, por qué todo vive en un archivo |
 | Estructura de directorios | [docs/architecture/directory-structure.md](./docs/architecture/directory-structure.md) | Dónde crear cada cosa, qué está muerto |
 | Modelo musical | [docs/architecture/modelo-musical.md](./docs/architecture/modelo-musical.md) | Pieza → tónica, rotación → escala, reflexión → retrógrado |
-| Capa de audio | [docs/architecture/audio.md](./docs/architecture/audio.md) | Tone.js, Transport, reconciliación de loops |
+| Capa de audio | [docs/architecture/audio.md](./docs/architecture/audio.md) | Grafo Web Audio, ADSR, scheduler con lookahead, reconciliación de loops |
 | Inicio rápido | [docs/guides/quickstart.md](./docs/guides/quickstart.md) | Setup, comandos, flujos típicos |
 | Convenciones | [docs/guides/conventions.md](./docs/guides/conventions.md) | TypeScript, geometría, estado, comentarios |
 | Troubleshooting | [docs/guides/troubleshooting.md](./docs/guides/troubleshooting.md) | Errores reales ya pisados en este repo |
@@ -29,11 +29,12 @@ npm run dev      # Dev server de Vite
 npm run build    # tsc -b && vite build
 npm run lint     # ESLint (flat config v9)
 npm run preview  # Sirve dist/
+npm test         # Vitest — tests de audio con OfflineAudioContext
 npx tsc -b --noEmit   # Solo typecheck
 ```
 
-**No hay `npm test`**: el proyecto no tiene runner configurado, aunque arrastra `@testing-library/*` y
-un `src/App.test.tsx` que nadie ejecuta. Montarlo es parte del spec 001.
+Los tests corren en `environment: 'node'` contra `node-web-audio-api`, no en jsdom: jsdom no implementa
+Web Audio. No hay tests de componentes todavía.
 
 Node ≥ 20.19 o ≥ 22.12 — Vite 7 lo exige en `engines`.
 
@@ -41,7 +42,7 @@ Node ≥ 20.19 o ≥ 22.12 — Vite 7 lo exige en `engines`.
 
 ## Arquitectura
 
-**Stack:** Vite 7 · React 19 · TypeScript 5.8 · Tailwind CSS 4 · Tone.js 15
+**Stack:** Vite 7 · React 19 · TypeScript 5.8 · Tailwind CSS 4 · Web Audio (sin librería de audio)
 
 **Qué es:** un prototipo de instrumento musical, no un juego con reglas de resolución. El usuario coloca
 pentominós en un tablero de 10×6 y cada pieza dispara un arpegio de cinco notas. No hay puntaje ni
@@ -52,10 +53,10 @@ no más difícil.
 dentro del archivo:
 
 1. **Dominio** — funciones puras de geometría (`SHAPES`, `rotateN`, `reflect`, `ANCHOR_INDEX`) y de
-   música (`BASE_MAP`, `notesForRotation`, `midiName`). Sin React, sin Tone.
+   música (`BASE_MAP`, `notesForRotation`, `midiName`). Sin React, sin audio.
 2. **Componente `App`** — todo el estado con `useState` local. Sin estado global.
-3. **Audio** — `ensureTone()`, `playNotesNow()`, `useTransport()` y el efecto de reconciliación de
-   loops.
+3. **Audio** — vive aparte, en `src/audio/engine.ts`. `App.tsx` solo le habla: `playNow`, `addJob`,
+   `clearJobs`, `startClock`.
 
 Que sea un solo archivo es deliberado a esta escala; la separación por capas **sí** hay que respetarla
 al agregar código. El límite está identificado: al montar tests, las funciones puras se extraen a su
@@ -74,17 +75,18 @@ lógica después de transformar.**
 va a depender de lo mismo para el mapeo celda↔nota. Filtrar, ordenar o reagrupar celdas dentro de esas
 funciones rompe la colocación de piezas **sin ningún error visible**.
 
-### Toda la gestión de eventos del Transport pasa por el efecto de reconciliación
+### Toda la gestión de jobs del motor pasa por el efecto de reconciliación
 
-Un único `useEffect` sobre `[placed, loopPlaced]` agenda y cancela los loops. Los handlers solo cambian
-estado.
+Un único `useEffect` sobre `[placed, loopPlaced]` lleva los jobs a donde deben estar. Los handlers solo
+cambian estado.
 
 El patrón imperativo anterior —cada handler limpiando lo suyo— produjo loops huérfanos que sobrevivían a
 "Quitar" y "Reset". Si hace falta agendar algo nuevo, va adentro de ese efecto.
 
 ### Nunca mutar objetos ya entregados a React
 
-Ese fue exactamente el bug de los loops: `newPiece._sched = id` después del `setPlaced`. Si un dato tiene
+Ese fue exactamente el bug de los loops que motivó el rediseño: `newPiece._sched = id` después del
+`setPlaced`. Si un dato tiene
 que cambiar después de crearse, o va en el estado con su propio setter, o va afuera de React (ref o
 singleton de módulo).
 
@@ -113,19 +115,23 @@ Detalle en [docs/architecture/modelo-musical.md](./docs/architecture/modelo-musi
 
 ## Audio
 
-Tone.js se carga con `import()` dinámico dentro de `ensureTone()` y vive en singletons a nivel de
-módulo, no en estado. Dos motivos: no crear el `AudioContext` antes de un gesto del usuario, y sacar
-~340 kB del chunk inicial.
+El motor propio vive en `src/audio/engine.ts`, sobre Web Audio y sin librerías. Tres bloques:
+síntesis, scheduler y capa de aplicación.
 
-- **`Tone.start()` necesita un gesto.** Nada suena antes del primer click. Cualquier feature que quiera
+- **Los bloques de síntesis y scheduler reciben el `AudioContext` por parámetro**, nunca del singleton.
+  Es lo que permite renderizarlos con `OfflineAudioContext` en los tests. **No romper esa inyección**:
+  es la diferencia entre audio testeable y audio que solo se puede escuchar.
+- **`ctx.resume()` necesita un gesto.** Nada suena antes del primer click. Cualquier feature que quiera
   sonar sin click previo va a quedar muda.
-- **Falla suave**: si el import se cae, `ensureTone()` devuelve `null` y la app sigue usable pero muda.
-  Todo llamador tiene que chequearlo.
-- **Hay dos caminos de reproducción duplicados**: el arpegio al colocar (`playNotesNow`) y el loop por
-  compás (dentro del efecto). Un cambio de sonido va en los dos.
-- **Verificar audio sin oírlo**: se pueden contar los loops vivos desde la consola; receta en
-  [docs/architecture/audio.md](./docs/architecture/audio.md#cómo-verificar-el-audio-sin-oírlo).
-  Filtrar por `_TransportRepeatEvent` — Tone crea eventos internos y el conteo crudo engaña.
+- **Falla suave**: `audio()` devuelve `null` si Web Audio no está disponible; la app queda usable pero
+  muda. Todo llamador tiene que chequearlo.
+- **`playNotes()` es el único camino de nota a sonido.** Lo llaman el arpegio al colocar y el
+  scheduler. El espaciado y la duración viven en un solo lugar.
+- **El scheduler usa lookahead**: temporizador grueso de 25 ms que agenda 100 ms de futuro contra el
+  reloj de audio. El temporizador no dispara notas, decide cuándo mirar.
+- **Verificar audio sin oírlo**: en tests con `OfflineAudioContext`; en el navegador con `jobCount()` y
+  contando osciladores. Recetas en
+  [docs/architecture/audio.md](./docs/architecture/audio.md#cómo-verificar-el-audio).
 
 ---
 
@@ -135,8 +141,9 @@ módulo, no en estado. Dos motivos: no crear el `AudioContext` antes de un gesto
 
 - **Español** en comentarios, commits y specs.
 - **Los comentarios explican el porqué**, no el qué: una decisión, una restricción, un bug evitado.
-- **Un solo `any` aceptado**, en `synth`, con su `@ts-ignore`. Los otros dos que había desaparecieron al
-  volver declarativa la lógica de loops — estaban tapando el bug.
+- **Cero `any` y cero `@ts-ignore`.** Los tres que hubo desaparecieron con Tone y con la lógica
+  imperativa de loops: estaban tapando problemas de diseño, no de tipos. Si aparece la tentación de uno
+  nuevo, sospechar del diseño antes que de TypeScript.
 - **Sin estado global.** Ni Context, ni Redux, ni Zustand.
 - **`key` por id, nunca por índice**, en listas de elementos removibles.
 - **Efectos que reconcilian**, no que ejecutan comandos. Con flag de cancelación si hacen trabajo
@@ -170,7 +177,8 @@ Detalle y los dos errores ya cometidos en
 
 - **`public/manifest.json`** tiene los valores por defecto de CRA (`"name": "Create React App
   Sample"`).
-- **`src/App.test.tsx`** es el smoke test de CRA y no hay runner que lo corra.
+- **`setupTests.ts` y las `@testing-library/*`** quedaron sin consumidor: no hay tests de componentes
+  todavía. Los 16 tests actuales son del motor de audio y corren en Node.
 
 Ya resueltos: los archivos huérfanos de las plantillas de CRA y Vite (`src/App.css`, `src/logo.svg`,
 `src/assets/react.svg`, `public/vite.svg`) y la dependencia `web-vitals`, que quedó sin consumidor

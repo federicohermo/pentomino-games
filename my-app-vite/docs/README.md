@@ -9,7 +9,7 @@ secuencia de cinco notas derivada de su identidad y su orientación.
 - [Visión General](./architecture/overview.md) — Capas, stack y por qué todo vive en un archivo
 - [Estructura de Directorios](./architecture/directory-structure.md) — Qué hay y qué está muerto
 - [Modelo Musical](./architecture/modelo-musical.md) — Pieza → tónica, rotación → escala, reflexión → retrógrado
-- [Capa de Audio](./architecture/audio.md) — Carga diferida de Tone.js, Transport y reconciliación de loops
+- [Capa de Audio](./architecture/audio.md) — Grafo Web Audio, envolvente ADSR, scheduler con lookahead
 
 ### Guías de Desarrollo
 - [Inicio Rápido](./guides/quickstart.md) — Setup y comandos
@@ -33,7 +33,7 @@ secuencia de cinco notas derivada de su identidad y su orientación.
 | React | 19.x | Biblioteca UI |
 | TypeScript | 5.8 | Tipado estático |
 | Tailwind CSS | 4.x | Estilos utility-first, vía `@tailwindcss/vite` |
-| Tone.js | 15.x | Síntesis y scheduling musical |
+| Web Audio | — | Síntesis y scheduling, sin librería (`src/audio/engine.ts`) |
 
 ---
 

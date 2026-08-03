@@ -1,7 +1,7 @@
 # Modelo Musical
 
 Cómo se traduce una pieza colocada en cinco notas. Todo lo de este documento vive en las funciones puras
-de `src/App.tsx` y no depende de React ni de Tone.
+de `src/App.tsx` y no depende de React ni de la capa de audio.
 
 ## Las tres reglas
 
@@ -103,4 +103,4 @@ midiName(m)          // → "C4", "D#4", …           para la UI
 ```
 
 Convención estándar: C4 = MIDI 60. `midiName` es solo presentación; el motor trabaja siempre con
-números MIDI, convertidos a Hz por Tone con `Tone.Frequency(m, "midi")`.
+números MIDI, convertidos a Hz por el motor con `midiToHz`.

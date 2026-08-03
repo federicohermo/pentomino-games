@@ -21,7 +21,7 @@ expresivo, no más difícil.
 │  src/App.tsx                                            │
 │                                                         │
 │  ┌───────────────────────────────────────────────────┐  │
-│  │ Dominio — funciones puras, sin React ni Tone      │  │
+│  │ Dominio — funciones puras, sin React ni audio     │  │
 │  │  · Geometría: SHAPES, rotate90, normalize,        │  │
 │  │    rotateN, reflect, ANCHOR_INDEX                 │  │
 │  │  · Música:   BASE_MAP, PENT_*, notesForRotation,  │  │
@@ -35,36 +35,43 @@ expresivo, no más difícil.
 │  └───────────────────────────────────────────────────┘  │
 │                           │                             │
 │  ┌────────────────────────▼──────────────────────────┐  │
-│  │ Capa de audio — efectos, singletons de módulo     │  │
-│  │  ensureTone() · playNotesNow() · useTransport()   │  │
-│  │  efecto de reconciliación de loops                │  │
+│  │ Efecto de reconciliación de loops                 │  │
 │  └───────────────────────────────────────────────────┘  │
 └──────────────────────────┬──────────────────────────────┘
-                           │ import dinámico, tras el 1er gesto
+                           │ playNow · addJob · startClock
 ┌──────────────────────────▼──────────────────────────────┐
-│  Tone.js — AudioContext, PolySynth, Transport           │
+│  src/audio/engine.ts                                    │
+│   1. Síntesis   — midiToHz · scheduleVoice (ADSR)       │
+│   2. Scheduler  — collectHits (lookahead)               │
+│   3. App        — singleton del AudioContext, jobs      │
+│                                                         │
+│  1 y 2 reciben el contexto por parámetro → testeables   │
+│  con OfflineAudioContext                                │
 └─────────────────────────────────────────────────────────┘
 ```
 
-## Por qué todo vive en un archivo
+## Qué vive dónde
 
-`src/App.tsx` tiene ~400 líneas y contiene las tres capas. **Es intencional por ahora**, no un descuido
-pendiente de limpiar: el proyecto es un prototipo y el costo de saltar entre archivos supera el
-beneficio de separarlos a esta escala.
+**El audio ya no está en `App.tsx`.** Salió a `src/audio/engine.ts` cuando se reemplazó Tone por un
+motor propio, y el motivo fue la testabilidad: las funciones de síntesis y scheduling reciben el
+`AudioContext` por parámetro, así que se pueden renderizar con `OfflineAudioContext` sin montar nada de
+React.
 
-El límite está identificado: cuando se agreguen tests, las funciones puras de dominio se extraen a su
-propio módulo, porque testear geometría y música no debería requerir montar un componente React. Está
-anotado en el [plan del spec 001](../../specs/001-notas-por-celda-en-orden-angular/plan.md) §2.
+`App.tsx` conserva el dominio (geometría y música) y el componente. **Es intencional por ahora**: el
+costo de saltar entre archivos supera el beneficio de separarlos a esta escala.
+
+El siguiente límite está identificado: las funciones puras de dominio también se van a extraer, porque
+testear geometría no debería requerir montar un componente. Anotado en el
+[plan del spec 001](../../specs/001-notas-por-celda-en-orden-angular/plan.md) §2.
 
 Mientras tanto, **la separación existe como orden dentro del archivo** y hay que respetarla: dominio
-puro arriba, componente en el medio, efectos de audio adentro del componente. Una función pura nueva va
-con las puras, no suelta dentro de `App()`.
+puro arriba, componente abajo. Una función pura nueva va con las puras, no suelta dentro de `App()`.
 
 ## Las tres capas
 
 ### 1. Dominio — funciones puras
 
-Sin React, sin Tone, sin estado. Determinísticas y testeables en aislamiento.
+Sin React, sin audio, sin estado. Determinísticas y testeables en aislamiento.
 
 | Grupo | Símbolos | Responsabilidad |
 |---|---|---|
@@ -83,7 +90,7 @@ esta escala no hace falta, y agregarlo sería la clase de complejidad que un pro
 | `selected` | `PieceKey` | Pieza activa en la paleta |
 | `rotation` | `0..3` | Cuartos de vuelta |
 | `mirror` | `boolean` | Reflexión activa |
-| `tempo` | `number` | BPM del Transport |
+| `tempo` | `number` | BPM del reloj del motor |
 | `loopPlaced` | `boolean` | Si las piezas colocadas re-disparan cada compás |
 | `placed` | `PlacedPiece[]` | Piezas en el tablero |
 | `hover` | `Cell \| null` | Celda bajo el cursor, para el fantasma |
@@ -93,8 +100,9 @@ render): `anchor`, `previewCells`, `previewValid`, `previewSet`.
 
 ### 3. Audio — efectos y singletons de módulo
 
-Tone.js se carga con `import()` dinámico y vive en singletons a nivel de módulo (`toneModule`, `synth`),
-no en estado ni en refs. Detalle y justificación en [audio.md](./audio.md).
+El motor vive en `src/audio/engine.ts`, no en `App.tsx`. Su `AudioContext` es un singleton de módulo
+—uno por pestaña, no uno por componente— pero las funciones de síntesis y scheduling lo reciben por
+parámetro, que es lo que las hace testeables. Detalle en [audio.md](./audio.md).
 
 ## Patrones clave
 
@@ -114,7 +122,7 @@ haciendo que `normalize` filtre u ordene celdas) rompe la colocación de piezas 
 ### El estado es la fuente de verdad; los efectos reconcilian
 
 Los loops de audio no se agendan ni cancelan desde los handlers. Un único `useEffect` observa
-`[placed, loopPlaced]` y reconcilia el Transport contra el tablero.
+`[placed, loopPlaced]` y lleva los jobs del motor a donde deben estar.
 
 El patrón imperativo anterior —cada handler acordándose de limpiar lo suyo— es exactamente el que
 produjo el bug de loops huérfanos que sobrevivían a "Quitar" y "Reset". Ver

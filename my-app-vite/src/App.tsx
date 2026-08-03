@@ -1,27 +1,8 @@
 import { useMemo, useState, useEffect, useRef } from "react";
-// Lazy load Tone.js only in browser after first interaction to prevent build issues
-type ToneModule = typeof import('tone');
-let toneModule: ToneModule | null = null;
-let synth: any = null;
-async function ensureTone(){
-  if (!toneModule){
-    try {
-      toneModule = await import('tone');
-    } catch (e){
-      console.warn('Tone.js failed to load', e);
-      return null;
-    }
-  }
-  if (toneModule && !synth){
-    try {
-      // @ts-ignore dynamic constructor types
-      synth = new toneModule.PolySynth(toneModule.Synth).toDestination();
-    } catch (e){
-      console.warn('Failed creating synth', e);
-    }
-  }
-  return toneModule;
-}
+import {
+  playNow, addJob, clearJobs, setBpm,
+  startClock, stopClock, clockRunning, ARPEGGIO_SPREAD,
+} from "./audio/engine";
 
 /**
  * Pentomino Music — minimal playable prototype
@@ -103,30 +84,10 @@ function notesForRotation(basePc: number, octave: number, rot: number): number[]
   });
 }
 
-// Simple synth is created lazily in ensureTone()
-
-// Utility: schedule a quick arpeggio of the 5 notes now
-async function playNotesNow(midiNotes: number[], velocity=0.8, noteDur: string="8n"){
-  const Tone = await ensureTone();
-  if (!Tone || !synth) return; // audio layer unavailable
-  await Tone.start();
-  const t = Tone.now();
-  midiNotes.forEach((m, i) => {
-    const hz = Tone.Frequency(m, "midi").toFrequency();
-    synth.triggerAttackRelease(hz, noteDur, t + i*0.15, velocity);
-  });
-}
+// El sonido lo produce src/audio/engine.ts. Ver docs/architecture/audio.md.
 
 // Board state
 const GRID_W = 10; const GRID_H = 6;
-
-function useTransport(tempo: number){
-  useEffect(()=>{
-    let mounted = true;
-    ensureTone().then(Tone => { if (Tone && mounted) Tone.Transport.bpm.value = tempo; });
-    return ()=>{ mounted = false; };
-  },[tempo]);
-}
 
 interface PlacedPiece {
   id: string;
@@ -150,15 +111,9 @@ export default function App(){
   // celda del tablero bajo el cursor, para el fantasma de previsualización
   const [hover, setHover] = useState<Cell | null>(null);
 
-  // IDs de los eventos del Transport, indexados por pieza. Viven en un ref y no
-  // en el estado porque son un detalle del motor de audio: cambiarlos no debe
-  // disparar un render. Guardarlos dentro de PlacedPiece obligaba a mutar un
-  // objeto ya entregado a React, y esa era la causa de que los loops
-  // sobrevivieran a "Quitar" y "Reset".
-  const schedRef = useRef<Map<string, number>>(new Map());
   const idRef = useRef(0);
 
-  useTransport(tempo);
+  useEffect(()=>{ setBpm(tempo); }, [tempo]);
 
   const transformedShape = useMemo(()=>{
     let c = SHAPES[selected];
@@ -201,62 +156,34 @@ export default function App(){
       piece: selected, rotation, mirror, cells, notes: noteSet,
     };
     setPlaced(prev => [...prev, newPiece]);
-    playNotesNow(noteSet);
+    playNow(noteSet);
   }
 
   function resetBoard(){
     setPlaced([]); // el efecto de sincronización se encarga de cancelar los loops
   }
 
-  // Reconcilia los loops del Transport contra el tablero: agenda las piezas que
-  // falten y cancela las que ya no estén. Al ser declarativo cubre por igual
-  // colocar, quitar, resetear y prender/apagar el checkbox — antes cada uno de
-  // esos caminos tenía que acordarse de limpiar por su cuenta, y no lo hacían.
+  // Reconcilia los loops contra el tablero: agenda las piezas que falten y
+  // cancela las que ya no estén. Al ser declarativo cubre por igual colocar,
+  // quitar, resetear y prender/apagar el checkbox — antes cada uno de esos
+  // caminos tenía que acordarse de limpiar por su cuenta, y no lo hacían.
+  //
+  // Con el motor propio ya no hace falta el flag de cancelación: addJob y
+  // removeJob son sincrónicos, así que no hay una promesa que pueda resolver
+  // después de que el efecto se limpió.
   useEffect(()=>{
-    let cancelled = false;
-    const sched = schedRef.current;
-
-    ensureTone().then(Tone => {
-      if (!Tone || cancelled) return;
-
-      const wanted = new Set(loopPlaced? placed.map(p=>p.id) : []);
-
-      for (const [pieceId, eventId] of sched){
-        if (!wanted.has(pieceId)){
-          Tone.Transport.clear(eventId);
-          sched.delete(pieceId);
-        }
-      }
-
-      for (const p of placed){
-        if (!loopPlaced || sched.has(p.id)) continue;
-        const eventId = Tone.Transport.scheduleRepeat((time: number)=>{
-          if (!synth) return;
-          p.notes.forEach((m,i)=>{
-            synth.triggerAttackRelease(Tone.Frequency(m, "midi").toFrequency(), "8n", time + i*0.15, 0.8);
-          });
-        }, "1m");
-        sched.set(p.id, eventId);
-      }
-    });
-
-    return ()=>{ cancelled = true; };
+    clearJobs();
+    if (!loopPlaced) return;
+    for (const p of placed) addJob({ id: p.id, notes: p.notes, spread: ARPEGGIO_SPREAD });
   }, [placed, loopPlaced]);
 
-  // Al desmontar, cancelar todo lo agendado. Se usa toneModule directo en vez de
-  // ensureTone() para que la limpieza sea sincrónica: si fuera asincrónica, en
-  // StrictMode podría ejecutarse después de que el efecto de arriba ya volvió a
-  // agendar, y cancelaría los eventos nuevos.
-  useEffect(()=> ()=>{
-    const sched = schedRef.current;
-    if (toneModule){
-      for (const eventId of sched.values()) toneModule.Transport.clear(eventId);
-    }
-    sched.clear();
-  }, []);
+  // Al desmontar, frenar el reloj y soltar los jobs. La limpieza es sincrónica:
+  // si fuera asincrónica, en StrictMode podría ejecutarse después de que el
+  // efecto de arriba ya volvió a agendar, y cancelaría los jobs nuevos.
+  useEffect(()=> ()=>{ stopClock(); clearJobs(); }, []);
 
   function toggleTransport(){
-  ensureTone().then(Tone => { if (!Tone) return; if (Tone.Transport.state === 'started') Tone.Transport.stop(); else Tone.Transport.start(); });
+    if (clockRunning()) stopClock(); else startClock();
   }
 
   // helpers for UI

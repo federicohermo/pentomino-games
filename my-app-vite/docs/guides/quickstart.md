@@ -32,6 +32,7 @@ npm run dev      # Dev server con HMR
 npm run build    # tsc -b && vite build → dist/
 npm run lint     # ESLint
 npm run preview  # Sirve dist/ como lo haría producción
+npm test         # Vitest
 ```
 
 `npm run build` corre el typecheck **antes** del bundle. Un error de tipos rompe el build aunque el
@@ -55,14 +56,17 @@ npx tsc -b --noEmit
 
 ### Cambiar cómo suena algo
 
-Ojo: hay **dos** caminos de reproducción, con lógica duplicada — el arpegio de colocación
-(`playNotesNow`) y el loop por compás (dentro del efecto de reconciliación). Un cambio de sonido va en
-los dos. Ver [audio.md](../architecture/audio.md#los-dos-caminos-de-reproducción).
+Todo pasa por `playNotes()` en `src/audio/engine.ts`: es el único camino de nota a sonido. Para el
+timbre, `DEFAULT_VOICE` (ADSR y tipo de onda). Agregar un test de envolvente si se cambia la forma.
+
+**No romper la inyección del contexto**: `scheduleVoice` y `collectHits` reciben el `AudioContext` por
+parámetro. Si empiezan a tomarlo del singleton, dejan de ser testeables.
 
 ### Verificar audio sin oírlo
 
-Los eventos del Transport se pueden contar desde la consola del navegador. Receta en
-[audio.md](../architecture/audio.md#cómo-verificar-el-audio-sin-oírlo).
+En tests, `OfflineAudioContext` renderiza determinísticamente y permite afirmar sobre frecuencia,
+envolvente e instantes. En el navegador, `jobCount()` y el conteo de osciladores. Recetas en
+[audio.md](../architecture/audio.md#cómo-verificar-el-audio).
 
 ### Antes de un cambio grande
 
@@ -78,5 +82,4 @@ npm run build          # build completo
 npm run preview        # y probarlo a mano
 ```
 
-No hay `npm test`: el proyecto no tiene runner. Ver
-[troubleshooting](./troubleshooting.md#no-hay-runner-de-tests).
+Los tests corren en Node contra `node-web-audio-api`, no en jsdom.
