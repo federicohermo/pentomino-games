@@ -25,3 +25,8 @@ specs/<NNN>-<descripcion-kebab>/
 | Spec | Descripción |
 |------|-------------|
 | [001](./001-notas-por-celda-en-orden-angular/spec.md) | Asignar cada nota a una celda de la pieza, en orden angular alrededor del centroide |
+| [002](./002-motor-de-audio-propio-sobre-web-audio/spec.md) | Reemplazar Tone.js por un motor propio sobre Web Audio: síntesis, scheduler con lookahead y audio testeable |
+
+> Los specs 001 y 002 son **ortogonales**: uno decide qué nota va en qué celda, el otro cómo se produce
+> el sonido. Se pueden implementar en cualquier orden. Ambos comparten el mismo prerrequisito de montar
+> Vitest.
