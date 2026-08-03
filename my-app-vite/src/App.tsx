@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 // Lazy load Tone.js only in browser after first interaction to prevent build issues
 type ToneModule = typeof import('tone');
 let toneModule: ToneModule | null = null;
@@ -65,6 +65,16 @@ const SHAPES: Record<PieceKey, Cell[]> = {
   Z: [[0,1],[1,1],[1,0],[2,0],[3,0]],
 };
 
+// Celda "de agarre": la que queda bajo el cursor al colocar la pieza. Se guarda
+// como índice dentro de SHAPES[pieza] en vez de como coordenada porque rotar,
+// reflejar y normalizar mapean cada celda preservando el orden del array, así
+// que el índice sigue apuntando a la misma celda después de transformar.
+// Se eligió en cada pieza una celda central, para que el click caiga sobre
+// masa de la pieza y no sobre un hueco de su bounding box.
+const ANCHOR_INDEX: Record<PieceKey, number> = {
+  F: 2, I: 2, L: 1, N: 2, P: 2, T: 3, U: 2, V: 0, W: 2, X: 2, Y: 2, Z: 1,
+};
+
 function rotate90(cells: Cell[]): Cell[] { return cells.map(([x,y]): Cell => [y, -x]); }
 function normalize(cells: Cell[]): Cell[]{
   const minx = Math.min(...cells.map(c=>c[0]));
@@ -119,12 +129,12 @@ function useTransport(tempo: number){
 }
 
 interface PlacedPiece {
+  id: string;
   piece: PieceKey;
   rotation: number;
   mirror: boolean;
   cells: Cell[];
   notes: number[];
-  _sched?: number;
 }
 
 export default function App(){
@@ -136,6 +146,17 @@ export default function App(){
 
   // placed pieces
   const [placed, setPlaced] = useState<PlacedPiece[]>([]);
+
+  // celda del tablero bajo el cursor, para el fantasma de previsualización
+  const [hover, setHover] = useState<Cell | null>(null);
+
+  // IDs de los eventos del Transport, indexados por pieza. Viven en un ref y no
+  // en el estado porque son un detalle del motor de audio: cambiarlos no debe
+  // disparar un render. Guardarlos dentro de PlacedPiece obligaba a mutar un
+  // objeto ya entregado a React, y esa era la causa de que los loops
+  // sobrevivieran a "Quitar" y "Reset".
+  const schedRef = useRef<Map<string, number>>(new Map());
+  const idRef = useRef(0);
 
   useTransport(tempo);
 
@@ -153,50 +174,86 @@ export default function App(){
     return ns;
   }, [selected, rotation, mirror]);
 
-  // try place piece with top-left at (gx,gy)
-  function canPlaceAt(gx: number, gy: number): {ok:true; cells: Cell[]} | {ok:false}{
-    // transformed shape cells are 0-based; offset by gx,gy
-  const cells: Cell[] = transformedShape.map(([x,y]): Cell => [x+gx, y+gy]);
-    // bounds
-    if (cells.some(([x,y])=> x<0 || y<0 || x>=GRID_W || y>=GRID_H)) return {ok:false};
-    // collision
+  // Celda de agarre ya transformada: el click en (x,y) la deja justo ahí.
+  const anchor = transformedShape[ANCHOR_INDEX[selected]];
+
+  // Celdas del tablero que ocuparía la pieza si se la coloca apuntando a (x,y).
+  function cellsAt(x: number, y: number): Cell[]{
+    const ox = x - anchor[0];
+    const oy = y - anchor[1];
+    return transformedShape.map(([cx,cy]): Cell => [cx+ox, cy+oy]);
+  }
+
+  function isValid(cells: Cell[]): boolean{
+    if (cells.some(([x,y])=> x<0 || y<0 || x>=GRID_W || y>=GRID_H)) return false;
     for (const p of placed){
       const set = new Set(p.cells.map(([x,y])=>`${x},${y}`));
-      if (cells.some(([x,y])=> set.has(`${x},${y}`))) return {ok:false};
+      if (cells.some(([x,y])=> set.has(`${x},${y}`))) return false;
     }
-    return {ok:true, cells};
+    return true;
   }
 
   function handleCellClick(x: number, y: number){
-    const res = canPlaceAt(x,y);
-    if (!res.ok) return;
-  const newPiece: PlacedPiece = { piece: selected, rotation, mirror, cells: res.cells, notes: noteSet, _sched: undefined };
+    const cells = cellsAt(x,y);
+    if (!isValid(cells)) return;
+    const newPiece: PlacedPiece = {
+      id: String(++idRef.current),
+      piece: selected, rotation, mirror, cells, notes: noteSet,
+    };
     setPlaced(prev => [...prev, newPiece]);
     playNotesNow(noteSet);
-    if (loopPlaced){
-      // schedule retrigger every bar (simple):
-  // @ts-ignore
-  const scheduleLoop = async () => {
-    const Tone = await ensureTone();
-    if (!Tone) return;
-    const id = Tone.Transport.scheduleRepeat((time: number)=>{
-        noteSet.forEach((m,i)=>{
-          if (!synth) return;
-          synth.triggerAttackRelease(Tone.Frequency(m, "midi").toFrequency(), "8n", time + i*0.15, 0.8);
-        })
-      }, "1m");
-      newPiece._sched = id; // attach id
-    };
-    scheduleLoop();
-  }
   }
 
   function resetBoard(){
-    // clear scheduled events
-  // @ts-ignore
-  ensureTone().then(Tone => { if (Tone) placed.forEach(p=>{ if (p._sched!=null) Tone.Transport.clear(p._sched); }); });
-    setPlaced([]);
+    setPlaced([]); // el efecto de sincronización se encarga de cancelar los loops
   }
+
+  // Reconcilia los loops del Transport contra el tablero: agenda las piezas que
+  // falten y cancela las que ya no estén. Al ser declarativo cubre por igual
+  // colocar, quitar, resetear y prender/apagar el checkbox — antes cada uno de
+  // esos caminos tenía que acordarse de limpiar por su cuenta, y no lo hacían.
+  useEffect(()=>{
+    let cancelled = false;
+    const sched = schedRef.current;
+
+    ensureTone().then(Tone => {
+      if (!Tone || cancelled) return;
+
+      const wanted = new Set(loopPlaced? placed.map(p=>p.id) : []);
+
+      for (const [pieceId, eventId] of sched){
+        if (!wanted.has(pieceId)){
+          Tone.Transport.clear(eventId);
+          sched.delete(pieceId);
+        }
+      }
+
+      for (const p of placed){
+        if (!loopPlaced || sched.has(p.id)) continue;
+        const eventId = Tone.Transport.scheduleRepeat((time: number)=>{
+          if (!synth) return;
+          p.notes.forEach((m,i)=>{
+            synth.triggerAttackRelease(Tone.Frequency(m, "midi").toFrequency(), "8n", time + i*0.15, 0.8);
+          });
+        }, "1m");
+        sched.set(p.id, eventId);
+      }
+    });
+
+    return ()=>{ cancelled = true; };
+  }, [placed, loopPlaced]);
+
+  // Al desmontar, cancelar todo lo agendado. Se usa toneModule directo en vez de
+  // ensureTone() para que la limpieza sea sincrónica: si fuera asincrónica, en
+  // StrictMode podría ejecutarse después de que el efecto de arriba ya volvió a
+  // agendar, y cancelaría los eventos nuevos.
+  useEffect(()=> ()=>{
+    const sched = schedRef.current;
+    if (toneModule){
+      for (const eventId of sched.values()) toneModule.Transport.clear(eventId);
+    }
+    sched.clear();
+  }, []);
 
   function toggleTransport(){
   ensureTone().then(Tone => { if (!Tone) return; if (Tone.Transport.state === 'started') Tone.Transport.stop(); else Tone.Transport.start(); });
@@ -209,6 +266,13 @@ export default function App(){
     }
     return null;
   }
+
+  // Fantasma: dónde caería la pieza desde la celda bajo el cursor. Las celdas
+  // fuera del tablero no se pintan, pero sí cuentan para marcar la jugada
+  // como inválida.
+  const previewCells = hover? cellsAt(hover[0], hover[1]) : [];
+  const previewValid = hover? isValid(previewCells) : false;
+  const previewSet = new Set(previewCells.map(([x,y])=> `${x},${y}`));
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4">
@@ -264,29 +328,43 @@ export default function App(){
         <div className="col-span-12 md:col-span-6 bg-white rounded-2xl shadow p-4">
           <h2 className="text-lg font-semibold mb-3">Tablero {GRID_W}×{GRID_H}</h2>
           <div className="relative">
-            <div className="grid" style={{gridTemplateColumns:`repeat(${GRID_W}, 28px)`}}>
+            <div
+              className="grid"
+              style={{gridTemplateColumns:`repeat(${GRID_W}, 28px)`}}
+              onMouseLeave={()=> setHover(null)}
+            >
               {Array.from({length: GRID_W*GRID_H}, (_,i)=>{
                 const x = i % GRID_W; const y = Math.floor(i/GRID_W);
                 const occ = cellOccupied(x,y);
+                const ghost = previewSet.has(`${x},${y}`);
+                let tone: string;
+                if (occ && ghost) tone = 'bg-rose-500 text-white';   // choque contra pieza colocada
+                else if (occ) tone = 'bg-slate-900 text-white';
+                else if (ghost) tone = previewValid? 'bg-emerald-300' : 'bg-rose-200';
+                else tone = 'bg-white hover:bg-slate-100';
                 return (
                   <div key={i}
                        onClick={()=> handleCellClick(x,y)}
-                       className={`w-7 h-7 border border-slate-300 -m-px flex items-center justify-center text-[10px] cursor-pointer ${occ? 'bg-slate-900 text-white':'bg-white hover:bg-slate-100'}`}
+                       onMouseEnter={()=> setHover([x,y])}
+                       className={`w-7 h-7 border border-slate-300 -m-px flex items-center justify-center text-[10px] ${previewValid || !hover? 'cursor-pointer':'cursor-not-allowed'} ${tone}`}
                        title={`(${x},${y})`}
-                  >{occ? occ.piece: ''}</div>
+                  >{occ? occ.piece: (ghost? selected : '')}</div>
                 );
               })}
             </div>
 
             {/* ghost preview of current transformed shape at 0,0 */}
             <div className="mt-3">
-              <span className="text-sm text-slate-600">Previsualización (origen 0,0):</span>
+              <span className="text-sm text-slate-600">Previsualización (el punto marca dónde agarra el cursor):</span>
               <div className="grid mt-1" style={{gridTemplateColumns:`repeat(${Math.max(...transformedShape.map(c=>c[0]))+1}, 20px)`}}>
                 {Array.from({length: (Math.max(...transformedShape.map(c=>c[0]))+1) * (Math.max(...transformedShape.map(c=>c[1]))+1)}, (_,i)=>{
                   const x = i % (Math.max(...transformedShape.map(c=>c[0]))+1);
                   const y = Math.floor(i / (Math.max(...transformedShape.map(c=>c[0]))+1));
                   const on = transformedShape.some(([cx,cy])=> cx===x && cy===y);
-                  return <div key={i} className={`w-5 h-5 border border-slate-200 -m-px ${on? 'bg-slate-800':'bg-white'}`}></div>
+                  const isAnchor = anchor[0]===x && anchor[1]===y;
+                  return <div key={i} className={`w-5 h-5 border border-slate-200 -m-px flex items-center justify-center ${on? 'bg-slate-800':'bg-white'}`}>
+                    {isAnchor && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>}
+                  </div>
                 })}
               </div>
               <div className="text-xs text-slate-600 mt-1">Notas: {noteSet.map(m=>midiName(m)).join(' · ')}</div>
@@ -299,14 +377,12 @@ export default function App(){
           <h2 className="text-lg font-semibold mb-2">Piezas colocadas</h2>
           <div className="space-y-2 max-h-[60vh] overflow-auto pr-1">
             {placed.length===0 && <div className="text-slate-500 text-sm">(Vacío — hacé click en el tablero para colocar la pieza seleccionada)</div>}
-            {placed.map((p,idx)=> (
-              <div key={idx} className="p-2 rounded-xl bg-slate-50 border border-slate-200">
+            {placed.map(p=> (
+              <div key={p.id} className="p-2 rounded-xl bg-slate-50 border border-slate-200">
                 <div className="flex items-center justify-between">
                   <div className="font-medium">{p.piece} {p.rotation*90}° {p.mirror? '⥯':''}</div>
-                  <button onClick={()=>{
-                    ensureTone().then(Tone => { if (Tone && p._sched!=null) Tone.Transport.clear(p._sched); });
-                    setPlaced(arr=> arr.filter((_,i)=> i!==idx));
-                  }} className="text-xs px-2 py-0.5 rounded bg-rose-600 text-white">Quitar</button>
+                  <button onClick={()=> setPlaced(arr=> arr.filter(q=> q.id!==p.id))}
+                          className="text-xs px-2 py-0.5 rounded bg-rose-600 text-white">Quitar</button>
                 </div>
                 <div className="text-xs text-slate-600">Notas: {p.notes.map(m=>midiName(m)).join(' · ')}</div>
                 <div className="text-[10px] text-slate-500 mt-1">Celdas: {p.cells.map(([x,y])=>`(${x},${y})`).join(' ')}</div>
