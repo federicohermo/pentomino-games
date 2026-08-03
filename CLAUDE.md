@@ -25,13 +25,21 @@ La documentación completa vive en `docs/`. Consultarla antes de hacer cambios a
 ## Commands
 
 ```bash
-npm run dev      # Dev server de Vite
-npm run build    # tsc -b && vite build
-npm run lint     # ESLint (flat config v9)
-npm run preview  # Sirve dist/
-npm test         # Vitest — tests de audio con OfflineAudioContext
-npx tsc -b --noEmit   # Solo typecheck
+pnpm dev      # Dev server de Vite
+pnpm build    # tsc -b && vite build
+pnpm lint     # ESLint (flat config v9)
+pnpm preview  # Sirve dist/
+pnpm test     # Vitest — tests de audio con OfflineAudioContext
+pnpm exec tsc -b --noEmit   # Solo typecheck
 ```
+
+**El gestor es pnpm**, fijado en `packageManager` del `package.json` y versionado en `pnpm-lock.yaml`.
+No usar npm: instalaría un `node_modules` plano y dejaría un `package-lock.json` que Netlify puede
+llegar a preferir. La config de pnpm vive en `pnpm-workspace.yaml`, no en el `package.json`.
+
+`node_modules` es **estricto**: solo se puede importar lo declarado en `package.json`. Un import de una
+dependencia transitiva que con npm andaba, acá falla — es a propósito, y es la red que atrapa los
+imports fantasma antes de que lleguen a producción.
 
 Los tests corren en `environment: 'node'` contra `node-web-audio-api`, no en jsdom: jsdom no implementa
 Web Audio. No hay tests de componentes todavía.

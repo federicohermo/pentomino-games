@@ -4,13 +4,14 @@
 
 - **Node ≥ 20.19 o ≥ 22.12.** No es una recomendación: Vite 7 lo declara en `engines`
   (`^20.19.0 || >=22.12.0`) y con Node 18 el build falla.
-- npm (el repo versiona `package-lock.json`).
+- **pnpm** (el repo versiona `pnpm-lock.yaml`). La versión está fijada en `packageManager` dentro del
+  `package.json`; con Corepack activado (`corepack enable pnpm`) no hace falta instalarlo a mano.
 
 ## Instalación
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 Desde la raíz del repo: no hay subdirectorio de app.
@@ -18,7 +19,7 @@ Desde la raíz del repo: no hay subdirectorio de app.
 El dev server queda en `http://localhost:5173`. Para fijar otro puerto:
 
 ```bash
-npx vite --port 5199 --strictPort
+pnpm exec vite --port 5199 --strictPort
 ```
 
 `--strictPort` hace que falle si el puerto está ocupado, en vez de saltar en silencio al siguiente —
@@ -29,20 +30,20 @@ npx vite --port 5199 --strictPort
 ## Comandos
 
 ```bash
-npm run dev      # Dev server con HMR
-npm run build    # tsc -b && vite build → dist/
-npm run lint     # ESLint
-npm run preview  # Sirve dist/ como lo haría producción
-npm test         # Vitest
+pnpm dev      # Dev server con HMR
+pnpm build    # tsc -b && vite build → dist/
+pnpm lint     # ESLint
+pnpm preview  # Sirve dist/ como lo haría producción
+pnpm test     # Vitest
 ```
 
-`npm run build` corre el typecheck **antes** del bundle. Un error de tipos rompe el build aunque el
+`pnpm build` corre el typecheck **antes** del bundle. Un error de tipos rompe el build aunque el
 código funcione en dev, donde Vite no typechequea.
 
 Para verificar tipos sin buildear:
 
 ```bash
-npx tsc -b --noEmit
+pnpm exec tsc -b --noEmit
 ```
 
 ## Flujos de trabajo típicos
@@ -82,10 +83,10 @@ Escribir un spec en `specs/`, commitearlo a `main`, y recién ahí sacar la rama
 ## Verificación antes de un PR
 
 ```bash
-npx tsc -b --noEmit    # tipos
-npm run lint           # estilo
-npm run build          # build completo
-npm run preview        # y probarlo a mano
+pnpm exec tsc -b --noEmit   # tipos
+pnpm lint                   # estilo
+pnpm build                  # build completo
+pnpm preview                # y probarlo a mano
 ```
 
 Los tests corren en Node contra `node-web-audio-api`, no en jsdom.

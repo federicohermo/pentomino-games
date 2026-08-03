@@ -64,7 +64,7 @@ propio hay un único chunk siempre (ver [deploy.md](../infra/deploy.md#verificar
 La comprobación equivalente hoy es buscar código de la app dentro del bundle:
 
 ```bash
-npm run build && grep -c "Tablero" dist/assets/*.js   # 0 → App no entró al bundle
+pnpm build && grep -c "Tablero" dist/assets/*.js   # 0 → App no entró al bundle
 ```
 
 ### `Error: Port XXXX is already in use`

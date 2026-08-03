@@ -1,8 +1,11 @@
 # Netlify: despliega la app Vite, que vive en la raíz del repo.
 # Sin `base`, las rutas se resuelven desde la raíz: por eso `publish = "dist"`.
+#
+# El gestor lo elige Netlify por el lockfile: con `pnpm-lock.yaml` presente corre `pnpm install`.
+# La versión sale del campo `packageManager` del package.json, vía Corepack.
 
 [build]
-  command = "npm run build"
+  command = "pnpm run build"
   publish = "dist"
 
 [build.environment]

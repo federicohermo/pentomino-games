@@ -13,6 +13,8 @@ pentomino-games/           # raíz del repo: la app vive acá, sin subdirectorio
 ├── vite.config.ts         # Plugins: react() + tailwindcss()
 ├── eslint.config.js       # Flat config v9
 ├── netlify.toml           # Config de deploy (ver infra/deploy.md)
+├── pnpm-workspace.yaml    # Config de pnpm (allowBuilds); todavía sin `packages:`
+├── pnpm-lock.yaml         # Lockfile versionado — Netlify elige el gestor por él
 ├── LICENSE
 └── tsconfig{,.app,.node}.json
 ```
@@ -43,7 +45,7 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 
 ### Tests
 
-`npm test` corre Vitest en `environment: 'node'` contra `node-web-audio-api`. Los 17 tests actuales son
+`pnpm test` corre Vitest en `environment: 'node'` contra `node-web-audio-api`. Los 17 tests actuales son
 todos del motor de audio.
 
 **No hay tests de componentes.** El `App.test.tsx` heredado de CRA se eliminó al montar el runner:

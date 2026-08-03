@@ -7,7 +7,7 @@ archivo de config de deploy y no hay ninguno anidado.
 
 ```toml
 [build]
-  command = "npm run build"
+  command = "pnpm run build"
   publish = "dist"
 
 [build.environment]
@@ -16,9 +16,19 @@ archivo de config de deploy y no hay ninguno anidado.
 
 | Campo | Valor | Por qué |
 |---|---|---|
-| `command` | `npm run build` | Expande a `tsc -b && vite build`. Corre en la raíz del repo |
+| `command` | `pnpm run build` | Expande a `tsc -b && vite build`. Corre en la raíz del repo |
 | `publish` | `dist` | La app vive en la raíz, así que no hay prefijo de carpeta |
 | `NODE_VERSION` | `22` | Vite 7 exige `^20.19.0 \|\| >=22.12.0` |
+
+## Qué gestor de paquetes usa Netlify
+
+**No se declara en el `netlify.toml`: lo decide el lockfile.** Con `pnpm-lock.yaml` en el repo, Netlify
+corre `pnpm install`; si no encuentra ningún lockfile, cae a npm. Por eso `pnpm-lock.yaml` **tiene que
+estar versionado** — si se ignora, el deploy instala con npm y resuelve versiones distintas de las de
+local, en silencio.
+
+La versión de pnpm sale del campo `packageManager` del `package.json`, que Netlify honra vía Corepack.
+Corepack no acepta rangos semver ahí: va la versión exacta (`pnpm@10.33.0`).
 
 No hay `base`: la app dejó de vivir en un subdirectorio. Si el campo *Base directory* quedó cargado a
 mano en la UI de Netlify, **hay que vaciarlo** — la UI pisa al archivo (ver más abajo).
@@ -82,7 +92,7 @@ Reproduce exactamente lo que hace Netlify:
 
 ```bash
 rm -rf dist
-npm run build
+pnpm build
 find dist -type f
 ```
 
@@ -95,7 +105,7 @@ import dinámico** — no es un error, pero conviene saber qué es.
 Después:
 
 ```bash
-npm run preview
+pnpm preview
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:4173/una/ruta/profunda   # 200, no 404
 ```
 

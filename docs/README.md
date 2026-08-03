@@ -40,11 +40,11 @@ secuencia de cinco notas derivada de su identidad y su orientación.
 ## Comandos Principales
 
 ```bash
-npm run dev      # Dev server de Vite
-npm run build    # tsc -b && vite build
-npm run lint     # ESLint (flat config v9)
-npm run preview  # Sirve el build de dist/
-npm test         # Vitest — tests de audio con OfflineAudioContext
+pnpm dev      # Dev server de Vite
+pnpm build    # tsc -b && vite build
+pnpm lint     # ESLint (flat config v9)
+pnpm preview  # Sirve el build de dist/
+pnpm test     # Vitest — tests de audio con OfflineAudioContext
 ```
 
 Los tests corren en `environment: 'node'` contra `node-web-audio-api`, **no en jsdom**: jsdom no
