@@ -8,14 +8,14 @@ Es la parte del código con más decisiones no obvias.
 ```
 scheduleVoice()  ──┐
    osc → env       │
-                   ├──→  master (gain 0.3)  ──→  ctx.destination
-scheduleVoice()  ──┘
-   osc → env
+                   ├──→  master (gain 0.3)  ──→  analyser  ──→  ctx.destination
+scheduleVoice()  ──┘                                 ↓
+   osc → env                                  readSpectrum() → canvas (rAF)
 ```
 
-Una voz por nota, creada y descartada. El `master` existe para tener un punto único de volumen y —a
-futuro— de inserción de efectos o de un `AnalyserNode`
-([spec 003](../../specs/003-visualizacion-de-la-senal-con-analysernode/spec.md)).
+Una voz por nota, creada y descartada. El `master` existe para tener un punto único de volumen y de
+inserción: el `AnalyserNode` del
+[spec 003](../../specs/003-visualizacion-de-la-senal-con-analysernode/spec.md) entra ahí.
 
 ## Las tres capas del módulo
 
@@ -133,6 +133,59 @@ Lo que **sí** está unificado es lo que importa para cambiar el sonido:
 cambiar *cómo se expande un arpegio* dentro de `playNotes` **no afecta al loop**. Ese cambio va en
 `collectHits`, o en los dos lugares.
 
+## Análisis de la señal
+
+El `AnalyserNode` va **en serie**, entre el master y el destino, no colgado de una rama paralela: así
+ve exactamente la mezcla que sale por los parlantes. Es transparente —no altera la señal que lo
+atraviesa—, de modo que insertarlo no cambia cómo suena nada.
+
+```ts
+analyser.fftSize = FFT_SIZE;                    // 256 → 128 bins
+analyser.smoothingTimeConstant = SMOOTHING;     // 0.8
+master.connect(analyser);
+analyser.connect(ctx.destination);
+```
+
+Que sea transparente no es una creencia: `engine.test.ts` renderiza la misma voz con y sin el nodo en
+el camino y compara **muestra por muestra**. Es la única parte del análisis que se puede afirmar
+offline.
+
+Los dos valores vienen de `LiveWaveform` de `@elevenlabs/ui`, no de la intuición: 128 bins a 48 kHz dan
+~187 Hz por bin —suficiente para visualizar, insuficiente para afinar— y sin suavizado temporal la
+animación tiembla.
+
+`readSpectrum()` devuelve las magnitudes 0–255 del último bloque, o `null` si todavía no hay señal que
+mirar (sin contexto, o suspendido). **Es información, no una falla**: un array de ceros y "no hay
+audio" se dibujan distinto, y devolver `null` también evita que el loop de dibujo cree el
+`AudioContext` sin gesto del usuario.
+
+**El buffer que devuelve es reusado** entre llamadas para no asignar 60 veces por segundo. Quien lo
+guarde va a verlo cambiar por debajo; el consumidor previsto lo lee y lo descarta en el mismo cuadro.
+
+### Por qué el mapeo bins→barras vive aparte
+
+En `src/audio/spectrum.ts`, y no dentro del nodo ni del componente, por una restricción medida:
+**`AnalyserNode` no rinde nada útil en un `OfflineAudioContext`**. El render offline corre más rápido
+que tiempo real y no tiene cuadros; `getByteFrequencyData` devuelve el estado del último bloque
+procesado. Los tests del estilo "renderizar y afirmar sobre el espectro" que sí funcionan para la
+síntesis, acá no existen.
+
+La respuesta no fue renunciar a testear sino mover la lógica adonde sí se puede: `binsToBars(bins,
+barCount)` toma un `Uint8Array` y devuelve alturas 0–1. Entrada a mano, salida determinista, sin tocar
+Web Audio. El nodo queda reducido a una fuente de datos sin test propio.
+
+Dos decisiones dentro del mapeo:
+
+- **Bandas logarítmicas, no lineales.** Los bins están espaciados linealmente en frecuencia pero la
+  percepción no: con reparto lineal las dos primeras barras se comen toda la información musical y el
+  resto del canvas muestra agudos vacíos.
+- **Pico por banda, no promedio.** Promediar una banda ancha aplana los transitorios, que es justo lo
+  que hay que ver en un instrumento percusivo.
+
+El canvas (`src/components/Spectrum.tsx`) dibuja imperativamente dentro de `requestAnimationFrame` y
+**no pasa por estado de React**: 60 renders por segundo para pintar barras competirían con el
+re-render del tablero. React monta el `<canvas>` y arranca/frena el loop; nada más.
+
 ## Cómo verificar el audio
 
 ### En tests: `OfflineAudioContext`
@@ -164,6 +217,7 @@ const m = await import('/src/audio/engine.ts');   // en dev, mismo singleton
 m.jobCount();                                      // loops vivos
 m.clockRunning();                                  // reloj
 m.audio().state;                                   // 'running' | 'suspended'
+m.readSpectrum();                                  // null en reposo; Uint8Array(128) sonando
 ```
 
 Para comprobar que el scheduler realmente dispara, contar osciladores creados:

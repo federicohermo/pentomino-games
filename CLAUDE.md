@@ -57,14 +57,18 @@ pentominós en un tablero de 10×6 y cada pieza dispara un arpegio de cinco nota
 condición de victoria — al evaluar una feature, la pregunta es si vuelve al instrumento más expresivo,
 no más difícil.
 
-**Organización:** todo el código vive en `src/App.tsx` (~330 líneas), con tres capas separadas por orden
-dentro del archivo:
+**Organización:** el dominio y la UI del tablero viven juntos en `src/App.tsx` (~340 líneas), con tres
+capas separadas por orden dentro del archivo:
 
 1. **Dominio** — funciones puras de geometría (`SHAPES`, `rotateN`, `reflect`, `ANCHOR_INDEX`) y de
    música (`BASE_MAP`, `notesForRotation`, `midiName`). Sin React, sin audio.
 2. **Componente `App`** — todo el estado con `useState` local. Sin estado global.
-3. **Audio** — vive aparte, en `src/audio/engine.ts`. `App.tsx` solo le habla: `playNow`, `addJob`,
-   `clearJobs`, `startClock`.
+3. **Audio** — vive aparte, en `src/audio/engine.ts` y `src/audio/spectrum.ts`. `App.tsx` solo le
+   habla: `playNow`, `addJob`, `clearJobs`, `startClock`.
+
+Fuera de `App.tsx` hay un solo componente: `src/components/Spectrum.tsx`, el canvas del espectro. No
+recibe props ni las va a recibir — lee del motor por su cuenta para que dibujar a 60 fps no
+re-renderice nada del tablero.
 
 Que sea un solo archivo es deliberado a esta escala; la separación por capas **sí** hay que respetarla
 al agregar código. El límite está identificado: al montar tests, las funciones puras se extraen a su
@@ -139,6 +143,11 @@ síntesis, scheduler y capa de aplicación.
   cómo se expande el arpegio no.**
 - **El scheduler usa lookahead**: temporizador grueso de 25 ms que agenda 100 ms de futuro contra el
   reloj de audio. El temporizador no dispara notas, decide cuándo mirar.
+- **El `AnalyserNode` va en serie entre el master y el destino** y es transparente al audio.
+  `readSpectrum()` devuelve `null` en reposo —eso es información, no falla— y reusa el buffer entre
+  llamadas: quien lo guarde va a verlo cambiar por debajo. El mapeo bins→barras vive aparte, en
+  `src/audio/spectrum.ts`, porque **`AnalyserNode` no rinde nada útil en `OfflineAudioContext`**: es lo
+  testeable, y por eso está separado del nodo.
 - **Verificar audio sin oírlo**: en tests con `OfflineAudioContext`; en el navegador con `jobCount()` y
   contando osciladores. Recetas en
   [docs/architecture/audio.md](./docs/architecture/audio.md#cómo-verificar-el-audio).
@@ -188,7 +197,8 @@ Detalle y los dos errores ya cometidos en
 - **`public/manifest.json`** tiene los valores por defecto de CRA (`"name": "Create React App
   Sample"`).
 - **`setupTests.ts` y las `@testing-library/*`** quedaron sin consumidor: no hay tests de componentes
-  todavía. Los 17 tests actuales son del motor de audio y corren en Node.
+  todavía. Los 27 tests actuales son de la capa de audio —18 del motor, 9 del mapeo del espectro— y
+  corren en Node.
 
 Ya resueltos: los archivos huérfanos de las plantillas de CRA y Vite (`src/App.css`, `src/logo.svg`,
 `src/assets/react.svg`, `public/vite.svg`) y la dependencia `web-vitals`, que quedó sin consumidor

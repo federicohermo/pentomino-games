@@ -28,10 +28,14 @@ src/
 ├── index.css          # @import "tailwindcss" + estilos globales de body/code
 ├── setupTests.ts      # import de @testing-library/jest-dom
 ├── vite-env.d.ts      # Tipos de Vite
-└── audio/
-    ├── engine.ts        # motor Web Audio: síntesis, scheduler, singletons
-    ├── engine.test.ts   # 17 tests con OfflineAudioContext
-    └── test-context.ts  # helpers de render y medición (solo tests)
+├── audio/
+│   ├── engine.ts          # motor Web Audio: síntesis, scheduler, analizador, singletons
+│   ├── engine.test.ts     # 18 tests con OfflineAudioContext
+│   ├── spectrum.ts        # mapeo puro de bins de la FFT a alturas de barra
+│   ├── spectrum.test.ts   # 9 tests, sin AudioContext (ver audio.md)
+│   └── test-context.ts    # helpers de render y medición (solo tests)
+└── components/
+    └── Spectrum.tsx     # canvas del espectro: rAF + HiDPI, sin estado de React
 ```
 
 Todos los archivos de `src/` están vivos. Los residuos de las plantillas de Create React App y de Vite
@@ -45,8 +49,9 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 
 ### Tests
 
-`pnpm test` corre Vitest en `environment: 'node'` contra `node-web-audio-api`. Los 17 tests actuales son
-todos del motor de audio.
+`pnpm test` corre Vitest en `environment: 'node'` contra `node-web-audio-api`. Los 27 tests actuales son
+todos de la capa de audio: 18 del motor con `OfflineAudioContext` y 9 del mapeo del espectro, que no
+toca Web Audio en absoluto.
 
 **No hay tests de componentes.** El `App.test.tsx` heredado de CRA se eliminó al montar el runner:
 buscaba el texto "learn react" de la plantilla, que la app nunca renderizó. Agregar tests de componentes
@@ -73,6 +78,7 @@ Se copia tal cual a `dist/`. Las rutas se referencian desde la raíz del sitio (
 | Función pura de geometría o música | `src/App.tsx`, con las otras puras (antes de `App()`) | No suelta dentro del componente |
 | Estado nuevo de UI | `useState` dentro de `App()` | No hay ni hace falta estado global |
 | Efecto de audio | Dentro de `App()`, junto al de reconciliación | Ver [audio.md](./audio.md) |
+| Componente que no es `App` | `src/components/<Nombre>.tsx` | Hoy solo `Spectrum.tsx`, que se dibuja solo y no recibe props |
 | Asset estático referenciado por URL | `public/` | Se copia sin procesar |
 | Asset importado desde código | `src/assets/` | Pasa por el pipeline de Vite (hash, inline) |
 | Documentación de arquitectura | `docs/architecture/` | |
@@ -80,7 +86,7 @@ Se copia tal cual a `dist/`. Las rutas se referencian desde la raíz del sitio (
 
 ## Convención de nombres
 
-- **Componentes**: `PascalCase.tsx` (hoy solo `App.tsx`).
+- **Componentes**: `PascalCase.tsx` (`App.tsx` y `components/Spectrum.tsx`).
 - **Funciones puras y utilidades**: `camelCase`.
 - **Constantes de dominio**: `SCREAMING_SNAKE_CASE` (`SHAPES`, `BASE_MAP`, `ANCHOR_INDEX`, `GRID_W`).
 - **Tipos e interfaces**: `PascalCase` (`Cell`, `PieceKey`, `PlacedPiece`).

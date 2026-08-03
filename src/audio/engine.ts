@@ -152,6 +152,12 @@ export function collectHits(
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
+let analyser: AnalyserNode | null = null;
+
+/** 128 bins (fftSize / 2). Suficiente para visualizar, insuficiente para afinar. */
+export const FFT_SIZE = 256;
+/** Promediado temporal entre lecturas: sin el la animacion tiembla; de mas, es melaza. */
+export const SMOOTHING = 0.8;
 
 /**
  * El AudioContext vive a nivel de modulo: hay uno por pestana, no uno por
@@ -167,12 +173,46 @@ export function audio(): AudioContext | null {
     ctx = new AudioContext();
     master = ctx.createGain();
     master.gain.value = 0.3;
-    master.connect(ctx.destination);
+
+    // El analizador va ENTRE el master y el destino, no colgado de una rama
+    // paralela: asi ve exactamente la mezcla que sale por los parlantes. Es
+    // transparente al audio —no altera la senal que lo atraviesa—, de modo que
+    // insertarlo no cambia como suena nada.
+    analyser = ctx.createAnalyser();
+    analyser.fftSize = FFT_SIZE;
+    analyser.smoothingTimeConstant = SMOOTHING;
+    master.connect(analyser);
+    analyser.connect(ctx.destination);
   } catch (e) {
     console.warn('Web Audio no disponible', e);
     return null;
   }
   return ctx;
+}
+
+/** Buffer de lectura del espectro. Ver la advertencia en readSpectrum(). */
+let freqBuf: Uint8Array | null = null;
+
+/**
+ * Magnitudes de frecuencia del ultimo bloque procesado, 0-255 por bin.
+ *
+ * Devuelve null cuando todavia no hay senal que mirar: sin contexto (nadie hizo
+ * click aun) o con el contexto suspendido. Es informacion util para el llamador
+ * —un array de ceros y "no hay audio" se dibujan distinto— y ademas evita crear
+ * el AudioContext desde el loop de dibujo, que correria sin gesto del usuario.
+ *
+ * CUIDADO: el Uint8Array es reusado entre llamadas para no asignar 60 veces por
+ * segundo. Quien lo guarde va a ver como le cambia por debajo. El consumidor
+ * previsto es un loop de dibujo, que lo lee y lo descarta en el mismo cuadro; si
+ * hace falta conservarlo, copiarlo con slice().
+ */
+export function readSpectrum(): Uint8Array | null {
+  if (!analyser || !ctx || ctx.state !== 'running') return null;
+  if (!freqBuf || freqBuf.length !== analyser.frequencyBinCount) {
+    freqBuf = new Uint8Array(analyser.frequencyBinCount);
+  }
+  analyser.getByteFrequencyData(freqBuf);
+  return freqBuf;
 }
 
 /** Espaciado del arpegio, en segundos. Igual para el disparo directo y el loop. */

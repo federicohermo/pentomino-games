@@ -67,7 +67,7 @@
       `integration.test.ts` (2), **sin editar aserciones**
 - [ ] `scheduler.test.ts` con su propio `const SPREAD = 0.15`, sin importar `ARPEGGIO_SPREAD` (AC10)
 - [ ] Borrar `audio/engine.test.ts`
-- [ ] `pnpm test` sigue reportando **17** (AC9)
+- [ ] `pnpm test` sigue reportando **27** (AC9)
 - [ ] Verificación completa
 
 ## Fase 4 — Componentes *(la única fase opcional)*
@@ -125,7 +125,7 @@
 ## Verificación final
 - [ ] `pnpm exec tsc -b --noEmit` en 0
 - [ ] `pnpm lint` en 0
-- [ ] `pnpm test` en verde con **17 tests de audio + los nuevos del dominio**
+- [ ] `pnpm test` en verde con **27 tests de audio + los nuevos del dominio**
 - [ ] `pnpm build` en verde
 - [ ] **Las 96 combinaciones a mano en la app**: recorrer las 12 piezas con las 4 rotaciones y el
       mirror, comparando forma, ancla y notas contra los valores de referencia del `research.md`. Es la

@@ -144,9 +144,9 @@ function resize(canvas: HTMLCanvasElement, ctx2d: CanvasRenderingContext2D) {
 ## 4. Verificación
 
 ```bash
-npx tsc -b --noEmit
-npm test                # AC2, AC3, AC4
-npm run build
+pnpm exec tsc -b --noEmit
+pnpm test               # AC2, AC3, AC4
+pnpm build
 ```
 
 En el navegador:

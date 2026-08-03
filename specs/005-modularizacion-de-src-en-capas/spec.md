@@ -32,7 +32,7 @@ error  Fast refresh only works when a file only exports components.
 `eslint.config.js` extiende `reactRefresh.configs.vite`, así que **exportar el dominio desde
 `App.tsx` es un error de lint**. Y sin export no hay test, no hay reuso y no hay tooling posible. La
 organización actual no es neutral: **condena al dominio a no ser verificable.** El resultado se mide
-solo — los 17 tests del repo son todos de `audio/engine.test.ts`; la geometría y la música tienen
+solo — los 27 tests del repo son todos de `src/audio/`; la geometría y la música tienen
 **cero cobertura**, incluido el invariante que CLAUDE.md marca como el más peligroso del repo, el del
 orden del array de celdas, cuya rotura *no produce ningún error visible*.
 
@@ -451,8 +451,10 @@ Dos alternativas evaluadas y descartadas:
   choque contra una pieza existente, y que la celda de agarre caiga donde se clickeó.
 - **AC9** — `audio/` queda en tres módulos y los tests siguen en verde, repartidos en
   `audio/__tests__/` según los `describe` actuales: `voice.test.ts` (`midiToHz` + `sintesis`, 7),
-  `scheduler.test.ts` (`scheduler`, 8) e `integration.test.ts` (`scheduler + sintesis integrados`, 2).
-  **El conteo total no baja de 17** — el valor de hoy, verificado con `pnpm test`.
+  `scheduler.test.ts` (`scheduler`, 8) e `integration.test.ts` (`scheduler + sintesis integrados` más
+  el `analizador` que trajo el spec 003, 3).
+  **El conteo total no baja de 27** — el valor de hoy, verificado con `pnpm test`: 18 de
+  `engine.test.ts` más los 9 de `spectrum.test.ts`, que ya vive en su propio archivo y no se parte.
 - **AC10** — `scheduler.test.ts` no importa nada de `engine.ts` (usa su propio spread literal en vez
   de `ARPEGGIO_SPREAD`): el test de la capa 2 no alcanza a la capa 3.
 - **AC11** — `components/` tiene cuatro componentes presentacionales, uno por archivo, sin estado ni
@@ -496,7 +498,7 @@ Dos alternativas evaluadas y descartadas:
 | Riesgo | Mitigación |
 |---|---|
 | **Es un refactor grande sobre el único archivo de la app.** Un error de copiado en `SHAPES` o en `ANCHOR_INDEX` no produce error de compilación: produce una pieza que se coloca mal, y hay que notarlo a ojo. | Fase por fase, cada una con su commit y su verificación. Y el orden no es casual: **las fases 1 y 2 traen los tests del dominio antes de tocar la UI**, así que cuando se mueve el JSX ya hay una red abajo. AC1 se corre al final de cada fase, no solo al final. |
-| **La partición de `audio/` toca los únicos 17 tests que tiene el repo.** | El corte sigue los `describe` que ya existen: es mover bloques enteros de archivo, sin editar aserciones. AC9 exige que el conteo no baje — si baja, algo se perdió en el camino. |
+| **La partición de `audio/` toca los 18 tests de `engine.test.ts`, la mitad de la cobertura del repo.** | El corte sigue los `describe` que ya existen: es mover bloques enteros de archivo, sin editar aserciones. AC9 exige que el conteo no baje — si baja, algo se perdió en el camino. |
 | **Cuatro componentes nuevos es la fase con más superficie visual**, y no hay tests de UI que la cubran. | Es la última fase, es puramente mecánica (cortar JSX y pasar props), y se verifica a ojo contra la app corriendo. Si se decide postergarla, las fases 1–3 ya entregan todo el valor estructural: **la fase 4 es la única realmente opcional.** |
 | **Sobre-modularización, y el número es incómodo:** `src/` pasa de **8 archivos a 35** — `domain/` 14 (4 módulos + 3 tipos + 3 constantes + 4 tests), `audio/` 12 (3 módulos + 2 tipos + 3 constantes + 4 tests), `components/` 5, más `main.tsx`, `App.tsx`, `vite-env.d.ts` y `styles/index.css`. Y el dominio son 77 líneas de lógica. Leído mal, es ceremonia. | Cuatro respuestas, en orden de peso. **(1)** De los 35, **9 son archivos de test contra 2 de hoy**: no es estructura, es la cobertura que el spec viene a traer. **(2)** Otros **7 son `constants/`, y su justificación es medible, no estética**: eliminan cuatro pares de números que hoy tienen que coincidir y nada sincroniza (AC4c). **(3)** Quedan 19 archivos de lógica y tipos para lo que hoy son 8, y cada módulo tiene un motivo distinto para cambiar —agregar una pieza · cambiar la semántica de rotación · cambiar las reglas del tablero · cambiar la escala—, ninguno pasa de ~60 líneas. **(4)** La alternativa —un `geometry.ts` con todo— se descarta porque `transform.ts` es genérico sobre `Cell[]` y no necesita conocer las piezas; juntarlos crea una dependencia que no existe. Lo que **sí** hay que vigilar: que no se cree una carpeta de rol para un solo archivo trivial. Por eso `utils/`, `schemas/`, `hooks/` y `lib/` no se crean hoy, y `pieces.ts` se disuelve en vez de quedar como módulo vacío. |
 | **La única constante que no puede unificarse del todo es el tamaño de celda.** `CELL_PX = 28` gobierna el `gridTemplateColumns` (estilo inline, ya usa el número) **y** el `w-7 h-7` de cada celda, que es una clase estática de Tailwind: no se puede interpolar una clase desde una variable, porque Tailwind escanea el fuente y no vería `w-[${CELL_PX}px]`. | Las celdas pasan a dimensionarse con estilo inline (`style={{ width: CELL_PX, height: CELL_PX }}`) y se les saca `w-7 h-7`. `w-7` es exactamente 1.75rem = 28px, así que el resultado es idéntico — **es el único punto del spec donde mover una constante toca el markup**, y por eso la verificación visual del tablero y de la previsualización es obligatoria en la fase 4. Si se prefiere no tocar el markup, la alternativa es dejar las clases y documentar el acoplamiento en `layout.constants.ts`; se elige unificar porque un tamaño de celda que cambie a medias es un bug silencioso. |
