@@ -78,22 +78,22 @@ argumenta por qué mantenerlas así al agregar el mapeo espacial.
 
 ## Reproducción
 
-`playNotesNow` dispara las cinco notas como arpegio de tiempo fijo:
+`playNotes()` dispara las cinco notas como arpegio de tiempo fijo:
 
 ```ts
-synth.triggerAttackRelease(hz, "8n", t + i*0.15, velocity);
+notes.forEach((m, i) => scheduleVoice(c, master, midiToHz(m), start + i * ARPEGGIO_SPREAD, NOTE_DUR));
 ```
 
-- **0.15 s entre notas**, independiente del tempo. El slider de BPM afecta al Transport (los loops), no
-  al arpegio de colocación.
-- **`"8n"`** de duración, `0.8` de velocity.
+- **0.15 s entre notas** (`ARPEGGIO_SPREAD`), independiente del tempo. El slider de BPM afecta al reloj
+  del motor (los loops), no al arpegio de colocación.
+- **0.35 s de duración** (`NOTE_DUR`), `0.8` de velocity, más 0.12 s de release.
 - **`i` es la posición en el array**, o sea el grado de la escala. El
   [spec 001](../../specs/001-notas-por-celda-en-orden-angular/plan.md) §4 hace que ese orden pase a
   derivarse del mapeo espacial en vez de ser una coincidencia del orden del array.
 
 Cuando el loop de piezas colocadas está activo, cada pieza reagenda la misma secuencia con el mismo
-espaciado de `0.15 s`, una vez por compás. Ese camino de reproducción está duplicado dentro del efecto
-de reconciliación — ver [audio.md](./audio.md#los-dos-caminos-de-reproducción).
+espaciado, una vez por compás. Ese camino no pasa por `playNotes()`: el espaciado lo aplica
+`collectHits()` en el motor — ver [audio.md](./audio.md#los-dos-caminos-de-reproducción).
 
 ## Utilidades MIDI
 

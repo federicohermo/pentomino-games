@@ -163,14 +163,17 @@ export default function App(){
     setPlaced([]); // el efecto de sincronización se encarga de cancelar los loops
   }
 
-  // Reconcilia los loops contra el tablero: agenda las piezas que falten y
-  // cancela las que ya no estén. Al ser declarativo cubre por igual colocar,
-  // quitar, resetear y prender/apagar el checkbox — antes cada uno de esos
-  // caminos tenía que acordarse de limpiar por su cuenta, y no lo hacían.
+  // Reconcilia los loops contra el tablero. Al ser declarativo cubre por igual
+  // colocar, quitar, resetear y prender/apagar el checkbox — antes cada uno de
+  // esos caminos tenía que acordarse de limpiar por su cuenta, y no lo hacían.
   //
-  // Con el motor propio ya no hace falta el flag de cancelación: addJob y
-  // removeJob son sincrónicos, así que no hay una promesa que pueda resolver
-  // después de que el efecto se limpió.
+  // Limpia y re-agrega todo en vez de diffear, y es seguro porque la fase de los
+  // loops NO vive en los jobs: vive en el cursor del reloj, que esto no toca. Los
+  // jobs son datos puros que el scheduler lee, no eventos con identidad.
+  //
+  // Tampoco hace falta el flag de cancelación que pedía Tone: addJob y clearJobs
+  // son sincrónicos, así que no hay promesa que pueda resolver después de que el
+  // efecto se limpió.
   useEffect(()=>{
     clearJobs();
     if (!loopPlaced) return;

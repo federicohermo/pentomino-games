@@ -110,15 +110,28 @@ algo. Es una restricción del navegador, no del código.
 `audio()` devuelve `null` si Web Audio no está disponible; la app queda usable pero muda, y cada
 llamador tiene que chequearlo.
 
-## Un solo camino de reproducción
+## Los dos caminos de reproducción
 
-`playNotes()` es la **única** función que convierte notas en sonido. La llaman:
+Hay **dos** funciones que producen sonido, y conviene saber cuál es cuál:
 
-- `playNow()` — el arpegio al colocar una pieza.
-- `tick()` — el loop por compás.
+| Camino | Quién lo usa | Cómo llega a `scheduleVoice` |
+|---|---|---|
+| `playNotes()` | `playNow()`, al colocar una pieza | expande el arpegio y agenda |
+| `tick()` | el loop por compás | `collectHits()` ya devolvió los instantes; agenda directo |
 
-El espaciado (`ARPEGGIO_SPREAD`) y la duración viven en un solo lugar. Antes estaban duplicados en dos
-caminos y un cambio de sonido había que aplicarlo dos veces.
+**No están unificados en una sola función, y es a propósito**: `collectHits` tiene que ser pura para
+poder testear el scheduler, así que devuelve instantes en vez de producir sonido. Volver a pasar por
+`playNotes` obligaría a recalcular el espaciado que el scheduler ya aplicó.
+
+Lo que **sí** está unificado es lo que importa para cambiar el sonido:
+
+- `scheduleVoice()` — la única función que crea un oscilador.
+- `DEFAULT_VOICE` — el timbre y la ADSR.
+- `ARPEGGIO_SPREAD` y `NOTE_DUR` — el espaciado y la duración.
+
+**La consecuencia práctica:** tocar el timbre en `DEFAULT_VOICE` alcanza para los dos caminos, pero
+cambiar *cómo se expande un arpegio* dentro de `playNotes` **no afecta al loop**. Ese cambio va en
+`collectHits`, o en los dos lugares.
 
 ## Cómo verificar el audio
 

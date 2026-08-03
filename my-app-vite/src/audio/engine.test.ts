@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  midiToHz, scheduleVoice, collectHits, DEFAULT_VOICE, ARPEGGIO_SPREAD,
+  midiToHz, scheduleVoice, collectHits, DEFAULT_VOICE, ARPEGGIO_SPREAD, LOOKAHEAD,
   type Job, type ClockState,
 } from './engine';
 import { offline, peakNear, zeroCrossHz, firstAudible, detectOnsets, SR } from './test-context';
@@ -98,6 +98,18 @@ describe('scheduler', () => {
     expect(collectHits(0, 2, 120, jobs, state)).toHaveLength(2);
   });
 
+  it('acepta un iterador de una sola pasada en varios compases', () => {
+    // Regresion: tick() pasa jobs.values(), un iterador de Map que se agota en la
+    // primera vuelta del while. Con el for adentro del while y sin materializar,
+    // esto devolvia 1 hit en vez de 4 — todos los tests pasaban arrays y no lo
+    // veian. Con horizonte 8 s y compas de 2 s el while da 4 vueltas.
+    const map = new Map<string, Job>([['a', { id: 'a', notes: [A4], spread: 0 }]]);
+    const conIterador = collectHits(0, 8, 120, map.values(), { nextBar: 0 });
+    const conArray = collectHits(0, 8, 120, [...map.values()], { nextBar: 0 });
+    expect(conIterador).toHaveLength(4);
+    expect(conIterador.map(h => h.at)).toEqual(conArray.map(h => h.at));
+  });
+
   it('sin jobs no agenda nada, pero el cursor igual avanza', () => {
     const state: ClockState = { nextBar: 0 };
     expect(collectHits(0, 8, 120, [], state)).toHaveLength(0);
@@ -106,7 +118,7 @@ describe('scheduler', () => {
 
   it('se recupera del throttling en vez de acumular compases atrasados', () => {
     const state: ClockState = { nextBar: 0 };   // el reloj quedo 100 s adelante
-    const hits = collectHits(100, LOOKAHEAD_S, 120, [job([A4])], state);
+    const hits = collectHits(100, LOOKAHEAD, 120, [job([A4])], state);
     expect(hits).toHaveLength(1);               // 1, no 50
     expect(hits[0].at).toBeCloseTo(100.05, 9);
   });
@@ -128,8 +140,6 @@ describe('scheduler', () => {
     expect(collectHits(0, 4, 240, [job([A4])], { nextBar: 0 })).toHaveLength(4);
   });
 });
-
-const LOOKAHEAD_S = 0.1;
 
 describe('scheduler + sintesis integrados', () => {
   it('AC5 — los disparos se oyen donde el scheduler dijo (+-6 ms)', async () => {

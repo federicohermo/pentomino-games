@@ -56,8 +56,13 @@ npx tsc -b --noEmit
 
 ### Cambiar cómo suena algo
 
-Todo pasa por `playNotes()` en `src/audio/engine.ts`: es el único camino de nota a sonido. Para el
-timbre, `DEFAULT_VOICE` (ADSR y tipo de onda). Agregar un test de envolvente si se cambia la forma.
+Para el **timbre**, `DEFAULT_VOICE` en `src/audio/engine.ts` (ADSR y tipo de onda): alcanza con tocarlo
+ahí, porque los dos caminos de reproducción pasan por `scheduleVoice()`. Agregar un test de envolvente
+si se cambia la forma.
+
+Para el **espaciado del arpegio**, cuidado: `playNotes()` lo aplica para el disparo al colocar y
+`collectHits()` para el loop. Son dos lugares. Detalle en
+[audio.md](../architecture/audio.md#los-dos-caminos-de-reproducción).
 
 **No romper la inyección del contexto**: `scheduleVoice` y `collectHits` reciben el `AudioContext` por
 parámetro. Si empiezan a tomarlo del singleton, dejan de ser testeables.

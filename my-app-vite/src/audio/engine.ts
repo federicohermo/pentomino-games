@@ -119,14 +119,26 @@ export function collectHits(
   const bar = barDuration(bpm);
   const out: Hit[] = [];
 
+  // Materializar los jobs ANTES del while. El parametro es Iterable, y tick() pasa
+  // jobs.values(): un iterador de Map se agota en la primera pasada, asi que si el
+  // while da mas de una vuelta los compases siguientes saldrian vacios. Hoy no se
+  // alcanza —el horizonte es 0.1 s y el compas mas corto 1.5 s a 160 bpm— pero
+  // depende de una relacion entre constantes que nadie esta obligado a preservar.
+  const list = [...jobs];
+
   // Recuperacion: si la pestana estuvo oculta el temporizador se estrangula y el
   // reloj de audio sigue corriendo. Sin esta guarda el while intentaria recuperar
   // cientos de compases atrasados de una. Solo actua cuando el reloj YA paso el
   // proximo compas; en marcha normal nextBar va por delante y no se toca.
+  //
+  // Lo que NO arregla: con la pestana oculta Chrome estrangula setInterval a >=1 s,
+  // muy por encima del horizonte de 0.1 s, asi que cada tick emite un compas y el
+  // tempo efectivo baja (a 110 bpm, un compas cada ~3 s en vez de cada 2.18 s). Se
+  // ataca con el reloj basado en origen del spec 004, no con esta guarda.
   if (state.nextBar < fromTime) state.nextBar = fromTime + 0.05;
 
   while (state.nextBar < fromTime + horizon) {
-    for (const job of jobs) {
+    for (const job of list) {
       job.notes.forEach((m, i) => out.push({ hz: midiToHz(m), at: state.nextBar + i * job.spread }));
     }
     state.nextBar += bar;
@@ -168,13 +180,20 @@ export const ARPEGGIO_SPREAD = 0.15;
 const NOTE_DUR = 0.35;
 
 /**
- * UNICO camino de nota a sonido. Lo llaman tanto el disparo al colocar una pieza
- * como el scheduler; asi el espaciado y la duracion viven en un solo lugar.
+ * Dispara un arpegio contra el singleton, ya mismo.
+ *
+ * NO es el unico camino de nota a sonido: tick() llama a scheduleVoice() directo,
+ * porque collectHits ya devolvio los instantes expandidos y volver a pasar por aca
+ * significaria recalcular el espaciado que el scheduler ya aplico.
+ *
+ * La consecuencia practica: un cambio de sonido hecho SOLO aca no afecta al loop.
+ * Lo que si esta unificado son las constantes (ARPEGGIO_SPREAD, NOTE_DUR) y la
+ * funcion de voz — cambiar el timbre en DEFAULT_VOICE alcanza para los dos caminos.
  */
-export function playNotes(notes: number[], at?: number): void {
+export function playNotes(notes: number[]): void {
   const c = audio();
   if (!c || !master) return;
-  const start = at ?? c.currentTime + 0.02;
+  const start = c.currentTime + 0.02;
   notes.forEach((m, i) => scheduleVoice(c, master!, midiToHz(m), start + i * ARPEGGIO_SPREAD, NOTE_DUR));
 }
 

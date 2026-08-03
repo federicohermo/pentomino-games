@@ -68,10 +68,27 @@
       (`sideEffects` ausente, 962 módulos, imports profundos solo −9%)
 - [ ] Incluir la salida de los tests de envolvente — es la prueba de que el audio quedó asertable
 - [ ] `/pr-review` antes de pedir revisión
+- [x] `/code-review` corrido: 7 hallazgos, 6 confirmados midiendo. Arreglados los cuatro baratos —
+      iterador de una sola pasada en `collectHits`, la invariante falsa de "un solo camino de nota a
+      sonido", el comentario de reconciliación que describía diffing inexistente, y la constante
+      `LOOKAHEAD` duplicada en el test. Los tres restantes (throttling, headroom, `stopClock`) van a
+      seguimiento con sus mediciones
 
 ## Seguimiento (no bloquea)
 - [ ] Efectos: filtro, reverb, delay
 - [ ] Diseño sonoro fino del patch (este spec entrega una ADSR correcta, no trabajada)
 - [ ] Si el conteo de voces simultáneas crece, revisar D2 (pool / voice stealing)
 - [ ] Comportamiento con la pestaña en segundo plano: el lookahead de 100 ms cubre solo parcialmente el
-      estrangulamiento de temporizadores. Si molesta, evaluar `AudioWorklet` o un `Worker`
+      estrangulamiento de temporizadores. **Cuantificado en el review**: Chrome estrangula `setInterval`
+      a ≥1 s con la pestaña oculta, muy por encima del horizonte, así que el tempo efectivo baja (a
+      110 bpm, un compás cada ~3 s en vez de cada 2.18 s) y la fase no vuelve a engancharse. El reloj
+      basado en origen del
+      [spec 004](../004-fase-por-pieza-la-columna-como-posicion-en-el-compas/spec.md) lo resuelve, así
+      que no se ataca acá
+- [ ] **Sin headroom: clipping a partir de 5–6 piezas en loop.** Medido con `OfflineAudioContext`:
+      1 pieza → 0.4187 · 2 → 0.6461 · 4 → 0.9813 (0 muestras clippeadas) · 6 → 1.1409 (35 clippeadas).
+      El master es un gain fijo de 0.3. Un limitador, o escalar por `jobCount()`, lo cubre; el spec 004
+      lo mitiga de rebote al repartir las piezas dentro del compás
+- [ ] **`stopClock()` no calla lo ya agendado**: hasta ~1.2 s siguen sonando después del click
+      (`LOOKAHEAD` + 4×`ARPEGGIO_SPREAD` + `NOTE_DUR` + release). Se percibe como un botón que no
+      responde. Un fade del master, o rastrear las voces vivas, lo arregla

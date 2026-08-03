@@ -125,8 +125,10 @@ síntesis, scheduler y capa de aplicación.
   sonar sin click previo va a quedar muda.
 - **Falla suave**: `audio()` devuelve `null` si Web Audio no está disponible; la app queda usable pero
   muda. Todo llamador tiene que chequearlo.
-- **`playNotes()` es el único camino de nota a sonido.** Lo llaman el arpegio al colocar y el
-  scheduler. El espaciado y la duración viven en un solo lugar.
+- **Hay dos caminos a sonido, no uno**: `playNotes()` (arpegio al colocar) y `tick()` (loop), que
+  llama a `scheduleVoice()` directo porque `collectHits` ya expandió los instantes. Lo unificado es
+  `scheduleVoice`, `DEFAULT_VOICE` y las constantes: **cambiar el timbre alcanza para los dos, cambiar
+  cómo se expande el arpegio no.**
 - **El scheduler usa lookahead**: temporizador grueso de 25 ms que agenda 100 ms de futuro contra el
   reloj de audio. El temporizador no dispara notas, decide cuándo mirar.
 - **Verificar audio sin oírlo**: en tests con `OfflineAudioContext`; en el navegador con `jobCount()` y
