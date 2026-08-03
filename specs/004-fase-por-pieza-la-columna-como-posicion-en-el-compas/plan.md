@@ -1,7 +1,7 @@
 # Plan de Implementación — Fase por pieza
 
-> **Bloqueado por el [spec 002](../002-motor-de-audio-propio-sobre-web-audio/plan.md).** Se apoya en
-> `collectHits`, `Job` y `ClockState`, que solo existen con el motor propio mergeado.
+> **Desbloqueado.** Se apoya en `collectHits`, `Job` y `ClockState`, que solo existen con el
+> [spec 002](../002-motor-de-audio-propio-sobre-web-audio/plan.md) mergeado (`1f34eac`).
 
 ## Orden
 

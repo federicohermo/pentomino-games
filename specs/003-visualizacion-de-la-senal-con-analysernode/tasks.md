@@ -1,10 +1,10 @@
 # Tareas — Visualización de la señal con AnalyserNode
 
-> **Bloqueado por el spec 002.** No empezar antes de que el motor propio esté mergeado.
+> **Desbloqueado.** Dependía del spec 002, mergeado en `1f34eac`.
 
 ## Backlog
 - [x] Commitear el spec a `main` **antes** de crear la rama (convención de `specs/README.md`)
-- [ ] Confirmar que el spec 002 está mergeado
+- [x] Confirmar que el spec 002 está mergeado — PR #1 en `main` (`1f34eac`)
 - [ ] **Crear rama** `feature/003-visualizacion-de-la-senal-con-analysernode`
 
 ## Mapeo puro (independiente, mergeable solo)

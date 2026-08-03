@@ -57,8 +57,15 @@ root.render(<React.StrictMode><App /></React.StrictMode>);
 Ya pasó una vez que el archivo quedó truncado en los imports, sin la llamada a `render`. El build
 compila sin quejarse —los imports son válidos— y el `<div id="root">` queda vacío.
 
-**Señal diagnóstica:** si el build emite un solo chunk JS en vez de dos, `App` no es alcanzable desde el
-entry y por lo tanto la app no se monta.
+**Señal diagnóstica:** contar chunks **ya no sirve**. Cuando Tone entraba por import dinámico el build
+emitía dos chunks JS, y ver uno solo delataba que `App` no era alcanzable desde el entry; con el motor
+propio hay un único chunk siempre (ver [deploy.md](../infra/deploy.md#verificar-el-build-localmente)).
+
+La comprobación equivalente hoy es buscar código de la app dentro del bundle:
+
+```bash
+npm run build && grep -c "Tablero" dist/assets/*.js   # 0 → App no entró al bundle
+```
 
 ### `Error: Port XXXX is already in use`
 

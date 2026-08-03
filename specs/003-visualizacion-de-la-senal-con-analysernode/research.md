@@ -35,13 +35,14 @@ No hay visualización de ninguna clase. El tablero muestra la letra de la pieza 
 (o su nota, si se implementa antes el
 [spec 001](../001-notas-por-celda-en-orden-angular/spec.md)), y nada más.
 
-Tampoco hay `AnalyserNode` en el grafo: hoy el grafo lo arma Tone y no se lo toca.
+Tampoco hay `AnalyserNode` en el grafo. Hoy el grafo es propio y sale de `src/audio/engine.ts`:
+`voces → master (gain 0.3) → ctx.destination`, sin ningún nodo intermedio.
 
-## Dependencia dura del spec 002
+## Dependencia dura del spec 002 — resuelta
 
-Este spec **no se puede implementar antes** que el 002. Con Tone, el grafo de audio es interno a la
-librería y no hay un punto donde insertar un `AnalyserNode` sin pelearse con su API. Con el motor
-propio, el nodo maestro es nuestro y conectar el analizador es una línea:
+Este spec **no se podía implementar antes** que el 002, mergeado en `1f34eac`. Con Tone, el grafo de
+audio era interno a la librería y no había un punto donde insertar un `AnalyserNode` sin pelearse con su
+API. Con el motor propio, el nodo maestro es nuestro y conectar el analizador es una línea:
 
 ```ts
 master.connect(analyser);

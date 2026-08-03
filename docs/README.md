@@ -69,4 +69,4 @@ silencio.
 ## Enlaces Rápidos
 
 - [CLAUDE.md](../CLAUDE.md) — Guía para Claude Code
-- [netlify.toml](../../netlify.toml) — Config de deploy (vive en la raíz del repo, no acá)
+- [netlify.toml](../netlify.toml) — Config de deploy (vive en la raíz del repo, no acá)

@@ -1,7 +1,7 @@
 # Plan de Implementación — Visualización de la señal con AnalyserNode
 
-> **Bloqueado por el [spec 002](../002-motor-de-audio-propio-sobre-web-audio/plan.md).** No empezar
-> antes de que el motor propio esté mergeado: con Tone no hay dónde insertar el nodo.
+> **Desbloqueado.** Dependía del [spec 002](../002-motor-de-audio-propio-sobre-web-audio/plan.md)
+> —con Tone no había dónde insertar el nodo—, mergeado en `1f34eac`.
 
 ## Orden
 

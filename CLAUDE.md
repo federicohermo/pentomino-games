@@ -49,7 +49,7 @@ pentominós en un tablero de 10×6 y cada pieza dispara un arpegio de cinco nota
 condición de victoria — al evaluar una feature, la pregunta es si vuelve al instrumento más expresivo,
 no más difícil.
 
-**Organización:** todo el código vive en `src/App.tsx` (~400 líneas), con tres capas separadas por orden
+**Organización:** todo el código vive en `src/App.tsx` (~330 líneas), con tres capas separadas por orden
 dentro del archivo:
 
 1. **Dominio** — funciones puras de geometría (`SHAPES`, `rotateN`, `reflect`, `ANCHOR_INDEX`) y de
@@ -180,7 +180,7 @@ Detalle y los dos errores ya cometidos en
 - **`public/manifest.json`** tiene los valores por defecto de CRA (`"name": "Create React App
   Sample"`).
 - **`setupTests.ts` y las `@testing-library/*`** quedaron sin consumidor: no hay tests de componentes
-  todavía. Los 16 tests actuales son del motor de audio y corren en Node.
+  todavía. Los 17 tests actuales son del motor de audio y corren en Node.
 
 Ya resueltos: los archivos huérfanos de las plantillas de CRA y Vite (`src/App.css`, `src/logo.svg`,
 `src/assets/react.svg`, `public/vite.svg`) y la dependencia `web-vitals`, que quedó sin consumidor

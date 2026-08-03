@@ -150,7 +150,7 @@ export interface ClockState {
 
 ## Estado del código relevante
 
-Sobre la rama `feature/002-motor-de-audio-propio-sobre-web-audio`:
+Sobre `main`, con el spec 002 ya mergeado (`1f34eac`):
 
 | Símbolo | Archivo | Qué le pasa |
 |---|---|---|

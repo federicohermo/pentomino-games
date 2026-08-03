@@ -28,7 +28,7 @@ src/
 ├── vite-env.d.ts      # Tipos de Vite
 └── audio/
     ├── engine.ts        # motor Web Audio: síntesis, scheduler, singletons
-    ├── engine.test.ts   # 16 tests con OfflineAudioContext
+    ├── engine.test.ts   # 17 tests con OfflineAudioContext
     └── test-context.ts  # helpers de render y medición (solo tests)
 ```
 
@@ -43,7 +43,7 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 
 ### Tests
 
-`npm test` corre Vitest en `environment: 'node'` contra `node-web-audio-api`. Los 16 tests actuales son
+`npm test` corre Vitest en `environment: 'node'` contra `node-web-audio-api`. Los 17 tests actuales son
 todos del motor de audio.
 
 **No hay tests de componentes.** El `App.test.tsx` heredado de CRA se eliminó al montar el runner:
