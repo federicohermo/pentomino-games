@@ -50,4 +50,5 @@
 - [ ] Unificar los dos caminos de reproducción: el `scheduleRepeat` de los loops sigue iterando
       `p.notes` y no pasa por el orden angular
 - [ ] Timing dependiente de la geometría (radio → duración, distancia angular → separación temporal)
-- [ ] `web-vitals` es dependencia huérfana; se retira junto con el borrado de `my-app`
+- [x] `web-vitals` es dependencia huérfana — retirada fuera de este spec, con los archivos huérfanos
+      de las plantillas de CRA y Vite

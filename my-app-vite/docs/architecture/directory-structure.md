@@ -27,22 +27,17 @@ src/
 ├── index.css          # @import "tailwindcss" + estilos globales de body/code
 ├── setupTests.ts      # import de @testing-library/jest-dom
 ├── App.test.tsx       # Smoke test heredado de CRA — no hay runner que lo corra
-├── vite-env.d.ts      # Tipos de Vite
-├── App.css            # HUÉRFANO — nadie lo importa
-├── logo.svg           # HUÉRFANO
-└── assets/react.svg   # HUÉRFANO
+└── vite-env.d.ts      # Tipos de Vite
 ```
 
-### Archivos huérfanos
+Todos los archivos de `src/` están vivos. Los residuos de las plantillas de Create React App y de Vite
+(`App.css`, `logo.svg`, `assets/react.svg`) se eliminaron; ninguno estaba referenciado por un import.
 
-`App.css`, `logo.svg` y `assets/react.svg` **no están referenciados por ningún import**. Son residuo de
-las plantillas de Create React App y de Vite, arrastrados por la migración. Verificable:
+Si al agregar un archivo se quiere confirmar que efectivamente se usa:
 
 ```bash
-grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"   # sin resultados
+grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 ```
-
-No se borraron todavía porque ningún trabajo los tocó; borrarlos es seguro y no requiere spec.
 
 ### `App.test.tsx` no corre
 
@@ -63,7 +58,6 @@ Se copia tal cual a `dist/`. Las rutas se referencian desde la raíz del sitio (
 | `favicon.ico`, `logo192.png`, `logo512.png` | Vivos, referenciados desde `index.html` y `manifest.json` |
 | `manifest.json` | Vivo pero **con valores por defecto de CRA** (`"name": "Create React App Sample"`) |
 | `robots.txt` | Vivo |
-| `vite.svg` | Huérfano — plantilla de Vite |
 
 ## Dónde crear cada cosa
 

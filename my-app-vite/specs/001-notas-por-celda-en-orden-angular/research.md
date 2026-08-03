@@ -136,8 +136,9 @@ nota↔celda, no de motor de audio ni de build.
 
 ## Deuda adyacente detectada (fuera de alcance)
 
-- **`web-vitals` es dependencia huérfana** en `package.json`. `reportWebVitals.ts` existía en `my-app`
-  y no se migró; nadie lo importa. Se saca junto con el borrado de `my-app`, no acá.
+- ~~**`web-vitals` es dependencia huérfana** en `package.json`. `reportWebVitals.ts` existía en `my-app`
+  y no se migró; nadie lo importa.~~ — **resuelto** fuera de este spec, junto con los archivos huérfanos
+  de las plantillas.
 - **`App.test.tsx` es el smoke test de CRA** y no hay runner de tests configurado en el proyecto Vite
   (no hay Vitest ni Jest en `package.json`, ni script `test`). Montar el runner es prerrequisito de
   los AC de este spec y está en el `plan.md` §1.

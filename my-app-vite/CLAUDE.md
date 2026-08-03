@@ -171,9 +171,10 @@ Detalle y los dos errores ya cometidos en
 
 ## Estado conocido del repo
 
-- **Archivos huérfanos** en `src/`: `App.css`, `logo.svg`, `assets/react.svg`. Nadie los importa; son
-  residuo de las plantillas de CRA y Vite. Borrarlos es seguro.
 - **`public/manifest.json`** tiene los valores por defecto de CRA (`"name": "Create React App
   Sample"`).
-- **`web-vitals`** es dependencia huérfana: `reportWebVitals.ts` nunca se migró y nadie lo importa.
 - **`src/App.test.tsx`** es el smoke test de CRA y no hay runner que lo corra.
+
+Ya resueltos: los archivos huérfanos de las plantillas de CRA y Vite (`src/App.css`, `src/logo.svg`,
+`src/assets/react.svg`, `public/vite.svg`) y la dependencia `web-vitals`, que quedó sin consumidor
+cuando `reportWebVitals.ts` no se migró.
