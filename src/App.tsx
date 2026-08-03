@@ -3,6 +3,7 @@ import {
   playNow, addJob, clearJobs, setBpm,
   startClock, stopClock, clockRunning, ARPEGGIO_SPREAD,
 } from "./audio/engine";
+import Spectrum from "./components/Spectrum";
 
 /**
  * Pentomino Music — minimal playable prototype
@@ -319,6 +320,13 @@ export default function App(){
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Bottom: señal que sale por el master. No recibe props: lee del motor
+            por su cuenta, para que dibujar a 60 fps no re-renderice nada de acá. */}
+        <div className="col-span-12 bg-white rounded-2xl shadow p-3">
+          <h2 className="text-lg font-semibold mb-2">Señal</h2>
+          <Spectrum />
         </div>
       </div>
 
