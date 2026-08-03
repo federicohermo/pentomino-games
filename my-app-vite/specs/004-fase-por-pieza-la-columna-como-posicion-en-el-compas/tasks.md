@@ -1,10 +1,11 @@
 # Tareas — Fase por pieza: la columna como posición en el compás
 
 ## Backlog
-- [ ] **Esperar a que el [spec 002](../002-motor-de-audio-propio-sobre-web-audio/spec.md) esté
-      mergeado.** Este spec reescribe `collectHits`; hacerlo sobre una rama que todavía no mergeó
-      garantiza el conflicto.
-- [ ] Commitear el spec a `main` **antes** de crear la rama (convención de `specs/README.md`)
+- [x] **Esperar a que el [spec 002](../002-motor-de-audio-propio-sobre-web-audio/spec.md) esté
+      mergeado.** Listo: PR #1 mergeado en `main` (`1f34eac`). Este spec reescribe `collectHits`, así
+      que arrancar antes garantizaba el conflicto.
+- [x] Commitear el spec a `main` **antes** de crear la rama (convención de `specs/README.md`) —
+      commit `2c3ac82`
 - [ ] **Crear rama** `feature/004-fase-por-pieza-la-columna-como-posicion-en-el-compas`
 
 ## Paso 1 — Reloj basado en origen, sin cambio de comportamiento
