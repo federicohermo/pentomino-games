@@ -220,4 +220,4 @@ export const jobCount = () => jobs.size;
   en términos del motor.
 - **`docs/README.md`**, **`docs/guides/quickstart.md`**, **`docs/guides/troubleshooting.md`** — sacar
   Tone del stack, actualizar la receta de verificación de audio y las causas de "no suena nada".
-- **`specs/README.md`** — fila 002 en el índice.
+- **`specs/log.md`** — pasar el estado de 002 de `Propuesto` a `Implementado`.

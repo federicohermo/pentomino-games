@@ -17,11 +17,8 @@ La documentación completa vive en `docs/`. Consultarla antes de hacer cambios a
 | Troubleshooting | [docs/guides/troubleshooting.md](./docs/guides/troubleshooting.md) | Errores reales ya pisados en este repo |
 | Deploy | [docs/infra/deploy.md](./docs/infra/deploy.md) | Netlify, rutas relativas a `base`, versión de Node |
 
-**Trabajo planificado:**
-
-| Spec | Problema |
-|---|---|
-| [specs/001-notas-por-celda-en-orden-angular](./specs/001-notas-por-celda-en-orden-angular/spec.md) | La forma de la pieza no influye en cómo suena: dos piezas con la misma tónica y rotación son indistinguibles al oído |
+**Trabajo planificado y deuda:** el registro completo, con estados y dependencias, está en
+[specs/log.md](./specs/log.md). Es la única fuente — no se duplica acá para que no se desactualice.
 
 ---
 

@@ -57,7 +57,7 @@
 - [ ] `docs/README.md` — sacar Tone del stack
 - [ ] `docs/guides/quickstart.md` — receta de verificación de audio
 - [ ] `docs/guides/troubleshooting.md` — "no suena nada" sin Tone; sacar el fallo de import
-- [ ] `specs/README.md` — fila 002
+- [ ] `specs/log.md` — estado de 002 a `Implementado`
 
 ## PR
 - [ ] Incluir las mediciones: 340.42 kB → ~1.6 kB, y por qué Tone no se podía achicar

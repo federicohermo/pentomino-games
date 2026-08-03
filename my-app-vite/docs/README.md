@@ -20,7 +20,8 @@ secuencia de cinco notas derivada de su identidad y su orientación.
 - [Deploy](./infra/deploy.md) — Netlify, rutas relativas a `base` y versión de Node
 
 ### Specs
-- [specs/README.md](../specs/README.md) — Trabajo planificado y deuda documentada
+- [specs/log.md](../specs/log.md) — Registro de specs, con estados y dependencias
+- [specs/README.md](../specs/README.md) — Convención de formato y flujo de trabajo
 
 ---
 
