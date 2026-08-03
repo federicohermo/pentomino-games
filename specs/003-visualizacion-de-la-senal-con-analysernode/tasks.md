@@ -39,7 +39,9 @@
       `engine.test.ts`: la misma voz renderizada con y sin el nodo da muestras **idénticas**
 - [x] AC5 — medido con dpr 1.25: canvas de 1128×96 CSS con backing store de 1410×120, y al
       angostar el contenedor a 576 CSS el backing pasó a 720. La transformación del contexto
-      queda en (1.25, 1.25)
+      queda en (1.25, 1.25). El `ResizeObserver` solo no alcanzaba: mover la ventana a un
+      monitor con otra densidad cambia el dpr **sin** cambiar el tamaño CSS, así que hay
+      además una media query de `resolution` que se re-arma con cada cambio
 - [x] AC6 — remontaje por HMR: antes y después, exactamente **una** llamada a `rAF` por cuadro
       (gaps de ~7 ms, cero pares en el mismo cuadro). Un loop huérfano habría duplicado la cuenta
 - [x] AC7 — por construcción: `Spectrum.tsx` no tiene `useState` ni llama a ningún setter; el

@@ -82,7 +82,7 @@ un estado de reposo explícito en vez de una línea plana ambigua que parece un 
 - **AC7** — El dibujo **no** dispara renders de React (D3).
 - **AC8** — Con el audio en reposo, el componente muestra su estado de reposo, no una línea plana
   (D4).
-- **AC9** — `npx tsc -b --noEmit` en 0, `npm run build` en verde, `npm test` en verde.
+- **AC9** — `pnpm exec tsc -b --noEmit` en 0, `pnpm build` en verde, `pnpm test` en verde.
 
 ## Fuera de Alcance
 

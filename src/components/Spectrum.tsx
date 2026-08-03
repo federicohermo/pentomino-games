@@ -99,7 +99,23 @@ export default function Spectrum() {
     const box = canvas.parentElement ?? canvas;
     const ro = new ResizeObserver(resize);
     ro.observe(box);
+
+    // El ResizeObserver NO alcanza para cubrir el dpr: arrastrar la ventana a un
+    // monitor con otra densidad cambia devicePixelRatio sin cambiar un solo pixel
+    // CSS, asi que el observer no dispara y el canvas se queda con el backing
+    // store de la pantalla anterior —o sea, borroso— hasta el proximo resize.
+    // La media query se dispara justo cuando el dpr deja de valer lo que valia, y
+    // por eso hay que re-armarla con el valor nuevo cada vez.
+    let dprQuery: MediaQueryList | null = null;
+    const onDprChange = () => { resize(); watchDpr(); };
+    const watchDpr = () => {
+      dprQuery?.removeEventListener('change', onDprChange);
+      dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      dprQuery.addEventListener('change', onDprChange);
+    };
+
     resize();
+    watchDpr();
 
     let raf = 0;
     const draw = () => {
@@ -110,7 +126,11 @@ export default function Spectrum() {
     };
     raf = requestAnimationFrame(draw);
 
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      dprQuery?.removeEventListener('change', onDprChange);
+    };
   }, []);
 
   return (
