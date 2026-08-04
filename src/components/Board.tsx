@@ -18,8 +18,10 @@ import { CELL_PX } from './constants/layout.constants.ts';
  */
 
 interface Props {
-  placed: PlacedPiece[];
-  previewSet: Set<string>;
+  // readonly a la entrada, igual que en domain/board.ts: nunca mutar lo que ya se
+  // entrego a React.
+  placed: readonly PlacedPiece[];
+  previewSet: ReadonlySet<string>;
   previewValid: boolean;
   hover: Cell | null;
   selected: PieceKey;

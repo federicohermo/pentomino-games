@@ -9,7 +9,7 @@ import type { PlacedPiece } from '../domain/types/board.types.ts';
  */
 
 interface Props {
-  placed: PlacedPiece[];
+  placed: readonly PlacedPiece[];
   onRemove: (id: string) => void;
 }
 

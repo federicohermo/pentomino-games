@@ -17,8 +17,11 @@ import { GRID_W, GRID_H } from './constants/board.constants.ts';
  * llama tiene la forma memoizada, asi que no hay que volver a rotar en cada hover.
  * El ancla sale por indice y no por busqueda gracias al invariante del orden del
  * array (ver `transform.ts`).
+ *
+ * `shape` entra `readonly` justamente porque viene memoizada: mutarla seria mutar
+ * un valor que React ya entrego.
  */
-export function cellsAt(shape: Cell[], anchorIndex: number, x: number, y: number): Cell[] {
+export function cellsAt(shape: readonly Cell[], anchorIndex: number, x: number, y: number): Cell[] {
   const [ax, ay] = shape[anchorIndex];
   const ox = x - ax;
   const oy = y - ay;

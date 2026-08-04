@@ -11,9 +11,9 @@ import { PREVIEW_CELL_PX } from './constants/layout.constants.ts';
  */
 
 interface Props {
-  shape: Cell[];
+  shape: readonly Cell[];
   anchor: Cell;
-  noteSet: number[];
+  noteSet: readonly number[];
 }
 
 export default function PiecePreview({ shape, anchor, noteSet }: Props) {

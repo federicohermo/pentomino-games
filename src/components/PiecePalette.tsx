@@ -16,7 +16,7 @@ interface Props {
   mirror: boolean;
   tempo: number;
   loopPlaced: boolean;
-  noteSet: number[];
+  noteSet: readonly number[];
   onSelect: (piece: PieceKey) => void;
   onRotate: (rotation: number) => void;
   onMirror: () => void;
