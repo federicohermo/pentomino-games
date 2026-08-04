@@ -46,16 +46,34 @@ onset anterior a `fromTime` (AC4 sigue en verde), así que se documentó en vez 
 ## Paso 3 — App
 - [x] El efecto de reconciliación pasa `phase: ax / GRID_W` desde `p.cells[ANCHOR_INDEX[p.piece]]`
 - [x] AC8 — misma pieza en columnas distintas → `phase` distinta; misma columna → misma `phase`.
-      Verificado en el navegador (ver más abajo por qué no hay test)
+      Verificado **midiendo, no clickeando** (ver abajo)
 - [x] Confirmar que `playNow` al colocar **no** lleva fase (D5) — sin cambios
 - [x] Confirmar que `handleCellClick`, `resetBoard` y la limpieza al desmontar **no** se tocan — ninguno
       se tocó
 
-**AC8 no tiene test automático, y no es descuido:** `react-refresh/only-export-components` prohíbe que
-`App.tsx` exporte algo además del componente, así que `ANCHOR_INDEX`, `GRID_W` y `cellsAt` no se pueden
-importar desde un test. Es la misma medición que motivó al
+### Cómo se verificó AC8, y por qué no quedó como test
+
+**No hay test permanente de AC8, y no es descuido:** `react-refresh/only-export-components` prohíbe que
+`App.tsx` exporte algo además del componente, así que `SHAPES`, `ANCHOR_INDEX` y `GRID_W` no se pueden
+importar desde un test. Se comprobó ejecutando `eslint` con los exports puestos: **4 errores**, uno por
+export. Es la misma medición que motivó al
 [spec 005](../005-modularizacion-de-src-en-capas/spec.md), pisada ahora desde el otro lado. Cuando 005
 extraiga las puras a `src/domain/`, AC8 pasa a ser un test de tres líneas.
+
+El plan preveía verificarlo clickeando en el navegador. Se hizo algo más fuerte y reproducible: un
+arnés temporal —exports agregados, medido, y todo revertido; el árbol quedó idéntico— que corre las
+`SHAPES`, `rotateN`, `reflect` y `ANCHOR_INDEX` reales sobre **las 96 combinaciones de pieza × rotación
+× reflexión, por las 10 columnas** (960 colocaciones) y afirma:
+
+- `cells[ANCHOR_INDEX[piece]][0] === x` — la celda de agarre queda **exactamente** en la columna
+  clickeada, en las 960. Es el invariante de orden del array ejercido de punta a punta.
+- `0 ≤ phase < 1`, y `phase === x / GRID_W`.
+- Las 10 columnas dan 10 fases distintas, en cada una de las 96 combinaciones.
+- Cada columna da **una sola** fase, sin importar pieza, rotación ni reflexión.
+
+Dos clicks en el navegador habrían cubierto 2 de esas 960. Lo que la verificación automática **no**
+cubre es que el click del usuario llegue a `handleCellClick` con la columna correcta; eso ya lo sostiene
+el fantasma de previsualización, que dibuja el punto de agarre y existía antes de este spec.
 
 ## Verificación
 - [x] `pnpm exec tsc -b --noEmit` en 0 (AC10)
