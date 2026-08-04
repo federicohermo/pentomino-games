@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { readSpectrum } from '../audio/engine';
-import { binsToBars } from '../audio/spectrum';
+import { readSpectrum } from '../audio/engine.ts';
+import { binsToBars } from '../audio/spectrum.ts';
 
 /**
  * Espectro de la senal que sale por el master, dibujado en un canvas.

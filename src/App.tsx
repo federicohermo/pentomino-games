@@ -1,8 +1,9 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import {
   playNow, addJob, clearJobs, setBpm,
-  startClock, stopClock, clockRunning, ARPEGGIO_SPREAD,
+  startClock, stopClock, clockRunning,
 } from "./audio/engine.ts";
+import { ARPEGGIO_SPREAD, DEFAULT_BPM } from "./audio/constants/engine.constants.ts";
 import { rotateN, reflect } from "./domain/transform.ts";
 import { midiName, notesForRotation } from "./domain/music.ts";
 import { cellsAt, isValid, occupantAt } from "./domain/board.ts";
@@ -38,7 +39,8 @@ export default function App(){
   const [selected, setSelected] = useState<PieceKey>('F');
   const [rotation, setRotation] = useState<number>(0); // 0..3
   const [mirror, setMirror] = useState<boolean>(false);
-  const [tempo, setTempo] = useState<number>(110);
+  // Arranca del mismo numero que el motor: DEFAULT_BPM es una sola declaracion.
+  const [tempo, setTempo] = useState<number>(DEFAULT_BPM);
   const [loopPlaced, setLoopPlaced] = useState<boolean>(false);
 
   // placed pieces

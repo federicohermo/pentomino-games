@@ -1,209 +1,27 @@
-/**
- * Motor de audio sobre Web Audio.
- *
- * Tres piezas, en este orden:
- *   1. Sintesis  — una voz por nota: oscilador + envolvente ADSR.
- *   2. Scheduler — lookahead: un temporizador grueso agenda con anticipacion
- *                  contra el reloj de audio.
- *   3. App layer — el singleton del AudioContext y las funciones que usa la UI.
- *
- * Las dos primeras reciben el contexto por parametro y no tocan el singleton:
- * es lo que permite renderizarlas con un OfflineAudioContext en los tests.
- */
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 1. Sintesis
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** MIDI a Hz. A4 = 69 = 440 Hz. */
-export const midiToHz = (m: number): number => 440 * Math.pow(2, (m - 69) / 12);
-
-export interface VoiceOpts {
-  attack?: number;
-  decay?: number;
-  sustain?: number;
-  release?: number;
-  type?: OscillatorType;
-}
-
-export const DEFAULT_VOICE: Required<VoiceOpts> = {
-  attack: 0.005,
-  decay: 0.06,
-  sustain: 0.5,
-  release: 0.12,
-  type: 'triangle',
-};
+import type { Job, ClockState } from './types/scheduler.types.ts';
+import { midiToHz, scheduleVoice } from './voice.ts';
+import { collectHits } from './scheduler.ts';
+import { NOTE_DUR } from './constants/voice.constants.ts';
+import { LOOKAHEAD, TICK_MS } from './constants/scheduler.constants.ts';
+import {
+  MASTER_GAIN, ARPEGGIO_SPREAD, DEFAULT_BPM, PLAY_DELAY, CLOCK_START_DELAY,
+  FFT_SIZE, SMOOTHING,
+} from './constants/engine.constants.ts';
 
 /**
- * Agenda UNA nota. `at` es tiempo absoluto del reloj del contexto, no un delay.
+ * Capa de aplicacion del audio: los singletons y la API que consume la UI.
  *
- * El `setValueAtTime(0, at)` inicial no es redundante: las rampas de Web Audio
- * interpolan desde el ultimo evento agendado, asi que sin ese ancla la rampa
- * arranca en el valor que haya quedado y se oye un click.
+ * Es la unica de las tres capas que toca el `AudioContext` global. `voice.ts` y
+ * `scheduler.ts` lo reciben por parametro y no importan este modulo, asi que la
+ * separacion que antes sostenia un comentario ahora la sostiene el grafo de
+ * imports — y es lo que permite renderizarlas con un OfflineAudioContext.
  *
- * Las rampas son lineales y no exponenciales porque exponentialRampToValueAtTime
- * no admite llegar a 0 — habria que rampar a un epsilon y cortar.
+ * NO es un barrel: no re-exporta voice ni scheduler en bloque.
  */
-export function scheduleVoice(
-  ctx: BaseAudioContext,
-  dest: AudioNode,
-  freq: number,
-  at: number,
-  dur = 0.35,
-  vel = 0.8,
-  opts: VoiceOpts = {},
-): void {
-  const { attack, decay, sustain, release, type } = { ...DEFAULT_VOICE, ...opts };
-  const osc = ctx.createOscillator();
-  const env = ctx.createGain();
-
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, at);
-
-  env.gain.setValueAtTime(0, at);
-  env.gain.linearRampToValueAtTime(vel, at + attack);
-  env.gain.linearRampToValueAtTime(vel * sustain, at + attack + decay);
-  env.gain.setValueAtTime(vel * sustain, at + dur);
-  env.gain.linearRampToValueAtTime(0, at + dur + release);
-
-  osc.connect(env);
-  env.connect(dest);
-  osc.start(at);
-  osc.stop(at + dur + release + 0.01);
-  osc.onended = () => { osc.disconnect(); env.disconnect(); };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 2. Scheduler con lookahead
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Una pieza colocada que re-dispara su secuencia cada compas. */
-export interface Job {
-  id: string;
-  notes: number[];
-  /** segundos entre notas consecutivas del arpegio */
-  spread: number;
-  /**
-   * Posicion del job dentro del compas, `0 <= phase < 1`.
-   *
-   * Fraccion y no segundos: asi el patron se mantiene proporcional al cambiar el
-   * tempo, en vez de quedar atado al bpm con el que se creo el job.
-   *
-   * Obligatorio y sin default a proposito: un `phase?: number` dejaria pasar en
-   * silencio el caso de agregar un job y olvidarse la fase, que es exactamente el
-   * bug que este campo corrige.
-   */
-  phase: number;
-}
-
-export interface ClockState {
-  /** instante del compas 0 en el reloj del contexto */
-  origin: number;
-  /**
-   * Hasta donde ya se emitieron onsets. Sin esto cada onset se emitiria cuatro
-   * veces: los ticks son de 25 ms y el horizonte de 100 ms, asi que las ventanas
-   * consecutivas se solapan.
-   */
-  scheduledUntil: number;
-}
-
-export interface Hit {
-  hz: number;
-  at: number;
-}
-
-/** Cuanto futuro se agenda en cada vuelta del temporizador. */
-export const LOOKAHEAD = 0.1;
-/** Cada cuanto despierta el temporizador. No dispara notas: decide cuando mirar. */
-export const TICK_MS = 25;
-
-const barDuration = (bpm: number) => (60 / bpm) * 4;
-
-/**
- * Primer onset de un job estrictamente posterior a `after`.
- *
- * `floor(x) + 1` y no `ceil(x)`: se quiere el primer k con onset > after, no >=.
- * Con `ceil`, un onset que cae exacto en el borde de una ventana se emitiria dos
- * veces — al cerrar una ventana y al abrir la siguiente.
- *
- * `k` puede salir negativo si `after` cae antes del origen, y esta bien: la
- * progresion esta definida para todo k. Solo pasa en la primera ventana despues
- * de startClock, con fases cercanas a 1, y a lo sumo emite la cola del compas -1
- * en los 50 ms previos al downbeat inicial. Nunca produce un onset anterior a
- * `after`, que es la propiedad que importa.
- */
-function firstOnsetAfter(after: number, origin: number, bar: number, phase: number): number {
-  const k = Math.floor((after - origin) / bar - phase) + 1;
-  return origin + (k + phase) * bar;
-}
-
-/**
- * Decide QUE suena y CUANDO, sin producir sonido. Separarlo de scheduleVoice es
- * lo que hace testeable al scheduler: se lo puede llamar con tiempos arbitrarios
- * y comparar contra lo esperado, sin depender de tiempo real.
- *
- * Los onsets de un job son la progresion `origin + (k + phase) * bar`. Resolver
- * el primer `k` en forma cerrada, en vez de avanzar un cursor de compas, es lo
- * que permite que cada job tenga su propio desplazamiento sin emitir un compas
- * entero de una: **nunca se compromete mas de `horizon` de audio**, asi que
- * quitar una pieza la calla casi al instante.
- *
- * Muta `state.scheduledUntil`.
- */
-export function collectHits(
-  fromTime: number,
-  horizon: number,
-  bpm: number,
-  jobs: Iterable<Job>,
-  state: ClockState,
-): Hit[] {
-  const bar = barDuration(bpm);
-  const until = fromTime + horizon;
-  const out: Hit[] = [];
-
-  // Arrancar desde scheduledUntil evita re-emitir lo que ya salio en la ventana
-  // anterior; arrancar desde fromTime cuando el reloj se adelanto DESCARTA los
-  // compases perdidos por el estrangulamiento de la pestana en vez de intentar
-  // recuperarlos. Es lo que reemplaza a la guarda de recuperacion explicita del
-  // spec 002: no hay bucle que acotar, porque el primer k sale en forma cerrada
-  // y saltear 10 compases cuesta lo mismo que saltear 1.
-  const from = Math.max(state.scheduledUntil, fromTime);
-  // Sin este corte, una ventana mas chica que la anterior haria RETROCEDER
-  // scheduledUntil y lo ya emitido volveria a salir.
-  if (from >= until) return out;
-
-  // El parametro sigue siendo Iterable y tick() pasa jobs.values(), un iterador
-  // de una sola pasada: acá se recorre exactamente una vez porque el bucle de
-  // compases quedo adentro, no afuera. No hace falta materializar.
-  for (const job of jobs) {
-    // `at += bar` acumula error de punto flotante, y lo que lo vuelve inofensivo
-    // es que cada llamada recalcula el primer onset desde origin: no hay deriva
-    // ENTRE llamadas, que es donde si importaria. Ademas, como lo llama tick()
-    // el bucle da a lo sumo una vuelta —horizonte de 0.1 s contra un compas de
-    // 1.5 s a 160 bpm, el mas corto que permite la UI—, pero eso es una
-    // propiedad de ESE llamador y no de la funcion: con un horizonte de varios
-    // compases da varias vueltas, y los tests la usan asi a proposito.
-    for (let at = firstOnsetAfter(from, state.origin, bar, job.phase); at <= until; at += bar) {
-      job.notes.forEach((m, i) => out.push({ hz: midiToHz(m), at: at + i * job.spread }));
-    }
-  }
-
-  state.scheduledUntil = until;
-  return out;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. Capa de aplicacion — singletons
-// ─────────────────────────────────────────────────────────────────────────────
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let analyser: AnalyserNode | null = null;
-
-/** 128 bins (fftSize / 2). Suficiente para visualizar, insuficiente para afinar. */
-export const FFT_SIZE = 256;
-/** Promediado temporal entre lecturas: sin el la animacion tiembla; de mas, es melaza. */
-export const SMOOTHING = 0.8;
 
 /**
  * El AudioContext vive a nivel de modulo: hay uno por pestana, no uno por
@@ -218,7 +36,7 @@ export function audio(): AudioContext | null {
   try {
     ctx = new AudioContext();
     master = ctx.createGain();
-    master.gain.value = 0.3;
+    master.gain.value = MASTER_GAIN;
 
     // El analizador va ENTRE el master y el destino, no colgado de una rama
     // paralela: asi ve exactamente la mezcla que sale por los parlantes. Es
@@ -261,10 +79,6 @@ export function readSpectrum(): Uint8Array | null {
   return freqBuf;
 }
 
-/** Espaciado del arpegio, en segundos. Igual para el disparo directo y el loop. */
-export const ARPEGGIO_SPREAD = 0.15;
-const NOTE_DUR = 0.35;
-
 /**
  * Dispara un arpegio contra el singleton, ya mismo.
  *
@@ -279,7 +93,7 @@ const NOTE_DUR = 0.35;
 export function playNotes(notes: number[]): void {
   const c = audio();
   if (!c || !master) return;
-  const start = c.currentTime + 0.02;
+  const start = c.currentTime + PLAY_DELAY;
   notes.forEach((m, i) => scheduleVoice(c, master!, midiToHz(m), start + i * ARPEGGIO_SPREAD, NOTE_DUR));
 }
 
@@ -296,7 +110,7 @@ export function playNow(notes: number[]): void {
 const jobs = new Map<string, Job>();
 const clock: ClockState = { origin: 0, scheduledUntil: 0 };
 let timer: number | null = null;
-let bpm = 110;
+let bpm = DEFAULT_BPM;
 
 export const setBpm = (v: number): void => { bpm = v; };
 export const addJob = (job: Job): void => { jobs.set(job.id, job); };
@@ -319,10 +133,7 @@ export function startClock(): void {
   const c = audio();
   if (!c) return;
   if (c.state === 'suspended') void c.resume();
-  // El margen de 0.05 le da al primer tick (25 ms) tiempo de llegar antes del
-  // compas 0. Si el temporizador se atrasa mas que eso, el downbeat inicial se
-  // saltea en vez de recuperarse — coherente con el resto del reloj.
-  clock.origin = c.currentTime + 0.05;
+  clock.origin = c.currentTime + CLOCK_START_DELAY;
   // Estrictamente ANTES de origin: firstOnsetAfter devuelve el primer onset
   // POSTERIOR a lo ya emitido, asi que con scheduledUntil = origin el downbeat
   // del compas 0 se saltearia y el primer sonido llegaria un compas tarde.
