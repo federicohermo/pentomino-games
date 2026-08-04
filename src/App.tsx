@@ -5,35 +5,34 @@ import {
 } from "./audio/engine.ts";
 import { ARPEGGIO_SPREAD, DEFAULT_BPM } from "./audio/constants/engine.constants.ts";
 import { rotateN, reflect } from "./domain/transform.ts";
-import { midiName, notesForRotation } from "./domain/music.ts";
-import { cellsAt, isValid, occupantAt } from "./domain/board.ts";
+import { notesForRotation } from "./domain/music.ts";
+import { cellsAt, isValid } from "./domain/board.ts";
 import { SHAPES, ANCHOR_INDEX } from "./domain/constants/pieces.constants.ts";
-import { GRID_W, GRID_H } from "./domain/constants/board.constants.ts";
-import { CHROMATIC, BASE_MAP, DEFAULT_OCTAVE } from "./domain/constants/music.constants.ts";
+import { GRID_W } from "./domain/constants/board.constants.ts";
+import { BASE_MAP, DEFAULT_OCTAVE } from "./domain/constants/music.constants.ts";
 import type { Cell } from "./domain/types/transform.types.ts";
 import type { PieceKey } from "./domain/types/pieces.types.ts";
 import type { PlacedPiece } from "./domain/types/board.types.ts";
+import PiecePalette from "./components/PiecePalette.tsx";
+import Board from "./components/Board.tsx";
+import PiecePreview from "./components/PiecePreview.tsx";
+import PlacedList from "./components/PlacedList.tsx";
 import Spectrum from "./components/Spectrum.tsx";
 
 /**
- * Pentomino Music — minimal playable prototype
- * - Left: palette of 12 pentomino pieces (F, I, L, N, P, T, U, V, W, X, Y, Z)
- * - Center: grid (10x6 by default). Click a cell to place the selected piece if it fits.
- * - Right: controls for rotation (0/90/180/270), reflection (on/off), clock, tempo.
- * - Audio: when a piece is placed, we generate its 5-note pentatonic sequence according to the rotation/reflection policy
- *          and play it. Optionally "Loop placed" makes each placed piece re-trigger every bar.
+ * Pentomino Music — prototipo de instrumento, no un juego con reglas de resolucion.
  *
- * Policies (as acordado):
- *  rotation 0°  -> major pentatonic (0,2,4,7,9)
- *  rotation 90° -> minor pentatonic (0,3,5,7,10)
- *  rotation 180°-> minor pent + blue (0,3,5,6,7)
- *  rotation 270°-> major pent transposed +7 semitones
- *  reflection -> retrograde (reverse order of the 5 notes)
+ * El usuario coloca pentominos en un tablero de 10x6 y cada pieza dispara un
+ * arpegio de cinco notas. Que pieza determina la tonica, la rotacion la formula de
+ * escala, la reflexion el orden de las notas, y la columna de la celda de agarre la
+ * posicion dentro del compas.
+ *
+ * Este archivo es el shell: estado, derivados, handlers y efectos. La geometria, la
+ * musica y las reglas del tablero viven en `src/domain/`; el sonido en
+ * `src/audio/`; y el JSX, en los cuatro componentes de `src/components/`.
+ *
+ * Ver docs/architecture/modelo-musical.md y docs/architecture/audio.md.
  */
-
-// La geometría, la música y las reglas del tablero viven en src/domain/; el
-// sonido, en src/audio/engine.ts. Ver docs/architecture/modelo-musical.md y
-// docs/architecture/audio.md.
 
 export default function App(){
   const [selected, setSelected] = useState<PieceKey>('F');
@@ -134,119 +133,39 @@ export default function App(){
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4">
       <div className="max-w-6xl mx-auto grid grid-cols-12 gap-4">
-        {/* Left: palette */}
-        <div className="col-span-12 md:col-span-3 bg-white rounded-2xl shadow p-3">
-          <h2 className="text-lg font-semibold mb-2">Piezas</h2>
-          <div className="grid grid-cols-6 gap-2">
-            {(Object.keys(SHAPES) as PieceKey[]).map(key=> (
-              <button
-                key={key}
-                onClick={()=> setSelected(key)}
-                className={`px-2 py-1 rounded-lg border text-sm ${selected===key? 'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}
-              >{key}</button>
-            ))}
-          </div>
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-medium">Rotación</span>
-              <div className="flex gap-1">
-                {[0,1,2,3].map(r=> (
-                  <button key={r} onClick={()=> setRotation(r)} className={`px-2 py-1 rounded ${rotation===r?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{r*90}°</button>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-medium">Reflexión</span>
-              <button onClick={()=> setMirror(m=>!m)} className={`px-3 py-1 rounded ${mirror?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{mirror? 'ON':'OFF'}</button>
-            </div>
-            <div className="pt-2 text-sm text-slate-600">
-              <p><b>{selected}</b> → tónica {CHROMATIC[BASE_MAP[selected]]}</p>
-              <p>Notas actuales: {noteSet.map(m => midiName(m)).join(" · ")}</p>
-            </div>
-            <div className="mt-4 border-t pt-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-medium">Tempo</span>
-                <input type="range" min={60} max={160} value={tempo} onChange={e=>setTempo(parseInt(e.target.value))} />
-                <span className="tabular-nums w-10 text-right">{tempo}</span>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={toggleClock} className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700">Loop</button>
-                <button onClick={resetBoard} className="px-3 py-1 rounded bg-slate-200 hover:bg-slate-300">Reset</button>
-              </div>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={loopPlaced} onChange={e=>setLoopPlaced(e.target.checked)} />
-                Loop de piezas colocadas (cada 1 compás)
-              </label>
-            </div>
-          </div>
-        </div>
+        <PiecePalette
+          selected={selected}
+          rotation={rotation}
+          mirror={mirror}
+          tempo={tempo}
+          loopPlaced={loopPlaced}
+          noteSet={noteSet}
+          onSelect={setSelected}
+          onRotate={setRotation}
+          onMirror={()=> setMirror(m=>!m)}
+          onTempo={setTempo}
+          onToggleLoopPlaced={setLoopPlaced}
+          onToggleClock={toggleClock}
+          onReset={resetBoard}
+        />
 
-        {/* Center: board */}
-        <div className="col-span-12 md:col-span-6 bg-white rounded-2xl shadow p-4">
-          <h2 className="text-lg font-semibold mb-3">Tablero {GRID_W}×{GRID_H}</h2>
-          <div className="relative">
-            <div
-              className="grid"
-              style={{gridTemplateColumns:`repeat(${GRID_W}, 28px)`}}
-              onMouseLeave={()=> setHover(null)}
-            >
-              {Array.from({length: GRID_W*GRID_H}, (_,i)=>{
-                const x = i % GRID_W; const y = Math.floor(i/GRID_W);
-                const occ = occupantAt(placed, x, y);
-                const ghost = previewSet.has(`${x},${y}`);
-                let tone: string;
-                if (occ && ghost) tone = 'bg-rose-500 text-white';   // choque contra pieza colocada
-                else if (occ) tone = 'bg-slate-900 text-white';
-                else if (ghost) tone = previewValid? 'bg-emerald-300' : 'bg-rose-200';
-                else tone = 'bg-white hover:bg-slate-100';
-                return (
-                  <div key={i}
-                       onClick={()=> handleCellClick(x,y)}
-                       onMouseEnter={()=> setHover([x,y])}
-                       className={`w-7 h-7 border border-slate-300 -m-px flex items-center justify-center text-[10px] ${previewValid || !hover? 'cursor-pointer':'cursor-not-allowed'} ${tone}`}
-                       title={`(${x},${y})`}
-                  >{occ? occ.piece: (ghost? selected : '')}</div>
-                );
-              })}
-            </div>
+        <Board
+          placed={placed}
+          previewSet={previewSet}
+          previewValid={previewValid}
+          hover={hover}
+          selected={selected}
+          onCellClick={handleCellClick}
+          onCellEnter={setHover}
+          onMouseLeave={()=> setHover(null)}
+        >
+          <PiecePreview shape={transformedShape} anchor={anchor} noteSet={noteSet} />
+        </Board>
 
-            {/* ghost preview of current transformed shape at 0,0 */}
-            <div className="mt-3">
-              <span className="text-sm text-slate-600">Previsualización (el punto marca dónde agarra el cursor):</span>
-              <div className="grid mt-1" style={{gridTemplateColumns:`repeat(${Math.max(...transformedShape.map(c=>c[0]))+1}, 20px)`}}>
-                {Array.from({length: (Math.max(...transformedShape.map(c=>c[0]))+1) * (Math.max(...transformedShape.map(c=>c[1]))+1)}, (_,i)=>{
-                  const x = i % (Math.max(...transformedShape.map(c=>c[0]))+1);
-                  const y = Math.floor(i / (Math.max(...transformedShape.map(c=>c[0]))+1));
-                  const on = transformedShape.some(([cx,cy])=> cx===x && cy===y);
-                  const isAnchor = anchor[0]===x && anchor[1]===y;
-                  return <div key={i} className={`w-5 h-5 border border-slate-200 -m-px flex items-center justify-center ${on? 'bg-slate-800':'bg-white'}`}>
-                    {isAnchor && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>}
-                  </div>
-                })}
-              </div>
-              <div className="text-xs text-slate-600 mt-1">Notas: {noteSet.map(m=>midiName(m)).join(' · ')}</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: placed list / info */}
-        <div className="col-span-12 md:col-span-3 bg-white rounded-2xl shadow p-3">
-          <h2 className="text-lg font-semibold mb-2">Piezas colocadas</h2>
-          <div className="space-y-2 max-h-[60vh] overflow-auto pr-1">
-            {placed.length===0 && <div className="text-slate-500 text-sm">(Vacío — hacé click en el tablero para colocar la pieza seleccionada)</div>}
-            {placed.map(p=> (
-              <div key={p.id} className="p-2 rounded-xl bg-slate-50 border border-slate-200">
-                <div className="flex items-center justify-between">
-                  <div className="font-medium">{p.piece} {p.rotation*90}° {p.mirror? '⥯':''}</div>
-                  <button onClick={()=> setPlaced(arr=> arr.filter(q=> q.id!==p.id))}
-                          className="text-xs px-2 py-0.5 rounded bg-rose-600 text-white">Quitar</button>
-                </div>
-                <div className="text-xs text-slate-600">Notas: {p.notes.map(m=>midiName(m)).join(' · ')}</div>
-                <div className="text-[10px] text-slate-500 mt-1">Celdas: {p.cells.map(([x,y])=>`(${x},${y})`).join(' ')}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <PlacedList
+          placed={placed}
+          onRemove={id=> setPlaced(arr=> arr.filter(q=> q.id!==id))}
+        />
 
         {/* Bottom: señal que sale por el master. No recibe props: lee del motor
             por su cuenta, para que dibujar a 60 fps no re-renderice nada de acá. */}
