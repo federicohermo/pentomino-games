@@ -5,7 +5,9 @@ import {
 } from "./audio/engine.ts";
 import { rotateN, reflect } from "./domain/transform.ts";
 import { midiName, notesForRotation } from "./domain/music.ts";
+import { cellsAt, isValid, occupantAt } from "./domain/board.ts";
 import { SHAPES, ANCHOR_INDEX } from "./domain/constants/pieces.constants.ts";
+import { GRID_W, GRID_H } from "./domain/constants/board.constants.ts";
 import { CHROMATIC, BASE_MAP, DEFAULT_OCTAVE } from "./domain/constants/music.constants.ts";
 import type { Cell } from "./domain/types/transform.types.ts";
 import type { PieceKey } from "./domain/types/pieces.types.ts";
@@ -28,11 +30,9 @@ import Spectrum from "./components/Spectrum.tsx";
  *  reflection -> retrograde (reverse order of the 5 notes)
  */
 
-// La geometría y la música viven en src/domain/; el sonido, en src/audio/engine.ts.
-// Ver docs/architecture/modelo-musical.md y docs/architecture/audio.md.
-
-// Board state
-const GRID_W = 10; const GRID_H = 6;
+// La geometría, la música y las reglas del tablero viven en src/domain/; el
+// sonido, en src/audio/engine.ts. Ver docs/architecture/modelo-musical.md y
+// docs/architecture/audio.md.
 
 export default function App(){
   const [selected, setSelected] = useState<PieceKey>('F');
@@ -68,25 +68,9 @@ export default function App(){
   // Celda de agarre ya transformada: el click en (x,y) la deja justo ahí.
   const anchor = transformedShape[ANCHOR_INDEX[selected]];
 
-  // Celdas del tablero que ocuparía la pieza si se la coloca apuntando a (x,y).
-  function cellsAt(x: number, y: number): Cell[]{
-    const ox = x - anchor[0];
-    const oy = y - anchor[1];
-    return transformedShape.map(([cx,cy]): Cell => [cx+ox, cy+oy]);
-  }
-
-  function isValid(cells: Cell[]): boolean{
-    if (cells.some(([x,y])=> x<0 || y<0 || x>=GRID_W || y>=GRID_H)) return false;
-    for (const p of placed){
-      const set = new Set(p.cells.map(([x,y])=>`${x},${y}`));
-      if (cells.some(([x,y])=> set.has(`${x},${y}`))) return false;
-    }
-    return true;
-  }
-
   function handleCellClick(x: number, y: number){
-    const cells = cellsAt(x,y);
-    if (!isValid(cells)) return;
+    const cells = cellsAt(transformedShape, ANCHOR_INDEX[selected], x, y);
+    if (!isValid(cells, placed)) return;
     const newPiece: PlacedPiece = {
       id: String(++idRef.current),
       piece: selected, rotation, mirror, cells, notes: noteSet,
@@ -138,19 +122,11 @@ export default function App(){
     if (clockRunning()) stopClock(); else startClock();
   }
 
-  // helpers for UI
-  function cellOccupied(x: number, y: number): PlacedPiece | null {
-    for (const p of placed){
-      if (p.cells.some(([cx,cy])=> cx===x && cy===y)) return p;
-    }
-    return null;
-  }
-
   // Fantasma: dónde caería la pieza desde la celda bajo el cursor. Las celdas
   // fuera del tablero no se pintan, pero sí cuentan para marcar la jugada
   // como inválida.
-  const previewCells = hover? cellsAt(hover[0], hover[1]) : [];
-  const previewValid = hover? isValid(previewCells) : false;
+  const previewCells = hover? cellsAt(transformedShape, ANCHOR_INDEX[selected], hover[0], hover[1]) : [];
+  const previewValid = hover? isValid(previewCells, placed) : false;
   const previewSet = new Set(previewCells.map(([x,y])=> `${x},${y}`));
 
   return (
@@ -214,7 +190,7 @@ export default function App(){
             >
               {Array.from({length: GRID_W*GRID_H}, (_,i)=>{
                 const x = i % GRID_W; const y = Math.floor(i/GRID_W);
-                const occ = cellOccupied(x,y);
+                const occ = occupantAt(placed, x, y);
                 const ghost = previewSet.has(`${x},${y}`);
                 let tone: string;
                 if (occ && ghost) tone = 'bg-rose-500 text-white';   // choque contra pieza colocada
