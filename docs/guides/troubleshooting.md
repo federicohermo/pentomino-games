@@ -26,11 +26,11 @@ export default defineConfig({ plugins: [react(), tailwindcss()] })
 ```
 
 En v4 la config es CSS-first: no hay archivo de config por defecto y la detección de contenido es
-automática. Para customizar el theme se usa `@theme { }` dentro de `index.css`.
+automática. Para customizar el theme se usa `@theme { }` dentro de `styles/index.css`.
 
 ### Las clases de Tailwind no aplican
 
-Verificar que `src/index.css` empiece con la sintaxis de v4:
+Verificar que `src/styles/index.css` empiece con la sintaxis de v4:
 
 ```css
 @import "tailwindcss";
@@ -42,16 +42,15 @@ error**: simplemente no generan nada, y la app queda sin estilos. Es un fallo si
 Comprobación rápida con el dev server corriendo:
 
 ```bash
-curl -s http://localhost:5173/src/index.css | grep -c "min-h-screen"
+curl -s http://localhost:5173/src/styles/index.css | grep -c "min-h-screen"
 ```
 
 ### La página carga en blanco, sin errores en consola
 
-Revisar que `src/index.tsx` efectivamente monte la app:
+Revisar que `src/main.tsx` efectivamente monte la app:
 
 ```tsx
-const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
-root.render(<React.StrictMode><App /></React.StrictMode>);
+createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
 ```
 
 Ya pasó una vez que el archivo quedó truncado en los imports, sin la llamada a `render`. El build

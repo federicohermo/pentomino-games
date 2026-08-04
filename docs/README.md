@@ -33,7 +33,7 @@ secuencia de cinco notas derivada de su identidad y su orientación.
 | React | 19.x | Biblioteca UI |
 | TypeScript | 5.8 | Tipado estático |
 | Tailwind CSS | 4.x | Estilos utility-first, vía `@tailwindcss/vite` |
-| Web Audio | — | Síntesis y scheduling, sin librería (`src/audio/engine.ts`) |
+| Web Audio | — | Síntesis y scheduling, sin librería (`src/audio/`) |
 
 ---
 

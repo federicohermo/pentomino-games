@@ -1,5 +1,6 @@
 import type { Job, ClockState, Hit } from './types/scheduler.types.ts';
 import { midiToHz } from './voice.ts';
+import { BEATS_PER_BAR } from './constants/scheduler.constants.ts';
 
 /**
  * Scheduler con lookahead: decide QUE suena y CUANDO, sin producir sonido.
@@ -12,7 +13,8 @@ import { midiToHz } from './voice.ts';
  * onsets de cada job —`origin + (k + phase) * bar`— se resuelven en forma cerrada.
  */
 
-const barDuration = (bpm: number) => (60 / bpm) * 4;
+/** Duracion de un compas, en segundos. El 60 es la conversion de minutos a segundos. */
+const barDuration = (bpm: number) => (60 / bpm) * BEATS_PER_BAR;
 
 /**
  * Primer onset de un job estrictamente posterior a `after`.

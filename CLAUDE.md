@@ -57,35 +57,68 @@ pentominós en un tablero de 10×6 y cada pieza dispara un arpegio de cinco nota
 condición de victoria — al evaluar una feature, la pregunta es si vuelve al instrumento más expresivo,
 no más difícil.
 
-**Organización:** el dominio y la UI del tablero viven juntos en `src/App.tsx` (~340 líneas), con tres
-capas separadas por orden dentro del archivo:
+**Organización:** `src/` son cuatro capas en carpetas, con **una sola dirección de dependencia**:
 
-1. **Dominio** — funciones puras de geometría (`SHAPES`, `rotateN`, `reflect`, `ANCHOR_INDEX`) y de
-   música (`BASE_MAP`, `notesForRotation`, `midiName`). Sin React, sin audio.
-2. **Componente `App`** — todo el estado con `useState` local. Sin estado global.
-3. **Audio** — vive aparte, en `src/audio/engine.ts` y `src/audio/spectrum.ts`. `App.tsx` solo le
-   habla: `playNow`, `addJob`, `clearJobs`, `startClock`.
+```
+types/ ← constants/ ← módulos              types/ no importa nada de afuera de types/
+transform.ts ← board.ts                    domain/ no importa nada de fuera de domain/
+             ← music.ts ← invariants.ts    audio/  no importa nada de fuera de audio/
+                                           components/ y App.tsx importan de las dos
+```
 
-Fuera de `App.tsx` hay un solo componente: `src/components/Spectrum.tsx`, el canvas del espectro. No
-recibe props ni las va a recibir — lee del motor por su cuenta para que dibujar a 60 fps no
-re-renderice nada del tablero.
+1. **`domain/`** — puro: sin React, sin Web Audio, sin DOM. `transform.ts` (geometría), `board.ts` (las
+   reglas del tablero), `music.ts` (el modelo musical) e `invariants.ts` (los cinco chequeos). Los datos
+   viven en `domain/constants/` y los tipos en `domain/types/`.
+2. **`audio/`** — habla MIDI y no conoce el dominio. `voice.ts` (síntesis), `scheduler.ts` (lookahead),
+   `engine.ts` (singletons y la API que consume la UI) y `spectrum.ts` (mapeo bins→barras).
+3. **`components/`** — un componente por archivo, presentacionales: reciben datos y callbacks por props,
+   sin estado ni efectos propios. La excepción es `Spectrum.tsx`, que no recibe props y lee del motor
+   por su cuenta para que dibujar a 60 fps no re-renderice nada del tablero.
+4. **`App.tsx`** — el shell: estado con `useState` local, derivados, handlers, los dos efectos y la
+   composición. **Ninguna función pura y ningún literal de dominio.**
 
-Que sea un solo archivo es deliberado a esta escala; la separación por capas **sí** hay que respetarla
-al agregar código. El límite está identificado: al montar tests, las funciones puras se extraen a su
-propio módulo.
+`domain/` y `audio/` son **hermanos sin aristas entre ellos**: el motor habla números MIDI y no sabe qué
+es un pentominó.
+
+Que el dominio viviera dentro de `App.tsx` no era neutral: `react-refresh/only-export-components`
+prohíbe que un `.tsx` exporte algo además del componente, así que las puras **no podían exportarse y por
+lo tanto no podían testearse**. Hoy `domain/` tiene 50 tests donde antes había cero.
 
 ---
 
 ## Invariantes que no hay que romper
 
+### La dirección de dependencia, y la verifica el linter
+
+`domain/` no importa React, ni `audio/`, ni `components/`; `audio/` no importa React, ni `domain/`, ni
+`components/`. No es una convención escrita: `eslint.config.js` tiene un override por capa con
+`@typescript-eslint/no-restricted-imports` —la variante que también ve los `import type`— y un import
+prohibido **falla `pnpm lint`** con el mensaje de la capa.
+
+Los patrones cubren `../` y `../../`, que es la profundidad de hoy. Al crear un subdirectorio nuevo hay
+que agregar el patrón: es una red, no una prueba formal.
+
+### Sin barrels, con extensión explícita, sin alias
+
+Ningún `index.ts` de re-exportación. Todo import local lleva extensión (`./domain/transform.ts`) —
+omitirla **no rompe la app**, porque Vite resuelve igual, así que el error sería invisible del lado del
+navegador y solo aparecería al cargar `domain/` con node crudo. Rutas relativas, sin `@/`.
+
+### Los módulos no declaran constantes
+
+Un `.ts` de capa tiene funciones y nada más; los valores fijos van a `<capa>/constants/`. El motivo es
+medible: antes había cuatro pares de números que tenían que coincidir y nada sincronizaba (`NOTE_DUR`,
+el tempo inicial, y los dos tamaños de celda).
+
 ### El orden del array de celdas
 
-`rotate90`, `normalize` y `reflect` son `map`: **la celda del índice `k` sigue siendo la misma celda
-lógica después de transformar.**
+`rotate90`, `normalize` y `reflect` (en `domain/transform.ts`) son `map`: **la celda del índice `k` sigue
+siendo la misma celda lógica después de transformar.**
 
-`ANCHOR_INDEX` depende de esto —guarda la celda de agarre como índice, no como coordenada— y el spec 001
-va a depender de lo mismo para el mapeo celda↔nota. Filtrar, ordenar o reagrupar celdas dentro de esas
-funciones rompe la colocación de piezas **sin ningún error visible**.
+`ANCHOR_INDEX` depende de esto —guarda la celda de agarre como índice, no como coordenada—, la fase por
+pieza lee la columna del ancla por índice, y el spec 001 va a depender de lo mismo para el mapeo
+celda↔nota. Filtrar, ordenar o reagrupar celdas dentro de esas funciones rompe la colocación de piezas
+**sin ningún error visible**. `checkArrayOrder()` de `domain/invariants.ts` es la red.
 
 ### Toda la gestión de jobs del motor pasa por el efecto de reconciliación
 
@@ -133,12 +166,14 @@ Detalle en [docs/architecture/modelo-musical.md](./docs/architecture/modelo-musi
 
 ## Audio
 
-El motor propio vive en `src/audio/engine.ts`, sobre Web Audio y sin librerías. Tres bloques:
-síntesis, scheduler y capa de aplicación.
+El motor propio vive en `src/audio/`, sobre Web Audio y sin librerías. Tres bloques que son tres
+archivos: `voice.ts` (síntesis), `scheduler.ts` (lookahead) y `engine.ts` (singletons y la API de la UI).
 
-- **Los bloques de síntesis y scheduler reciben el `AudioContext` por parámetro**, nunca del singleton.
-  Es lo que permite renderizarlos con `OfflineAudioContext` en los tests. **No romper esa inyección**:
-  es la diferencia entre audio testeable y audio que solo se puede escuchar.
+- **`voice.ts` y `scheduler.ts` reciben el `AudioContext` por parámetro y NO PUEDEN tocar el
+  singleton**, porque vive en `engine.ts` y ellos no lo importan. Es lo que permite renderizarlos con
+  `OfflineAudioContext` en los tests, y desde el spec 005 lo sostiene el grafo de imports en vez de un
+  comentario. **No romper esa inyección**: es la diferencia entre audio testeable y audio que solo se
+  puede escuchar.
 - **`ctx.resume()` necesita un gesto.** Nada suena antes del primer click. Cualquier feature que quiera
   sonar sin click previo va a quedar muda.
 - **Falla suave**: `audio()` devuelve `null` si Web Audio no está disponible; la app queda usable pero
@@ -173,6 +208,8 @@ síntesis, scheduler y capa de aplicación.
 > Guía completa: [docs/guides/conventions.md](./docs/guides/conventions.md)
 
 - **Español** en comentarios, commits y specs.
+- **Cero `enum`.** El `erasableSyntaxOnly` del tsconfig los rechaza, y es la misma opción que permite
+  que node cargue `src/domain/` sin compilar. Conjunto cerrado = const-object + union type derivado.
 - **Los comentarios explican el porqué**, no el qué: una decisión, una restricción, un bug evitado.
 - **Cero `any` y cero `@ts-ignore`.** Los tres que hubo desaparecieron con Tone y con la lógica
   imperativa de loops: estaban tapando problemas de diseño, no de tipos. Si aparece la tentación de uno
@@ -210,14 +247,20 @@ Detalle y los dos errores ya cometidos en
 
 - **`public/manifest.json`** tiene los valores por defecto de CRA (`"name": "Create React App
   Sample"`).
-- **`setupTests.ts` y las `@testing-library/*`** quedaron sin consumidor: no hay tests de componentes
-  todavía. Los 36 tests actuales son de la capa de audio —27 del motor, 9 del mapeo del espectro— y
-  corren en Node.
-- **La regla del anclaje de la fase a la columna (spec 004, AC8) no tiene test automático**, y no por
-  descuido: `react-refresh/only-export-components` prohíbe que `App.tsx` exporte algo además del
-  componente, así que las puras del tablero no se pueden importar desde un test. Lo resuelve el
-  spec 005 al extraerlas a `src/domain/`. Hasta entonces se verifica en el navegador.
+- **Las `@testing-library/*` siguen sin consumidor**: no hay tests de componentes todavía, y montarlos
+  va a requerir `jsdom` en su propio bloque de config, sin tocar el `environment` global que necesita el
+  audio. Los 86 tests actuales —36 de audio y 50 de dominio— corren en Node.
+- **No hay tests de UI**, así que los cuatro componentes de `components/` se verifican a ojo.
+- **`postcss` y `autoprefixer`** están en `devDependencies` sin ningún config que los use (Tailwind 4 va
+  por el plugin de Vite). Candidatos a borrar.
+- **`@types/jest`** sigue en el árbol y es lo que impide usar `globals: true` en Vitest.
+- **La rotación es un `number` sin acotar**, comparada contra `0|1|2|3` en cuatro lugares. El reemplazo
+  ya está decidido —const-object en `constants/` + union type derivado en `types/`, **nunca un `enum`**,
+  que el `erasableSyntaxOnly` del tsconfig rechaza— pero cambia firmas, así que quedó como seguimiento
+  del spec 005.
 
 Ya resueltos: los archivos huérfanos de las plantillas de CRA y Vite (`src/App.css`, `src/logo.svg`,
-`src/assets/react.svg`, `public/vite.svg`) y la dependencia `web-vitals`, que quedó sin consumidor
-cuando `reportWebVitals.ts` no se migró.
+`src/assets/react.svg`, `public/vite.svg`, `src/setupTests.ts`) y la dependencia `web-vitals`, que quedó
+sin consumidor cuando `reportWebVitals.ts` no se migró. También el anclaje de la fase a la columna
+(spec 004, AC8), que no tenía test automático porque las puras no se podían exportar desde `App.tsx`:
+hoy vive en `domain/board.ts` y lo cubre `domain/__tests__/board.test.ts`.

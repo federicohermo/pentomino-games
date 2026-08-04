@@ -1,5 +1,5 @@
 import type { VoiceOpts } from './types/voice.types.ts';
-import { DEFAULT_VOICE, NOTE_DUR, DEFAULT_VELOCITY } from './constants/voice.constants.ts';
+import { DEFAULT_VOICE, NOTE_DUR, DEFAULT_VELOCITY, RELEASE_TAIL } from './constants/voice.constants.ts';
 
 /**
  * Sintesis: una voz por nota, oscilador mas envolvente ADSR.
@@ -48,7 +48,6 @@ export function scheduleVoice(
   osc.connect(env);
   env.connect(dest);
   osc.start(at);
-  // El colchon sobre el final del release evita cortar la cola de la envolvente.
-  osc.stop(at + dur + release + 0.01);
+  osc.stop(at + dur + release + RELEASE_TAIL);
   osc.onended = () => { osc.disconnect(); env.disconnect(); };
 }

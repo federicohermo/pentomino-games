@@ -17,3 +17,11 @@ export const NOTE_DUR = 0.35;
 
 /** Amplitud de una nota, 0-1. */
 export const DEFAULT_VELOCITY = 0.8;
+
+/**
+ * Colchon entre el final del release y el `stop()` del oscilador, en segundos.
+ *
+ * Sin el, el oscilador se corta justo cuando la envolvente llega a 0 y la cola
+ * queda truncada.
+ */
+export const RELEASE_TAIL = 0.01;
