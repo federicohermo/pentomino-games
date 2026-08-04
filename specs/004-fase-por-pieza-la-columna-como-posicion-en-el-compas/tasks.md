@@ -6,56 +6,103 @@
       que arrancar antes garantizaba el conflicto.
 - [x] Commitear el spec a `main` **antes** de crear la rama (convención de `specs/README.md`) —
       commit `2c3ac82`
-- [ ] **Crear rama** `feature/004-fase-por-pieza-la-columna-como-posicion-en-el-compas`
+- [x] **Crear rama** `feature/004-fase-por-pieza-la-columna-como-posicion-en-el-compas`
 
 ## Paso 1 — Reloj basado en origen, sin cambio de comportamiento
 > Este paso **no debe alterar nada audible**. Si AC2 no queda en verde, parar acá.
 
-- [ ] `ClockState`: `nextBar` → `origin` + `scheduledUntil`
-- [ ] `firstOnsetAfter(after, origin, bar, phase)` — `floor(x) + 1`, no `ceil` (AC3)
-- [ ] `collectHits` reformulada sobre `origin`
-- [ ] Borrar la guarda de recuperación `if (state.nextBar < fromTime)` — queda subsumida por
+- [x] `ClockState`: `nextBar` → `origin` + `scheduledUntil`
+- [x] `firstOnsetAfter(after, origin, bar, phase)` — `floor(x) + 1`, no `ceil` (AC3)
+- [x] `collectHits` reformulada sobre `origin`
+- [x] Borrar la guarda de recuperación `if (state.nextBar < fromTime)` — queda subsumida por
       `Math.max(scheduledUntil, fromTime)` (AC6)
-- [ ] `startClock`: `scheduledUntil = c.currentTime`, **estrictamente antes** de `origin`, o el
+- [x] `startClock`: `scheduledUntil = c.currentTime`, **estrictamente antes** de `origin`, o el
       downbeat del compás 0 se pierde
-- [ ] AC2 — `phase: 0` reproduce los mismos instantes que el cursor de compás
-- [ ] AC3 — ventanas de 25 ms sobre horizonte de 100 ms: ningún onset repetido
-- [ ] AC4 — ningún `hit.at < fromTime`
-- [ ] AC6 — salto de 10 compases: se saltean, no se recuperan
+- [x] AC2 — `phase: 0` reproduce los mismos instantes que el cursor de compás. El test tiene una copia
+      del cursor viejo (`collectHitsPorCursor`) como oráculo: 400 ventanas de 25 ms, mismos instantes
+- [x] AC3 — ventanas de 25 ms sobre horizonte de 100 ms: ningún onset repetido **ni perdido**
+- [x] AC4 — ningún `hit.at < fromTime`
+- [x] AC6 — salto de 10 compases: se saltean, no se recuperan — y el reloj no queda trabado
+
+**Extra que salió del paso 1:** desapareció también la materialización `const list = [...jobs]`. Existía
+porque el `for` de jobs estaba *adentro* del `while` de compases y el iterador de `Map` se agotaba; con
+el bucle de compases adentro del de jobs, los jobs se recorren una sola vez. El test de regresión se
+quedó, ahora como guardia contra volver a invertir los bucles.
 
 ## Paso 2 — `phase` en el `Job`
-- [ ] `Job.phase: number` — **obligatorio**, no opcional con default (el default silencia el bug)
-- [ ] `collectHits` usa `job.phase` (AC1)
-- [ ] AC5 — con `phase: 0.99`, ningún onset más allá de `fromTime + horizon`
-- [ ] AC7 — pico de dos piezas a fase 0/0.5 **menor** que a fase 0/0, y el doble de onsets detectados
-- [ ] AC9 — cambiar el bpm no reordena el patrón: las fases son fracciones
+- [x] `Job.phase: number` — **obligatorio**, no opcional con default (el default silencia el bug).
+      Confirmado por `tsc`: al agregar el campo, `App.tsx` dejó de compilar hasta pasarlo
+- [x] `collectHits` usa `job.phase` (AC1)
+- [x] AC5 — con `phase: 0.99`, ningún onset más allá de `fromTime + horizon`. El test barre
+      0 · 0.25 · 0.5 · 0.99 sobre 400 ventanas
+- [x] AC7 — pico de dos piezas a fase 0/0.5 **menor** que a fase 0/0, y el doble de onsets detectados
+- [x] AC9 — cambiar el bpm no reordena el patrón: las fases son fracciones
+
+**Hallazgo del paso 2, sin cambio de alcance:** `firstOnsetAfter` puede devolver `k` negativo cuando la
+ventana empieza antes del origen. Solo pasa en la primera ventana después de `startClock`, con fases
+cercanas a 1, y a lo sumo emite la cola del compás −1 en los 50 ms previos al downbeat. Nunca produce un
+onset anterior a `fromTime` (AC4 sigue en verde), así que se documentó en vez de caparse.
 
 ## Paso 3 — App
-- [ ] El efecto de reconciliación pasa `phase: ax / GRID_W` desde `p.cells[ANCHOR_INDEX[p.piece]]`
-- [ ] AC8 — misma pieza en columnas distintas → `phase` distinta; misma columna → misma `phase`
-- [ ] Confirmar que `playNow` al colocar **no** lleva fase (D5)
-- [ ] Confirmar que `handleCellClick`, `resetBoard` y la limpieza al desmontar **no** se tocan
+- [x] El efecto de reconciliación pasa `phase: ax / GRID_W` desde `p.cells[ANCHOR_INDEX[p.piece]]`
+- [x] AC8 — misma pieza en columnas distintas → `phase` distinta; misma columna → misma `phase`.
+      Verificado en el navegador (ver más abajo por qué no hay test)
+- [x] Confirmar que `playNow` al colocar **no** lleva fase (D5) — sin cambios
+- [x] Confirmar que `handleCellClick`, `resetBoard` y la limpieza al desmontar **no** se tocan — ninguno
+      se tocó
+
+**AC8 no tiene test automático, y no es descuido:** `react-refresh/only-export-components` prohíbe que
+`App.tsx` exporte algo además del componente, así que `ANCHOR_INDEX`, `GRID_W` y `cellsAt` no se pueden
+importar desde un test. Es la misma medición que motivó al
+[spec 005](../005-modularizacion-de-src-en-capas/spec.md), pisada ahora desde el otro lado. Cuando 005
+extraiga las puras a `src/domain/`, AC8 pasa a ser un test de tres líneas.
 
 ## Verificación
-- [ ] `npx tsc -b --noEmit` en 0 (AC10)
-- [ ] `npm run lint` en 0 (AC10)
-- [ ] `npm test` en verde (AC10)
-- [ ] `npm run build` en verde (AC10)
-- [ ] **Escuchar 3–4 piezas en columnas separadas**: ¿se oyen como eventos distintos o como un acorde
-      repetido? Es la única verificación que decide si el spec cumplió su objetivo
-- [ ] Mover el tempo con el loop corriendo: el patrón se estira, no se reordena
-- [ ] Anotar el pico real de AC7. Si no baja lo predicho, `ARPEGGIO_SPREAD` deja de ser fuera de
-      alcance (ver `research.md`, "Lo que hay que medir")
+- [x] `pnpm exec tsc -b --noEmit` en 0 (AC10)
+- [x] `pnpm lint` en 0 (AC10)
+- [x] `pnpm test` en verde — 36 tests (AC10)
+- [x] `pnpm build` en verde (AC10)
+- [x] **Escuchar 3–4 piezas en columnas separadas.** Queda para el usuario: es la única verificación que
+      decide si el spec cumplió su objetivo, y no se puede automatizar. Lo que sí se midió está en AC7
+- [x] Mover el tempo con el loop corriendo: el patrón se estira, no se reordena — AC9 lo fija en un test
+- [x] Anotar el pico real de AC7 (abajo)
+
+### Los picos reales de AC7
+
+Medidos con `OfflineAudioContext` a 110 bpm, a ganancia unitaria (el master divide por 0.3, así que los
+números del `research.md` son estos × 0.3):
+
+| | pico | onsets detectados |
+|---|---|---|
+| una pieza | 1.396 | 1 |
+| dos piezas a fase 0 y 0 | 2.298 | 1 |
+| dos piezas a fase 0 y 0.5 | **1.396** | **2** |
+| cuatro piezas a fase 0 | 4.596 | 1 |
+| cuatro piezas a fase 0 · 0.25 · 0.5 · 0.75 | **1.749** | 1 |
+
+**Con dos piezas la predicción se cumplió exacta**: desfasarlas deja el pico en el de una pieza sola, ni
+un dígito más. El `research.md` había anticipado que *"entran raspando"* —arpegio de 1.07 s contra medio
+compás de 1.09 s— y entraron.
+
+**Con cuatro no.** El pico baja un 62 % (4.596 → 1.749), que es la mejora buscada, pero los onsets
+**vuelven a fusionarse en uno**: un cuarto de compás son 0.545 s y el arpegio dura 1.07 s, así que cada
+pieza empieza cuando la anterior va por la mitad. Es el comportamiento que el spec declara deseado
+—desfasadas producen textura, alineadas producen volumen— pero **confirma la condición que el spec puso
+para reabrir el alcance**: `ARPEGGIO_SPREAD` en unidades musicales dejó de ser una inconsistencia
+teórica y pasó a ser lo que limita cuántas piezas se distinguen. Sigue fuera de este spec (cambiarlo
+altera cómo suena todo, incluido el disparo al colocar) y queda anotado abajo con la medición que lo
+justifica.
 
 ## Documentación
-- [ ] `docs/architecture/audio.md` — reloj por origen, `phase`, anticipación acotada
-- [ ] `docs/architecture/modelo-musical.md` — fila **columna → posición en el compás**
-- [ ] `CLAUDE.md` — la misma fila en la tabla del modelo musical
-- [ ] `specs/log.md` — estado de 004 a `Implementado`
+- [x] `docs/architecture/audio.md` — reloj por origen, `phase`, anticipación acotada, picos de AC7
+- [x] `docs/architecture/modelo-musical.md` — sección **columna → posición en el compás**
+- [x] `CLAUDE.md` — la misma fila en la tabla del modelo musical, más el reloj por origen en Audio
+- [x] `specs/log.md` — estado de 004 a `Implementado`, nota de revisión con los hallazgos
 
 ## PR
 - [ ] Explicar que el paso 1 es un refactor sin cambio audible y el paso 2 el cambio de producto —
-      idealmente dos commits separados, para que revertir el producto no revierta el scheduler
+      dos commits separados: `60e1220` (scheduler, `phase: 0` en la app) y el siguiente (la columna).
+      Revertir el segundo devuelve el sonido viejo sin tocar el scheduler
 - [ ] Incluir la comparación de picos de AC7
 - [ ] Nombrar la limitación conocida: **sin retroalimentación visual la fase se oye pero no se lee**
 - [ ] `/pr-review` antes de pedir revisión
@@ -64,7 +111,11 @@
 - [ ] **Cabeza lectora en el tablero.** Es lo que vuelve legible a esta feature; encaja con el
       [spec 003](../003-visualizacion-de-la-senal-con-analysernode/spec.md), que ya trae el canvas
 - [ ] Que la fila (`y`) determine algo: octava, duración o velocity. Un eje por vez
-- [ ] `ARPEGGIO_SPREAD` en unidades musicales en vez de 0.15 s absolutos
+- [ ] **`ARPEGGIO_SPREAD` en unidades musicales en vez de 0.15 s absolutos — ahora con medición que lo
+      justifica**: con cuatro piezas desfasadas los onsets se fusionan porque el arpegio (1.07 s) es el
+      doble de un cuarto de compás (0.545 s) a 110 bpm
+- [ ] **AC8 como test**, apenas el [spec 005](../005-modularizacion-de-src-en-capas/spec.md) saque las
+      puras del tablero de `App.tsx`
 - [ ] Cuantización configurable (10 pasos / semicorcheas / tresillos)
 - [ ] Mover una pieza sin quitarla y volver a colocarla — hoy no existe, y con fase se vuelve un gesto
       musical y no solo visual

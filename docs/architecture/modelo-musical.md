@@ -1,18 +1,60 @@
 # Modelo Musical
 
-Cómo se traduce una pieza colocada en cinco notas. Todo lo de este documento vive en las funciones puras
-de `src/App.tsx` y no depende de React ni de la capa de audio.
+Cómo se traduce una pieza colocada en cinco notas y en qué momento suenan. Las tres primeras reglas
+viven en las funciones puras de `src/App.tsx` y no dependen de React ni de la capa de audio; la cuarta
+es lo único que cruza a la capa de audio, y lo hace por un solo campo del `Job`.
 
-## Las tres reglas
+## Las cuatro reglas
 
 | Entrada | Determina | Mecanismo |
 |---|---|---|
 | **Qué pieza** | La tónica | `BASE_MAP` |
 | **Rotación** | La fórmula de escala | `notesForRotation` |
 | **Reflexión** | El orden de las notas | `ns.reverse()` — retrógrado |
+| **La columna** | La posición dentro del compás | `Job.phase = ax / GRID_W` |
 
 La **forma** de la pieza no influye hoy en el sonido. Es la carencia que ataca el
-[spec 001](../../specs/001-notas-por-celda-en-orden-angular/spec.md).
+[spec 001](../../specs/001-notas-por-celda-en-orden-angular/spec.md). La **fila** (`y`) tampoco: octava,
+duración y velocity son los candidatos obvios, y van de a un eje por vez.
+
+## Columna → posición en el compás
+
+**El eje X del tablero es tiempo.** La columna de la celda de agarre decide en qué momento del compás
+arranca la pieza:
+
+```
+compás  ├────────────────────────────────────────────────┤
+col 0   ●━━━━━                                              arranca en el downbeat
+col 3          ●━━━━━                                       a 3/10 del compás
+col 7                          ●━━━━━                       a 7/10
+```
+
+```ts
+const [ax] = p.cells[ANCHOR_INDEX[p.piece]];
+addJob({ …, phase: ax / GRID_W });
+```
+
+Cuatro cosas que definen la regla, y por qué son así:
+
+- **La celda de agarre, no el borde izquierdo de la pieza.** Es la celda que el usuario clickeó —control
+  directo— y `ANCHOR_INDEX` ya es el punto de referencia canónico de cada pieza, estable ante rotaciones
+  por el invariante de orden del array.
+- **El ancho del tablero es el compás**: 10 pasos, no 16. Con una grilla de semicorcheas, 6 de las 16
+  subdivisiones no serían alcanzables desde ninguna columna. Que la grilla no sea 4/4 es aceptable: esto
+  es un instrumento, no una caja de ritmos.
+- **Fracción, no segundos.** Mover el tempo estira el patrón proporcionalmente en vez de reordenarlo.
+- **Geometría, no reloj de pared.** Antes del spec 002, con Tone, cada pieza quedaba desfasada por el
+  *momento* en que se la colocó: no era reproducible, no era visible y no se podía testear. El mismo
+  tablero suena siempre igual.
+
+El disparo al colocar (`playNow`) **no** lleva fase: hacés click y suena. Es retroalimentación del
+gesto, no parte del patrón — la fase solo gobierna el loop.
+
+**Limitación conocida:** no hay retroalimentación visual de la fase. Una cabeza lectora recorriendo el
+tablero es lo que volvería *legible* a esta regla; hoy se oye pero no se lee. Encaja con el
+[spec 003](../../specs/003-visualizacion-de-la-senal-con-analysernode/spec.md), que ya trae el canvas.
+
+Detalle del scheduler que la implementa en [audio.md](./audio.md#fase-por-pieza).
 
 ## Pieza → tónica
 

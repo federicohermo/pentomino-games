@@ -116,7 +116,13 @@ en pantalla.
 | Qué pieza | La tónica (`BASE_MAP`: F→C, I→C#, … Z→B) |
 | Rotación | La fórmula de escala (mayor → menor → blues → mayor +7) |
 | Reflexión | El orden de las notas (retrógrado) |
+| La columna de la celda de agarre | La posición dentro del compás (`Job.phase = ax / GRID_W`) |
 | **La forma** | **Nada, hoy** — es lo que ataca el spec 001 |
+
+**El eje X del tablero es tiempo**, y la fase se deriva de la geometría, no del reloj de pared: el mismo
+tablero suena siempre igual. Es fracción y no segundos, así que mover el tempo estira el patrón en vez
+de reordenarlo. Hoy **se oye pero no se lee** — no hay cabeza lectora; es la limitación consciente del
+spec 004.
 
 Cuidado con la colisión de nombres: la **pieza `F`** suena con tónica **C**; la nota F le corresponde a
 la pieza `T`. La letra describe la forma, no el sonido.
@@ -143,6 +149,14 @@ síntesis, scheduler y capa de aplicación.
   cómo se expande el arpegio no.**
 - **El scheduler usa lookahead**: temporizador grueso de 25 ms que agenda 100 ms de futuro contra el
   reloj de audio. El temporizador no dispara notas, decide cuándo mirar.
+- **El reloj es un origen, no un cursor.** `ClockState` son dos escalares —`origin` y `scheduledUntil`—
+  y los onsets de cada job (`origin + (k + phase) * bar`) se resuelven en forma cerrada. Tres
+  propiedades que no hay que romper: `scheduledUntil` es lo único que evita re-emitir cada onset cuatro
+  veces (ticks de 25 ms contra horizonte de 100 ms); los compases perdidos por la pestaña oculta **se
+  saltean, no se recuperan**; y **nunca hay más de `LOOKAHEAD` de audio comprometido**, con cualquier
+  fase — es lo que hace que quitar una pieza la calle en 100 ms. `firstOnsetAfter` usa `floor(x) + 1` y
+  no `ceil(x)`: con `ceil`, un onset en el borde de la ventana sale dos veces. Y `startClock` tiene que
+  dejar `scheduledUntil` **estrictamente antes** de `origin`, o el downbeat del compás 0 se pierde.
 - **El `AnalyserNode` va en serie entre el master y el destino** y es transparente al audio.
   `readSpectrum()` devuelve `null` en reposo —eso es información, no falla— y reusa el buffer entre
   llamadas: quien lo guarde va a verlo cambiar por debajo. El mapeo bins→barras vive aparte, en
@@ -197,8 +211,12 @@ Detalle y los dos errores ya cometidos en
 - **`public/manifest.json`** tiene los valores por defecto de CRA (`"name": "Create React App
   Sample"`).
 - **`setupTests.ts` y las `@testing-library/*`** quedaron sin consumidor: no hay tests de componentes
-  todavía. Los 27 tests actuales son de la capa de audio —18 del motor, 9 del mapeo del espectro— y
+  todavía. Los 36 tests actuales son de la capa de audio —27 del motor, 9 del mapeo del espectro— y
   corren en Node.
+- **La regla del anclaje de la fase a la columna (spec 004, AC8) no tiene test automático**, y no por
+  descuido: `react-refresh/only-export-components` prohíbe que `App.tsx` exporte algo además del
+  componente, así que las puras del tablero no se pueden importar desde un test. Lo resuelve el
+  spec 005 al extraerlas a `src/domain/`. Hasta entonces se verifica en el navegador.
 
 Ya resueltos: los archivos huérfanos de las plantillas de CRA y Vite (`src/App.css`, `src/logo.svg`,
 `src/assets/react.svg`, `public/vite.svg`) y la dependencia `web-vitals`, que quedó sin consumidor
