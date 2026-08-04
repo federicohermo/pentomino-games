@@ -178,7 +178,7 @@ export default function App(){
   useEffect(()=>{
     clearJobs();
     if (!loopPlaced) return;
-    for (const p of placed) addJob({ id: p.id, notes: p.notes, spread: ARPEGGIO_SPREAD });
+    for (const p of placed) addJob({ id: p.id, notes: p.notes, spread: ARPEGGIO_SPREAD, phase: 0 });
   }, [placed, loopPlaced]);
 
   // Al desmontar, frenar el reloj y soltar los jobs. La limpieza es sincrónica:
