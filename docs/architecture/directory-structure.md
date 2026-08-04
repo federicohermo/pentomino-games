@@ -30,7 +30,7 @@ src/
 ├── vite-env.d.ts      # Tipos de Vite
 ├── audio/
 │   ├── engine.ts          # motor Web Audio: síntesis, scheduler, analizador, singletons
-│   ├── engine.test.ts     # 18 tests con OfflineAudioContext
+│   ├── engine.test.ts     # 27 tests con OfflineAudioContext
 │   ├── spectrum.ts        # mapeo puro de bins de la FFT a alturas de barra
 │   ├── spectrum.test.ts   # 9 tests, sin AudioContext (ver audio.md)
 │   └── test-context.ts    # helpers de render y medición (solo tests)
