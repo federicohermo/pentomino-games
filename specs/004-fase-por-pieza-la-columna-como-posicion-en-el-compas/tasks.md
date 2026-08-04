@@ -88,7 +88,10 @@ el fantasma de previsualización, que dibuja el punto de agarre y existía antes
 ### Los picos reales de AC7
 
 Medidos con `OfflineAudioContext` a 110 bpm, a ganancia unitaria (el master divide por 0.3, así que los
-números del `research.md` son estos × 0.3):
+números del `research.md` son estos × 0.3). Las dos piezas son `A = [60,62,64,67,69]` (pentatónica mayor
+de C) y `B = [67,69,71,74,76]` (la de G), alternadas —`A · B · A · B`— en el caso de cuatro. Las de dos
+están en el test de AC7; las de cuatro fueron una medición suelta, y quedan acá para que el número se
+pueda reproducir:
 
 | | pico | onsets detectados |
 |---|---|---|
