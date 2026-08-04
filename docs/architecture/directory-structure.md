@@ -49,8 +49,8 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 
 ### Tests
 
-`pnpm test` corre Vitest en `environment: 'node'` contra `node-web-audio-api`. Los 27 tests actuales son
-todos de la capa de audio: 18 del motor con `OfflineAudioContext` y 9 del mapeo del espectro, que no
+`pnpm test` corre Vitest en `environment: 'node'` contra `node-web-audio-api`. Los 36 tests actuales son
+todos de la capa de audio: 27 del motor con `OfflineAudioContext` y 9 del mapeo del espectro, que no
 toca Web Audio en absoluto.
 
 **No hay tests de componentes.** El `App.test.tsx` heredado de CRA se eliminó al montar el runner:

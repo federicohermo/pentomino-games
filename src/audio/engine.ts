@@ -176,10 +176,13 @@ export function collectHits(
   // de una sola pasada: acá se recorre exactamente una vez porque el bucle de
   // compases quedo adentro, no afuera. No hace falta materializar.
   for (const job of jobs) {
-    // `at += bar` acumula error de punto flotante, pero el bucle da como mucho
-    // una vuelta por llamada (horizonte 0.1 s contra un compas de 2.18 s a
-    // 110 bpm) y cada llamada recalcula desde origin: no hay deriva entre
-    // llamadas, que es donde si importaria.
+    // `at += bar` acumula error de punto flotante, y lo que lo vuelve inofensivo
+    // es que cada llamada recalcula el primer onset desde origin: no hay deriva
+    // ENTRE llamadas, que es donde si importaria. Ademas, como lo llama tick()
+    // el bucle da a lo sumo una vuelta —horizonte de 0.1 s contra un compas de
+    // 1.5 s a 160 bpm, el mas corto que permite la UI—, pero eso es una
+    // propiedad de ESE llamador y no de la funcion: con un horizonte de varios
+    // compases da varias vueltas, y los tests la usan asi a proposito.
     for (let at = firstOnsetAfter(from, state.origin, bar, job.phase); at <= until; at += bar) {
       job.notes.forEach((m, i) => out.push({ hz: midiToHz(m), at: at + i * job.spread }));
     }
