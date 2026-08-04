@@ -1,7 +1,7 @@
 # Capa de Audio
 
-El motor vive en `src/audio/engine.ts` y está construido directamente sobre Web Audio, sin librerías.
-Es la parte del código con más decisiones no obvias.
+El motor vive en `src/audio/` y está construido directamente sobre Web Audio, sin librerías. Es la
+parte del código con más decisiones no obvias.
 
 ## El grafo
 
@@ -17,18 +17,29 @@ Una voz por nota, creada y descartada. El `master` existe para tener un punto ú
 inserción: el `AnalyserNode` del
 [spec 003](../../specs/003-visualizacion-de-la-senal-con-analysernode/spec.md) entra ahí.
 
-## Las tres capas del módulo
+## Las tres capas, que son tres archivos
 
-El archivo está ordenado en tres bloques, y el orden importa:
-
-| Bloque | Qué hace | Recibe el contexto |
+| Archivo | Qué hace | Cómo obtiene el contexto |
 |---|---|---|
-| **1. Síntesis** | `midiToHz`, `scheduleVoice` | por parámetro |
-| **2. Scheduler** | `collectHits` — decide qué suena y cuándo | por parámetro |
-| **3. App** | singletons, `playNow`, `startClock`, jobs | usa el singleton |
+| **`voice.ts`** | `midiToHz`, `scheduleVoice` | por parámetro |
+| **`scheduler.ts`** | `collectHits` — decide qué suena y cuándo | por parámetro |
+| **`engine.ts`** | singletons, `playNow`, `startClock`, jobs | **es** el dueño del singleton |
 
-**Los bloques 1 y 2 nunca tocan el singleton.** Es lo que permite renderizarlos con un
-`OfflineAudioContext` en los tests, y es la razón por la que el audio de este proyecto es verificable.
+**`voice.ts` y `scheduler.ts` no pueden tocar el singleton**, y no por disciplina: el singleton vive en
+`engine.ts` y ellos no lo importan. Eso es lo que permite renderizarlos con un `OfflineAudioContext` en
+los tests, y es la razón por la que el audio de este proyecto es verificable.
+
+Hasta el spec 005 los tres bloques eran secciones de un mismo archivo y el invariante lo sostenía un
+comentario: nada estructural impedía que `scheduleVoice` llamara a `audio()` y el audio dejara de ser
+testeable. Ahora lo sostiene el grafo de imports, y el override del linter
+([conventions.md](../guides/conventions.md)) impide además que la capa mire al dominio o a la UI.
+
+Efecto lateral: se puede importar `scheduler.ts` **sin** arrastrar el módulo de los singletons a un
+proceso de node.
+
+Los valores fijos de cada capa viven en `audio/constants/` y los tipos en `audio/types/`, con el nombre
+de su módulo. Ahí está, por ejemplo, la unificación de `NOTE_DUR`: antes el `0.35` estaba escrito dos
+veces —como constante y como default de `scheduleVoice`— sin nada que los mantuviera iguales.
 
 ## Síntesis
 
@@ -216,8 +227,8 @@ master.connect(analyser);
 analyser.connect(ctx.destination);
 ```
 
-Que sea transparente no es una creencia: `engine.test.ts` renderiza la misma voz con y sin el nodo en
-el camino y compara **muestra por muestra**. Es la única parte del análisis que se puede afirmar
+Que sea transparente no es una creencia: `__tests__/integration.test.ts` renderiza la misma voz con y
+sin el nodo en el camino y compara **muestra por muestra**. Es la única parte del análisis que se puede afirmar
 offline.
 
 Los dos valores vienen de `LiveWaveform` de `@elevenlabs/ui`, no de la intuición: 128 bins a 48 kHz dan
@@ -261,7 +272,7 @@ re-render del tablero. React monta el `<canvas>` y arranca/frena el loop; nada m
 ### En tests: `OfflineAudioContext`
 
 Renderiza a un `AudioBuffer` en memoria, más rápido que tiempo real y de forma determinística. Los
-helpers están en `src/audio/test-context.ts`:
+helpers están en `src/audio/__tests__/test-context.ts`:
 
 | Helper | Para qué |
 |---|---|

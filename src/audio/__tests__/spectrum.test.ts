@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { binsToBars } from './spectrum';
+import { binsToBars } from '../spectrum.ts';
 
 /**
  * Ningun test de este archivo toca AudioContext, y no es una comodidad: es el

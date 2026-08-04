@@ -1,7 +1,7 @@
 # Modelo Musical
 
 Cómo se traduce una pieza colocada en cinco notas y en qué momento suenan. Las tres primeras reglas
-viven en las funciones puras de `src/App.tsx` y no dependen de React ni de la capa de audio; la cuarta
+viven en `src/domain/` —`music.ts` y sus constantes— y no dependen de React ni de la capa de audio; la cuarta
 es lo único que cruza a la capa de audio, y lo hace por un solo campo del `Job`.
 
 ## Las cuatro reglas

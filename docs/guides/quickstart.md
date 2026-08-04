@@ -50,15 +50,18 @@ pnpm exec tsc -b --noEmit
 
 ### Agregar una pieza o cambiar una forma
 
-1. Editar `SHAPES` en `src/App.tsx`. Las coordenadas son `[x, y]` con `y` creciendo **hacia abajo**.
-2. Si se agrega una pieza, actualizar también `BASE_MAP` (su tónica) y `ANCHOR_INDEX` (su celda de
-   agarre, como índice dentro del array de celdas).
+1. Editar `SHAPES` en `src/domain/constants/pieces.constants.ts`. Las coordenadas son `[x, y]` con `y`
+   creciendo **hacia abajo**.
+2. Si se agrega una pieza, agregarla a `PieceKey` en `domain/types/pieces.types.ts` y actualizar
+   `BASE_MAP` (su tónica, en `music.constants.ts`) y `ANCHOR_INDEX` (su celda de agarre, como índice
+   dentro del array de celdas). Los tres son `Record<PieceKey, …>`, así que olvidarse de uno **no
+   compila**.
 3. Verificar que la celda de agarre elegida sea una celda **central**: es la que queda bajo el cursor, y
    si cae en un hueco del bounding box la colocación se siente rota.
 
 ### Cambiar cómo suena algo
 
-Para el **timbre**, `DEFAULT_VOICE` en `src/audio/engine.ts` (ADSR y tipo de onda): alcanza con tocarlo
+Para el **timbre**, `DEFAULT_VOICE` en `src/audio/constants/voice.constants.ts` (ADSR y tipo de onda): alcanza con tocarlo
 ahí, porque los dos caminos de reproducción pasan por `scheduleVoice()`. Agregar un test de envolvente
 si se cambia la forma.
 

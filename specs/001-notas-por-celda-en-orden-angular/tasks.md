@@ -17,7 +17,10 @@
 - [ ] `radiusFromCentroid` (nueva, para el desempate D2)
 - [ ] `degreeByCellIndex` con la regla del centro (D1) y el comparador de tres criterios (D2)
 - [ ] Constante `DEGREES` precomputada por pieza
-- [ ] Evaluar extraer las funciones puras a `src/notes.ts` — `App.tsx` ya tiene ~400 líneas
+- [x] ~~Evaluar extraer las funciones puras a `src/notes.ts`~~ — **resuelto por el spec 005**: viven
+      en `src/domain/` (`transform.ts`, `board.ts`, `music.ts`), con sus tipos en `domain/types/` y sus
+      datos en `domain/constants/`. `degreeByCellIndex` va a `domain/music.ts`, y su test a
+      `domain/__tests__/music.test.ts`
 
 ## Tests del dominio
 - [ ] AC1 — las 12 piezas dan una permutación de `[0,1,2,3,4]`

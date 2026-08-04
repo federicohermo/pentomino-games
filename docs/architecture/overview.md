@@ -14,71 +14,73 @@ expresivo, no más difícil.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  src/index.tsx        createRoot().render(<App/>)       │
+│  src/main.tsx         createRoot().render(<App/>)       │
 └──────────────────────────┬──────────────────────────────┘
                            │
 ┌──────────────────────────▼──────────────────────────────┐
-│  src/App.tsx                                            │
-│                                                         │
-│  ┌───────────────────────────────────────────────────┐  │
-│  │ Dominio — funciones puras, sin React ni audio     │  │
-│  │  · Geometría: SHAPES, rotate90, normalize,        │  │
-│  │    rotateN, reflect, ANCHOR_INDEX                 │  │
-│  │  · Música:   BASE_MAP, PENT_*, notesForRotation,  │  │
-│  │              midiFor, midiName                    │  │
-│  └───────────────────────────────────────────────────┘  │
-│                           │                             │
-│  ┌────────────────────────▼──────────────────────────┐  │
-│  │ Componente App — estado y render                  │  │
-│  │  selected · rotation · mirror · tempo             │  │
-│  │  loopPlaced · placed[] · hover                    │  │
-│  └───────────────────────────────────────────────────┘  │
-│                           │                             │
-│  ┌────────────────────────▼──────────────────────────┐  │
-│  │ Efecto de reconciliación de loops                 │  │
-│  └───────────────────────────────────────────────────┘  │
-└──────────────────────────┬──────────────────────────────┘
-                           │ playNow · addJob · startClock
-┌──────────────────────────▼──────────────────────────────┐
-│  src/audio/engine.ts                                    │
-│   1. Síntesis   — midiToHz · scheduleVoice (ADSR)       │
-│   2. Scheduler  — collectHits (lookahead)               │
-│   3. App        — singleton del AudioContext, jobs      │
-│                                                         │
-│  1 y 2 reciben el contexto por parámetro → testeables   │
-│  con OfflineAudioContext                                │
+│  src/App.tsx — el shell                                 │
+│   estado · derivados · handlers · los dos efectos       │
+│   selected · rotation · mirror · tempo                  │
+│   loopPlaced · placed[] · hover                         │
+└───────┬─────────────────────────────┬───────────────────┘
+        │ compone                     │ playNow · addJob · startClock
+┌───────▼──────────────────┐  ┌───────▼───────────────────┐
+│  src/components/         │  │  src/audio/               │
+│   PiecePalette · Board   │  │   voice.ts     síntesis   │
+│   PiecePreview           │  │   scheduler.ts lookahead  │
+│   PlacedList · Spectrum  │  │   engine.ts    singletons │
+│   presentacionales:      │  │   spectrum.ts  bins→barras│
+│   props, sin estado      │  │                           │
+└───────┬──────────────────┘  │  voice y scheduler reciben│
+        │                     │  el ctx por parámetro y NO│
+        │ importan            │  importan engine.ts → se  │
+        │                     │  renderizan offline       │
+┌───────▼─────────────────────┴───────────────────────────┐
+│  src/domain/ — puro: sin React, sin Web Audio, sin DOM  │
+│   transform.ts   rotate90 · normalize · rotateN · reflect│
+│   board.ts       cellsAt · isValid · occupantAt          │
+│   music.ts       midiFor · midiName · notesForRotation   │
+│   invariants.ts  los cinco chequeos del modelo           │
+│   types/ ← constants/ ← módulos                          │
 └─────────────────────────────────────────────────────────┘
 ```
 
+`domain/` y `audio/` son **hermanos sin aristas entre ellos**, y la dirección la verifica el linter.
+Ver [conventions.md](../guides/conventions.md).
+
 ## Qué vive dónde
 
-**El audio ya no está en `App.tsx`.** Salió a `src/audio/engine.ts` cuando se reemplazó Tone por un
-motor propio, y el motivo fue la testabilidad: las funciones de síntesis y scheduling reciben el
-`AudioContext` por parámetro, así que se pueden renderizar con `OfflineAudioContext` sin montar nada de
-React.
+**El audio salió de `App.tsx`** cuando se reemplazó Tone por un motor propio, y el motivo fue la
+testabilidad: las funciones de síntesis y scheduling reciben el `AudioContext` por parámetro, así que
+se pueden renderizar con `OfflineAudioContext` sin montar nada de React.
 
-`App.tsx` conserva el dominio (geometría y música) y el componente. **Es intencional por ahora**: el
-costo de saltar entre archivos supera el beneficio de separarlos a esta escala.
+**El dominio salió después, y por un motivo parecido**: `react-refresh/only-export-components` prohíbe
+que un `.tsx` exporte algo además del componente, así que mientras la geometría y la música vivieran en
+`App.tsx` **no podían exportarse, y por lo tanto no podían testearse**. La organización no era neutral:
+condenaba al dominio a no ser verificable. Hoy `src/domain/` tiene 50 tests donde antes había cero.
 
-El siguiente límite está identificado: las funciones puras de dominio también se van a extraer, porque
-testear geometría no debería requerir montar un componente. Anotado en el
-[plan del spec 001](../../specs/001-notas-por-celda-en-orden-angular/plan.md) §2.
+Lo que queda en `App.tsx` es el shell: estado, derivados, handlers, los dos efectos y la composición de
+los componentes. Ninguna función pura y ningún literal de dominio.
 
-Mientras tanto, **la separación existe como orden dentro del archivo** y hay que respetarla: dominio
-puro arriba, componente abajo. Una función pura nueva va con las puras, no suelta dentro de `App()`.
-
-## Las tres capas
+## Las cuatro capas
 
 ### 1. Dominio — funciones puras
 
-Sin React, sin audio, sin estado. Determinísticas y testeables en aislamiento.
+Sin React, sin audio, sin DOM. Determinísticas y testeables en aislamiento.
 
-| Grupo | Símbolos | Responsabilidad |
+| Módulo | Símbolos | Responsabilidad |
 |---|---|---|
-| Geometría | `SHAPES`, `rotate90`, `normalize`, `rotateN`, `reflect`, `ANCHOR_INDEX` | Formas canónicas y sus transformaciones |
-| Música | `BASE_MAP`, `PENT_MAJOR/MINOR/BLUES5`, `notesForRotation`, `midiFor`, `midiName` | De pieza + rotación a cinco notas MIDI |
+| `transform.ts` | `rotate90`, `normalize`, `rotateN`, `reflect` | Transformaciones de un `Cell[]` |
+| `board.ts` | `cellsAt`, `isValid`, `occupantAt` | Las reglas del tablero |
+| `music.ts` | `midiFor`, `midiName`, `notesForRotation` | De pieza + rotación a cinco notas MIDI |
+| `invariants.ts` | `checkArrayOrder`, `checkAnchors`, `checkShapes`, `checkBaseMap`, `checkNotes`, `checkAll` | Los cinco chequeos del modelo sobre las 96 combinaciones |
 
-Detalle en [modelo-musical.md](./modelo-musical.md).
+Los datos (`SHAPES`, `ANCHOR_INDEX`, `BASE_MAP`, `PENT_*`, `GRID_W/H`) viven en `domain/constants/`, y
+los tipos (`Cell`, `PieceKey`, `PlacedPiece`) en `domain/types/`. Detalle en
+[modelo-musical.md](./modelo-musical.md).
+
+Los chequeos **devuelven** un `CheckResult` en vez de lanzar o asertar, para que los use igual su test y
+la tool `check_invariants` del spec 006.
 
 ### 2. Componente — estado y render
 
@@ -98,11 +100,18 @@ esta escala no hace falta, y agregarlo sería la clase de complejidad que un pro
 Derivados con `useMemo`: `transformedShape` y `noteSet`. Derivados sin memo (baratos, se recalculan por
 render): `anchor`, `previewCells`, `previewValid`, `previewSet`.
 
-### 3. Audio — efectos y singletons de módulo
+### 3. Audio — tres módulos y singletons
 
-El motor vive en `src/audio/engine.ts`, no en `App.tsx`. Su `AudioContext` es un singleton de módulo
-—uno por pestaña, no uno por componente— pero las funciones de síntesis y scheduling lo reciben por
-parámetro, que es lo que las hace testeables. Detalle en [audio.md](./audio.md).
+`voice.ts` (síntesis), `scheduler.ts` (lookahead) y `engine.ts` (singletons y la API que consume la UI).
+El `AudioContext` es un singleton de módulo —uno por pestaña, no uno por componente— y vive **solo** en
+`engine.ts`: los otros dos lo reciben por parámetro y no importan `engine.ts`, así que el invariante que
+los hace testeables lo sostiene el grafo de imports. Detalle en [audio.md](./audio.md).
+
+### 4. Componentes — presentacionales
+
+Uno por archivo, sin estado ni efectos propios: reciben datos y callbacks por props. `Spectrum.tsx` es
+la excepción deliberada — no recibe props y lee del motor por su cuenta, para que dibujar a 60 fps no
+re-renderice nada del tablero.
 
 ## Patrones clave
 
@@ -118,6 +127,10 @@ agarre acompañe a la figura sin recalcular nada.
 El [spec 001](../../specs/001-notas-por-celda-en-orden-angular/spec.md) reusa el mismo mecanismo para el
 mapeo celda↔nota. **Es un invariante del que ya depende código en producción**: romperlo (por ejemplo,
 haciendo que `normalize` filtre u ordene celdas) rompe la colocación de piezas de forma silenciosa.
+
+Desde el spec 005 hay una red: `checkArrayOrder()` de `domain/invariants.ts` lo verifica sobre las 96
+combinaciones, y su test comprueba que el chequeo efectivamente **da rojo** si una transformación
+reordena.
 
 ### El estado es la fuente de verdad; los efectos reconcilian
 
