@@ -2,8 +2,8 @@ import type { Cell } from './types/transform.types.ts';
 import type { PieceKey } from './types/pieces.types.ts';
 import { rotate90, normalize, rotateN, reflect } from './transform.ts';
 import { notesForRotation } from './music.ts';
-import { SHAPES, ANCHOR_INDEX } from './constants/pieces.constants.ts';
-import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE } from './constants/music.constants.ts';
+import { SHAPES, ANCHOR_INDEX, CELLS_PER_PIECE } from './constants/pieces.constants.ts';
+import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE, NOTES_PER_PIECE } from './constants/music.constants.ts';
 
 /**
  * Los cinco chequeos del modelo, sobre las 96 combinaciones de pieza x rotacion x
@@ -46,6 +46,26 @@ function transformShape(cells: Cell[], rotation: number, mirror: boolean): Cell[
 }
 
 /**
+ * Donde deberia caer cada celda, reconstruido **celda por celda**.
+ *
+ * Aplica las primitivas crudas —`rotate90` k veces, la negacion del espejo— y
+ * normaliza UNA sola vez al final, en vez de pasar por `rotateN`/`reflect`. Es lo
+ * que le da valor al chequeo: si la funcion compuesta filtrara, ordenara o
+ * reagrupara celdas, esta reconstruccion no lo haria y los indices dejarian de
+ * coincidir.
+ *
+ * Que normalizar en cada paso o solo al final de lo mismo no es casualidad: la
+ * normalizacion es una traslacion, y las traslaciones conmutan con la rotacion
+ * salvo por otra traslacion, que la normalizacion final absorbe.
+ */
+function expectedShape(cells: Cell[], rotation: number, mirror: boolean): Cell[] {
+  let raw: Cell[] = cells.map(([x, y]): Cell => [x, y]);
+  for (let i = 0; i < rotation; i++) raw = rotate90(raw);
+  if (mirror) raw = raw.map(([x, y]): Cell => [-x, y]);
+  return normalize(raw);
+}
+
+/**
  * 1. Orden del array — la celda del indice `k` despues de transformar es la imagen
  *    de la celda `k` original.
  *
@@ -61,12 +81,7 @@ export function checkArrayOrder(): CheckResult {
     for (const rot of ROTATIONS) {
       for (const mirror of [false, true]) {
         const got = transformShape(SHAPES[p], rot, mirror);
-
-        // La imagen de cada celda, sin normalizar: rotar k veces y espejar.
-        let raw: Cell[] = SHAPES[p].map(([x, y]): Cell => [x, y]);
-        for (let i = 0; i < rot; i++) raw = rotate90(raw);
-        if (mirror) raw = raw.map(([x, y]): Cell => [-x, y]);
-        const expected = normalize(raw);
+        const expected = expectedShape(SHAPES[p], rot, mirror);
 
         for (let k = 0; k < got.length; k++) {
           if (!sameCell(got[k], expected[k])) {
@@ -101,11 +116,7 @@ export function checkAnchors(): CheckResult {
     for (const rot of ROTATIONS) {
       for (const mirror of [false, true]) {
         const got = transformShape(SHAPES[p], rot, mirror)[idx];
-
-        let raw: Cell[] = SHAPES[p].map(([x, y]): Cell => [x, y]);
-        for (let i = 0; i < rot; i++) raw = rotate90(raw);
-        if (mirror) raw = raw.map(([x, y]): Cell => [-x, y]);
-        const expected = normalize(raw)[idx];
+        const expected = expectedShape(SHAPES[p], rot, mirror)[idx];
 
         if (!sameCell(got, expected)) {
           failures.push(
@@ -124,7 +135,9 @@ export function checkShapes(): CheckResult {
   const failures: string[] = [];
   for (const p of PIECES) {
     const cells = SHAPES[p];
-    if (cells.length !== 5) failures.push(`${p}: tiene ${cells.length} celdas y deberia tener 5`);
+    if (cells.length !== CELLS_PER_PIECE) {
+      failures.push(`${p}: tiene ${cells.length} celdas y deberia tener ${CELLS_PER_PIECE}`);
+    }
 
     const keys = cells.map(([x, y]) => `${x},${y}`);
     if (new Set(keys).size !== keys.length) failures.push(`${p}: tiene celdas repetidas`);
@@ -178,7 +191,9 @@ export function checkNotes(): CheckResult {
   for (const p of PIECES) {
     for (const rot of ROTATIONS) {
       const ns = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot);
-      if (ns.length !== 5) failures.push(`${p} rot${rot}: ${ns.length} notas y deberian ser 5`);
+      if (ns.length !== NOTES_PER_PIECE) {
+        failures.push(`${p} rot${rot}: ${ns.length} notas y deberian ser ${NOTES_PER_PIECE}`);
+      }
       if (new Set(ns).size !== ns.length) failures.push(`${p} rot${rot}: tiene notas repetidas`);
       for (let i = 1; i < ns.length; i++) {
         if (ns[i] <= ns[i - 1]) {

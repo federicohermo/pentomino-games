@@ -1,6 +1,12 @@
 import type { Cell } from '../types/transform.types.ts';
 import type { PieceKey } from '../types/pieces.types.ts';
 
+/**
+ * Celdas por pieza. Es el "penta" de pentomino: no es un parametro, es la
+ * definicion de la familia de piezas.
+ */
+export const CELLS_PER_PIECE = 5;
+
 /** Coordenadas canonicas de cada pieza (5 celdas). Cada celda es `[x, y]`. */
 export const SHAPES: Record<PieceKey, Cell[]> = {
   F: [[0,1],[1,0],[1,1],[1,2],[2,2]],

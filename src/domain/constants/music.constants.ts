@@ -8,6 +8,16 @@ export const PENT_MINOR: number[] = [0,3,5,7,10];
 export const PENT_BLUES5: number[] = [0,3,5,6,7];
 
 /**
+ * Notas que dispara una pieza: las cuatro formulas son pentatonicas.
+ *
+ * Coincide con `CELLS_PER_PIECE` y **hoy es una coincidencia**, no una relacion:
+ * son 5 notas porque la escala es pentatonica y 5 celdas porque la pieza es un
+ * pentomino. El spec 001 es el que va a volver significativa esa coincidencia, al
+ * asignar una nota a cada celda.
+ */
+export const NOTES_PER_PIECE = 5;
+
+/**
  * Pieza → clase de altura de su tonica (F→C, I→C#, … Z→B).
  *
  * Tipado `Record<PieceKey, number>` y no `as const`: agregar una pieza sin darle

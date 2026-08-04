@@ -44,7 +44,7 @@ pnpm dev      # Dev server de Vite
 pnpm build    # tsc -b && vite build
 pnpm lint     # ESLint (flat config v9)
 pnpm preview  # Sirve el build de dist/
-pnpm test     # Vitest — tests de audio con OfflineAudioContext
+pnpm test     # Vitest — 86 tests: dominio puro + audio con OfflineAudioContext
 ```
 
 Los tests corren en `environment: 'node'` contra `node-web-audio-api`, **no en jsdom**: jsdom no

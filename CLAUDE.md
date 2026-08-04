@@ -29,7 +29,7 @@ pnpm dev      # Dev server de Vite
 pnpm build    # tsc -b && vite build
 pnpm lint     # ESLint (flat config v9)
 pnpm preview  # Sirve dist/
-pnpm test     # Vitest — tests de audio con OfflineAudioContext
+pnpm test     # Vitest — 86 tests: dominio puro + audio con OfflineAudioContext
 pnpm exec tsc -b --noEmit   # Solo typecheck
 ```
 
@@ -42,7 +42,8 @@ dependencia transitiva que con npm andaba, acá falla — es a propósito, y es 
 imports fantasma antes de que lleguen a producción.
 
 Los tests corren en `environment: 'node'` contra `node-web-audio-api`, no en jsdom: jsdom no implementa
-Web Audio. No hay tests de componentes todavía.
+Web Audio. El dominio es puro, así que corre ahí sin ninguna adaptación. No hay tests de componentes
+todavía.
 
 Node ≥ 20.19 o ≥ 22.12 — Vite 7 lo exige en `engines`.
 
