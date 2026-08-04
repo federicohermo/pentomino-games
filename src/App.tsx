@@ -2,8 +2,15 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import {
   playNow, addJob, clearJobs, setBpm,
   startClock, stopClock, clockRunning, ARPEGGIO_SPREAD,
-} from "./audio/engine";
-import Spectrum from "./components/Spectrum";
+} from "./audio/engine.ts";
+import { rotateN, reflect } from "./domain/transform.ts";
+import { midiName, notesForRotation } from "./domain/music.ts";
+import { SHAPES, ANCHOR_INDEX } from "./domain/constants/pieces.constants.ts";
+import { CHROMATIC, BASE_MAP, DEFAULT_OCTAVE } from "./domain/constants/music.constants.ts";
+import type { Cell } from "./domain/types/transform.types.ts";
+import type { PieceKey } from "./domain/types/pieces.types.ts";
+import type { PlacedPiece } from "./domain/types/board.types.ts";
+import Spectrum from "./components/Spectrum.tsx";
 
 /**
  * Pentomino Music — minimal playable prototype
@@ -21,83 +28,11 @@ import Spectrum from "./components/Spectrum";
  *  reflection -> retrograde (reverse order of the 5 notes)
  */
 
-type Cell = [number, number];
-const CHROMATIC = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"] as const;
-const PENT_MAJOR: number[] = [0,2,4,7,9];
-const PENT_MINOR: number[] = [0,3,5,7,10];
-const PENT_BLUES5: number[] = [0,3,5,6,7];
-
-// Base mapping piece -> pitch class (F->C, I->C#, ..., Z->B)
-const BASE_MAP = { F:0, I:1, L:2, N:3, P:4, T:5, U:6, V:7, W:8, X:9, Y:10, Z:11 } as const;
-type PieceKey = keyof typeof BASE_MAP;
-
-// Canonical coordinates per piece (5 cells). Each cell is [x,y].
-const SHAPES: Record<PieceKey, Cell[]> = {
-  F: [[0,1],[1,0],[1,1],[1,2],[2,2]],
-  I: [[0,0],[1,0],[2,0],[3,0],[4,0]],
-  L: [[0,0],[0,1],[0,2],[0,3],[1,0]],
-  N: [[0,0],[1,0],[1,1],[2,1],[3,1]],
-  P: [[0,0],[0,1],[1,0],[1,1],[2,0]],
-  T: [[0,0],[1,0],[2,0],[1,1],[1,2]],
-  U: [[0,0],[0,1],[1,0],[2,0],[2,1]],
-  V: [[0,0],[0,1],[0,2],[1,0],[2,0]],
-  W: [[0,0],[1,0],[1,1],[2,1],[2,2]],
-  X: [[1,0],[0,1],[1,1],[2,1],[1,2]],
-  Y: [[0,0],[1,0],[2,0],[3,0],[2,1]],
-  Z: [[0,1],[1,1],[1,0],[2,0],[3,0]],
-};
-
-// Celda "de agarre": la que queda bajo el cursor al colocar la pieza. Se guarda
-// como índice dentro de SHAPES[pieza] en vez de como coordenada porque rotar,
-// reflejar y normalizar mapean cada celda preservando el orden del array, así
-// que el índice sigue apuntando a la misma celda después de transformar.
-// Se eligió en cada pieza una celda central, para que el click caiga sobre
-// masa de la pieza y no sobre un hueco de su bounding box.
-const ANCHOR_INDEX: Record<PieceKey, number> = {
-  F: 2, I: 2, L: 1, N: 2, P: 2, T: 3, U: 2, V: 0, W: 2, X: 2, Y: 2, Z: 1,
-};
-
-function rotate90(cells: Cell[]): Cell[] { return cells.map(([x,y]): Cell => [y, -x]); }
-function normalize(cells: Cell[]): Cell[]{
-  const minx = Math.min(...cells.map(c=>c[0]));
-  const miny = Math.min(...cells.map(c=>c[1]));
-  return cells.map(([x,y]) => [x-minx, y-miny]);
-}
-function rotateN(cells: Cell[], n: number): Cell[]{ let r = normalize(cells); for(let i=0;i<n;i++) r = normalize(rotate90(r)); return r; }
-function reflect(cells: Cell[]): Cell[]{ // vertical mirror x->-x
-  const refl: Cell[] = cells.map(([x,y]): Cell => [-x, y]);
-  return normalize(refl);
-}
-
-function midiFor(pc: number, octave: number): number { return 12*(octave+1) + pc; }
-function midiName(m: number): string { const pc = m%12; const o = Math.floor(m/12)-1; return `${CHROMATIC[pc]}${o}`; }
-
-function notesForRotation(basePc: number, octave: number, rot: number): number[]{
-  let formula = PENT_MAJOR, transpose=0;
-  if (rot===1) formula = PENT_MINOR;
-  else if (rot===2) formula = PENT_BLUES5;
-  else if (rot===3) { formula = PENT_MAJOR; transpose = 7; }
-  return formula.map(iv => {
-    const total = basePc + iv + transpose;
-    const pc = ((total%12)+12)%12;
-    const octShift = Math.floor((basePc + iv + transpose)/12);
-    return midiFor(pc, octave + octShift);
-  });
-}
-
-// El sonido lo produce src/audio/engine.ts. Ver docs/architecture/audio.md.
+// La geometría y la música viven en src/domain/; el sonido, en src/audio/engine.ts.
+// Ver docs/architecture/modelo-musical.md y docs/architecture/audio.md.
 
 // Board state
 const GRID_W = 10; const GRID_H = 6;
-
-interface PlacedPiece {
-  id: string;
-  piece: PieceKey;
-  rotation: number;
-  mirror: boolean;
-  cells: Cell[];
-  notes: number[];
-}
 
 export default function App(){
   const [selected, setSelected] = useState<PieceKey>('F');
@@ -125,7 +60,7 @@ export default function App(){
 
   const noteSet = useMemo(()=>{
     const basePc = BASE_MAP[selected];
-    let ns = notesForRotation(basePc, 4, rotation);
+    let ns = notesForRotation(basePc, DEFAULT_OCTAVE, rotation);
     if (mirror) ns = [...ns].reverse();
     return ns;
   }, [selected, rotation, mirror]);
