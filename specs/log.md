@@ -11,7 +11,7 @@ Registro de todo el trabajo especificado, en orden. La convención de formato es
 | [001](./001-notas-por-celda-en-orden-angular/spec.md) | 2026-08-02 | Propuesto | Asignar cada nota a una celda de la pieza, en orden angular alrededor del centroide |
 | [002](./002-motor-de-audio-propio-sobre-web-audio/spec.md) | 2026-08-02 | Implementado | Reemplazar Tone.js por un motor propio sobre Web Audio: síntesis, scheduler con lookahead y audio testeable |
 | [003](./003-visualizacion-de-la-senal-con-analysernode/spec.md) | 2026-08-02 | Implementado | Visualizar la señal con `AnalyserNode`: espectro en canvas, con el mapeo bins→barras como función pura testeable |
-| [004](./004-fase-por-pieza-la-columna-como-posicion-en-el-compas/spec.md) | 2026-08-02 | Propuesto | La columna de la celda de agarre determina en qué momento del compás arranca la pieza: el tablero pasa a ser un secuenciador |
+| [004](./004-fase-por-pieza-la-columna-como-posicion-en-el-compas/spec.md) | 2026-08-02 | Implementado | La columna de la celda de agarre determina en qué momento del compás arranca la pieza: el tablero pasa a ser un secuenciador |
 | [005](./005-modularizacion-de-src-en-capas/spec.md) | 2026-08-03 | Propuesto | `src/` en capas (`domain` · `audio` · `components`) con dirección de dependencia verificada por el linter, carpetas por rol y los primeros tests del dominio. Sin cambio de comportamiento |
 | [006](./006-mcp-server-de-dominio-ejecutable/spec.md) | 2026-08-03 | Propuesto | MCP server que **ejecuta** el dominio en vez de indexar el código: forma, notas, simulación del scheduler e invariantes, en una llamada. Las tools importan de `src/`, no reimplementan |
 
@@ -24,8 +24,8 @@ Registro de todo el trabajo especificado, en orden. La convención de formato es
   paso 1 (el mapeo puro) es independiente y mergeable solo.
 - **El prerrequisito de Vitest está resuelto y versionado** por el spec 002: `vitest` +
   `node-web-audio-api`, bloque `test` en `vite.config.ts`, `environment: 'node'`. El spec 001 lo hereda.
-- **004 depende de 002, y más fuerte que 003.** No solo se apoya en el motor propio: **reescribe
-  `collectHits`**. Con 002 ya mergeado, su rama se puede abrir.
+- **004 dependía de 002, y más fuerte que 003.** No solo se apoyaba en el motor propio: **reescribió
+  `collectHits`**. Ya implementado.
 - **004 y 003 se refuerzan pero no se bloquean.** 004 hace que la posición en el tablero suene
   distinto; 003 trae el canvas donde se podría *ver* esa posición. Sin 003, la fase de 004 se oye pero
   no se lee — está anotado como su limitación consciente.
@@ -43,9 +43,9 @@ Registro de todo el trabajo especificado, en orden. La convención de formato es
   el server iba a tener su propio `board.ts` con la colocación y la validez, porque las de la app viven
   atrapadas dentro del componente: dos copias de la regla del juego. Con `domain/board.ts` en 005, las
   tools de 006 importan y no reimplementan.
-- **006 se acopla a `collectHits`, que 004 reescribe.** Si 004 va primero, `simulate_board` se escribe
-  contra la firma nueva; si va primero 006, 004 actualiza la tool y a cambio **la usa como
-  instrumento**: la línea de tiempo de onsets es la forma de verificar sus AC1–AC7 sin escuchar.
+- **006 se acopla a `collectHits`, y 004 ya la reescribió.** Queda resuelto por orden: `simulate_board`
+  se escribe contra la firma nueva —`ClockState` es `{ origin, scheduledUntil }` y `Job` lleva `phase`
+  obligatoria—, sin trabajo de migración.
 - **006 es el único spec que no toca `src/` en absoluto.** Es tooling puro. 005 sí lo toca —es su
   objeto— pero sin alterar comportamiento.
 
@@ -101,3 +101,15 @@ Registro de todo el trabajo especificado, en orden. La convención de formato es
   sobre un prototipo del layout de dos paquetes antes de reescribir el plan. El `node_modules` estricto
   además ataja de antemano el riesgo que el 006 ya tenía anotado: un import fantasma que Vite resuelve
   y `node` no.
+
+- **2026-08-03 — Implementación del 004: la predicción de AC7 se cumplió exacta, y la de cuatro piezas
+  no.** Desfasar dos piezas a fase 0 y 0.5 deja el pico **exactamente** en el de una pieza sola (1.396
+  contra 2.298 alineadas, a ganancia unitaria), justo lo que el `research.md` había anticipado
+  *"entran raspando"*. Con cuatro piezas a 0 · 0.25 · 0.5 · 0.75 el pico baja un 62 % (4.596 → 1.749)
+  pero los onsets **vuelven a fusionarse en uno**: el arpegio dura 1.07 s y un cuarto de compás 0.545 s.
+  Es el comportamiento deseado —desfasadas producen textura, alineadas producen volumen— pero confirma
+  que `ARPEGGIO_SPREAD` en unidades musicales dejó de ser una inconsistencia teórica.
+  Lo otro que salió de implementarlo: **AC8 no se puede testear todavía**.
+  `react-refresh/only-export-components` prohíbe que `App.tsx` exporte las puras del tablero, así que la
+  regla columna→fase se verifica en el navegador hasta que el spec 005 las extraiga. Es la misma
+  medición que motivó al 005, ahora pisada desde el otro lado.

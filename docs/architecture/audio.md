@@ -61,14 +61,78 @@ y agenda todo lo que caiga en los próximos **100 ms**, con tiempos absolutos de
 
 **El temporizador no dispara notas: decide cuándo mirar.** Por eso su jitter no se oye.
 
+### El reloj es un origen, no un cursor
+
+El estado del reloj son dos escalares, y ninguno es "el próximo compás":
+
 ```ts
-if (state.nextBar < fromTime) state.nextBar = fromTime + 0.05;   // recuperación
-while (state.nextBar < fromTime + horizon) { … state.nextBar += bar; }
+export interface ClockState {
+  origin: number;          // instante del compás 0 en el reloj del contexto
+  scheduledUntil: number;  // hasta dónde ya se emitieron onsets
+}
 ```
 
-La guarda de recuperación evita que, si la pestaña estuvo oculta y el temporizador se estranguló, el
-`while` intente recuperar cientos de compases atrasados de golpe. **Solo actúa cuando el reloj ya pasó
-el próximo compás**; en marcha normal `nextBar` va por delante y el offset de `0.05` no se aplica.
+Los onsets de un job son una progresión aritmética que se resuelve **en forma cerrada**, sin avanzar un
+cursor:
+
+```
+onset(k) = origin + (k + phase) * bar
+```
+
+```ts
+const from = Math.max(state.scheduledUntil, fromTime);
+if (from >= until) return out;                    // ventana ya cubierta
+for (const job of jobs) {
+  for (let at = firstOnsetAfter(from, state.origin, bar, job.phase); at <= until; at += bar) { … }
+}
+state.scheduledUntil = until;
+```
+
+Tres propiedades que salen de esa forma, y que hay que preservar:
+
+- **`scheduledUntil` es lo que evita la re-emisión.** Los ticks son de 25 ms y el horizonte de 100 ms:
+  sin él, cada onset saldría cuatro veces. Es un escalar compartido, no estado por job.
+- **Los compases perdidos se saltean, no se recuperan.** Cuando la pestaña estuvo oculta el reloj de
+  audio siguió corriendo y `scheduledUntil` quedó atrás; `Math.max(…, fromTime)` descarta el hueco. No
+  hay bucle de recuperación que acotar, porque saltear 10 compases cuesta lo mismo que saltear 1. Esto
+  **reemplaza** a la guarda `if (state.nextBar < fromTime)` del spec 002.
+- **Nunca hay más de `horizon` de audio comprometido**, con cualquier `phase`. Es lo que hace que quitar
+  una pieza la calle en 100 ms; emitir un compás entero de una la dejaría sonando 2.18 s a 110 bpm.
+
+`firstOnsetAfter` usa `floor(x) + 1` y **no** `ceil(x)`: se quiere el primer onset *estrictamente*
+posterior a lo ya emitido. Con `ceil`, un onset que cae exacto en el borde de una ventana saldría dos
+veces — al cerrar una ventana y al abrir la siguiente.
+
+`startClock` deja `scheduledUntil = currentTime` y `origin = currentTime + 0.05`, en ese orden de
+magnitud: **`scheduledUntil` tiene que quedar estrictamente antes de `origin`**, o el downbeat del
+compás 0 se saltea y el primer sonido llega un compás tarde.
+
+## Fase por pieza
+
+`Job.phase` es la posición del job dentro del compás, `0 ≤ phase < 1`. Es **fracción y no segundos**:
+así mover el tempo estira el patrón en vez de reordenarlo. `App.tsx` la deriva de la columna de la
+celda de agarre (`ax / GRID_W`) — ver
+[modelo-musical.md](./modelo-musical.md).
+
+Es un campo **obligatorio, sin default**. Un `phase?: number` dejaría pasar en silencio el caso de
+agregar un job y olvidarse la fase, que es exactamente el bug que el campo corrige: antes del spec 004
+todas las piezas arrancaban en el mismo sample y agregar la segunda no agregaba una voz, agregaba
+volumen.
+
+Medido con `OfflineAudioContext` a 110 bpm, a ganancia unitaria (el master divide por 0.3):
+
+| | pico | onsets detectados |
+|---|---|---|
+| una pieza | 1.396 | 1 |
+| dos piezas a fase 0 y 0 | 2.298 | 1 |
+| dos piezas a fase 0 y 0.5 | **1.396** | **2** |
+| cuatro piezas a fase 0 | 4.596 | 1 |
+| cuatro piezas a fase 0 · 0.25 · 0.5 · 0.75 | **1.749** | 1 |
+
+Desfasar dos piezas deja el pico exactamente en el de una sola. Con cuatro el pico baja un 62 % pero
+los onsets vuelven a fusionarse: el arpegio dura 1.07 s y un cuarto de compás 0.545 s, así que se
+solapan. **Es el comportamiento deseado** — solaparse desfasadas produce textura, solaparse alineadas
+produce volumen — y es lo que anota `ARPEGGIO_SPREAD` como candidato a pasar a unidades musicales.
 
 ## Reconciliación de loops
 
@@ -79,14 +143,20 @@ deben estar. Los handlers solo cambian estado.
 useEffect(()=>{
   clearJobs();
   if (!loopPlaced) return;
-  for (const p of placed) addJob({ id: p.id, notes: p.notes, spread: ARPEGGIO_SPREAD });
+  for (const p of placed){
+    const [ax] = p.cells[ANCHOR_INDEX[p.piece]];
+    addJob({ id: p.id, notes: p.notes, spread: ARPEGGIO_SPREAD, phase: ax / GRID_W });
+  }
 }, [placed, loopPlaced]);
 ```
 
 **Por qué limpiar y re-agregar es seguro acá**, cuando con Tone habría reiniciado la fase: los jobs son
-datos puros que `tick()` lee, no eventos agendados. La fase vive en `clock.nextBar`, que es compartido y
-no se toca. Con Tone cada job cargaba su propio ID de evento del Transport y perderlo dejaba loops
-huérfanos — de hecho ese fue un bug real.
+datos puros que `tick()` lee, no eventos agendados. Con Tone cada job cargaba su propio ID de evento del
+Transport y perderlo dejaba loops huérfanos — de hecho ese fue un bug real.
+
+Y sigue siendo seguro con la fase por pieza, porque **`phase` se deriva del tablero y no del reloj**:
+re-agregar un job reconstruye exactamente la misma fase. Si la fase se hubiera derivado del momento de
+colocación —lo que hacía Tone, por accidente— este patrón la habría destruido en cada reconciliación.
 
 Tampoco hace falta flag de cancelación: `addJob` y `clearJobs` son sincrónicos, así que no hay promesa
 que pueda resolver después de que el efecto se limpió.

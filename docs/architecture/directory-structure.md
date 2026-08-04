@@ -30,7 +30,7 @@ src/
 ├── vite-env.d.ts      # Tipos de Vite
 ├── audio/
 │   ├── engine.ts          # motor Web Audio: síntesis, scheduler, analizador, singletons
-│   ├── engine.test.ts     # 18 tests con OfflineAudioContext
+│   ├── engine.test.ts     # 27 tests con OfflineAudioContext
 │   ├── spectrum.ts        # mapeo puro de bins de la FFT a alturas de barra
 │   ├── spectrum.test.ts   # 9 tests, sin AudioContext (ver audio.md)
 │   └── test-context.ts    # helpers de render y medición (solo tests)
@@ -49,8 +49,8 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 
 ### Tests
 
-`pnpm test` corre Vitest en `environment: 'node'` contra `node-web-audio-api`. Los 27 tests actuales son
-todos de la capa de audio: 18 del motor con `OfflineAudioContext` y 9 del mapeo del espectro, que no
+`pnpm test` corre Vitest en `environment: 'node'` contra `node-web-audio-api`. Los 36 tests actuales son
+todos de la capa de audio: 27 del motor con `OfflineAudioContext` y 9 del mapeo del espectro, que no
 toca Web Audio en absoluto.
 
 **No hay tests de componentes.** El `App.test.tsx` heredado de CRA se eliminó al montar el runner:

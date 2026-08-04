@@ -168,9 +168,10 @@ export default function App(){
   // colocar, quitar, resetear y prender/apagar el checkbox — antes cada uno de
   // esos caminos tenía que acordarse de limpiar por su cuenta, y no lo hacían.
   //
-  // Limpia y re-agrega todo en vez de diffear, y es seguro porque la fase de los
-  // loops NO vive en los jobs: vive en el cursor del reloj, que esto no toca. Los
-  // jobs son datos puros que el scheduler lee, no eventos con identidad.
+  // Limpia y re-agrega todo en vez de diffear, y sigue siendo seguro con la fase
+  // por pieza porque `phase` se deriva del tablero, no del reloj: re-agregar un
+  // job reconstruye exactamente la misma fase. Los jobs son datos puros que el
+  // scheduler lee, no eventos con identidad.
   //
   // Tampoco hace falta el flag de cancelación que pedía Tone: addJob y clearJobs
   // son sincrónicos, así que no hay promesa que pueda resolver después de que el
@@ -178,7 +179,19 @@ export default function App(){
   useEffect(()=>{
     clearJobs();
     if (!loopPlaced) return;
-    for (const p of placed) addJob({ id: p.id, notes: p.notes, spread: ARPEGGIO_SPREAD });
+    for (const p of placed){
+      // La columna de la celda de agarre es la posición dentro del compás: el eje
+      // X del tablero es tiempo. Sale por índice y no por búsqueda gracias al
+      // invariante de orden del array — `cells` se construye con
+      // `transformedShape.map(...)`, así que `ANCHOR_INDEX` sigue apuntando a la
+      // celda de agarre ya en coordenadas de tablero.
+      const [ax] = p.cells[ANCHOR_INDEX[p.piece]];
+      // Fracción del compás y no segundos: así mover el tempo estira el patrón en
+      // vez de reordenarlo. El ancho del tablero ES el compás (10 pasos, no 16):
+      // con una grilla de semicorcheas, 6 subdivisiones no serían alcanzables
+      // desde ninguna columna.
+      addJob({ id: p.id, notes: p.notes, spread: ARPEGGIO_SPREAD, phase: ax / GRID_W });
+    }
   }, [placed, loopPlaced]);
 
   // Al desmontar, frenar el reloj y soltar los jobs. La limpieza es sincrónica:
