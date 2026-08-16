@@ -17,6 +17,7 @@ Registro de todo el trabajo especificado, en orden. La convención de formato es
 | [007](./007-nota-por-celda-y-lenguaje-visual/spec.md) | 2026-08-16 | Propuesto | Cada celda es dueña de un grado de la escala, y el tablero lo muestra: color por pieza y nota por celda. Absorbe al 001. **Sin cambio de audio** |
 | [008](./008-el-intervalo-como-unidad-musical/spec.md) | 2026-08-16 | Propuesto | El espaciado del arpegio deja de ser 0,15 s fijos y pasa a ser la semicorchea del tempo; `Job` pierde `spread`; el checkbox de loop y el botón de reloj se funden en un play/pausa con estado |
 | [009](./009-el-tablero-como-recorrido/spec.md) | 2026-08-16 | Propuesto | El tablero deja de ser un compás y pasa a ser un circuito cerrado: el orden y los silencios salen de la geometría, `(0,0)` y `(9,5)` se repliegan, las celdas recorridas suenan. Muere `phaseFor` y **supera al 004** |
+| [010](./010-cabeza-lectora-por-celda/spec.md) | 2026-08-16 | Propuesto | Cabeza lectora celda por celda, fuera del estado de React: cierra la limitación que el 004 dejó anotada y da señal visual a la espera de un ciclo que introduce el 009 |
 
 ## Dependencias entre specs
 
