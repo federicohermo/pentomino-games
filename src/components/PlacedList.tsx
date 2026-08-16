@@ -1,5 +1,6 @@
 import { midiName } from '../domain/music.ts';
 import type { PlacedPiece } from '../domain/types/board.types.ts';
+import { PIECE_COLOR } from './constants/palette.constants.ts';
 
 /**
  * Panel derecho: las piezas ya colocadas, con su boton de quitar.
@@ -22,7 +23,15 @@ export default function PlacedList({ placed, onRemove }: Props) {
         {placed.map(p=> (
           <div key={p.id} className="p-2 rounded-xl bg-slate-50 border border-slate-200">
             <div className="flex items-center justify-between">
-              <div className="font-medium">{p.piece} {p.rotation*90}° {p.mirror? '⥯':''}</div>
+              {/* La letra va sobre el color de pieza y no PINTADA del color de
+                  pieza: como texto sobre el blanco de la tarjeta, el amarillo de `V`
+                  da 1,07 de contraste. Sobre su propio fondo vale el par medido de
+                  `PIECE_COLOR`, que es el que el test de la paleta mantiene en AA. */}
+              <div className="font-medium">
+                <span className="px-1.5 rounded"
+                      style={{background: PIECE_COLOR[p.piece].bg, color: PIECE_COLOR[p.piece].fg}}>{p.piece}</span>
+                {' '}{p.rotation*90}° {p.mirror? '⥯':''}
+              </div>
               <button onClick={()=> onRemove(p.id)}
                       className="text-xs px-2 py-0.5 rounded bg-rose-600 text-white">Quitar</button>
             </div>

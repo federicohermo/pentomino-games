@@ -153,7 +153,7 @@ export default function App(){
           onCellEnter={setHover}
           onMouseLeave={()=> setHover(null)}
         >
-          <PiecePreview shape={transformedShape} anchor={anchor} noteSet={noteSet} />
+          <PiecePreview piece={selected} shape={transformedShape} anchor={anchor} noteSet={noteSet} />
         </Board>
 
         <PlacedList

@@ -3,6 +3,7 @@ import { SHAPES } from '../domain/constants/pieces.constants.ts';
 import { CHROMATIC, BASE_MAP } from '../domain/constants/music.constants.ts';
 import type { PieceKey } from '../domain/types/pieces.types.ts';
 import { TEMPO_MIN, TEMPO_MAX } from './constants/layout.constants.ts';
+import { PIECE_COLOR } from './constants/palette.constants.ts';
 
 /**
  * Panel izquierdo: eleccion de pieza, rotacion, reflexion, tempo y transporte.
@@ -34,12 +35,22 @@ export default function PiecePalette({
     <div className="col-span-12 md:col-span-3 bg-white rounded-2xl shadow p-3">
       <h2 className="text-lg font-semibold mb-2">Piezas</h2>
       <div className="grid grid-cols-6 gap-2">
+        {/* El fondo del boton NO toma el color de pieza: ese fondo es el canal de
+            "seleccionada" y pintarlo dejaria a la paleta sin decir cual esta activa.
+            La identidad entra como un punto al costado de la letra, que es donde ya
+            se comunicaba identidad. El punto lleva borde propio porque varios de los
+            12 colores (el amarillo de `V`, el lima de `F`) casi no se ven contra el
+            gris claro del boton sin apoyarse. */}
         {(Object.keys(SHAPES) as PieceKey[]).map(key=> (
           <button
             key={key}
             onClick={()=> onSelect(key)}
-            className={`px-2 py-1 rounded-lg border text-sm ${selected===key? 'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}
-          >{key}</button>
+            className={`px-2 py-1 rounded-lg border text-sm inline-flex items-center justify-center gap-1 ${selected===key? 'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}
+          >
+            <span className="w-2 h-2 rounded-full border border-slate-400 shrink-0"
+                  style={{background: PIECE_COLOR[key].bg}}></span>
+            {key}
+          </button>
         ))}
       </div>
       <div className="mt-4 space-y-2">
