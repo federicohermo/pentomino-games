@@ -26,26 +26,48 @@
 - [ ] `PiecePalette`: un solo botón ▶/⏸ con estado a la vista; fuera el checkbox
 - [ ] La palabra "loop" no queda en ninguna etiqueta de la UI (AC6)
 - [ ] Confirmar que `clockRunning()` y `jobCount()` siguen exportados para la verificación por consola
+- [ ] AC10 — `togglePlay` cierra con `setPlaying(clockRunning())`, no con `setPlaying(!playing)`:
+      `startClock()` es un no-op silencioso sin Web Audio y el botón diría "Pausa" con el reloj parado
+      (ver el snippet en `plan.md` §3)
 
 ## Tests
 - [ ] Los tests de `audio/__tests__/` que construyen jobs con `spread`
+- [ ] El comentario de `scheduler.test.ts:16` («el spread es un dato del job, no una constante del
+      motor») deja de ser cierto: ahora no es ninguna de las dos cosas
 - [ ] AC2 — cambiar el bpm afecta a un job **ya creado**, sin recrearlo
 - [ ] AC5 — `scheduleVoice` con `OfflineAudioContext`: la nota dura 2 intervalos; la envolvente no se movió
 - [ ] AC4 — el arpegio mide 1,000 s a 60 bpm y 0,375 s a 160 bpm
 
 ## MCP server
-- [ ] `simulateBoard.ts`: jobs sin `spread`; la respuesta gana `intervalSeconds`
+- [ ] `simulateBoard.ts:184`: jobs sin `spread`; la respuesta gana `intervalSeconds`
+- [ ] `simulateBoard.ts:143`: `jobTimeline` deriva `lastNote` del intervalo — sin esto da `NaN` y la
+      `timeline` vuelve **vacía sin error**
+- [ ] Reescribir el comentario de `jobTimeline` (`:123-134`): el argumento de no-solapamiento deja de
+      depender del bpm (el arpegio mide siempre `bar / 4`)
+- [ ] AC8 — aserción sobre `intervalSeconds` en `mcp-server/src/__tests__/tools.test.ts` (al lado de la
+      de `barSeconds`, `:244`)
 - [ ] `pnpm mcp:test` en verde
 
 ## Documentación
-- [ ] `docs/architecture/audio.md`: los dos caminos, y que ahora el intervalo también está unificado
-- [ ] `docs/architecture/modelo-musical.md`: "arpegio de tiempo fijo" deja de ser cierto
+- [ ] `docs/architecture/audio.md`: los dos caminos (`:215`, `:218`), y que ahora el intervalo también
+      está unificado
+- [ ] `docs/architecture/audio.md:154-165`: el bloque de reconciliación tiene `spread: ARPEGGIO_SPREAD`
+      y `[placed, loopPlaced]`
+- [ ] `docs/architecture/modelo-musical.md:160-167`: "arpegio de tiempo fijo" deja de ser cierto
 - [ ] `.claude/rules/audio.md`: la lista de lo unificado
-- [ ] `specs/log.md`: estado del 008
+- [ ] `.claude/rules/ui.md:18`: el efecto observa `[placed, playing]`, y no hay checkbox que prender
+- [ ] `docs/guides/conventions.md:176`: ídem, lo afirma en presente
+- [ ] `docs/guides/troubleshooting.md:110-112`: las tres afirmaciones que el spec falsifica — el botón
+      "Loop", el checkbox, y *"el arpegio de colocación suena siempre"*, que D5 deja de ser cierto
+- [ ] `docs/guides/quickstart.md:76-78`: el espaciado deja de ser "dos lugares" y pasa a ser una
+      definición usada en dos lugares
+- [ ] `specs/004-…/tasks.md:135`: marcar la tarea de seguimiento que este spec **salda**
+- [ ] `specs/log.md`: estado del 008, y la nota de que la deuda del 004 queda cerrada
 
 ## Verificación
 - [ ] **AC3** — `simulate_board` a 100 bpm: `timeline` idéntica a la línea base
-- [ ] **AC4** — a 60 y 160 bpm, el arpegio mide lo previsto
+- [ ] **AC4** — a 60 y 160 bpm, el arpegio mide lo previsto. `simulate_board` cubre **el loop**; el
+      arpegio al colocar hay que escucharlo (`playNotes` no pasa por `collectHits` ni por el offline)
 - [ ] `pnpm verify` en verde (AC1, AC8, AC9)
 - [ ] A mano: el botón cambia de cara; colocar en pausa suena, colocar andando no (AC6, AC7)
 - [ ] **Escuchar el extremo de 160 bpm** y decidir si `TEMPO_MAX` se queda

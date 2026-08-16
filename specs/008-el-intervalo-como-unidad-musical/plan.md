@@ -47,7 +47,7 @@ Y `Job` pierde el campo. Ojo con el comentario que hay hoy en `scheduler.types.t
   ser constante es un default que miente, y el spec 005 ya había registrado ese `0.35` como uno de los
   cuatro pares de números que tenían que coincidir sin que nada los sincronizara. Pasa a ser
   obligatorio, igual que `phase` en `Job` y por el mismo motivo.
-- Los dos llamadores calculan `NOTE_INTERVALS * intervalDuration(bpm)`: `tick()` en `engine.ts:126` y
+- Los dos llamadores calculan `NOTE_INTERVALS * intervalDuration(bpm)`: `tick()` en `engine.ts:127` y
   `playNotes` en `engine.ts:97`. `playNotes` además reemplaza `ARPEGGIO_SPREAD` por el mismo intervalo,
   y el `bpm` del módulo ya está a mano.
 
@@ -60,10 +60,27 @@ unificado, no solo las constantes.
 En `App.tsx`:
 
 - `loopPlaced: boolean` → `playing: boolean`.
-- `toggleClock()` → `togglePlay()`: `startClock()` / `stopClock()` y `setPlaying`.
+- `toggleClock()` → `togglePlay()`, y el estado **no se setea a ciegas** (AC10):
+
+  ```ts
+  function togglePlay(){
+    if (playing) stopClock(); else startClock();
+    // El motor es quien sabe si arrancó: startClock() es un no-op silencioso
+    // cuando audio() devuelve null, y sin este chequeo el boton diria "Pausa"
+    // con el reloj parado. Es la falla suave que .claude/rules/audio.md obliga
+    // a chequear en todo llamador, y era lo unico que la consulta imperativa
+    // hacia bien antes de este spec.
+    setPlaying(clockRunning());
+  }
+  ```
+
+  Es **una** consulta, en el handler, y no una consulta en el render: `playing` sigue siendo estado de
+  React y sigue siendo lo que dibuja el botón y lo que dispara el efecto (D4).
 - El efecto de reconciliación pasa a `[placed, playing]`. **Nada más se mueve de él**: sigue siendo el
   único lugar que le habla a los jobs, que es la regla de `.claude/rules/ui.md`.
-- `handleCellClick`: `if (!playing) playNow(noteSet);` (D5).
+- `handleCellClick`: `if (!playing) playNow(noteSet);` (D5). Con `playing` derivado del motor esto
+  además queda bien en el caso degradado: sin Web Audio nunca vale `true`, así que el camino de
+  colocación no se apaga por un reloj que no arrancó.
 
 En `PiecePalette.tsx`:
 
@@ -72,13 +89,25 @@ En `PiecePalette.tsx`:
 - La prop `loopPlaced` pasa a `playing`, `onToggleLoopPlaced` desaparece y `onToggleClock` pasa a
   `onTogglePlay`.
 
-`clockRunning()` **se queda en el motor** aunque la UI ya no lo llame: es la verificación manual desde
-la consola que documenta `docs/architecture/audio.md`, igual que `jobCount()`.
+`clockRunning()` **se queda en el motor**, y con dos usos que conviene no confundir: la verificación
+manual desde la consola que documenta `docs/architecture/audio.md` —igual que `jobCount()`— y la
+confirmación de `togglePlay`. Lo que sale es que la UI lo consulte **en el render**, que es lo que hoy
+deja al botón sin estado.
 
 ## 4. `simulate_board` y la documentación
 
 - `simulateBoard.ts:184`: los jobs se arman sin `spread`. La respuesta gana `intervalSeconds` al lado
   de `barSeconds`, que ya está: es el número que hace falta para leer la `timeline` sin recalcularla.
+- **`simulateBoard.ts:143` es el segundo uso de `spread` y es el que puede fallar callado.**
+  `jobTimeline` calcula `lastNote = lastOnset + (notes.length - 1) * job.spread`, que es el corte por
+  onset del spec 006. Sin `spread` eso da `NaN`, y `hit.at <= NaN` es siempre falso: la `timeline`
+  volvería **vacía**, sin error. Pasa a `(notes.length - 1) * intervalDuration(bpm)`.
+  Su comentario (`:123-134`) también cambia y **mejora**: el argumento de que los arpegios no se
+  solapan hoy compara 0,6 s fijos contra el compás más corto que admite el schema (240 bpm → 1 s);
+  con el intervalo derivado el arpegio mide siempre `bar / 4`, así que la propiedad deja de depender
+  del bpm y vale por construcción. Vale reescribirlo, no borrarlo.
+- Aserción en `mcp-server/src/__tests__/tools.test.ts` sobre `intervalSeconds` (AC8), al lado de la de
+  `barSeconds` en `:244`.
 - `docs/architecture/audio.md`: la tabla de los dos caminos, y el párrafo que dice que cambiar cómo se
   expande el arpegio **no** afecta al loop — con esto pasa a afectarlo, que es el punto.
 - `docs/architecture/modelo-musical.md`: "arpegio de tiempo fijo" deja de ser cierto.
@@ -91,11 +120,13 @@ la consola que documenta `docs/architecture/audio.md`, igual que `jobCount()`.
 | Qué | Cómo |
 |---|---|
 | **AC3** | `simulate_board` a `bpm: 100` contra la línea base del paso 0: `timeline` idéntica |
-| **AC4** | `simulate_board` a 60 y a 160: el arpegio mide 1,000 s y 0,375 s respectivamente |
+| **AC4**, camino del loop | `simulate_board` a 60 y a 160: el arpegio mide 1,000 s y 0,375 s respectivamente |
+| **AC4**, camino de `playNotes` | **No lo cubre `simulate_board`**, que corre `collectHits` y nunca entra a `playNotes`. Y `playNotes` toca el singleton, así que tampoco se renderiza con `OfflineAudioContext`. Queda: leer el diff confirmando que las dos expansiones salen de `intervalDuration(bpm)` (AC1), y escuchar la diferencia al colocar a 60 contra 160 |
 | AC2 | Test: agendar con un bpm, cambiarlo, volver a agendar **sin recrear el job**, y ver que el espaciado cambió |
 | AC5 | Test de `scheduleVoice` con `OfflineAudioContext`: la nota dura 2 intervalos, y el `release` no se movió |
-| AC1, AC8, AC9 | `pnpm verify` — que `ARPEGGIO_SPREAD` no exista lo verifica el compilador en los dos paquetes |
-| AC6, AC7 | A mano: el botón cambia de cara; colocar en pausa suena, colocar andando no |
+| AC1, AC9 | `pnpm verify` — que `ARPEGGIO_SPREAD` no exista lo verifica el compilador en los dos paquetes |
+| AC8 | Aserción sobre `intervalSeconds` en `mcp-server/src/__tests__/tools.test.ts` — `pnpm verify` sola solo typechequea el campo, no lo mide |
+| AC6, AC7, AC10 | A mano: el botón cambia de cara; colocar en pausa suena, colocar andando no. AC10 además con `audio()` forzada a `null` |
 | Riesgo de 160 bpm | Escuchar el extremo del slider antes de cerrar el PR |
 
 ## Lo que un revisor va a esperar y no va a encontrar

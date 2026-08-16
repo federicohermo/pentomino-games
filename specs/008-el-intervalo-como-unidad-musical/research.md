@@ -10,11 +10,11 @@
 | Cola tras el release | `RELEASE_TAIL = 0.01` s | no | ídem `:27` |
 | Compás | `barDuration(bpm) = 60/bpm × 4` | **sí** | `audio/scheduler.ts:23` |
 | Fase de la pieza | fracción de compás | **sí**, por ser fracción | `domain/board.ts:55` |
-| Rango de tempo | 60 a 160 bpm | — | `components/constants/layout.constants.ts:15-16` |
+| Rango de tempo | 60 a 160 bpm | — | `components/constants/layout.constants.ts:49-50` |
 
 Los dos caminos a sonido aplican el espaciado por separado: `playNotes` con
 `start + i * ARPEGGIO_SPREAD` (`engine.ts:97`) y `collectHits` con `at + i * job.spread`
-(`scheduler.ts:90`), donde `job.spread` es una **copia** del mismo número hecha en `App.tsx:107`.
+(`scheduler.ts:90`), donde `job.spread` es una **copia** del mismo número hecha en `App.tsx:103`.
 
 ## 2. El 0,15 no era un número cualquiera: es una semicorchea a 100 bpm
 
@@ -59,8 +59,8 @@ Precio de D3, medido a 100 bpm: la nota pasa de 0,350 s a 0,300 s (−14 %); sum
 | andando | apagado | nada — el reloj corre en vacío, `jobs.size === 0` |
 | **andando** | **encendido** | el patrón |
 
-Y el botón **no comunica su estado**: `PiecePalette.tsx:69` lo dibuja siempre igual ("Loop",
-`bg-emerald-600`) porque `clockRunning()` se consulta dentro del handler de `App.tsx:117` y nunca llega
+Y el botón **no comunica su estado**: `PiecePalette.tsx:111` lo dibuja siempre igual ("Loop",
+`bg-emerald-600`) porque `clockRunning()` se consulta dentro del handler de `App.tsx:113` y nunca llega
 al render. No hay forma de saber si el instrumento está andando salvo escucharlo — y si el checkbox
 está apagado, tampoco escuchándolo.
 
@@ -80,10 +80,15 @@ Las dos etiquetas dicen "Loop": el botón y el checkbox *"Loop de piezas colocad
 | `src/audio/__tests__/` | los tests que construyen jobs con `spread` |
 | `src/App.tsx` | `loopPlaced` → `playing`; el efecto pasa a `[placed, playing]`; `handleCellClick` no dispara con `playing` |
 | `src/components/PiecePalette.tsx` | un solo botón play/pausa con estado; fuera el checkbox y la palabra "loop" |
-| `mcp-server/src/tools/simulateBoard.ts` | arma jobs sin `spread` (`:184`) y reporta el intervalo |
-| `docs/architecture/audio.md` | la tabla de los dos caminos y el espaciado |
-| `docs/architecture/modelo-musical.md` | "arpegio de tiempo fijo" deja de ser cierto |
+| `mcp-server/src/tools/simulateBoard.ts` | **dos** usos de `spread`, no uno: arma jobs sin él (`:184`) y `jobTimeline` calcula `lastNote` con `job.spread` (`:143`). Reporta el intervalo |
+| `docs/architecture/audio.md` | la tabla de los dos caminos y el espaciado (`:215`, `:218`), y el bloque de reconciliación (`:154-165`), que tiene `spread: ARPEGGIO_SPREAD` y `[placed, loopPlaced]` |
+| `docs/architecture/modelo-musical.md` | "arpegio de tiempo fijo" deja de ser cierto (`:160-167`) |
 | `.claude/rules/audio.md` | ídem: "lo unificado son las constantes" pasa a ser "lo unificado es el intervalo" |
+| `.claude/rules/ui.md` | `:18` nombra el efecto sobre `[placed, loopPlaced]` y "prender/apagar el checkbox" |
+| `docs/guides/conventions.md` | `:176` afirma en presente que el efecto observa `[placed, loopPlaced]` |
+| `docs/guides/troubleshooting.md` | `:110-112` tiene **tres** afirmaciones que el spec falsifica: el botón "Loop", el checkbox, y *"el arpegio de colocación no depende del reloj y suena siempre"* — que es exactamente lo que D5 deja de ser cierto |
+| `docs/guides/quickstart.md` | `:76-78` — "el espaciado son dos lugares" pasa a ser una definición usada en dos lugares |
+| `specs/004-…/tasks.md` | `:135` es la tarea de seguimiento que este spec **salda**: `ARPEGGIO_SPREAD` en unidades musicales |
 
 **No se toca `src/domain/`.** Ni un archivo: el intervalo es del motor, no del modelo.
 

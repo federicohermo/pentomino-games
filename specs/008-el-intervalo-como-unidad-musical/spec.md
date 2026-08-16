@@ -70,11 +70,17 @@ medido: a 100 bpm la nota pasa de 0,35 s a 0,30 s, un 14 % más corta. Es poco y
 envolvente es timbre, no ritmo, y no debe estirarse con el tempo.
 
 **D4 — El transporte es un solo botón, y su estado vive en React.**
-`playing` pasa a ser estado de `App.tsx`, no una consulta imperativa a `clockRunning()`. El efecto de
-reconciliación pasa a depender de `[placed, playing]` — sigue siendo el único lugar del repo que le
-habla a los jobs del motor, que es la regla que `.claude/rules/ui.md` marca como no negociable.
-`clockRunning()` **se queda** en el motor: es la verificación manual desde consola, no la fuente de
-verdad de la UI.
+`playing` pasa a ser estado de `App.tsx`, no una consulta imperativa a `clockRunning()` **en el
+render** — que es lo que hoy deja al botón sin cara. El efecto de reconciliación pasa a depender de
+`[placed, playing]` — sigue siendo el único lugar del repo que le habla a los jobs del motor, que es la
+regla que `.claude/rules/ui.md` marca como no negociable.
+
+`clockRunning()` **se queda** en el motor, y `togglePlay` lo consulta **una vez**, después de arrancar
+o frenar, para saber qué pasó de verdad: `startClock()` es un no-op silencioso si `audio()` devuelve
+`null`, y setear `playing` a ciegas haría al botón mentir justo en el estado que este spec existe para
+hacer visible (AC10). Un renderizado que consulte al motor y un handler que le pregunte el resultado de
+lo que acaba de pedirle son cosas distintas: lo primero es lo que se saca, lo segundo es lo que hace
+que el estado de React no se desincronice del motor en el único punto donde puede.
 
 **D5 — Colocar con el transporte andando no dispara el arpegio de confirmación.**
 Y con el transporte en pausa sí lo dispara, como hoy. El criterio es que no haya ningún estado en el
@@ -86,20 +92,34 @@ que colocar una pieza no produzca **ningún** sonido: eso, en un instrumento, se
   caminos a sonido la usan.
 - **AC2** — `Job` no tiene campo `spread` (D2), y cambiar el tempo con el reloj andando cambia el
   espaciado de los jobs **ya creados**, sin recrearlos.
-- **AC3 — A 100 bpm el instrumento suena idéntico a hoy.** La semicorchea a 100 bpm vale exactamente
-  0,15 s, que es el `ARPEGGIO_SPREAD` que se retira: los onsets caen en los mismos instantes.
-  Verificable con `simulate_board` a `bpm: 100`, comparando contra la salida guardada antes de la rama.
-- **AC4** — Mover el tempo cambia la velocidad del arpegio **al colocar**, cosa que hoy no pasa.
-  Medible: la distancia entre el primer y el último onset a 60 bpm es 1,0 s y a 160 bpm es 0,375 s.
+- **AC3 — A 100 bpm los onsets caen en los mismos instantes que hoy.** La semicorchea a 100 bpm vale
+  exactamente 0,15 s, que es el `ARPEGGIO_SPREAD` que se retira. Verificable con `simulate_board` a
+  `bpm: 100`, comparando contra la salida guardada antes de la rama.
+  **No es "suena idéntico"**: D3 acorta la nota de 0,35 s a 0,30 s a ese mismo tempo, así que lo que
+  el AC fija es el ritmo, no la textura. La duración la fija AC5.
+- **AC4** — Mover el tempo cambia la velocidad del arpegio, cosa que hoy no pasa. Medible: la distancia
+  entre el primer y el último onset a 60 bpm es 1,0 s y a 160 bpm es 0,375 s.
+  Ojo con qué prueba cada cosa: `simulate_board` corre `collectHits`, o sea **el camino del loop**, y
+  no toca `playNotes`. Que el arpegio **al colocar** también se estire hay que verificarlo aparte —
+  ver `plan.md` §5. Es la trampa que `.claude/rules/audio.md` ya tiene registrada: los dos caminos no
+  están unificados por construcción, así que verificar uno no verifica el otro.
 - **AC5** — La duración de la nota son 2 intervalos (D3), y `attack`, `decay`, `sustain`, `release` y
   `RELEASE_TAIL` siguen en segundos.
-- **AC6** — Hay **un solo** control de transporte, dice play o pausa según el estado, y la palabra
-  "loop" no aparece en la UI.
-- **AC7** — Con el transporte andando, colocar una pieza **no** dispara el arpegio de confirmación; en
-  pausa, sí (D5).
+- **AC6** *(solo lo firma un humano: no hay tests de UI en el repo)* — Hay **un solo** control de
+  transporte, dice play o pausa según el estado, y la palabra "loop" no aparece en la UI.
+- **AC7** *(solo lo firma un humano, ídem)* — Con el transporte andando, colocar una pieza **no**
+  dispara el arpegio de confirmación; en pausa, sí (D5).
 - **AC8** — `simulate_board` sigue simulando el mismo scheduler que la app: arma sus jobs sin `spread`
-  y su respuesta reporta el intervalo derivado del bpm recibido.
+  y su respuesta reporta el intervalo derivado del bpm recibido. Con una aserción en
+  `mcp-server/src/__tests__/tools.test.ts`, al lado de la que ya compara `barSeconds` (`:244`):
+  `pnpm verify` sin ella solo typechequea el campo nuevo, no lo mide.
 - **AC9** — `pnpm verify` en verde.
+- **AC10 — El botón no puede mentir cuando el motor no arrancó.** `startClock()` es un no-op silencioso
+  si `audio()` devuelve `null` (Web Audio no disponible), y D4 saca a `clockRunning()` de la UI: sin
+  esto, el control queda diciendo "Pausa" con el reloj parado. Es el estado degradado que
+  `.claude/rules/audio.md` exige chequear en **todo** llamador, y hoy no existe porque `clockRunning()`
+  era la fuente de verdad. Falsable sin navegador: forzar `audio()` a `null` y ver que `playing` queda
+  en `false`.
 
 ## Fuera de Alcance
 
@@ -121,4 +141,5 @@ que colocar una pieza no produzca **ningún** sonido: eso, en un instrumento, se
 | A 160 bpm la semicorchea son 0,094 s y las cinco notas entran en 0,375 s: puede volverse un borrón. | Es el extremo del slider, no el valor por defecto. Se escucha al implementar; si no sirve, la salida es bajar `TEMPO_MAX`, que es una constante y un commit aparte. No se resuelve volviendo a un espaciado fijo: eso es el problema que este spec arregla. |
 | Acortar la nota un 14 % (D3) se nota como pérdida de cuerpo. | Medido contra la envolvente completa: al `NOTE_DUR` se le suma un `release` de 0,12 s que no se toca, así que la cola audible baja de 0,47 s a 0,42 s, un 11 %. Si al escucharlo falta cuerpo, el ajuste es el multiplicador de D3 (2 → 3 intervalos), un solo número. |
 | Sacar `spread` de `Job` toca `simulate_board`, que está en el otro paquete. | `pnpm verify` typechequea cruzando el borde de paquete, así que romper la firma **falla ruidosamente** señalando el archivo. Está anotado como tarea, no como sorpresa. |
+| D5 deja un hueco audible al colocar con el transporte andando: la pieza entra recién en su fase, y si la columna acaba de pasar la espera es de casi un compás — 2,18 s a 110 bpm y **4,0 s a 60 bpm**. El criterio de D5 es "ningún estado sin sonido", y esto no es silencio total, pero sí un click sin respuesta inmediata. | Se escucha al implementar, junto con el extremo de 160 bpm. Si molesta, la salida **no** es volver a disparar el arpegio —eso es lo que D5 saca a propósito— sino la cabeza lectora del 010, que da respuesta *visual* a esa espera. Anotado para que no se resuelva de la forma equivocada. |
 | Un revisor lee "un solo botón" como cambio cosmético y no mira lo demás. | El PR lo aclara: la unificación es la mitad chica. La grande es que el tiempo dejó de tener dos unidades. |
