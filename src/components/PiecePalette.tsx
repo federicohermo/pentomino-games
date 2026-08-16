@@ -16,20 +16,19 @@ interface Props {
   rotation: number;
   mirror: boolean;
   tempo: number;
-  loopPlaced: boolean;
+  playing: boolean;
   noteSet: readonly number[];
   onSelect: (piece: PieceKey) => void;
   onRotate: (rotation: number) => void;
   onMirror: () => void;
   onTempo: (bpm: number) => void;
-  onToggleLoopPlaced: (on: boolean) => void;
-  onToggleClock: () => void;
+  onTogglePlay: () => void;
   onReset: () => void;
 }
 
 export default function PiecePalette({
-  selected, rotation, mirror, tempo, loopPlaced, noteSet,
-  onSelect, onRotate, onMirror, onTempo, onToggleLoopPlaced, onToggleClock, onReset,
+  selected, rotation, mirror, tempo, playing, noteSet,
+  onSelect, onRotate, onMirror, onTempo, onTogglePlay, onReset,
 }: Props) {
   return (
     <div className="col-span-12 md:col-span-3 bg-white rounded-2xl shadow p-3">
@@ -86,7 +85,7 @@ export default function PiecePalette({
           {/* Las dos lineas van RESERVADAS, no dejadas al contenido: el largo de esta
               linea depende de cuantos sostenidos tenga la escala, que va de 0 a 5
               sobre las 48 combinaciones de pieza x rotacion, y al envolver movia
-              todo lo que tiene debajo —Tempo, Loop, Reset— 20 px hacia abajo al
+              todo lo que tiene debajo —Tempo, transporte, Reset— 20 px hacia abajo al
               cambiar de pieza O de rotacion. Un panel de control que se acomoda solo
               cuando lo tocas es el bug: el boton se corre justo cuando vas a apretarlo.
 
@@ -107,14 +106,38 @@ export default function PiecePalette({
             <input type="range" min={TEMPO_MIN} max={TEMPO_MAX} value={tempo} onChange={e=>onTempo(parseInt(e.target.value))} />
             <span className="tabular-nums w-10 text-right">{tempo}</span>
           </div>
+          {/* Un solo boton para el transporte: antes el checkbox decidia si sonaba y
+              este boton arrancaba el reloj, y ninguno de los dos mostraba si el reloj
+              corria. El icono es el estado —lo que se ve es lo que pasa al apretar— y
+              el color lo repite para que se lea de un vistazo.
+
+              Solo el icono, sin la palabra: ▶ y ⏸ son el vocabulario universal del
+              transporte y no necesitan glosa. Medido, la etiqueta ademas no entraba:
+              con "▶ Reproducir" el boton pedia 119 px de min-content contra los 148
+              del interior de la tarjeta a 768 —el ancho mas apretado, el mismo que
+              gobierna la grilla de piezas de arriba—, asi que junto a Reset (62 px +
+              8 de gap) la fila desbordaba 23 px y el texto envolvia a dos lineas.
+              Con el icono solo el boton mide 40 px y sobra lugar en todo el rango.
+
+              `aria-label` porque al sacar el texto el boton se queda sin nombre
+              accesible: el glifo no lo es. `title` para que el puntero tambien lo diga.
+
+              Corriendo usa el `bg-slate-900 text-white` con el que la tarjeta marca lo
+              activo en Rotacion y Reflexion: es el mismo idioma, aplicado al mismo
+              concepto. En pausa NO cae a `bg-slate-100`, que es el "apagado" de esos
+              dos, porque al lado tiene a Reset en `bg-slate-200`: el boton principal
+              del instrumento quedaria indistinguible del secundario. Se queda con el
+              verde que ya tenia, que ademas es lo que un transporte pide leer como
+              "apreta esto para que suene". */}
           <div className="flex gap-2">
-            <button onClick={onToggleClock} className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700">Loop</button>
+            <button
+              onClick={onTogglePlay}
+              aria-label={playing? 'Pausa':'Reproducir'}
+              title={playing? 'Pausa':'Reproducir'}
+              className={`px-3 py-1 rounded text-white ${playing? 'bg-slate-900 hover:bg-slate-800':'bg-emerald-600 hover:bg-emerald-700'}`}
+            >{playing? '⏸':'▶'}</button>
             <button onClick={onReset} className="px-3 py-1 rounded bg-slate-200 hover:bg-slate-300">Reset</button>
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={loopPlaced} onChange={e=>onToggleLoopPlaced(e.target.checked)} />
-            Loop de piezas colocadas (cada 1 compás)
-          </label>
         </div>
       </div>
     </div>
