@@ -110,6 +110,48 @@ describe('describe_piece', () => {
     }
   });
 
+  test('AC9 — `cellMap` le pone grado y nota a cada celda, sin tocar `cells`', () => {
+    // Los dos casos del AC: en X la tonica cae en la celda central, y F es la
+    // pieza donde el desempate por indice decide (G4 ↔ A4 contra la referencia).
+    const x = call(describePiece, { piece: 'X' });
+    assert.deepEqual(x.cellMap, [
+      { cell: [1, 0], degree: 4, note: 'F#5' },
+      { cell: [0, 1], degree: 3, note: 'E5' },
+      { cell: [1, 1], degree: 0, note: 'A4' },
+      { cell: [2, 1], degree: 1, note: 'B4' },
+      { cell: [1, 2], degree: 2, note: 'C#5' },
+    ]);
+
+    const f = call(describePiece, { piece: 'F' });
+    assert.deepEqual(f.cellMap, [
+      { cell: [0, 1], degree: 2, note: 'E4' },
+      { cell: [1, 0], degree: 3, note: 'G4' },
+      { cell: [1, 1], degree: 4, note: 'A4' },
+      { cell: [1, 2], degree: 1, note: 'D4' },
+      { cell: [2, 2], degree: 0, note: 'C4' },
+    ]);
+
+    // `cells` sigue siendo la lista de coordenadas de siempre: el campo se agrego
+    // AL LADO, no encima. Es lo que el chequeo de longitud del AC5 no ve.
+    assert.deepEqual(f.cells, [[0, 1], [1, 0], [1, 1], [1, 2], [2, 2]]);
+  });
+
+  test('AC12 — la reflexion invierte `notes` y NO invierte `cellMap`', () => {
+    // El retrogrado es del ORDEN DE REPRODUCCION. La nota de una celda sale del
+    // arpegio ascendente, asi que reflejar mueve la celda de lugar en el tablero
+    // pero le deja el mismo grado. Indexar `notes` en vez de `ascending` daria
+    // vuelta el mapeo justo en las 48 combinaciones con espejo.
+    for (const piece of PIECE_KEYS) {
+      for (let rotation = 0; rotation < 4; rotation++) {
+        const derecho = call(describePiece, { piece, rotation });
+        const espejo = call(describePiece, { piece, rotation, mirror: true });
+        const notaPorGrado = (r: Record<string, unknown>) =>
+          (r.cellMap as { degree: number; note: string }[]).map(e => `${e.degree}:${e.note}`);
+        assert.deepEqual(notaPorGrado(espejo), notaPorGrado(derecho), `${piece} rot${rotation}`);
+      }
+    }
+  });
+
   test('la octava corre el arpegio entero doce semitonos', () => {
     const a = call(describePiece, { piece: 'F', octave: 4 });
     const b = call(describePiece, { piece: 'F', octave: 5 });
