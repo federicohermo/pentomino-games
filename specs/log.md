@@ -53,6 +53,31 @@ Registro de todo el trabajo especificado, en orden. La convención de formato es
   Es exactamente el caso que el 006 dejó previsto —"si hace falta un export nuevo en el dominio, es un
   cambio del 005 y va en su commit"— y se resolvió así.
 
+## Deuda conocida
+
+Lo que está registrado y todavía no tiene spec. Vivía en `CLAUDE.md`, que declaraba a este archivo como
+única fuente y sostenía un segundo registro en paralelo.
+
+- **`public/manifest.json` tiene los valores por defecto de CRA** (`"name": "Create React App
+  Sample"`).
+- **Las `@testing-library/*` siguen sin consumidor.** No hay tests de componentes, y montarlos va a
+  requerir `jsdom` en su propio bloque de config, sin tocar el `environment: 'node'` global que
+  necesita el audio.
+- **No hay tests de UI**, así que los cinco componentes de `components/` se verifican a ojo.
+- **`postcss` y `autoprefixer`** están en `devDependencies` sin ningún config que los use — Tailwind 4
+  va por el plugin de Vite. Candidatos a borrar.
+- **`@types/jest`** sigue en el árbol y es lo que impide usar `globals: true` en Vitest.
+- **La rotación es un `number` sin acotar**, comparada contra `0|1|2|3` en cuatro lugares. El reemplazo
+  ya está decidido —const-object en `constants/` + union type derivado en `types/`, **nunca un `enum`**,
+  que el `erasableSyntaxOnly` del tsconfig rechaza— pero cambia firmas, así que quedó como seguimiento
+  del spec 005.
+
+Ya resueltos: los archivos huérfanos de las plantillas de CRA y Vite (`src/App.css`, `src/logo.svg`,
+`src/assets/react.svg`, `public/vite.svg`, `src/setupTests.ts`) y la dependencia `web-vitals`, que
+quedó sin consumidor cuando `reportWebVitals.ts` no se migró. También el anclaje de la fase a la
+columna (spec 004, AC8), que no tenía test automático porque las puras no se podían exportar desde
+`App.tsx`: hoy vive en `domain/board.ts` y lo cubre `domain/__tests__/board.test.ts`.
+
 ## Notas de revisión
 
 - **2026-08-02 — Review del spec 002.** Ejecutar los tests propuestos corrigió dos cosas que leyendo el
