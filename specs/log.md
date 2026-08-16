@@ -78,10 +78,15 @@ Lo que está registrado y todavía no tiene spec. Vivía en `CLAUDE.md`, que dec
 
 - **`public/manifest.json` tiene los valores por defecto de CRA** (`"name": "Create React App
   Sample"`).
-- **Las `@testing-library/*` siguen sin consumidor.** No hay tests de componentes, y montarlos va a
-  requerir `jsdom` en su propio bloque de config, sin tocar el `environment: 'node'` global que
+- **Las `@testing-library/*` siguen sin consumidor.** Ningún test renderiza un componente, y montarlos
+  va a requerir `jsdom` en su propio bloque de config, sin tocar el `environment: 'node'` global que
   necesita el audio.
-- **No hay tests de UI**, así que los cinco componentes de `components/` se verifican a ojo.
+- **No hay tests de UI**, así que los cuatro componentes de `components/` se verifican a ojo. El spec 007
+  la deja **abierta pero no más grande**: la derivación de la que depende lo que se ve —de `(x, y)` al
+  nombre de nota— no vive en `Board.tsx` sino en `domain/board.ts` (`occupantCellIndex`, AC14), así que
+  el componente sigue siendo un encadenado de puras testeadas en `environment: 'node'`. Su
+  `components/__tests__/palette.test.ts` es el primer test de la carpeta, pero es de constantes: no
+  renderiza nada y **no** desbloquea ni requiere jsdom.
 - **`postcss` y `autoprefixer`** están en `devDependencies` sin ningún config que los use — Tailwind 4
   va por el plugin de Vite. Candidatos a borrar.
 - **`@types/jest`** sigue en el árbol y es lo que impide usar `globals: true` en Vitest.
@@ -95,6 +100,13 @@ Ya resueltos: los archivos huérfanos de las plantillas de CRA y Vite (`src/App.
 quedó sin consumidor cuando `reportWebVitals.ts` no se migró. También el anclaje de la fase a la
 columna (spec 004, AC8), que no tenía test automático porque las puras no se podían exportar desde
 `App.tsx`: hoy vive en `domain/board.ts` y lo cubre `domain/__tests__/board.test.ts`.
+
+Y la tarea de seguimiento que preveía que `occupantAt` devolviera **además** el índice de la celda
+dentro de la pieza —anotada como «`cellOccupied` devuelve también el índice de celda dentro de la
+pieza», con el nombre que la función tenía antes del 005, en
+[`001/tasks.md:35`](./001-notas-por-celda-en-orden-angular/tasks.md)—: la cierra el 007 **sin cambiar la
+firma**, con una pura hermana al lado (`occupantCellIndex`). Ensanchar el retorno le habría cambiado el
+tipo a todos los llamadores que solo quieren saber qué pieza ocupa una celda, para servir a uno solo.
 
 ## Notas de revisión
 
@@ -260,3 +272,19 @@ columna (spec 004, AC8), que no tenía test automático porque las puras no se p
   equivoca de más y se nota; este índice se equivocaba de menos. La lección operativa es la que salvó al
   review: cuando lo que se audita es la herramienta, verificar sus respuestas con una fuente
   independiente en vez de tomarla como oráculo.
+
+- **2026-08-16 — El review del PR del spec 007 cambió el tablero más que la implementación.** Tres de
+  los siete hallazgos eran del código y se arreglaron solos; los que movieron el producto salieron de
+  mirar la pantalla. **El fantasma seguía hablando el idioma viejo**: el spec sacó la letra repetida
+  cinco veces de la celda ocupada y nadie miró que la celda de previsualización la seguía mostrando,
+  en verde, justo cuando es la que decide la jugada. Arreglarlo obligó a un cambio de contrato que el
+  plan no tenía —`previewCells` viaja como array y no como `Set`, porque el índice es lo que conecta
+  la celda con su grado— y **volvió redundante a `PiecePreview` entero**, que mostraba la pieza aparte
+  y sin notas mientras el fantasma la muestra en su lugar y con la nota de cada celda. El componente
+  se retira, con `PREVIEW_CELL_PX` y la ranura `children` del `Board`. La lección es de altura, no de
+  código: **un spec que cambia lo que una celda dice tiene que revisar TODAS las celdas que dicen
+  algo**, y el inventario de superficies no lo da el diff.
+  Lo segundo es que el riesgo que el spec sí había declarado —el tablero de 440 px debajo de `md`— se
+  midió fallando y se estaba mergeando como «decisión abierta» anotada en el cuerpo del PR. Se cerró
+  con `overflow-x-auto` en el contenedor de la grilla, que scrollea el tablero en vez de la página y
+  deja `CELL_PX` en 44: achicar la celda devuelve el problema que ese número existe para resolver.

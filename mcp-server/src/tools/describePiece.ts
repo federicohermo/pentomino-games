@@ -3,7 +3,7 @@ import { defineTool, json } from './types.ts';
 import { renderAscii, sizeOf } from '../render.ts';
 import { PIECE_KEYS } from '../pieces.ts';
 import { rotateN, reflect } from '../../../src/domain/transform.ts';
-import { notesForRotation, midiName } from '../../../src/domain/music.ts';
+import { notesForRotation, midiName, degreeByCellIndex } from '../../../src/domain/music.ts';
 import { SHAPES, ANCHOR_INDEX } from '../../../src/domain/constants/pieces.constants.ts';
 import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE } from '../../../src/domain/constants/music.constants.ts';
 
@@ -51,12 +51,15 @@ export const describePiece = defineTool({
     'Qué forma tiene y qué suena una pieza en una orientación dada. Usar ANTES de simular a mano ' +
     'una rotación o un arpegio: devuelve las celdas ya transformadas (en orden de array), el ' +
     'render ASCII con la celda de agarre marcada, la tónica, la fórmula de escala y las cinco ' +
-    'notas MIDI con el retrógrado ya aplicado. Ejecuta las funciones reales de src/domain/, así ' +
-    'que responde lo que suena hoy, no lo que decía la documentación.\n' +
-    'Dos trampas medidas que conviene tener presentes: (1) la letra describe la FORMA, no el ' +
+    'notas MIDI con el retrógrado ya aplicado. Devuelve además `cellMap`: qué grado del arpegio y ' +
+    'qué nota le toca a CADA celda, en el mismo orden que `cells`. Ejecuta las funciones reales de ' +
+    'src/domain/, así que responde lo que suena hoy, no lo que decía la documentación.\n' +
+    'Tres trampas medidas que conviene tener presentes: (1) la letra describe la FORMA, no el ' +
     'sonido — la pieza F suena con tónica C, y la nota F le toca a la pieza T; (2) la reflexión ' +
     'siempre invierte las notas, pero a veces no se ve: en I y X deja la forma idéntica en las ' +
-    'cuatro rotaciones, y en T y U en las rotaciones 0 y 180°.',
+    'cuatro rotaciones, y en T y U en las rotaciones 0 y 180°; (3) `cellMap` sale del arpegio ' +
+    'ASCENDENTE, no de `notes` — el retrógrado es del ORDEN DE REPRODUCCIÓN, así que reflejar ' +
+    'mueve las celdas de lugar pero no cambia qué nota le toca a cada una.',
   inputSchema,
   run: ({ piece, rotation, mirror, octave }) => {
     const rotated = rotateN(SHAPES[piece], rotation);
@@ -68,6 +71,11 @@ export const describePiece = defineTool({
     const ascending = notesForRotation(BASE_MAP[piece], octave, rotation);
     const notes = mirror ? [...ascending].reverse() : ascending;
 
+    // La forma CANONICA, no `cells`: rotar corre el origen del angulo, asi que
+    // recalcular el mapeo sobre la transformada daria otros grados. Se arrastra
+    // por indice porque `rotateN` y `reflect` son `map`, igual que el ancla.
+    const degrees = degreeByCellIndex(SHAPES[piece]);
+
     return json({
       piece, rotation, mirror, octave,
       tonic: CHROMATIC[BASE_MAP[piece]],
@@ -76,6 +84,11 @@ export const describePiece = defineTool({
       // El indice k es la misma celda logica que en SHAPES: rotar, reflejar y
       // normalizar son `map`. De eso depende que el ancla salga por indice.
       cells,
+      // Campo NUEVO al lado de `cells`, que no se toca: pisarlo cambiaria en
+      // silencio el contrato de la tool. Indexa `ascending` y no `notes` porque
+      // el retrogrado es del orden de reproduccion —eso ya lo dice `notes`—: la
+      // nota de una celda es la del grado que le toca en el arpegio ascendente.
+      cellMap: cells.map((c, k) => ({ cell: c, degree: degrees[k], note: midiName(ascending[degrees[k]]) })),
       anchorIndex,
       anchor: cells[anchorIndex],
       size: sizeOf(cells),

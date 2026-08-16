@@ -191,9 +191,25 @@ export function checkBaseMap(): CheckResult {
   return result('BASE_MAP', failures);
 }
 
-/** 5. Notas — 5 distintas y estrictamente ascendentes ANTES del retrogrado. */
+/**
+ * 5. Notas — 5 distintas y estrictamente ascendentes ANTES del retrogrado, y
+ *    tantas como celdas tiene una pieza.
+ *
+ * Lo ultimo es del spec 007 y hasta ahora vivia solo en un comentario: desde que
+ * `degreeByCellIndex` empareja las dos listas por indice, `NOTES_PER_PIECE` y
+ * `CELLS_PER_PIECE` pasaron de coincidir a TENER que coincidir. Sin este chequeo
+ * una formula de 4 notas con `NOTES_PER_PIECE = 4` pasaba los cinco invariantes
+ * y todos los tests, y la celda de grado 4 renderizaba `undefinedNaN` —
+ * `midiName(undefined)` no explota, devuelve basura.
+ */
 export function checkNotes(): CheckResult {
   const failures: string[] = [];
+  if (NOTES_PER_PIECE !== CELLS_PER_PIECE) {
+    failures.push(
+      `NOTES_PER_PIECE (${NOTES_PER_PIECE}) y CELLS_PER_PIECE (${CELLS_PER_PIECE}) ` +
+      'tienen que ser iguales: cada celda dispara su nota',
+    );
+  }
   for (const p of PIECES) {
     for (const rot of ROTATIONS) {
       const ns = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot);

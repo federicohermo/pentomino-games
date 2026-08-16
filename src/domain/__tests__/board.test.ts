@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cellsAt, isValid, occupantAt, phaseFor } from '../board.ts';
+import { cellsAt, isValid, occupantAt, occupantCellIndex, phaseFor } from '../board.ts';
 import { rotateN, reflect } from '../transform.ts';
 import { SHAPES, ANCHOR_INDEX } from '../constants/pieces.constants.ts';
 import { GRID_W, GRID_H } from '../constants/board.constants.ts';
@@ -138,5 +138,61 @@ describe('occupantAt', () => {
     const a = piezaEn('a', [[1,4]]);
     expect(occupantAt([a], 1, 4)).toBe(a);
     expect(occupantAt([a], 4, 1)).toBeNull();
+  });
+});
+
+describe('occupantCellIndex', () => {
+  it('AC14 — sobre una celda ocupada devuelve el indice de esa celda dentro de la pieza', () => {
+    const a = piezaEn('a', [[1,1],[2,1],[3,1]]);
+    expect(occupantCellIndex(a, 1, 1)).toBe(0);
+    expect(occupantCellIndex(a, 2, 1)).toBe(1);
+    expect(occupantCellIndex(a, 3, 1)).toBe(2);
+  });
+
+  it('AC14 — sobre una celda que la pieza no ocupa devuelve -1', () => {
+    const a = piezaEn('a', [[1,1],[2,1]]);
+    expect(occupantCellIndex(a, 0, 0)).toBe(-1);      // libre y lejos
+    expect(occupantCellIndex(a, 3, 1)).toBe(-1);      // libre y pegada
+    expect(occupantCellIndex(a, 1, 2)).toBe(-1);      // no confunde (x,y) con (y,x)
+  });
+
+  it('AC14 — con dos piezas adyacentes el indice sale de la pieza consultada', () => {
+    // Es el caso que rompe una implementacion que buscara la celda en el tablero
+    // entero: (3,1) y (4,1) son de `b` y su indice adentro de `b` no es el que
+    // tendrian contando desde `a`.
+    const a = piezaEn('a', [[1,1],[2,1]]);
+    const b = piezaEn('b', [[3,1],[4,1]]);
+    expect(occupantCellIndex(a, 3, 1)).toBe(-1);
+    expect(occupantCellIndex(b, 3, 1)).toBe(0);
+    expect(occupantCellIndex(b, 4, 1)).toBe(1);
+    expect(occupantCellIndex(a, 2, 1)).toBe(1);
+    expect(occupantCellIndex(b, 2, 1)).toBe(-1);
+  });
+
+  it('AC14 — compuesto con occupantAt: primero que pieza, despues que celda de esa pieza', () => {
+    const a = piezaEn('a', [[1,1],[2,1]]);
+    const b = piezaEn('b', [[3,1],[4,1]]);
+    const ocupante = occupantAt([a, b], 4, 1) ?? a;   // el ?? no se ejerce: si diera null, el indice seria -1 y el test caeria igual
+    expect(ocupante).toBe(b);
+    expect(occupantCellIndex(ocupante, 4, 1)).toBe(1);
+  });
+
+  it('AC14 — el indice sirve contra la forma canonica en las 96 orientaciones', () => {
+    // Es de lo que depende la derivacion celda→nota del spec 007: la celda k del
+    // tablero tiene que seguir siendo la celda k de SHAPES despues de rotar, reflejar
+    // y trasladar. `cellsAt` es un `map`, asi que el indice sobrevive los tres pasos.
+    for (const p of PIECES) {
+      for (let rot = 0; rot < 4; rot++) {
+        for (const mirror of [false, true]) {
+          const base = rotateN(SHAPES[p], rot);
+          const shape = mirror ? reflect(base) : base;
+          const cells = cellsAt(shape, ANCHOR_INDEX[p], 5, 3);
+          const pieza = piezaEn(`${p}-${rot}-${mirror}`, cells);
+          for (let k = 0; k < cells.length; k++) {
+            expect(occupantCellIndex(pieza, cells[k][0], cells[k][1])).toBe(k);
+          }
+        }
+      }
+    }
   });
 });

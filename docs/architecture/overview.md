@@ -27,8 +27,8 @@ expresivo, no más difícil.
 ┌───────▼──────────────────┐  ┌───────▼───────────────────┐
 │  src/components/         │  │  src/audio/               │
 │   PiecePalette · Board   │  │   voice.ts     síntesis   │
-│   PiecePreview           │  │   scheduler.ts lookahead  │
-│   PlacedList · Spectrum  │  │   engine.ts    singletons │
+│   PlacedList · Spectrum  │  │   scheduler.ts lookahead  │
+│                          │  │   engine.ts    singletons │
 │   presentacionales:      │  │   spectrum.ts  bins→barras│
 │   props, sin estado      │  │                           │
 └───────┬──────────────────┘  │  voice y scheduler reciben│
@@ -38,8 +38,11 @@ expresivo, no más difícil.
 ┌───────▼─────────────────────┴───────────────────────────┐
 │  src/domain/ — puro: sin React, sin Web Audio, sin DOM  │
 │   transform.ts   rotate90 · normalize · rotateN · reflect│
-│   board.ts       cellsAt · isValid · occupantAt          │
+│                  centroid · angleFromCentroid            │
+│   board.ts       cellsAt · isValid · phaseFor            │
+│                  occupantAt · occupantCellIndex          │
 │   music.ts       midiFor · midiName · notesForRotation   │
+│                  degreeByCellIndex                       │
 │   invariants.ts  los cinco chequeos del modelo           │
 │   types/ ← constants/ ← módulos                          │
 └─────────────────────────────────────────────────────────┘
@@ -70,9 +73,9 @@ Sin React, sin audio, sin DOM. Determinísticas y testeables en aislamiento.
 
 | Módulo | Símbolos | Responsabilidad |
 |---|---|---|
-| `transform.ts` | `rotate90`, `normalize`, `rotateN`, `reflect` | Transformaciones de un `Cell[]` |
-| `board.ts` | `cellsAt`, `isValid`, `phaseFor`, `occupantAt` | Las reglas del tablero, y la columna como posición en el compás |
-| `music.ts` | `midiFor`, `midiName`, `notesForRotation` | De pieza + rotación a cinco notas MIDI |
+| `transform.ts` | `rotate90`, `normalize`, `rotateN`, `reflect`, `centroid`, `angleFromCentroid` | Transformaciones de un `Cell[]`, y el centroide con el ángulo de cada celda a su alrededor |
+| `board.ts` | `cellsAt`, `isValid`, `phaseFor`, `occupantAt`, `occupantCellIndex` | Las reglas del tablero, la columna como posición en el compás, y qué celda de la pieza cae en `(x, y)` |
+| `music.ts` | `midiFor`, `midiName`, `notesForRotation`, `degreeByCellIndex` | De pieza + rotación a cinco notas MIDI, y de la forma a qué celda lleva cuál |
 | `invariants.ts` | `checkArrayOrder`, `checkAnchors`, `checkShapes`, `checkBaseMap`, `checkNotes`, `checkAll` | Los cinco chequeos del modelo. Los dos geométricos recorren las 96 orientaciones; los otros tres, lo que les corresponde |
 
 Los datos (`SHAPES`, `ANCHOR_INDEX`, `BASE_MAP`, `PENT_*`, `GRID_W/H`) viven en `domain/constants/`, y
@@ -98,7 +101,8 @@ esta escala no hace falta, y agregarlo sería la clase de complejidad que un pro
 | `hover` | `Cell \| null` | Celda bajo el cursor, para el fantasma |
 
 Derivados con `useMemo`: `transformedShape` y `noteSet`. Derivados sin memo (baratos, se recalculan por
-render): `anchor`, `previewCells`, `previewValid`, `previewSet`.
+render): `previewCells` y `previewValid`. `previewCells` viaja al `Board` como **array y no como `Set`
+de claves `"x,y"`**: el índice de cada celda es lo que la conecta con su grado, y el `Set` lo perdía.
 
 ### 3. Audio — el motor y sus singletons
 

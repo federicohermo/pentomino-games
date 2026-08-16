@@ -10,10 +10,18 @@ export const PENT_BLUES5: number[] = [0,3,5,6,7];
 /**
  * Notas que dispara una pieza: las cuatro formulas son pentatonicas.
  *
- * Coincide con `CELLS_PER_PIECE` y **hoy es una coincidencia**, no una relacion:
- * son 5 notas porque la escala es pentatonica y 5 celdas porque la pieza es un
- * pentomino. El spec 001 es el que va a volver significativa esa coincidencia, al
- * asignar una nota a cada celda.
+ * Coincide con `CELLS_PER_PIECE` y **ya no es una coincidencia**: son 5 notas
+ * porque la escala es pentatonica y 5 celdas porque la pieza es un pentomino,
+ * pero desde el spec 007 `degreeByCellIndex` empareja las dos listas y cada
+ * celda tiene su nota.
+ *
+ * O sea que los dos numeros pasaron de coincidir a tener que coincidir: una
+ * formula de 4 notas dejaria una celda sin nota —`ascendente[4]` seria
+ * `undefined`, y `midiName` de eso no explota: devuelve `undefinedNaN` y lo
+ * pinta en la celda— y una de 6 dejaria una nota que ninguna celda dispara.
+ *
+ * Lo verifica `checkNotes()` de `invariants.ts`, que es donde tiene que estar:
+ * escrito solo aca era una afirmacion, no una red.
  */
 export const NOTES_PER_PIECE = 5;
 
@@ -32,3 +40,18 @@ export const BASE_MAP: Record<PieceKey, number> = {
 
 /** Octava en la que se construye el arpegio de una pieza. */
 export const DEFAULT_OCTAVE = 4;
+
+/**
+ * Tolerancia de las dos comparaciones de `degreeByCellIndex`: "esta celda cae
+ * sobre el centroide" —una distancia contra el epsilon— y "estas dos celdas
+ * tienen el mismo angulo" —el tamano de la cubeta a la que se redondea el
+ * angulo antes de ordenar—.
+ *
+ * Va contra un epsilon y no contra `0` porque el centroide es un promedio de
+ * quintos: `2/5 + 2/5 + 1/5` no siempre da exactamente `1`, y una celda que
+ * geometricamente ESTA en el centro puede quedar a 1e-16 de el.
+ *
+ * Lo usa tambien `transform.test.ts` para afirmar cuales celdas caen sobre el
+ * centroide: es la misma pregunta, asi que es el mismo numero y no una copia.
+ */
+export const DEGREE_EPSILON = 1e-9;

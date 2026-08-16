@@ -14,7 +14,6 @@ import type { PieceKey } from "./domain/types/pieces.types.ts";
 import type { PlacedPiece } from "./domain/types/board.types.ts";
 import PiecePalette from "./components/PiecePalette.tsx";
 import Board from "./components/Board.tsx";
-import PiecePreview from "./components/PiecePreview.tsx";
 import PlacedList from "./components/PlacedList.tsx";
 import Spectrum from "./components/Spectrum.tsx";
 
@@ -64,9 +63,6 @@ export default function App(){
     if (mirror) ns = [...ns].reverse();
     return ns;
   }, [selected, rotation, mirror]);
-
-  // Celda de agarre ya transformada: el click en (x,y) la deja justo ahí.
-  const anchor = transformedShape[ANCHOR_INDEX[selected]];
 
   function handleCellClick(x: number, y: number){
     const cells = cellsAt(transformedShape, ANCHOR_INDEX[selected], x, y);
@@ -122,7 +118,6 @@ export default function App(){
   // como inválida.
   const previewCells = hover? cellsAt(transformedShape, ANCHOR_INDEX[selected], hover[0], hover[1]) : [];
   const previewValid = hover? isValid(previewCells, placed) : false;
-  const previewSet = new Set(previewCells.map(([x,y])=> `${x},${y}`));
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4">
@@ -145,16 +140,15 @@ export default function App(){
 
         <Board
           placed={placed}
-          previewSet={previewSet}
+          previewCells={previewCells}
           previewValid={previewValid}
           hover={hover}
           selected={selected}
+          rotation={rotation}
           onCellClick={handleCellClick}
           onCellEnter={setHover}
           onMouseLeave={()=> setHover(null)}
-        >
-          <PiecePreview shape={transformedShape} anchor={anchor} noteSet={noteSet} />
-        </Board>
+        />
 
         <PlacedList
           placed={placed}
