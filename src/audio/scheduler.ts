@@ -1,6 +1,6 @@
 import type { Job, ClockState, Hit } from './types/scheduler.types.ts';
 import { midiToHz } from './voice.ts';
-import { BEATS_PER_BAR } from './constants/scheduler.constants.ts';
+import { BEATS_PER_BAR, SUBDIVISIONS_PER_BEAT } from './constants/scheduler.constants.ts';
 
 /**
  * Scheduler con lookahead: decide QUE suena y CUANDO, sin producir sonido.
@@ -21,6 +21,24 @@ import { BEATS_PER_BAR } from './constants/scheduler.constants.ts';
  * tener dos definiciones del compas.
  */
 export const barDuration = (bpm: number): number => (60 / bpm) * BEATS_PER_BAR;
+
+/**
+ * Duracion de un intervalo —la unidad ritmica del instrumento— en segundos.
+ *
+ * Definida SOBRE barDuration y no con su propia formula: asi hay un solo lugar
+ * donde el compas se convierte en segundos, y el intervalo no puede desfasarse
+ * del compas al que subdivide.
+ *
+ * Exportada por el mismo motivo que barDuration: es una regla, no un detalle.
+ * Antes el espaciado del arpegio era una constante en segundos (0.15) que no
+ * miraba el tempo: el arpegio de 5 notas duraba 4 * 0.15 = 0.6 s a cualquier bpm,
+ * o sea un 25% del compas a 100 bpm pero un 40% a 160, donde la linea base del
+ * spec 008 mostro que las piezas ya se pisan. Derivado del compas mide siempre
+ * `compas / 4` —1.000 s a 60 bpm, 0.375 s a 160— y deja de depender del tempo.
+ * A 100 bpm da 0.15 s exactos, que es el valor de antes: ahi no cambia nada.
+ */
+export const intervalDuration = (bpm: number): number =>
+  barDuration(bpm) / (BEATS_PER_BAR * SUBDIVISIONS_PER_BEAT);
 
 /**
  * Primer onset de un job estrictamente posterior a `after`.
@@ -61,6 +79,9 @@ export function collectHits(
   state: ClockState,
 ): Hit[] {
   const bar = barDuration(bpm);
+  // Depende solo del bpm de esta llamada, asi que sale una vez y no por nota:
+  // adentro del forEach serian 5 divisiones por job y por compas de la ventana.
+  const interval = intervalDuration(bpm);
   const until = fromTime + horizon;
   const out: Hit[] = [];
 
@@ -87,7 +108,7 @@ export function collectHits(
     // propiedad de ESE llamador y no de la funcion: con un horizonte de varios
     // compases da varias vueltas, y los tests la usan asi a proposito.
     for (let at = firstOnsetAfter(from, state.origin, bar, job.phase); at <= until; at += bar) {
-      job.notes.forEach((m, i) => out.push({ hz: midiToHz(m), at: at + i * job.spread }));
+      job.notes.forEach((m, i) => out.push({ hz: midiToHz(m), at: at + i * interval }));
     }
   }
 

@@ -12,8 +12,17 @@ export const DEFAULT_VOICE: Required<VoiceOpts> = {
   type: 'triangle',
 };
 
-/** Cuanto dura una nota, en segundos. Sin contar el release, que se suma despues. */
-export const NOTE_DUR = 0.35;
+/**
+ * Cuanto dura una nota, en INTERVALOS. Sin contar el release, que se suma despues.
+ *
+ * En intervalos y no en segundos porque una duracion fija no sobrevive al cambio
+ * de tempo: la nota mantiene su relacion con el pulso —dos intervalos, media
+ * negra— a cualquier bpm, mientras que un valor en segundos se estira o se pisa
+ * con la nota siguiente segun el tempo. Quien la use la multiplica por
+ * `intervalDuration(bpm)`. A 100 bpm da 2 * 0.15 = 0.300 s, contra los 0.350 s
+ * de antes: la nota se acorta 50 ms y ese es todo el cambio a ese tempo.
+ */
+export const NOTE_INTERVALS = 2;
 
 /** Amplitud de una nota, 0-1. */
 export const DEFAULT_VELOCITY = 0.8;

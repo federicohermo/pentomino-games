@@ -2,8 +2,6 @@
 export interface Job {
   id: string;
   notes: number[];
-  /** segundos entre notas consecutivas del arpegio */
-  spread: number;
   /**
    * Posicion del job dentro del compas, `0 <= phase < 1`.
    *

@@ -1,10 +1,10 @@
 import type { Job, ClockState } from './types/scheduler.types.ts';
 import { midiToHz, scheduleVoice } from './voice.ts';
-import { collectHits } from './scheduler.ts';
-import { NOTE_DUR } from './constants/voice.constants.ts';
+import { collectHits, intervalDuration } from './scheduler.ts';
+import { NOTE_INTERVALS } from './constants/voice.constants.ts';
 import { LOOKAHEAD, TICK_MS } from './constants/scheduler.constants.ts';
 import {
-  MASTER_GAIN, ARPEGGIO_SPREAD, DEFAULT_BPM, PLAY_DELAY, CLOCK_START_DELAY,
+  MASTER_GAIN, DEFAULT_BPM, PLAY_DELAY, CLOCK_START_DELAY,
   FFT_SIZE, SMOOTHING,
 } from './constants/engine.constants.ts';
 
@@ -86,15 +86,24 @@ export function readSpectrum(): Uint8Array | null {
  * porque collectHits ya devolvio los instantes expandidos y volver a pasar por aca
  * significaria recalcular el espaciado que el scheduler ya aplico.
  *
- * La consecuencia practica: un cambio de sonido hecho SOLO aca no afecta al loop.
- * Lo que si esta unificado son las constantes (ARPEGGIO_SPREAD, NOTE_DUR) y la
- * funcion de voz — cambiar el timbre en DEFAULT_VOICE alcanza para los dos caminos.
+ * Siguen siendo dos caminos, pero ahora comparten tambien el RITMO, no solo el
+ * timbre: el paso del arpegio y la duracion de la nota salen de intervalDuration
+ * con el bpm de este modulo, aca y en tick(). Antes tambien coincidian, pero por
+ * copiar el mismo numero fijo en segundos —uno leia la constante y el otro la
+ * recibia dentro del Job—, y ese numero ignoraba el tempo: eran dos lugares que
+ * alguien tenia que mantener iguales. Hoy es una regla sola y sigue al bpm.
+ *
+ * Lo que sigue SIN unificar es COMO se expande el arpegio: un cambio en la linea
+ * de abajo no llega al loop, igual que un cambio en collectHits no llega aca.
+ * Cambiar el timbre en DEFAULT_VOICE si alcanza para los dos.
  */
 export function playNotes(notes: number[]): void {
   const c = audio();
   if (!c || !master) return;
   const start = c.currentTime + PLAY_DELAY;
-  notes.forEach((m, i) => scheduleVoice(c, master!, midiToHz(m), start + i * ARPEGGIO_SPREAD, NOTE_DUR));
+  const interval = intervalDuration(bpm);
+  const dur = NOTE_INTERVALS * interval;
+  notes.forEach((m, i) => scheduleVoice(c, master!, midiToHz(m), start + i * interval, dur));
 }
 
 /** Dispara ya, reanudando el contexto. Debe llamarse desde un gesto del usuario. */
@@ -123,8 +132,11 @@ export const clockRunning = (): boolean => timer !== null;
 function tick(): void {
   const c = audio();
   if (!c || !master) return;
+  // El bpm no cambia dentro de la vuelta, asi que la duracion sale una sola vez
+  // y todas las notas de esta ventana quedan medidas contra el mismo tempo.
+  const dur = NOTE_INTERVALS * intervalDuration(bpm);
   for (const hit of collectHits(c.currentTime, LOOKAHEAD, bpm, jobs.values(), clock)) {
-    scheduleVoice(c, master, hit.hz, hit.at, NOTE_DUR);
+    scheduleVoice(c, master, hit.hz, hit.at, dur);
   }
 }
 
