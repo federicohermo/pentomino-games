@@ -34,7 +34,7 @@ mcp-server/
     ├── render.ts                 ASCII de una pieza (puro)
     ├── specs.ts                  parseo de log.md y de los tasks.md
     ├── tools/                    una tool por archivo + el array de index.ts
-    └── __tests__/                node --test, 36 tests
+    └── __tests__/                node --test, 38 tests
 ```
 
 Que sea un paquete y no una carpeta más no es prolijidad: `zod` y `@modelcontextprotocol/server` quedan
@@ -76,7 +76,7 @@ src/
 │   ├── spectrum.ts               # mapeo puro de bins de la FFT a alturas de barra
 │   ├── types/                    #   voice.types.ts · scheduler.types.ts
 │   ├── constants/                #   voice · scheduler · engine
-│   └── __tests__/                # 36 tests
+│   └── __tests__/                # 38 tests
 │       ├── voice.test.ts         #   7, con OfflineAudioContext
 │       ├── scheduler.test.ts     #   17
 │       ├── integration.test.ts   #   3
@@ -123,7 +123,7 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 de audio y 54 del dominio. El `include` (`src/**/*.test.{ts,tsx}`) toma los `__tests__/` sin
 configuración extra, y `test-context.ts` no matchea porque le falta el `.test.` antes de la extensión.
 
-Los **36 tests del MCP server corren aparte**, con `pnpm mcp:test`: viven en `mcp-server/src/__tests__/`
+Los **38 tests del MCP server corren aparte**, con `pnpm mcp:test`: viven en `mcp-server/src/__tests__/`
 y los corre `node --test`, no Vitest. Los `include` no se pisan — el de Vitest empieza en `src/`.
 
 **No hay tests de componentes.** El `App.test.tsx` heredado de CRA se eliminó al montar el runner:

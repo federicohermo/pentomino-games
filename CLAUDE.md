@@ -31,7 +31,7 @@ pnpm build    # tsc -b && vite build
 pnpm lint     # ESLint (flat config v9)
 pnpm preview  # Sirve dist/
 pnpm test     # Vitest — 90 tests: dominio puro + audio con OfflineAudioContext
-pnpm mcp:test # MCP server — typecheck + 36 tests con node --test
+pnpm mcp:test # MCP server — typecheck + 38 tests con node --test
 pnpm exec tsc -b --noEmit   # Solo typecheck
 ```
 
@@ -223,7 +223,7 @@ No indexa código: no hay índice, no hay staleness y no hay build — si alguie
 | `describe_piece` | derivar a mano una rotación, una escala o un retrógrado |
 | `simulate_board` | recorrer el lookahead a mano para saber qué suena junto |
 | `check_invariants` | y después de tocar geometría, `SHAPES` o el modelo musical |
-| `spec_status` | leer `log.md` y los cuatro `tasks.md` (24 KB) |
+| `spec_status` | leer `log.md` y los seis `tasks.md` (hoy 61 KB, y crecen con cada spec) |
 
 **Las tools son una fachada sobre `src/domain/` y `src/audio/`, no una copia.** Lo único propio del
 server es el render ASCII, el parseo de los specs y el formato de las respuestas. Si al agregar una tool
@@ -284,7 +284,7 @@ Detalle y los dos errores ya cometidos en
   Sample"`).
 - **Las `@testing-library/*` siguen sin consumidor**: no hay tests de componentes todavía, y montarlos
   va a requerir `jsdom` en su propio bloque de config, sin tocar el `environment` global que necesita el
-  audio. Los 90 tests de Vitest —36 de audio y 54 de dominio— corren en Node, y los 36 del MCP server
+  audio. Los 90 tests de Vitest —36 de audio y 54 de dominio— corren en Node, y los 38 del MCP server
   aparte, con `node --test`.
 - **No hay tests de UI**, así que los cuatro componentes de `components/` se verifican a ojo.
 - **`postcss` y `autoprefixer`** están en `devDependencies` sin ningún config que los use (Tailwind 4 va

@@ -16,7 +16,8 @@ export const specStatus = defineTool({
   description:
     'Estado del trabajo planificado: por spec, su estado en specs/log.md, cuántas tareas están ' +
     'marcadas sobre el total y cuál es la próxima sin marcar. Usar en lugar de leer log.md y los ' +
-    'tasks.md, que son 24 KB. Las tareas bajo un encabezado "Seguimiento" se cuentan aparte y no ' +
+    'tasks.md, que son decenas de KB y crecen con cada spec. Las tareas bajo un encabezado ' +
+    '"Seguimiento" se cuentan aparte y no ' +
     'entran en "proxima": son deuda anotada a propósito, así que un spec puede estar Implementado ' +
     'con seis sin marcar y no deberle nada a nadie.',
   inputSchema: z.object({}),

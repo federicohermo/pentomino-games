@@ -4,9 +4,9 @@ import { join } from 'node:path';
 /**
  * Estado del trabajo planificado, leido de `specs/`.
  *
- * Es la unica tool que no es de dominio, y la que menos ahorra: 24 KB de
- * `log.md` mas los `tasks.md` contra una respuesta de menos de 1 KB. Entra
- * porque el costo de escribirla es un parseo de checkboxes.
+ * Es la unica tool que no es de dominio, y la que menos ahorra: `log.md` mas los
+ * `tasks.md` —61 KB al escribir esto, y suben con cada spec— contra una respuesta
+ * de menos de 1 KB. Entra porque el costo de escribirla es un parseo de checkboxes.
  *
  * El parseo esta separado de la lectura a proposito: `parseLog` y `parseTasks`
  * son puras y se testean contra strings fijos, asi que los tests no se rompen
