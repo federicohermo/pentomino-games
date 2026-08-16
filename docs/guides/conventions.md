@@ -173,7 +173,7 @@ mal, pero es la clase de cosa que alguien "arregla" por error.
 
 ## Efectos
 
-Los efectos **reconcilian**, no ejecutan comandos. El efecto de audio observa `[placed, loopPlaced]` y
+Los efectos **reconcilian**, no ejecutan comandos. El efecto de audio observa `[placed, playing]` y
 lleva los jobs del motor a donde deben estar: limpia todo y re-agrega. Los handlers solo cambian estado.
 
 Que limpiar y re-agregar sea aceptable no es casualidad, es una propiedad del diseño: los jobs son

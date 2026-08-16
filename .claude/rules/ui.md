@@ -15,7 +15,7 @@ ni efectos propios. La excepción es `Spectrum.tsx`, que no recibe props y lee d
 para que dibujar a 60 fps no re-renderice nada del tablero.
 
 - **Toda la gestión de jobs del motor pasa por el efecto de reconciliación.** Un único `useEffect`
-  sobre `[placed, loopPlaced]` lleva los jobs a donde deben estar; los handlers solo cambian estado. El
+  sobre `[placed, playing]` lleva los jobs a donde deben estar; los handlers solo cambian estado. El
   patrón imperativo anterior —cada handler limpiando lo suyo— produjo loops huérfanos que sobrevivían a
   "Quitar" y "Reset". Si hace falta agendar algo nuevo, va adentro de ese efecto.
 - **Nunca mutar objetos ya entregados a React.** Ese fue exactamente el bug de los loops que motivó el

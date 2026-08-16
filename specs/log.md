@@ -319,3 +319,13 @@ tipo a todos los llamadores que solo quieren saber qué pieza ocupa una celda, p
   Lo que el cambio dejó abierto está en Deuda conocida: `L` (55,8) e `Y` (56,9) no llegan a Lc 60 con
   ningún `fg`. `specs/007/research.md` **no se reescribió** — documenta lo que se midió entonces y con
   qué modelo, y pisarlo borraría el registro de por qué en su momento se eligió negro.
+
+- **2026-08-16 — El 008 cierra la deuda del 004 sobre `ARPEGGIO_SPREAD`.** La tarea de seguimiento
+  anotada en [`004/tasks.md`](./004-fase-por-pieza-la-columna-como-posicion-en-el-compas/tasks.md#seguimiento-no-bloquea)
+  pedía llevar el espaciado del arpegio a unidades musicales, con la medición de que a 110 bpm cuatro
+  piezas desfasadas fusionan sus onsets porque el arpegio (1.07 s) dobla a un cuarto de compás
+  (0.545 s). El 008 la salda: `intervalDuration(bpm)` reemplaza a `ARPEGGIO_SPREAD`, definida sobre
+  `barDuration` como `barDuration(bpm) / (BEATS_PER_BAR * SUBDIVISIONS_PER_BEAT)`. A 100 bpm el
+  intervalo da 0,15 s —el mismo valor que `ARPEGGIO_SPREAD` tenía fijo—, así que a ese tempo el patrón
+  no cambia; a 160 bpm el arpegio de 5 notas pasa a medir 0,375 s en vez de mantener 0,6 s fijos
+  mientras el compás baja a 1,5 s, que era lo que espesaba el instrumento en vez de acelerarlo.

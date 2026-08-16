@@ -73,8 +73,9 @@ Para el **timbre**, `DEFAULT_VOICE` en `src/audio/constants/voice.constants.ts` 
 ahí, porque los dos caminos de reproducción pasan por `scheduleVoice()`. Agregar un test de envolvente
 si se cambia la forma.
 
-Para el **espaciado del arpegio**, cuidado: `playNotes()` lo aplica para el disparo al colocar y
-`collectHits()` para el loop. Son dos lugares. Detalle en
+Para el **espaciado del arpegio**, una sola definición usada en dos lugares: `intervalDuration(bpm)` la
+fija, y tanto `playNotes()` (el disparo al colocar) como `collectHits()` (el loop) la consumen. Tocar la
+definición alcanza para los dos. Detalle en
 [audio.md](../architecture/audio.md#los-dos-caminos-de-reproducción).
 
 **No romper la inyección del contexto**: `scheduleVoice` y `collectHits` reciben el `AudioContext` por

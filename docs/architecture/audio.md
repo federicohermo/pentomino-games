@@ -42,8 +42,10 @@ Efecto lateral: se puede importar `scheduler.ts` **sin** arrastrar el módulo de
 proceso de node.
 
 Los valores fijos de cada capa viven en `audio/constants/` y los tipos en `audio/types/`, con el nombre
-de su módulo. Ahí está, por ejemplo, la unificación de `NOTE_DUR`: antes el `0.35` estaba escrito dos
-veces —como constante y como default de `scheduleVoice`— sin nada que los mantuviera iguales.
+de su módulo. Ahí está, por ejemplo, la duración de la nota: `NOTE_INTERVALS` la fija en intervalos, no
+en segundos, y `scheduleVoice` no tiene default para `dur` —un default fijo sería una constante que ya
+no puede ser constante, porque la duración depende del tempo—, así que los dos llamadores (`tick` y
+`playNotes`) calculan `NOTE_INTERVALS * intervalDuration(bpm)` en cada llamada.
 
 ## Síntesis
 
@@ -147,22 +149,27 @@ Medido con `OfflineAudioContext` a 110 bpm, a ganancia unitaria (el master divid
 Desfasar dos piezas deja el pico exactamente en el de una sola. Con cuatro el pico baja un 62 % pero
 los onsets vuelven a fusionarse: el arpegio dura 1.07 s y un cuarto de compás 0.545 s, así que se
 solapan. **Es el comportamiento deseado** — solaparse desfasadas produce textura, solaparse alineadas
-produce volumen — y es lo que anota `ARPEGGIO_SPREAD` como candidato a pasar a unidades musicales.
+produce volumen — y es la medición que llevó el espaciado del arpegio a unidades musicales:
+`intervalDuration(bpm)` se define sobre `barDuration` como `barDuration(bpm) / (BEATS_PER_BAR *
+SUBDIVISIONS_PER_BEAT)`, así que a más tempo el arpegio se achica en la misma proporción que el
+compás. El arpegio de 5 notas mide siempre `4 × intervalo = compás / 4`: 1,000 s a 60 bpm y 0,375 s a
+160 bpm. A 100 bpm el intervalo da 0,15 s — exactamente el `ARPEGGIO_SPREAD` que reemplaza —, así que a
+ese tempo el patrón no cambia en absoluto.
 
 ## Reconciliación de loops
 
-Un único `useEffect` en `App.tsx` observa `[placed, loopPlaced]` y lleva los jobs del motor a donde
+Un único `useEffect` en `App.tsx` observa `[placed, playing]` y lleva los jobs del motor a donde
 deben estar. Los handlers solo cambian estado.
 
 ```ts
 useEffect(()=>{
   clearJobs();
-  if (!loopPlaced) return;
+  if (!playing) return;
   for (const p of placed){
     const [ax] = p.cells[ANCHOR_INDEX[p.piece]];
-    addJob({ id: p.id, notes: p.notes, spread: ARPEGGIO_SPREAD, phase: ax / GRID_W });
+    addJob({ id: p.id, notes: p.notes, phase: ax / GRID_W });
   }
-}, [placed, loopPlaced]);
+}, [placed, playing]);
 ```
 
 **Por qué limpiar y re-agregar es seguro acá**, cuando con Tone habría reiniciado la fase: los jobs son
@@ -212,11 +219,15 @@ Lo que **sí** está unificado es lo que importa para cambiar el sonido:
 
 - `scheduleVoice()` — la única función que crea un oscilador.
 - `DEFAULT_VOICE` — el timbre y la ADSR.
-- `ARPEGGIO_SPREAD` y `NOTE_DUR` — el espaciado y la duración.
+- `intervalDuration(bpm)` — el espaciado, definida sobre `barDuration` para que exista un solo lugar
+  donde el compás se convierte en segundos.
+- `NOTE_INTERVALS` — la duración de la nota, medida en intervalos y no en segundos absolutos.
 
-**La consecuencia práctica:** tocar el timbre en `DEFAULT_VOICE` alcanza para los dos caminos, pero
-cambiar *cómo se expande un arpegio* dentro de `playNotes` **no afecta al loop**. Ese cambio va en
-`collectHits`, o en los dos lugares.
+**La consecuencia práctica:** tocar el timbre en `DEFAULT_VOICE` alcanza para los dos caminos, y
+también alcanza tocar `intervalDuration` para cambiar el ritmo: las dos expansiones —la de `playNotes`
+y la que arma `collectHits`— salen de la misma función. Siguen siendo dos caminos —`playNotes` expande
+el arpegio, `tick` recibe de `collectHits` los instantes ya expandidos—, pero lo que los separa se
+achicó a la mecánica de agendado, no al espaciado.
 
 ## Análisis de la señal
 

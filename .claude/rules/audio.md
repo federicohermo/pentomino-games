@@ -23,8 +23,8 @@ El porqué de cada decisión, con las mediciones que la respaldan, está en
   muda, y todo llamador tiene que chequearlo.
 - **Hay dos caminos a sonido, no uno:** `playNotes()` (arpegio al colocar) y `tick()` (loop), que llama
   a `scheduleVoice()` directo porque `collectHits` ya expandió los instantes. Lo unificado es
-  `scheduleVoice`, `DEFAULT_VOICE` y las constantes: cambiar el timbre alcanza para los dos, cambiar
-  cómo se expande el arpegio no.
+  `scheduleVoice`, `DEFAULT_VOICE` y `intervalDuration(bpm)`: cambiar el timbre alcanza para los dos, y
+  cambiar el intervalo también, porque las dos expansiones salen de la misma función.
 - **El scheduler usa lookahead:** temporizador grueso de 25 ms que agenda 100 ms de futuro contra el
   reloj de audio. El temporizador no dispara notas, decide cuándo mirar.
 - **El reloj es un origen, no un cursor.** `ClockState` son dos escalares —`origin` y `scheduledUntil`—

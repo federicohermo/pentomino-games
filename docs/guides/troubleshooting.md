@@ -107,9 +107,13 @@ distintas.
    debe decir `'running'`, no `'suspended'`.
 2. **¿Web Audio está disponible?** `audio()` falla de forma suave: loguea `"Web Audio no disponible"` y
    devuelve `null`. La app queda usable pero muda. Revisar la consola.
-3. **¿Es el loop y el reloj está parado?** Los loops dependen del reloj; el botón "Loop" lo arranca.
-   Verificable con `clockRunning()`. El arpegio de colocación no depende del reloj y suena siempre.
-4. **¿Hay jobs?** `jobCount()` debe ser mayor que 0 con el checkbox activo y piezas colocadas.
+3. **¿Es el transporte y está parado?** El botón ▶ / ⏸ de la paleta arranca y para el reloj.
+   Verificable con `clockRunning()`.
+4. **¿Colocaste una pieza y no sonó el arpegio?** Es intencional si el transporte está corriendo:
+   `handleCellClick` solo llama a `playNow` cuando `!playing`, para que el disparo de colocación no
+   compita con el patrón del transporte. Si el transporte está parado y aun así no suena, seguir con los
+   puntos 1 y 2.
+5. **¿Hay jobs?** `jobCount()` debe ser mayor que 0 con el transporte en marcha y piezas colocadas.
 
 ### Loops que siguen sonando después de borrar la pieza
 

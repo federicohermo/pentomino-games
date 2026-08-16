@@ -49,8 +49,10 @@ Cuatro cosas que definen la regla, y por qué son así:
   *momento* en que se la colocó: no era reproducible, no era visible y no se podía testear. El mismo
   tablero suena siempre igual.
 
-El disparo al colocar (`playNow`) **no** lleva fase: hacés click y suena. Es retroalimentación del
-gesto, no parte del patrón — la fase solo gobierna el loop.
+El disparo al colocar (`playNow`) **no** lleva fase: cuando suena, hacés click y suena en el acto. Es
+retroalimentación del gesto, no parte del patrón — la fase solo gobierna el transporte. Con el
+transporte corriendo, `playNow` no se llama: la retroalimentación del gesto y el patrón del transporte
+no compiten por el mismo instante — ver [audio.md](./audio.md#reconciliación-de-loops).
 
 **Limitación conocida:** no hay retroalimentación visual de la fase. Una cabeza lectora recorriendo el
 tablero es lo que volvería *legible* a esta regla; hoy se oye pero no se lee. Encaja con el
@@ -157,22 +159,26 @@ y congelado en un test, con las notas escritas a mano. Los colores con que el ta
 
 ## Reproducción
 
-`playNotes()` dispara las cinco notas como arpegio de tiempo fijo:
+`playNotes()` dispara las cinco notas como arpegio medido en unidades musicales, sobre el tempo actual:
 
 ```ts
-notes.forEach((m, i) => scheduleVoice(c, master, midiToHz(m), start + i * ARPEGGIO_SPREAD, NOTE_DUR));
+const iv = intervalDuration(bpm);
+notes.forEach((m, i) => scheduleVoice(c, master, midiToHz(m), start + i * iv, NOTE_INTERVALS * iv));
 ```
 
-- **0.15 s entre notas** (`ARPEGGIO_SPREAD`), independiente del tempo. El slider de BPM afecta al reloj
-  del motor (los loops), no al arpegio de colocación.
-- **0.35 s de duración** (`NOTE_DUR`), `0.8` de velocity, más 0.12 s de release.
+- **Un intervalo entre notas** (`intervalDuration(bpm)`, la semicorchea del compás), así que el slider
+  de BPM sí afecta al arpegio de colocación: a 100 bpm el intervalo da 0,15 s, y el arpegio completo
+  (`4 × intervalo`) mide 0,375 s a 160 bpm contra 1,000 s a 60 bpm.
+- **Duración de nota en intervalos** (`NOTE_INTERVALS = 2`, o sea `2 × intervalDuration(bpm)`; 0,300 s a
+  100 bpm), `0.8` de velocity, más 0.12 s de release.
 - **`i` es la posición en el array**, o sea el grado de la escala. Desde el spec 007 ese orden es una
   decisión explícita —el orden angular alrededor del centroide— y no una coincidencia del orden en que
   alguien tipeó las coordenadas de `SHAPES`. Qué suena y cuándo no cambió; cambió de dónde sale.
 
-Cuando el loop de piezas colocadas está activo, cada pieza reagenda la misma secuencia con el mismo
-espaciado, una vez por compás. Ese camino no pasa por `playNotes()`: el espaciado lo aplica
-`collectHits()` en el motor — ver [audio.md](./audio.md#los-dos-caminos-de-reproducción).
+Mientras el transporte está corriendo, cada pieza colocada reagenda la misma secuencia con el mismo
+espaciado, una vez por compás, y el arpegio de colocación deja de sonar: son las dos caras del mismo
+transporte, no dos fuentes de sonido independientes. Ese camino no pasa por `playNotes()`: el espaciado
+lo aplica `collectHits()` en el motor — ver [audio.md](./audio.md#los-dos-caminos-de-reproducción).
 
 ## Utilidades MIDI
 
