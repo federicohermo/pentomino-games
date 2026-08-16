@@ -4,14 +4,14 @@ import { PIECE_KEYS } from '../pieces.ts';
 import { rotateN, reflect } from '../../../src/domain/transform.ts';
 import { cellsAt, isValid, occupantAt, phaseFor } from '../../../src/domain/board.ts';
 import { notesForRotation, midiName } from '../../../src/domain/music.ts';
-import { SHAPES, ANCHOR_INDEX } from '../../../src/domain/constants/pieces.constants.ts';
+import { SHAPES, ANCHOR_INDEX, CELLS_PER_PIECE } from '../../../src/domain/constants/pieces.constants.ts';
 import { GRID_W, GRID_H } from '../../../src/domain/constants/board.constants.ts';
 import { BASE_MAP, DEFAULT_OCTAVE } from '../../../src/domain/constants/music.constants.ts';
 import type { Cell } from '../../../src/domain/types/transform.types.ts';
 import type { PlacedPiece } from '../../../src/domain/types/board.types.ts';
-import { collectHits } from '../../../src/audio/scheduler.ts';
+import { collectHits, barDuration } from '../../../src/audio/scheduler.ts';
 import { midiToHz } from '../../../src/audio/voice.ts';
-import { LOOKAHEAD, TICK_MS, BEATS_PER_BAR } from '../../../src/audio/constants/scheduler.constants.ts';
+import { LOOKAHEAD, TICK_MS } from '../../../src/audio/constants/scheduler.constants.ts';
 import { ARPEGGIO_SPREAD, DEFAULT_BPM, CLOCK_START_DELAY } from '../../../src/audio/constants/engine.constants.ts';
 import type { Job, ClockState } from '../../../src/audio/types/scheduler.types.ts';
 
@@ -39,7 +39,7 @@ const placementSchema = z.object({
 });
 
 const inputSchema = z.object({
-  pieces: z.array(placementSchema).min(1).max(GRID_W * GRID_H / 5)
+  pieces: z.array(placementSchema).min(1).max(Math.floor(GRID_W * GRID_H / CELLS_PER_PIECE))
     .describe('Las piezas, en el orden en que se colocarían: cada una choca con las anteriores válidas.'),
   bpm: z.number().min(40).max(240).default(DEFAULT_BPM),
   bars: z.number().int().min(1).max(8).default(2)
@@ -105,7 +105,7 @@ function resolve(entries: z.output<typeof inputSchema>['pieces']): Resolved[] {
  * instante 0 en el arranque del reloj.
  */
 function timeline(jobs: Job[], bpm: number, bars: number): { at: number; hz: number }[] {
-  const bar = (60 / bpm) * BEATS_PER_BAR;
+  const bar = barDuration(bpm);
   const origin = CLOCK_START_DELAY;
   const end = origin + bars * bar;
   const state: ClockState = { origin, scheduledUntil: 0 };
@@ -166,7 +166,7 @@ export const simulateBoard = defineTool({
 
     return json({
       bpm,
-      barSeconds: round4((60 / bpm) * BEATS_PER_BAR),
+      barSeconds: round4(barDuration(bpm)),
       bars,
       placements: resolved.map((r, i) => ({
         id: r.id,

@@ -15,6 +15,7 @@ La documentación completa vive en `docs/`. Consultarla antes de hacer cambios a
 | Inicio rápido | [docs/guides/quickstart.md](./docs/guides/quickstart.md) | Setup, comandos, flujos típicos |
 | Convenciones | [docs/guides/conventions.md](./docs/guides/conventions.md) | Organización de `src/`, TypeScript, geometría, estado, comentarios |
 | Troubleshooting | [docs/guides/troubleshooting.md](./docs/guides/troubleshooting.md) | Errores reales ya pisados en este repo |
+| MCP server de dominio | [docs/guides/mcp-domain.md](./docs/guides/mcp-domain.md) | Las cuatro tools que ejecutan el dominio, y cuándo preferirlas a leer el código |
 | Deploy | [docs/infra/deploy.md](./docs/infra/deploy.md) | Netlify, rutas relativas a `base`, versión de Node |
 
 **Trabajo planificado y deuda:** el registro completo, con estados y dependencias, está en
@@ -29,7 +30,8 @@ pnpm dev      # Dev server de Vite
 pnpm build    # tsc -b && vite build
 pnpm lint     # ESLint (flat config v9)
 pnpm preview  # Sirve dist/
-pnpm test     # Vitest — 86 tests: dominio puro + audio con OfflineAudioContext
+pnpm test     # Vitest — 90 tests: dominio puro + audio con OfflineAudioContext
+pnpm mcp:test # MCP server — typecheck + 36 tests con node --test
 pnpm exec tsc -b --noEmit   # Solo typecheck
 ```
 
@@ -45,7 +47,12 @@ Los tests corren en `environment: 'node'` contra `node-web-audio-api`, no en jsd
 Web Audio. El dominio es puro, así que corre ahí sin ninguna adaptación. No hay tests de componentes
 todavía.
 
-Node ≥ 20.19 o ≥ 22.12 — Vite 7 lo exige en `engines`.
+`mcp-server/` es el **segundo paquete del workspace**: `pnpm install` desde la raíz instala los dos, y
+sus deps quedan aisladas en `mcp-server/node_modules`. Sus tests son de `node --test` y no de Vitest,
+que sigue siendo el runner de `src/` — los `include` no se pisan.
+
+Node ≥ 20.19 o ≥ 22.12 — Vite 7 lo exige en `engines`. El MCP server pide **≥ 22.18** porque corre
+TypeScript sin compilar; es un piso de tooling y con Node 20 solo se pierde el server.
 
 ---
 
@@ -204,6 +211,33 @@ archivos: `voice.ts` (síntesis), `scheduler.ts` (lookahead) y `engine.ts` (sing
 
 ---
 
+## MCP server: preguntarle al dominio en vez de simularlo
+
+`mcp-server/` es un servidor MCP dentro del repo que **importa las funciones puras reales y las
+ejecuta**. `.mcp.json` está commiteado en la raíz, así que abrir el repo lo levanta sin configurar nada.
+No indexa código: no hay índice, no hay staleness y no hay build — si alguien cambia
+`notesForRotation`, la tool responde distinto en la consulta siguiente.
+
+| Tool | Preguntarle antes de |
+|---|---|
+| `describe_piece` | derivar a mano una rotación, una escala o un retrógrado |
+| `simulate_board` | recorrer el lookahead a mano para saber qué suena junto |
+| `check_invariants` | y después de tocar geometría, `SHAPES` o el modelo musical |
+| `spec_status` | leer `log.md` y los cuatro `tasks.md` (24 KB) |
+
+**Las tools son una fachada sobre `src/domain/` y `src/audio/`, no una copia.** Lo único propio del
+server es el render ASCII, el parseo de los specs y el formato de las respuestas. Si al agregar una tool
+aparece la tentación de calcular una rotación, una validez o una escala dentro de `mcp-server/`, falta
+un export en `src/domain/` — y eso es un cambio de `src/`, en su propio commit.
+
+Medido sobre una pregunta real: 1.603 bytes de respuestas contra 14.999 de código a leer, **89% menos**,
+y sin la derivación mental de la que nadie avisa si sale mal.
+[docs/guides/mcp-domain.md](./docs/guides/mcp-domain.md).
+
+**Lo que el server obliga a respetar**: los imports de `src/` llevan extensión `.ts`. Node los necesita;
+Vite no. Un import sin extensión rompe el server y **no** rompe la app, así que el error sería invisible
+del lado del navegador — `pnpm mcp:test` es lo que lo ataja.
+
 ## Convenciones
 
 > Guía completa: [docs/guides/conventions.md](./docs/guides/conventions.md)
@@ -250,7 +284,8 @@ Detalle y los dos errores ya cometidos en
   Sample"`).
 - **Las `@testing-library/*` siguen sin consumidor**: no hay tests de componentes todavía, y montarlos
   va a requerir `jsdom` en su propio bloque de config, sin tocar el `environment` global que necesita el
-  audio. Los 86 tests actuales —36 de audio y 50 de dominio— corren en Node.
+  audio. Los 90 tests de Vitest —36 de audio y 54 de dominio— corren en Node, y los 36 del MCP server
+  aparte, con `node --test`.
 - **No hay tests de UI**, así que los cuatro componentes de `components/` se verifican a ojo.
 - **`postcss` y `autoprefixer`** están en `devDependencies` sin ningún config que los use (Tailwind 4 va
   por el plugin de Vite). Candidatos a borrar.

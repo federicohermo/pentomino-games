@@ -86,7 +86,9 @@ Las `Props` de cada componente son la excepción: se quedan **inline y sin expor
 - **Extensión explícita en todo import local**: `./domain/transform.ts`, no `./domain/transform`.
   Reduce operaciones de resolución, y sobre todo **node crudo la exige** (`ERR_MODULE_NOT_FOUND`), que
   es lo que permite cargar `domain/` sin compilar. Ojo: omitirla **no rompe la app** —Vite resuelve
-  igual—, así que el error sería invisible del lado del navegador. De ahí que sea regla escrita.
+  igual—, así que el error sería invisible del lado del navegador. De ahí que sea regla escrita, y
+  desde el spec 006 hay quien la ejerce: el MCP server carga `src/` con node crudo, así que
+  `pnpm mcp:test` falla al primer import sin extensión.
 - **Sin alias de paths** (`@/domain/…`). La profundidad máxima es uno, así que el beneficio es
   cosmético, y node no conoce los alias de Vite.
 - **Un componente por archivo**, y ningún export que no sea el componente en un `.tsx`. No es

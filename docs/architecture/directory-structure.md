@@ -8,16 +8,42 @@ pentomino-games/           # raíz del repo: la app vive acá, sin subdirectorio
 ├── docs/                  # Esta documentación
 ├── specs/                 # Trabajo planificado (ver specs/README.md)
 ├── public/                # Assets servidos tal cual, copiados a dist/
-├── src/                   # Todo el código
+├── src/                   # Todo el código de la app
+├── mcp-server/            # MCP server de dominio: tooling, NO entra al bundle
+├── .mcp.json              # Registra el server; commiteado, sin nada que configurar
 ├── index.html             # Entry point de Vite (en la raíz, no en public/)
 ├── vite.config.ts         # Plugins: react() + tailwindcss()
 ├── eslint.config.js       # Flat config v9 + los overrides de dirección de dependencia
 ├── netlify.toml           # Config de deploy (ver infra/deploy.md)
-├── pnpm-workspace.yaml    # Config de pnpm (allowBuilds); todavía sin `packages:`
-├── pnpm-lock.yaml         # Lockfile versionado — Netlify elige el gestor por él
+├── pnpm-workspace.yaml    # Workspace de dos paquetes: `.` y `mcp-server`
+├── pnpm-lock.yaml         # Lockfile único, cubre los dos paquetes
 ├── LICENSE
 └── tsconfig{,.app,.node}.json
 ```
+
+## `mcp-server/`
+
+Paquete aparte, con sus propias dependencias y su propio `tsconfig.json`. **La dirección de dependencia
+es una sola: `mcp-server/` importa de `src/`, nunca al revés.**
+
+```
+mcp-server/
+└── src/
+    ├── index.ts                  entrypoint: serveStdio + registro de tools
+    ├── pieces.ts                 las 12 letras, derivadas de SHAPES
+    ├── render.ts                 ASCII de una pieza (puro)
+    ├── specs.ts                  parseo de log.md y de los tasks.md
+    ├── tools/                    una tool por archivo + el array de index.ts
+    └── __tests__/                node --test, 36 tests
+```
+
+Que sea un paquete y no una carpeta más no es prolijidad: `zod` y `@modelcontextprotocol/server` quedan
+en `mcp-server/node_modules` y **no** aparecen en el de la raíz, así que el tooling no puede colarse al
+bundle. Lo garantiza pnpm, no la disciplina.
+
+No tiene `dist/`: node corre los `.ts` quitando los tipos. Por eso el server pide **Node ≥ 22.18**, por
+encima del piso de la app — y por eso no puede quedar sirviendo código viejo. Detalle en
+[mcp-domain.md](../guides/mcp-domain.md).
 
 ## `src/`
 
@@ -30,7 +56,7 @@ src/
 │   └── index.css                 # @import "tailwindcss" + estilos globales de body/code
 ├── domain/                       # puro: sin React, sin Web Audio, sin DOM
 │   ├── transform.ts              # rotate90 · normalize · rotateN · reflect
-│   ├── board.ts                  # cellsAt · isValid · occupantAt
+│   ├── board.ts                  # cellsAt · isValid · phaseFor · occupantAt
 │   ├── music.ts                  # midiFor · midiName · notesForRotation
 │   ├── invariants.ts             # los cinco chequeos del modelo + checkAll
 │   ├── types/                    # el contrato de la capa. Cero imports de afuera
@@ -41,7 +67,7 @@ src/
 │   │   ├── pieces.constants.ts   #   SHAPES · ANCHOR_INDEX
 │   │   ├── board.constants.ts    #   GRID_W · GRID_H
 │   │   └── music.constants.ts    #   CHROMATIC · PENT_* · BASE_MAP · DEFAULT_OCTAVE
-│   └── __tests__/                # 50 tests, uno por módulo
+│   └── __tests__/                # 54 tests, uno por módulo
 │       └── transform · board · music · invariants
 ├── audio/                        # Web Audio; habla MIDI, no conoce el dominio ni la UI
 │   ├── voice.ts                  # midiToHz · scheduleVoice
@@ -93,9 +119,12 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 
 ### Tests
 
-`pnpm test` corre Vitest en `environment: 'node'` contra `node-web-audio-api`. Son **86**: 36 de la capa
-de audio y 50 del dominio. El `include` (`src/**/*.test.{ts,tsx}`) toma los `__tests__/` sin
+`pnpm test` corre Vitest en `environment: 'node'` contra `node-web-audio-api`. Son **90**: 36 de la capa
+de audio y 54 del dominio. El `include` (`src/**/*.test.{ts,tsx}`) toma los `__tests__/` sin
 configuración extra, y `test-context.ts` no matchea porque le falta el `.test.` antes de la extensión.
+
+Los **36 tests del MCP server corren aparte**, con `pnpm mcp:test`: viven en `mcp-server/src/__tests__/`
+y los corre `node --test`, no Vitest. Los `include` no se pisan — el de Vitest empieza en `src/`.
 
 **No hay tests de componentes.** El `App.test.tsx` heredado de CRA se eliminó al montar el runner:
 buscaba el texto "learn react" de la plantilla, que la app nunca renderizó. Agregar tests de componentes
@@ -131,6 +160,8 @@ viven en la carpeta de su rol.** Un `.ts` de capa tiene funciones y nada más.
 | asset referenciado por URL | `public/` | se copia sin procesar |
 | documentación de arquitectura | `docs/architecture/` | |
 | trabajo planificado | `specs/<NNN>-<desc>/` | cuatro archivos, ver [specs/README.md](../../specs/README.md) |
+| tool nueva del MCP server | `mcp-server/src/tools/` | `<tool>.ts` + una línea en `tools/index.ts` |
+| regla que el server necesita ejecutar | `src/domain/` | **no** en `mcp-server/`: es un cambio de `src/`, en su propio commit |
 
 **Las carpetas de rol se crean cuando tienen su primer archivo.** No hay `schemas/`, `utils/`, `hooks/`
 ni `lib/`: estarían vacías, y una carpeta vacía es ceremonia. La tabla de crecimiento —qué carpeta
