@@ -208,4 +208,17 @@ describe('angleFromCentroid', () => {
       }
     }
   });
+
+  it('el intervalo sigue semiabierto con un angulo negativo mas chico que el ulp de 2π', () => {
+    // El caso que las 12 piezas no pueden producir —sus coordenadas son enteras—
+    // pero que esta funcion acepta, porque `degreeByCellIndex` recibe formas
+    // arbitrarias a proposito. `atan2(-1e-17, 1)` da -1e-17, y sumarle 2π redondea
+    // a exactamente 2π: el rango documentado se rompia por un ulp.
+    const a = angleFromCentroid([1, 0], [0, 1e-17]);
+    expect(a).toBeLessThan(2 * Math.PI);
+
+    // Y sigue yendo al final del anillo, que es lo correcto: la celda esta apenas
+    // al norte del este, o sea justo ANTES de cerrar la vuelta.
+    expect(a).toBeGreaterThan(Math.PI);
+  });
 });

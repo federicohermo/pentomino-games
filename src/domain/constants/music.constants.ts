@@ -17,7 +17,11 @@ export const PENT_BLUES5: number[] = [0,3,5,6,7];
  *
  * O sea que los dos numeros pasaron de coincidir a tener que coincidir: una
  * formula de 4 notas dejaria una celda sin nota —`ascendente[4]` seria
- * `undefined`— y una de 6 dejaria una nota que ninguna celda dispara.
+ * `undefined`, y `midiName` de eso no explota: devuelve `undefinedNaN` y lo
+ * pinta en la celda— y una de 6 dejaria una nota que ninguna celda dispara.
+ *
+ * Lo verifica `checkNotes()` de `invariants.ts`, que es donde tiene que estar:
+ * escrito solo aca era una afirmacion, no una red.
  */
 export const NOTES_PER_PIECE = 5;
 

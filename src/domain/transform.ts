@@ -63,6 +63,19 @@ export function centroid(cells: readonly Cell[]): [number, number] {
  * noroeste antes que las del norte.
  */
 export function angleFromCentroid(cell: Cell, cent: readonly [number, number]): number {
+  const twoPi = 2 * Math.PI;
   const a = Math.atan2(cell[1] - cent[1], cell[0] - cent[0]);
-  return a < 0 ? a + 2 * Math.PI : a;
+  if (a >= 0) return a;
+
+  // El intervalo es SEMIABIERTO y la suma sola no lo garantiza: con `a` negativo
+  // mas chico que el ulp de 2π (~8,9e-16) —una celda apenas al norte del este—,
+  // `a + 2π` redondea a exactamente 2π y el resultado se sale del rango.
+  //
+  // No cambia ningun orden: 2π y 2π-ulp caen los dos al final del anillo, que es
+  // donde va esa celda. Se acota igual porque el rango es el contrato que lee
+  // `degreeByCellIndex`, y esta funcion recibe formas arbitrarias a proposito —
+  // con las 12 de `SHAPES` no puede pasar, porque las coordenadas son enteras y
+  // el centroide es una suma sobre 5, asi que `dy` o es cero exacto o es O(0,1).
+  const norm = a + twoPi;
+  return norm < twoPi ? norm : twoPi * (1 - Number.EPSILON);
 }
