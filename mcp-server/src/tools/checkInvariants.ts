@@ -12,7 +12,20 @@ import { checkAll } from '../../../src/domain/invariants.ts';
  * si el dominio agrega un sexto chequeo la tool lo expone sin tocar este archivo.
  */
 
-/** Rotaciones x reflexion: es la grilla que `invariants.ts` recorre por pieza. */
+/**
+ * Rotaciones x reflexion: el ESPACIO del modelo por pieza.
+ *
+ * No es cobertura, y la diferencia importa: de los cinco chequeos, solo `orden
+ * del array` y `ancla` recorren las 96 orientaciones. `formas` mira las 12 formas
+ * canonicas —rotar y reflejar no cambian ni la cantidad de celdas ni la conexidad—,
+ * `notas` recorre 48 porque el espejo solo invierte el orden, y `BASE_MAP` mira el
+ * conjunto una sola vez. Por eso la respuesta lo reporta como `modelSpace` y no
+ * como `checked`: afirmar 96 para los cinco seria prometer de mas.
+ *
+ * Es, junto con `SCALE_LABEL` de `describePiece.ts`, uno de los dos supuestos del
+ * server sobre el dominio: si `invariants.ts` cambia la grilla que recorre, esto
+ * hay que actualizarlo a mano.
+ */
 const ORIENTATIONS_PER_PIECE = 4 * 2;
 
 /**
@@ -40,8 +53,11 @@ const inputSchema = z.object({
 export const checkInvariants = defineTool({
   name: 'check_invariants',
   description:
-    'Corre los chequeos del modelo sobre las 96 combinaciones de pieza × rotación × reflexión y ' +
-    'devuelve cuáles pasan, con contraejemplos. Usar antes de tocar geometría, tablas de piezas o ' +
+    'Corre los cinco chequeos del modelo y devuelve cuáles pasan, con contraejemplos. El espacio ' +
+    'del modelo son 12 piezas × 4 rotaciones × reflexión = 96 orientaciones, y cada chequeo ' +
+    'recorre lo que le corresponde: el orden del array y el ancla las 96, las notas 48, las formas ' +
+    'las 12 canónicas y BASE_MAP el conjunto una vez. ' +
+    'Usar antes de tocar geometría, tablas de piezas o ' +
     'el modelo musical, y otra vez después: el invariante más peligroso del repo —que la celda del ' +
     'índice k siga siendo la misma celda lógica después de transformar— se rompe SIN producir ' +
     'ningún error visible, y lo único que lo delata es este chequeo. Ejecuta checkAll() de ' +
@@ -52,9 +68,12 @@ export const checkInvariants = defineTool({
 
     return json({
       scope: piece ?? 'todas',
-      checked: {
+      // El espacio del modelo, NO lo que recorre cada chequeo: ver
+      // `ORIENTATIONS_PER_PIECE`.
+      modelSpace: {
         pieces: PIECE_KEYS.length,
-        combinations: PIECE_KEYS.length * ORIENTATIONS_PER_PIECE,
+        orientationsPerPiece: ORIENTATIONS_PER_PIECE,
+        orientations: PIECE_KEYS.length * ORIENTATIONS_PER_PIECE,
       },
       // `ok` es el del modelo entero, tambien cuando se filtra por pieza: un
       // "todo bien" acotado a la Z mientras la F esta rota seria una respuesta

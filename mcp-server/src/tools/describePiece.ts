@@ -20,9 +20,12 @@ import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE } from '../../../src/domain/constan
  *
  * Es una ETIQUETA, no la regla: quien elige la formula es `notesForRotation` en
  * `domain/music.ts`, y las notas de la respuesta salen de ahi. Si el mapeo
- * rotacion→formula cambia alla, este texto hay que actualizarlo — es la unica
- * linea del server que puede quedar desincronizada del dominio, y por eso esta
- * sola y anotada.
+ * rotacion→formula cambia alla, este texto hay que actualizarlo.
+ *
+ * Es uno de los DOS supuestos del server sobre el dominio que pueden quedar
+ * desincronizados sin que `tsc` diga nada; el otro es `ORIENTATIONS_PER_PIECE` en
+ * `checkInvariants.ts`. Estan anotados los dos, y son los dos unicos: todo lo
+ * demas se ejecuta en vez de describirse.
  */
 const SCALE_LABEL = [
   'pentatónica mayor (rotación 0°)',
