@@ -15,20 +15,23 @@ del spec 007 y **no se copian acá**, para que no haya dos fuentes que se contra
 Cada pentominó tiene un color y una tónica, y son la misma identidad vista de dos maneras. Los valores
 viven en `src/components/constants/palette.constants.ts`:
 
-| Pieza | Tónica | `bg` | Texto |
-|---|---|---|---|
-| `F` | C | `#D9E021` | negro |
-| `I` | C# | `#ED1E79` | negro |
-| `L` | D | `#29ABE2` | negro |
-| `N` | D# | `#8CC63F` | negro |
-| `P` | E | `#F15A24` | negro |
-| `T` | F | `#FF0000` | negro |
-| `U` | F# | `#009245` | negro |
-| `V` | G | `#FFFF00` | negro |
-| `W` | G# | `#0000FF` | **blanco** |
-| `X` | A | `#00A99D` | negro |
-| `Y` | A# | `#FF7BAC` | negro |
-| `Z` | B | `#FBB03B` | negro |
+| Pieza | Tónica | `bg` | Texto | Lc |
+|---|---|---|---|---|
+| `F` | C | `#D9E021` | negro | 83,1 |
+| `I` | C# | `#ED1E79` | **blanco** | 71,9 |
+| `L` | D | `#29ABE2` | **blanco** | 55,8 ⚠ |
+| `N` | D# | `#8CC63F` | negro | 64,3 |
+| `P` | E | `#F15A24` | **blanco** | 65,6 |
+| `T` | F | `#FF0000` | **blanco** | 69,6 |
+| `U` | F# | `#009245` | **blanco** | 72,5 |
+| `V` | G | `#FFFF00` | negro | 101,4 |
+| `W` | G# | `#0000FF` | **blanco** | 90,7 |
+| `X` | A | `#00A99D` | **blanco** | 60,4 |
+| `Y` | A# | `#FF7BAC` | negro | 56,9 ⚠ |
+| `Z` | B | `#FBB03B` | negro | 69,4 |
+
+Los `bg` son los de la lámina del spec 007, **sin retocar**. Lo que cambió respecto de esa versión es
+el color de texto de seis piezas (`I`, `L`, `P`, `T`, `U`, `X`), y cambió porque cambió el criterio.
 
 **Cuidado con la colisión de nombres:** la **pieza `F`** suena con tónica **C**; la nota F le corresponde
 a la **pieza `T`**. La letra describe la forma, no el sonido — y el color va con la pieza, así que el
@@ -39,19 +42,35 @@ dominio no sabe que `V` es amarilla, igual que no sabe que el tablero se dibuja 
 
 ## El contraste es un test, no una inspección
 
-`src/components/__tests__/palette.test.ts` **recalcula** el contraste desde `bg` con la fórmula de
-luminancia relativa de WCAG 2.1 y verifica que el `fg` declarado sea el mejor de negro/blanco. No es
-ceremonia; es la única forma de que el par (fondo, texto) no se desincronice:
+`src/components/__tests__/palette.test.ts` **recalcula** el contraste desde `bg` y verifica que el `fg`
+declarado sea el mejor de negro/blanco. No es ceremonia; es la única forma de que el par (fondo, texto)
+no se desincronice: escribir el color de texto al lado del de fondo crea dos valores que tienen que
+coincidir —el patrón que el spec 005 denunció como "cuatro pares de números que nada sincroniza"—, y acá
+lo sincroniza el test.
 
-- **Las 12 pasan AA (4.5:1)** con su texto declarado. **Ninguna alcanza AAA (7:1)** —ni con negro ni con
-  blanco—, así que el umbral del repo para esto es **AA**, y no por comodidad: no hay elección de texto
-  que lo suba.
-- **Tres pasan con poco margen:** `I` (5,06), `U` (5,20) y `T` (5,25). Bajarle la luminosidad al fondo o
-  achicar el texto las pone en rojo. Ese margen es el que hace que un ajuste "cosmético" del color sea
-  un cambio verificable en vez de una opinión.
-- **`W` (`#0000FF`) es la única que necesita texto blanco.** Escribir el color de texto al lado del de
-  fondo crea dos valores que tienen que coincidir —el patrón que el spec 005 denunció como "cuatro pares
-  de números que nada sincroniza"—, y acá lo sincroniza el test.
+### El criterio es APCA, no WCAG 2.1
+
+Esta es la parte que cambió, y cambió **midiendo**. La versión original usaba la razón de contraste de
+WCAG 2.1 con piso AA (4,5:1). Ese modelo elegía mal en los fondos saturados de tono medio, que son
+buena parte de esta lámina: pondera el verde al 71,5% y el rojo al 21,3%, y es conocido por fallar
+justo en rojos, magentas y cianes.
+
+El caso testigo es `T` (`#FF0000`):
+
+| | negro | blanco | elige |
+|---|---|---|---|
+| WCAG 2.1 | 5,25 | 4,00 | negro |
+| APCA | Lc 40,0 | **Lc 69,6** | blanco |
+
+Con el piso de APCA para texto de cuerpo en **Lc 60**, el negro que 2.1 elegía ni siquiera llegaba a
+ser legible. Lo mismo pasaba en `I`, `P`, `U` y `X`. El cambio de criterio es lo que permitió poner
+texto blanco **sin oscurecer ni un color de la lámina** — bajo 2.1 las dos cosas eran incompatibles.
+
+- **10 de 12 llegan a Lc 60** con su texto declarado.
+- **`L` (55,8) e `Y` (56,9) no llegan con ningún color de texto.** Les falta contraste al `bg`, no al
+  `fg`; subirlas exige mover el color de la lámina. Están en `LC_EXCEPCIONES` y el test verifica que la
+  excepción **siga haciendo falta**, así que el día que alguien retoque esos dos fondos el test obliga a
+  sacarlas de la lista.
 
 ## Qué muestra una celda
 

@@ -30,8 +30,8 @@ export default function PlacedList({ placed, onRemove }: Props) {
             <div className="flex items-center justify-between">
               {/* La letra va sobre el color de pieza y no PINTADA del color de
                   pieza: como texto sobre el blanco de la tarjeta, el amarillo de `V`
-                  da 1,07 de contraste. Sobre su propio fondo vale el par medido de
-                  `PIECE_COLOR`, que es el que el test de la paleta mantiene en AA. */}
+                  es ilegible. Sobre su propio fondo vale el par medido de
+                  `PIECE_COLOR`, que es el que el test de la paleta mantiene en Lc. */}
               <div className="font-medium">
                 <span className="px-1.5 rounded"
                       style={{background: PIECE_COLOR[p.piece].bg, color: PIECE_COLOR[p.piece].fg}}>{p.piece}</span>

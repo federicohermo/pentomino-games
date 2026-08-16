@@ -87,6 +87,12 @@ Lo que está registrado y todavía no tiene spec. Vivía en `CLAUDE.md`, que dec
   el componente sigue siendo un encadenado de puras testeadas en `environment: 'node'`. Su
   `components/__tests__/palette.test.ts` es el primer test de la carpeta, pero es de constantes: no
   renderiza nada y **no** desbloquea ni requiere jsdom.
+- **`L` (`#29ABE2`) e `Y` (`#FF7BAC`) no llegan al piso de contraste con ningún color de texto**: Lc
+  55,8 y 56,9 contra un piso de 60. Les falta contraste al `bg`, no al `fg`, así que ninguna elección
+  de texto las arregla y subirlas exige mover el color de la lámina — o sea, es una decisión de
+  identidad visual y no un arreglo. Están en `LC_EXCEPCIONES` de `palette.constants.ts`, y
+  `palette.test.ts` verifica que la excepción **siga haciendo falta**: si alguien retoca esos dos
+  fondos, el test falla y obliga a sacarlas de la lista.
 - **`postcss` y `autoprefixer`** están en `devDependencies` sin ningún config que los use — Tailwind 4
   va por el plugin de Vite. Candidatos a borrar.
 - **`@types/jest`** sigue en el árbol y es lo que impide usar `globals: true` en Vitest.
@@ -288,3 +294,28 @@ tipo a todos los llamadores que solo quieren saber qué pieza ocupa una celda, p
   midió fallando y se estaba mergeando como «decisión abierta» anotada en el cuerpo del PR. Se cerró
   con `overflow-x-auto` en el contenedor de la grilla, que scrollea el tablero en vez de la página y
   deja `CELL_PX` en 44: achicar la celda devuelve el problema que ese número existe para resolver.
+
+- **2026-08-16 — El test de la paleta medía bien y elegía mal: pasó de WCAG 2.1 a APCA.** El reporte
+  fue de una línea y mirando la pantalla: *«`I`, `P`, `X` y `T` deberían tener texto blanco»*. La
+  primera respuesta fue defender la tabla —las cuatro fallan AA (4,5:1) con blanco: 4,15 · 3,37 · 4,00
+  · 2,93— y ofrecer oscurecer los cuatro fondos para hacerle lugar. **Esa respuesta era correcta sobre
+  el test y falsa sobre el asunto**, y confundir las dos cosas es lo que vale registrar: que un color
+  no pase *el test que este repo tiene escrito* no es lo mismo que que se lea peor.
+  Medirlo con APCA —el algoritmo candidato de WCAG 3, que existe porque 2.x mispredice— lo dio vuelta
+  entero. El caso testigo es `T` (`#FF0000`): 2.1 da negro 5,25 contra blanco 4,00 y elige **negro**;
+  APCA da negro **37,6** contra blanco **69,6**, con el piso de texto de cuerpo en Lc 60. O sea que el
+  negro que la tabla venía eligiendo estaba *debajo* del piso de legibilidad, en `I`, `P`, `T`, `U` y
+  `X`. La razón es conocida: 2.1 pondera el verde al 71,5% y el rojo al 21,3% y falla justo en los
+  saturados de tono medio, que son buena parte de esta lámina; y usa un cociente, así que no modela la
+  **polaridad** —texto claro sobre fondo oscuro no es el simétrico de su inverso—, que es exactamente
+  la asimetría que este caso necesitaba.
+  El resultado práctico es que **no hubo que tocar ni un color**: la propuesta de oscurecer los cuatro
+  fondos existía solo para satisfacer un criterio equivocado, y cambiar el criterio la volvió
+  innecesaria. Cambió el `fg` de seis piezas (`I`, `L`, `P`, `T`, `U`, `X`), y `U` no estaba en el
+  pedido — es el caso más fuerte de los seis (37,1 contra 72,5) y apareció solo al medir las 12 en vez
+  de las cuatro reportadas. La lección operativa es doble: **el ojo sobre la pantalla es un dato, no
+  una opinión**, y cuando un test contradice lo que se ve, el sospechoso es el modelo del test —no hay
+  que medir solo lo reportado, hay que medir el conjunto.
+  Lo que el cambio dejó abierto está en Deuda conocida: `L` (55,8) e `Y` (56,9) no llegan a Lc 60 con
+  ningún `fg`. `specs/007/research.md` **no se reescribió** — documenta lo que se midió entonces y con
+  qué modelo, y pisarlo borraría el registro de por qué en su momento se eligió negro.
