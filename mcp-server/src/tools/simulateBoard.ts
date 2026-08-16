@@ -9,10 +9,10 @@ import { GRID_W, GRID_H } from '../../../src/domain/constants/board.constants.ts
 import { BASE_MAP, DEFAULT_OCTAVE } from '../../../src/domain/constants/music.constants.ts';
 import type { Cell } from '../../../src/domain/types/transform.types.ts';
 import type { PlacedPiece } from '../../../src/domain/types/board.types.ts';
-import { collectHits, barDuration } from '../../../src/audio/scheduler.ts';
+import { collectHits, barDuration, intervalDuration } from '../../../src/audio/scheduler.ts';
 import { midiToHz } from '../../../src/audio/voice.ts';
 import { LOOKAHEAD, TICK_MS } from '../../../src/audio/constants/scheduler.constants.ts';
-import { ARPEGGIO_SPREAD, DEFAULT_BPM, CLOCK_START_DELAY } from '../../../src/audio/constants/engine.constants.ts';
+import { DEFAULT_BPM, CLOCK_START_DELAY } from '../../../src/audio/constants/engine.constants.ts';
 import type { Job, ClockState } from '../../../src/audio/types/scheduler.types.ts';
 
 /**
@@ -130,8 +130,13 @@ function timeline(jobs: Job[], bpm: number, bars: number): { at: number; hz: num
  *
  * El limite se compara contra la ultima nota del ultimo compas de la ventana. No
  * hay ambiguedad al asignar una nota a su onset porque los arpegios no se
- * solapan: `(notas - 1) * spread` es 0,6 s y el compas mas corto que permite el
- * schema —240 bpm— dura 1 s.
+ * solapan, y desde el spec 008 eso vale **por construccion** y no por aritmetica:
+ * el intervalo es `bar / 16`, asi que el arpegio mide `(notas - 1) * bar / 16 =
+ * bar / 4` y los onsets de un mismo job estan separados por `bar`. O sea que el
+ * arpegio ocupa un cuarto del espacio entre onsets consecutivos **a cualquier
+ * tempo**. Antes habia que comparar dos numeros que dependian de cosas distintas
+ * —0,6 s de arpegio contra el compas de 1 s del extremo del schema, 240 bpm— y
+ * revisar la cuenta cada vez que el schema se tocaba.
  */
 function jobTimeline(job: Job, bpm: number, bars: number): { at: number; hz: number }[] {
   const bar = barDuration(bpm);
@@ -140,7 +145,7 @@ function jobTimeline(job: Job, bpm: number, bars: number): { at: number; hz: num
   // el compas siguiente y queda afuera, que es lo que este corte siempre quiso
   // decir.
   const lastOnset = origin + (bars - 1 + job.phase) * bar;
-  const lastNote = lastOnset + (job.notes.length - 1) * job.spread;
+  const lastNote = lastOnset + (job.notes.length - 1) * intervalDuration(bpm);
   // El bucle de ventanas tiene que llegar hasta el ultimo onset; lo que se emita
   // despues lo descarta el corte.
   const end = origin + bars * bar;
@@ -181,7 +186,6 @@ export const simulateBoard = defineTool({
       .map(r => ({
         id: r.id,
         notes: r.notes,
-        spread: ARPEGGIO_SPREAD,
         phase: phaseFor(r.cells, r.anchorIndex),
       }));
 
@@ -205,6 +209,10 @@ export const simulateBoard = defineTool({
     return json({
       bpm,
       barSeconds: round4(barDuration(bpm)),
+      // La separacion entre notas de un mismo arpegio, que desde el spec 008 sale
+      // del compas: sin este numero la `timeline` no se puede leer sin recalcular
+      // `bar / 16` a mano.
+      intervalSeconds: round4(intervalDuration(bpm)),
       bars,
       placements: resolved.map((r, i) => ({
         id: r.id,

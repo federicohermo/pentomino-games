@@ -242,6 +242,12 @@ describe('simulate_board', () => {
     assert.equal((rapido.onsets as { total: number }).total, 10);
     // El tempo estira el patron en vez de reordenarlo: el compas dura menos.
     assert.ok((rapido.barSeconds as number) < (dos.barSeconds as number));
+    // Y el intervalo se estira con el: es `compas / 16` a cualquier tempo, no una
+    // constante en segundos. A 110 bpm el compas dura 2,1818 s y el intervalo
+    // 0,1364; a 200, 1,2 y 0,075. Medirlo es lo unico que distingue este cambio
+    // de un campo nuevo que siempre devuelve el mismo numero.
+    assert.equal(dos.intervalSeconds, 0.1364);
+    assert.equal(rapido.intervalSeconds, 0.075);
   });
 
   test('la fase NO cambia cuantos onsets suenan, ni en la ultima columna', () => {
@@ -259,9 +265,10 @@ describe('simulate_board', () => {
   });
 
   test('tampoco a tempo rapido, donde el compas dura menos que antes el arpegio', () => {
-    // A 240 bpm el compas dura 1 s y el arpegio 0,6: desde la fase 0.4 la cola se
-    // pasa del limite. Es el caso extremo del schema, y tiene que dar los mismos
-    // 10 onsets que a 110 bpm.
+    // A 240 bpm el compas dura 1 s y el arpegio 0,25 —un cuarto del compas, como
+    // a cualquier tempo desde el spec 008—: con la fase 0.9 la cola del ultimo
+    // compas cae en 2,15 compases, pasado el limite de 2. Es el caso extremo del
+    // schema, y tiene que dar los mismos 10 onsets que a 110 bpm.
     const r = call(simulateBoard, { pieces: [{ piece: 'I', rotation: 1, at: [9, 2] }], bpm: 240 });
     assert.equal((r.onsets as { total: number }).total, 10);
   });
