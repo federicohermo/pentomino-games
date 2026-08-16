@@ -85,12 +85,12 @@ src/
 │       └── test-context.ts       #   helpers de render y medición (no es un test)
 └── components/                   # un componente por archivo, presentacionales
     ├── PiecePalette.tsx          # paleta, rotación, reflexión, tempo, transporte
-    ├── Board.tsx                 # grilla 10×6 con el fantasma, color por pieza y nota por celda
-    ├── PiecePreview.tsx          # previsualización con el ancla marcada
+    ├── Board.tsx                 # grilla 10×6: color por pieza, nota por celda, y el fantasma
+    │                             #   diciendo lo mismo antes de colocar
     ├── PlacedList.tsx            # lista de piezas colocadas
     ├── Spectrum.tsx              # canvas del espectro: rAF + HiDPI, sin props
     ├── constants/
-    │   ├── layout.constants.ts   # CELL_PX · PREVIEW_CELL_PX · TEMPO_MIN · TEMPO_MAX
+    │   ├── layout.constants.ts   # CELL_PX · TEMPO_MIN · TEMPO_MAX
     │   └── palette.constants.ts  # los 12 colores y su color de texto (ver DESIGN.md)
     └── __tests__/
         └── palette.test.ts       # contraste WCAG recalculado desde el fondo; puro, sin jsdom

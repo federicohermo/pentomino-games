@@ -27,8 +27,8 @@ expresivo, no más difícil.
 ┌───────▼──────────────────┐  ┌───────▼───────────────────┐
 │  src/components/         │  │  src/audio/               │
 │   PiecePalette · Board   │  │   voice.ts     síntesis   │
-│   PiecePreview           │  │   scheduler.ts lookahead  │
-│   PlacedList · Spectrum  │  │   engine.ts    singletons │
+│   PlacedList · Spectrum  │  │   scheduler.ts lookahead  │
+│                          │  │   engine.ts    singletons │
 │   presentacionales:      │  │   spectrum.ts  bins→barras│
 │   props, sin estado      │  │                           │
 └───────┬──────────────────┘  │  voice y scheduler reciben│
@@ -101,7 +101,8 @@ esta escala no hace falta, y agregarlo sería la clase de complejidad que un pro
 | `hover` | `Cell \| null` | Celda bajo el cursor, para el fantasma |
 
 Derivados con `useMemo`: `transformedShape` y `noteSet`. Derivados sin memo (baratos, se recalculan por
-render): `anchor`, `previewCells`, `previewValid`, `previewSet`.
+render): `previewCells` y `previewValid`. `previewCells` viaja al `Board` como **array y no como `Set`
+de claves `"x,y"`**: el índice de cada celda es lo que la conecta con su grado, y el `Set` lo perdía.
 
 ### 3. Audio — el motor y sus singletons
 

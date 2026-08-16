@@ -54,7 +54,7 @@ export const describePiece = defineTool({
     'notas MIDI con el retrógrado ya aplicado. Devuelve además `cellMap`: qué grado del arpegio y ' +
     'qué nota le toca a CADA celda, en el mismo orden que `cells`. Ejecuta las funciones reales de ' +
     'src/domain/, así que responde lo que suena hoy, no lo que decía la documentación.\n' +
-    'Dos trampas medidas que conviene tener presentes: (1) la letra describe la FORMA, no el ' +
+    'Tres trampas medidas que conviene tener presentes: (1) la letra describe la FORMA, no el ' +
     'sonido — la pieza F suena con tónica C, y la nota F le toca a la pieza T; (2) la reflexión ' +
     'siempre invierte las notas, pero a veces no se ve: en I y X deja la forma idéntica en las ' +
     'cuatro rotaciones, y en T y U en las rotaciones 0 y 180°; (3) `cellMap` sale del arpegio ' +

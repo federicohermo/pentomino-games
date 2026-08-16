@@ -57,14 +57,33 @@ ceremonia; es la única forma de que el par (fondo, texto) no se desincronice:
 
 | Medida | Valor | Por qué |
 |---|---|---|
-| `CELL_PX` | **44** (era 28) | es lo que hace falta para que entre `D#5` legible |
-| Ancho del tablero | **440 px** (era 280) | 10 × `CELL_PX`; entra con margen en el `md:col-span-6` |
-| `PREVIEW_CELL_PX` | **20**, sin cambio | la previsualización no muestra notas |
+| `CELL_PX` | **63** (era 28) | el piso son 44 —`D#5` mide 20,2 px medidos— y 63 es lo que la tarjeta deja |
+| Tablero | **630 × 378 px** (era 280 × 168) | 10 × 6 × `CELL_PX` en una tarjeta de 633 × 380: llena las dos dimensiones |
+| Tarjeta del tablero | **`md:col-span-7`** (era 6) | con 6 sobraban 68 px de alto: 10 × 6 no tenía la proporción de la tarjeta |
+| Aire de la baldosa | **2 px** por lado | separa las fichas sin sumar un segundo número al ancho |
+| Borde de la baldosa | **1 px `slate-900`** | el tablero se define reforzando la celda, no rellenando el fondo |
 
 Una celda ocupada muestra **el nombre de su nota** como contenido principal (`C4`, `D#5`, …) y **el grado
-como número chico en la esquina**. Son dos lecturas del mismo dato: la nota es lo que se oye, el grado es
-la posición dentro del arpegio y es lo que deja ver la forma —la celda de grado 0 es la tónica, y el
-recorrido 0→4 dibuja el orden angular alrededor del centroide.
+como número chico en la esquina inferior derecha**, con `#`. Son dos lecturas del mismo dato: la nota es
+lo que se oye, el grado es la posición dentro del arpegio y es lo que deja ver la forma —la celda de
+grado 0 es la tónica, y el recorrido 0→4 dibuja el orden angular alrededor del centroide.
+
+**Cada celda es una baldosa redondeada, no un casillero.** Los 63 px son la pista; adentro va una ficha
+`rounded-md` con 2 px de aire alrededor. Es el lenguaje de la lámina: una pieza colocada se lee como
+cinco fichas apoyadas sobre la grilla, no como cinco celdas de una tabla. El aire lo hace el padding de
+la pista y no un `gap` de la grilla, así que el ancho del tablero sigue siendo exactamente 10 × `CELL_PX`.
+
+**El tablero se define reforzando la celda, no rellenando el fondo.** Con borde `slate-200` sobre el
+panel blanco, sesenta casilleros blancos casi no se veían. Se probó pintar la superficie de la grilla
+—gris y negra— y se descartó: un fondo pintado se lleva el protagonismo que tienen que tener los 12
+colores, que es lo único que este tablero está para comunicar. Queda **un borde negro de 1 px en cada
+baldosa**, ocupada o vacía: la grilla se dibuja sola y el resto del panel sigue blanco.
+
+**Debajo del breakpoint `md` el tablero no entra y scrollea en horizontal.** A 375 px de viewport el
+panel deja 311 px útiles contra 630 px de pistas fijas. Lo absorbe un `overflow-x-auto` en el contenedor
+de la grilla —scrollea el tablero, no la página— y deliberadamente **no** un `CELL_PX` menor: el nombre
+de nota es lo que hay que poder leer, así que achicar la celda debajo de `md` devuelve el problema que
+el número existe para resolver.
 
 Cada celda es dueña de **su** nota, no de la letra de la pieza repetida cinco veces: de dónde sale ese
 mapeo está en
@@ -78,15 +97,23 @@ comunicaba identidad de pieza, y nunca sobre el canal de estado.*
 | Dónde | Qué hace el color | Por qué |
 |---|---|---|
 | `Board` | celda ocupada = color de pieza | identidad debajo, estado encima |
-| `PiecePreview` | las celdas toman el color; el punto del ancla queda | es el mismo objeto que el tablero, más chico |
 | `PiecePalette` | **el fondo del botón no se toca**; el color entra al costado | el fondo ya es el canal de "seleccionado" |
 | `PlacedList` | la letra toma el color de pieza | texto plano: no hay estado que pisar |
 
+*(`PiecePreview` era el cuarto caso y ya no existe: mostraba la pieza aparte, sin notas, mientras el
+fantasma la muestra en el lugar donde va a caer y con la nota de cada celda. Dos vistas del mismo objeto
+donde una es estrictamente mejor no es lenguaje visual, es alto de pantalla gastado.)*
+
 Lo que **no** se comunica con el color de pieza, porque el color ya está ocupado diciendo *qué pieza es*:
 
-- **El fantasma de previsualización** — dónde caería la pieza que estás por colocar.
-- **El choque** (`bg-rose-500`) — que ahí no entra.
+- **El fantasma de previsualización** (`bg-slate-300`) — dónde caería la pieza que estás por colocar.
+- **El choque** (`bg-rose-500`) y el **fantasma inválido** (`bg-rose-300`) — que ahí no entra.
 - **El hover** — dónde está el cursor.
+
+El fantasma es gris y no verde a propósito: verde era un color más compitiendo con los 12 de la lámina.
+Pero **sí dice lo mismo que va a decir la celda una vez colocada** —su nota y su grado, celda por celda,
+por la misma cadena de puras— porque para eso está: para ver la jugada antes de hacerla. Lo único que le
+queda al color ahí es el par gris/rosa, que es la señal de *entra* / *no entra*.
 
 Los tres **ganan** sobre el color de pieza cuando conviven en la misma celda. Si alguna vez hace falta un
 estado nuevo, el canal disponible es el borde, la opacidad o la superposición — no el fondo.

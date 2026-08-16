@@ -92,7 +92,11 @@
       — **no hace falta el fallback**: `D#5` mide 20,2 px en la celda de 44 (23,8 px de holgura) y es
       el nombre más ancho de los 20 en pantalla, empatado con `D#4`. Medido con un `Range` sobre el
       nodo de texto, no a ojo
-- [ ] Captura a 375 px de ancho: el tablero de 440 px no rompe el layout
+- [x] Captura a 375 px de ancho: el tablero de 440 px no rompe el layout
+      — **resuelto en el review del PR** con `overflow-x-auto` en el contenedor de la grilla:
+      scrollea el tablero y no la página, y `CELL_PX` se queda en 44, que es la medida con la que
+      entra el nombre de nota. Anotado en `DESIGN.md` y en `layout.constants.ts`. El diagnóstico
+      original queda abajo tal como se midió.
       — **FALLA, y es regresión de este spec.** Medido: a 375 px el panel del tablero queda en 343 px
       (el wrapper tiene `px-4`) y su interior útil en **311 px** (`p-4`), contra los **440 px** que
       necesitan las 10 pistas fijas de `repeat(10, 44px)`. Desborda **129 px**, las celdas se salen
@@ -105,10 +109,40 @@
       El spec no declaró fallback para este riesgo (sí para el de legibilidad), así que la decisión
       queda abierta: `overflow-x-auto` en el panel, un `CELL_PX` menor debajo de `md`, o aceptarlo
 
+## Salido del `/pr-review` (no estaba en el plan)
+- [x] **El fantasma hablaba el idioma viejo**: pintaba `bg-emerald-300` y repetía la letra de la
+      pieza cinco veces, justo lo que este spec sacó del tablero. Ahora es gris —el color es
+      identidad, el fantasma es estado— y muestra la nota y el grado de **cada** celda, por la misma
+      cadena de puras. Obligó a que `previewCells` viaje al `Board` como array y no como `Set`: el
+      índice es lo que conecta la celda con su grado
+- [x] **La celda es una baldosa redondeada** y no un casillero con borde compartido (`-m-px`), y el
+      grado va como `#n` abajo a la derecha: es el lenguaje de la lámina. El aire lo hace el padding
+      de la pista, así que el ancho sigue siendo exactamente 10 × `CELL_PX`. El borde va negro y en
+      todas las baldosas: sobre el panel blanco el `slate-200` no se veía. Se probó pintar la
+      superficie de la grilla (gris y negra) y se descartó — le come el protagonismo a los 12 colores
+- [x] **El tablero llena su tarjeta**: `CELL_PX` 44 → **63** y la tarjeta `md:col-span-6` → **7**
+      (`PlacedList` cede la columna). Medido en el DOM: con 6 columnas la tarjeta daba 536 × 380 y la
+      grilla 520 × 312 —llena a lo ancho, 68 px de alto muerto— porque 10 × 6 no tiene esa
+      proporción; con 7 da 633 × 380 contra 630 × 378, o sea padding parejo en los cuatro lados
+- [x] **`PiecePreview` se retira entero** (y con él `PREVIEW_CELL_PX` y la ranura `children` del
+      `Board`): mostraba la pieza aparte y sin notas mientras el fantasma la muestra en su lugar y
+      con la nota de cada celda. Deja de valer AC13 para ese componente — el AC no se «incumple», se
+      queda sin sujeto. También se fue el `<h2>Tablero 10×6</h2>`, que gastaba alto para nombrar lo
+      que la grilla dice sola
+- [x] `degreeByCellIndex` y `notesForRotation` corrían **una vez por celda** (hasta 60 por render, y
+      hay un render por movimiento del cursor); ahora una vez por `(pieza, rotación)`
+- [x] El comparador de empates usaba `Math.abs(a - b) < eps`, que **no es transitivo** y le da a
+      `sort` un orden dependiente del pivote. Pasa a redondear el ángulo a cubetas: orden total por
+      construcción. Ningún test cambió de resultado — con `SHAPES` los empates son exactos
+- [x] `transform.test.ts` declaraba su propio `EPSILON = 1e-9` para preguntar lo mismo que
+      `DEGREE_EPSILON`: dos números que tienen que coincidir sin nada que los sincronice
+- [x] `describe_piece` anunciaba «Dos trampas» y enumeraba tres
+
 ## PR
-- [ ] **Aclarar que el audio no cambia**: un revisor va a esperar lo contrario (ver `plan.md` §final)
+- [x] **Aclarar que el audio no cambia**: un revisor va a esperar lo contrario (ver `plan.md` §final)
+      — está en el cuerpo del PR, con la advertencia del caché de módulos del server MCP
 - [ ] Capturas antes/después del tablero
-- [ ] `/pr-review` antes de pedir revisión
+- [x] `/pr-review` antes de pedir revisión
 
 ## Seguimiento (no bloquea)
 - [ ] Retirar `PlacedPiece.notes`, redundante una vez que el grado vive por celda — después del 009.
