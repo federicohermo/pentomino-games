@@ -118,6 +118,8 @@ entra con margen. Debajo del breakpoint `md` el tablero ya toma las 12 columnas.
 |---|---|
 | `src/domain/transform.ts` | agregar `centroid` y `angleFromCentroid` (geometría pura, sin música) |
 | `src/domain/music.ts` | agregar `degreeByCellIndex` (D1 + D2′ + D3) |
+| `src/domain/board.ts` | agregar `occupantCellIndex`, al lado de `occupantAt` — es lo que saca la derivación celda→nota de `Board.tsx` (AC14) |
+| `src/domain/__tests__/board.test.ts` | AC14: `occupantCellIndex` sobre celda ocupada, celda vacía y las dos piezas adyacentes |
 | `src/domain/__tests__/transform.test.ts` | tests de centroide y ángulo, con el eje Y hacia abajo explícito |
 | `src/domain/__tests__/music.test.ts` | AC1–AC5 |
 | `src/components/constants/palette.constants.ts` | **nuevo** — los 12 colores y su color de texto |
@@ -128,8 +130,9 @@ entra con margen. Debajo del breakpoint `md` el tablero ya toma las 12 columnas.
 | `mcp-server/src/tools/describePiece.ts` | agregar grado y nota por celda (AC9) |
 | `DESIGN.md` | **nuevo**, en la raíz (AC10) |
 | `CLAUDE.md` | fila nueva en la tabla de documentación (AC10) |
-| `docs/architecture/modelo-musical.md` | la fila «La forma → **Nada, hoy**» deja de ser cierta |
-| `.claude/rules/domain.md` | ídem, misma tabla |
+| `.claude/rules/domain.md` | la **fila** «La forma → **Nada, hoy**» (`:36`) deja de ser cierta |
+| `docs/architecture/modelo-musical.md` | ahí **no es una fila**: es prosa (`:16-18`) más la tabla «Las cuatro reglas» (`:9-14`), que pasa a cinco |
+| `docs/architecture/directory-structure.md` | el árbol de `components/` (`:85-92`) enumera archivo por archivo: entran `constants/palette.constants.ts` y el directorio `__tests__/` |
 | `specs/log.md` | fila del 007; el 001 pasa a `Descartado` |
 
 **No se toca `src/audio/`.** Ni un archivo. Es lo que hace verificable a AC8.
@@ -137,10 +140,16 @@ entra con margen. Debajo del breakpoint `md` el tablero ya toma las 12 columnas.
 ## 6. Deuda adyacente detectada (fuera de alcance)
 
 - **`PlacedPiece.notes` queda redundante** cuando cada celda tenga su grado: la lista de notas se puede
-  derivar del mapeo. Sacarlo toca `PlacedList` y el efecto de reconciliación, así que va después del 009.
+  derivar del mapeo. Sacarlo toca `PlacedList` y el efecto de reconciliación, así que va después del
+  009 — pero este spec **le resta un consumidor**: `Board` deriva el arpegio de `notesForRotation` y no
+  de `occ.notes` (AC12), así que al llegar el borrado quedan dos y no tres.
 - **`components/` no tiene ningún test** y las `@testing-library/*` siguen sin consumidor (ya está
   anotado en `log.md`). Este spec agrega el primer test de la carpeta, pero es de constantes y corre en
   `environment: 'node'`: **no** desbloquea ni requiere jsdom.
+  La deuda queda **igual de abierta, pero no más grande**: la única lógica nueva que AC6 pone en juego
+  sale de `Board.tsx` a `domain/board.ts` con `occupantCellIndex` (AC14), así que el componente vuelve
+  a ser el encadenado de puras que el repo puede testear. Sin eso, este spec habría metido dentro de la
+  capa sin cobertura justo la derivación de la que depende todo lo que se ve.
 - **La rotación sigue siendo un `number` sin acotar** (deuda del spec 005). `degreeByCellIndex` no la
   recibe —trabaja sobre la forma canónica— así que este spec no la empeora ni la arregla.
 - **El `title` de la celda dice solo `(x,y)`.** Con la nota adentro de la celda, el `title` natural

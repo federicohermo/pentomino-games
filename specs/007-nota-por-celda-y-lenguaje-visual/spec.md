@@ -86,20 +86,50 @@ entre negro y blanco, y un test lo verifica contra el umbral AA de WCAG (4.5:1).
 suena: es lenguaje visual. El dominio no debe saber que `V` es amarilla, igual que no sabe que el
 tablero se dibuja con `div`s.
 
+**D7 — El color de pieza va donde ya se comunicaba identidad, y nunca sobre el canal de estado.**
+La primera redacción de esta regla decía «donde ya mostraban la letra», y medida contra el código no
+decide nada en dos de los tres componentes: `PiecePreview` **no muestra la letra en ningún lado** —sus
+celdas son `bg-slate-800` con el punto del ancla (`PiecePreview.tsx:33`)— y en `PiecePalette` la letra
+vive en un botón cuyo estado seleccionado ya es `bg-slate-900 text-white` (`PiecePalette.tsx:41`), o
+sea que pintarle el fondo le roba el canal a la señal de estado. Enunciada por identidad-vs-estado, la
+regla decide sola los cuatro casos, y es la misma que ya gobierna el tablero (el fantasma, el choque y
+el hover ganan sobre el color de pieza):
+
+| Dónde | Qué pasa | Por qué |
+|---|---|---|
+| `Board` | celda ocupada = color de pieza; fantasma, choque y hover siguen ganando | identidad debajo, estado encima |
+| `PiecePreview` | las celdas pasan de `bg-slate-800` al color de pieza; el punto del ancla queda | es el mismo objeto que el tablero, más chico: que hable el mismo idioma es el spec, aunque nunca haya habido letra |
+| `PiecePalette` | **el fondo del botón no se toca**; el color va como punto o barra al costado | el fondo del botón ya es el canal de "seleccionado" |
+| `PlacedList` | la letra (`PlacedList.tsx:25`) toma el color de pieza | texto plano sobre `bg-slate-50`: no hay estado que pisar |
+
 ## Criterios de Aceptación
 
 - **AC1** — `degreeByCellIndex(shape)` devuelve, para cada una de las 12 piezas, una permutación de
   `[0,1,2,3,4]`: cada celda tiene exactamente un grado y cada grado una celda.
 - **AC2** — Para `I` y `X`, la celda que coincide con el centroide recibe el grado `0` (D1).
-- **AC3** — El mapeo es **estable bajo rotación y reflexión**: para las 12 piezas × 4 rotaciones × 2
-  reflexiones, la celda del índice `k` recibe siempre el mismo grado que en la forma canónica (D3).
-- **AC4** — El comparador produce un **orden total estricto**: no devuelve `0` para dos celdas
-  distintas de ninguna de las 12 piezas (D2′).
+- **AC3** — El mapeo **se arrastra por índice y no se recalcula**: para las 12 piezas × 4 rotaciones ×
+  2 reflexiones, la celda del índice `k` de la forma transformada es la misma celda lógica que la del
+  índice `k` de la canónica, así que el grado canónico le sigue correspondiendo (D3). Lo que el AC
+  **no** dice —y que leído al revés manda a escribir un test que falla— es que `degreeByCellIndex`
+  sobre la forma **transformada** devuelva el mapeo canónico: **no lo devuelve**, y difiere en **75 de
+  las 96** orientaciones, porque rotar corre el origen del ángulo. El test verifica lo primero: que el
+  consumidor llame a `degreeByCellIndex(SHAPES[pieza])` y nunca sobre una forma ya transformada.
+- **AC4** — **El desempate por índice se ejerce y se ve.** En las 3 piezas donde hay empate de ángulo
+  —`F` (1 empate), `I` (2), `T` (1); las otras 9 tienen 0, medido— las celdas empatadas reciben grados
+  consecutivos en **orden de índice creciente**. El test las nombra por índice, así que cambiar el
+  desempate a radio lo pone en rojo.
+  Es la formulación observable de «el comparador produce un orden total estricto» (D2′): el comparador
+  vive adentro de `degreeByCellIndex` y no se exporta, así que un AC escrito sobre él no sería
+  testeable sin agregar superficie pública solo para el test. El desempate por índice es inyectivo por
+  construcción —dos celdas distintas nunca comparten índice—, de modo que lo que hay que verificar no
+  es que exista un orden total sino que **el tercer criterio se aplique**, que es lo que un refactor
+  puede romper.
 - **AC5 — La referencia visual queda fijada como test.** Las 12 piezas producen exactamente el mapeo
   nota↔celda de la referencia, con las notas escritas a mano en el test. Es el AC que impide que un
   refactor del comparador cambie el instrumento sin que nadie lo note.
-- **AC6** — Cada celda ocupada del tablero muestra el nombre de **su** nota (`C4`, `D#5`, …) y el fondo
-  del color de su pieza, en vez de la letra de la pieza sobre `bg-slate-900`.
+- **AC6 — *(firma humana: se verifica con captura, no es material de loop)*** Cada celda ocupada del
+  tablero muestra el nombre de **su** nota (`C4`, `D#5`, …) y el fondo del color de su pieza, en vez de
+  la letra de la pieza sobre `bg-slate-900`.
 - **AC7** — Los 12 colores alcanzan contraste **≥ 4.5:1** con su color de texto declarado, verificado
   en un test que recalcula el contraste desde el color de fondo (D5).
 - **AC8 — El audio no cambia.** `simulate_board` sobre un tablero cualquiera devuelve **la misma
@@ -108,6 +138,25 @@ tablero se dibuja con `div`s.
 - **AC9** — `describe_piece` incluye, por celda, su grado y su nota.
 - **AC10** — `DESIGN.md` existe en la raíz y `CLAUDE.md` lo enlaza.
 - **AC11** — `pnpm verify` en verde.
+- **AC12 — La reflexión no cambia qué nota muestra una celda.** Por D4 el retrógrado es del **orden de
+  reproducción**, no del mapeo: la celda de grado `g` muestra siempre la nota `g` del arpegio
+  **ascendente** (`notesForRotation(...)[g]`), con reflexión o sin ella. Hace falta como AC porque las
+  dos lecturas posibles **suenan igual** —AC8 no las distingue— y pintan tableros distintos, y porque
+  es la que decide en qué sentido recorre la cabeza lectora del spec 010. Ojo con la fuente de datos:
+  `PlacedPiece.notes` (`App.tsx:64`) y el campo `notes` de `describe_piece` (`describePiece.ts:69`)
+  vienen **ya invertidos**, así que indexar cualquiera de los dos con el grado implementa la lectura
+  contraria sin que nada falle.
+- **AC13 — No-regresión de los tres componentes que solo heredan color.** `PiecePalette`,
+  `PiecePreview` y `PlacedList` no cambian de layout, de tamaño ni de contenido: `PREVIEW_CELL_PX`
+  sigue en 20, y las listas de notas de los tres siguen mostrando las mismas cinco notas en el mismo
+  orden que antes del spec.
+- **AC14 — La derivación celda→nota es pura y está testeada; `Board` no la calcula.** El camino
+  completo —de `(x, y)` al nombre de nota— se compone de funciones de `domain/`
+  (`occupantCellIndex` · `degreeByCellIndex` · `notesForRotation` · `midiName`), cada una con test en
+  `environment: 'node'`. `Board.tsx` las encadena y no implementa ningún paso.
+  Existe porque AC6 es de firma humana: sin este AC, la única lógica de la que depende lo que se ve
+  queda dentro de un componente que el repo verifica a ojo (`log.md:84`, deuda «no hay tests de UI»),
+  y una captura no distingue un mapeo correcto de uno corrido en uno.
 
 ## Fuera de Alcance
 
@@ -120,8 +169,8 @@ tablero se dibuja con `div`s.
 - **Colocación envolvente.** Que una pieza pueda cruzar el borde del tablero es un spec propio; hoy
   `isValid` la rechaza y sigue igual.
 - **Rediseño del resto de la UI.** Cambia la celda del tablero y su tamaño. El panel lateral, la
-  paleta, la lista de colocadas y el espectro solo heredan el color de pieza donde ya mostraban la
-  letra.
+  paleta, la lista de colocadas y el espectro solo heredan el color de pieza **donde ya comunicaban
+  identidad de pieza, y nunca sobre el canal de estado** (D7).
 
 ## Riesgos
 
