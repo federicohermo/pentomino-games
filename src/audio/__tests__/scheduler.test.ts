@@ -1,78 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import {
-  midiToHz, scheduleVoice, collectHits, DEFAULT_VOICE, ARPEGGIO_SPREAD, LOOKAHEAD, TICK_MS,
-  FFT_SIZE, SMOOTHING,
-  type Job, type ClockState,
-} from './engine';
-import { offline, peakNear, zeroCrossHz, firstAudible, detectOnsets, SR } from './test-context';
+import { collectHits } from '../scheduler.ts';
+import { scheduleVoice } from '../voice.ts';
+import { LOOKAHEAD, TICK_MS } from '../constants/scheduler.constants.ts';
+import type { Job, ClockState } from '../types/scheduler.types.ts';
+import { offline, detectOnsets } from './test-context.ts';
 
 const A4 = 69;
 const VEL = 0.8;
 
-/** Renderiza una sola voz a ganancia unitaria y devuelve las muestras. */
-async function renderVoice(at: number, dur: number, freq = midiToHz(A4)) {
-  const ctx = offline(at + dur + 1);
-  const g = ctx.createGain();
-  g.gain.value = 1;
-  g.connect(ctx.destination);
-  scheduleVoice(ctx, g, freq, at, dur, VEL);
-  const buf = await ctx.startRendering();
-  return buf.getChannelData(0);
-}
-
-describe('midiToHz', () => {
-  it('ancla A4 en 440 y respeta las octavas', () => {
-    expect(midiToHz(69)).toBeCloseTo(440, 10);
-    expect(midiToHz(81)).toBeCloseTo(880, 10);
-    expect(midiToHz(57)).toBeCloseTo(220, 10);
-    expect(midiToHz(60)).toBeCloseTo(261.6256, 3);   // C4
-  });
-});
-
-describe('sintesis', () => {
-  it('AC2 — la frecuencia renderizada es la pedida (+-1 Hz)', async () => {
-    const d = await renderVoice(0.05, 0.5);
-    expect(zeroCrossHz(d, 0.2, 0.3)).toBeCloseTo(440, 0);
-  });
-
-  it('AC2 — sirve para cualquier nota, no solo A4', async () => {
-    const d = await renderVoice(0.05, 0.5, midiToHz(60));
-    expect(Math.abs(zeroCrossHz(d, 0.2, 0.3) - midiToHz(60))).toBeLessThan(1);
-  });
-
-  it('AC3 — la envolvente alcanza el pico y el sostenido esperados', async () => {
-    const at = 0.1, dur = 0.35;
-    const d = await renderVoice(at, dur);
-    const { attack, sustain } = DEFAULT_VOICE;
-
-    // El pico real cae entre muestras, de ahi el margen del 5%.
-    expect(peakNear(d, at + attack)).toBeGreaterThan(VEL * 0.95);
-    expect(peakNear(d, at + attack)).toBeLessThanOrEqual(VEL * 1.001);
-
-    const expectedSustain = VEL * sustain;
-    expect(Math.abs(peakNear(d, at + dur - 0.02) - expectedSustain)).toBeLessThan(expectedSustain * 0.05);
-  });
-
-  it('AC3 — silencio exacto fuera de la nota', async () => {
-    const at = 0.1, dur = 0.35;
-    const d = await renderVoice(at, dur);
-    const { release } = DEFAULT_VOICE;
-    expect(peakNear(d, at - 0.03)).toBe(0);
-    expect(peakNear(d, at + dur + release + 0.1)).toBe(0);
-  });
-
-  it('AC4 — la nota empieza donde se la agendo (+-1 ms)', async () => {
-    const at = 0.1;
-    const d = await renderVoice(at, 0.3);
-    expect(Math.abs(firstAudible(d) - at)).toBeLessThan(0.001);
-  });
-
-  it('AC4 — y tambien en otro instante, para descartar una coincidencia', async () => {
-    const at = 0.37;
-    const d = await renderVoice(at, 0.3);
-    expect(Math.abs(firstAudible(d) - at)).toBeLessThan(0.001);
-  });
-});
+/**
+ * El espaciado del arpegio, escrito acá a proposito (AC10).
+ *
+ * Importarlo de `engine.ts` haria que el test de la capa 2 alcanzara a la capa 3,
+ * que es justo la dependencia que la particion viene a impedir. Para el scheduler
+ * el spread es un dato del job, no una constante del motor.
+ */
+const SPREAD = 0.15;
 
 /**
  * El cursor de compas del spec 002, copiado tal cual, como oraculo de
@@ -109,7 +52,7 @@ describe('scheduler — reloj por origen (spec 004)', () => {
   /** Reloj recien arrancado, igual que startClock: scheduledUntil antes de origin. */
   const ORIGIN = 0.05;
   const recienArrancado = (): ClockState => ({ origin: ORIGIN, scheduledUntil: 0 });
-  const job = (notes: number[], phase = 0): Job => ({ id: 'j', notes, spread: ARPEGGIO_SPREAD, phase });
+  const job = (notes: number[], phase = 0): Job => ({ id: 'j', notes, spread: SPREAD, phase });
 
   it('N compases producen N disparos en los instantes esperados', () => {
     const state: ClockState = { origin: 0.5, scheduledUntil: 0 };
@@ -122,8 +65,8 @@ describe('scheduler — reloj por origen (spec 004)', () => {
   it('cada job aporta todas sus notas, espaciadas por el arpegio', () => {
     const hits = collectHits(0, 2, 120, [job([60, 62, 64])], { origin: 0.5, scheduledUntil: 0 });
     expect(hits).toHaveLength(3);
-    expect(hits[1].at - hits[0].at).toBeCloseTo(ARPEGGIO_SPREAD, 9);
-    expect(hits[2].at - hits[1].at).toBeCloseTo(ARPEGGIO_SPREAD, 9);
+    expect(hits[1].at - hits[0].at).toBeCloseTo(SPREAD, 9);
+    expect(hits[2].at - hits[1].at).toBeCloseTo(SPREAD, 9);
   });
 
   it('varios jobs suenan en el mismo compas', () => {
@@ -234,7 +177,7 @@ describe('fase por pieza (spec 004)', () => {
   const BAR = (60 / BPM) * 4;
   const ORIGIN = 0.05;
   const pieza = (id: string, notes: number[], phase: number): Job =>
-    ({ id, notes, spread: ARPEGGIO_SPREAD, phase });
+    ({ id, notes, spread: SPREAD, phase });
 
   it('AC1 — los onsets caen en origin + (k + phase) * bar', () => {
     const state: ClockState = { origin: 0.5, scheduledUntil: 0 };
@@ -248,7 +191,7 @@ describe('fase por pieza (spec 004)', () => {
     const state: ClockState = { origin: 0.5, scheduledUntil: 0 };
     const hits = collectHits(0, 2.4, 120, [pieza('j', [60, 62, 64], 0.5)], state);
     expect(hits).toHaveLength(3);
-    hits.forEach((h, i) => expect(h.at).toBeCloseTo(0.5 + 0.5 * 2 + i * ARPEGGIO_SPREAD, 9));
+    hits.forEach((h, i) => expect(h.at).toBeCloseTo(0.5 + 0.5 * 2 + i * SPREAD, 9));
   });
 
   it('AC1 — dos jobs con phase distinta arrancan en instantes distintos', () => {
@@ -336,76 +279,5 @@ describe('fase por pieza (spec 004)', () => {
     expect(peak(desfasadas)).toBeLessThan(peak(alineadas));
     // Y donde habia un evento pasan a haber dos: la textura que el volumen tapaba.
     expect(detectOnsets(desfasadas)).toHaveLength(detectOnsets(alineadas).length * 2);
-  });
-});
-
-describe('scheduler + sintesis integrados', () => {
-  it('AC5 — los disparos se oyen donde el scheduler dijo (+-6 ms)', async () => {
-    const state: ClockState = { origin: 0.5, scheduledUntil: 0 };
-    const hits = collectHits(0, 5, 120, [{ id: 'j', notes: [A4], spread: 0, phase: 0 }], state);
-    expect(hits).toHaveLength(3);
-
-    const ctx = offline(5);
-    const g = ctx.createGain();
-    g.gain.value = 1;
-    g.connect(ctx.destination);
-    hits.forEach(h => scheduleVoice(ctx, g, h.hz, h.at, 0.2, VEL));
-    const d = (await ctx.startRendering()).getChannelData(0);
-
-    const onsets = detectOnsets(d);
-    expect(onsets).toHaveLength(hits.length);
-    onsets.forEach((t, i) => expect(Math.abs(t - hits[i].at)).toBeLessThan(0.006));
-  });
-
-  it('dos notas superpuestas suman amplitud', async () => {
-    const render = async (freqs: number[]) => {
-      const ctx = offline(1);
-      const g = ctx.createGain();
-      g.gain.value = 1;
-      g.connect(ctx.destination);
-      freqs.forEach(f => scheduleVoice(ctx, g, f, 0.1, 0.3, 0.4));
-      return (await ctx.startRendering()).getChannelData(0);
-    };
-    const solo = peakNear(await render([midiToHz(60)]), 0.2);
-    const dueto = peakNear(await render([midiToHz(60), midiToHz(67)]), 0.2);
-
-    // En sostenido cada voz aporta vel*sustain = 0.2. Suman, pero no en fase, asi
-    // que el pico conjunto queda entre una voz sola y el maximo teorico de 0.4.
-    expect(dueto).toBeGreaterThan(solo);
-    expect(dueto).toBeLessThanOrEqual(0.4 + 1e-6);
-    expect((await render([midiToHz(60)])).length).toBe(SR);
-  });
-});
-
-describe('analizador', () => {
-  it('AC1 — el nodo es transparente: la senal que sale es la misma', async () => {
-    // No verifica el analisis —getByteFrequencyData no rinde nada util offline,
-    // por eso el mapeo vive en spectrum.ts— sino la unica parte del AC1 que se
-    // puede afirmar sin escuchar: insertar el nodo en serie no altera el audio.
-    const render = async (withAnalyser: boolean) => {
-      const ctx = offline(1);
-      const g = ctx.createGain();
-      g.gain.value = 0.3;
-      if (withAnalyser) {
-        const an = ctx.createAnalyser();
-        an.fftSize = FFT_SIZE;
-        an.smoothingTimeConstant = SMOOTHING;
-        g.connect(an);
-        an.connect(ctx.destination);
-      } else {
-        g.connect(ctx.destination);
-      }
-      scheduleVoice(ctx, g, midiToHz(60), 0.1, 0.35, VEL);
-      return (await ctx.startRendering()).getChannelData(0);
-    };
-
-    const directo = await render(false);
-    const analizado = await render(true);
-    expect(analizado.length).toBe(directo.length);
-    for (let i = 0; i < directo.length; i++) {
-      if (analizado[i] !== directo[i]) {
-        throw new Error(`el analizador altero la muestra ${i}: ${directo[i]} -> ${analizado[i]}`);
-      }
-    }
   });
 });

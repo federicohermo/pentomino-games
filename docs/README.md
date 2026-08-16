@@ -6,14 +6,14 @@ secuencia de cinco notas derivada de su identidad y su orientación.
 ## Índice de Documentación
 
 ### Arquitectura
-- [Visión General](./architecture/overview.md) — Capas, stack y por qué todo vive en un archivo
+- [Visión General](./architecture/overview.md) — Las cuatro capas, su dirección de dependencia y el stack
 - [Estructura de Directorios](./architecture/directory-structure.md) — Qué hay y qué está muerto
 - [Modelo Musical](./architecture/modelo-musical.md) — Pieza → tónica, rotación → escala, reflexión → retrógrado
 - [Capa de Audio](./architecture/audio.md) — Grafo Web Audio, envolvente ADSR, scheduler con lookahead
 
 ### Guías de Desarrollo
 - [Inicio Rápido](./guides/quickstart.md) — Setup y comandos
-- [Convenciones de Código](./guides/conventions.md) — Geometría, comentarios, estado
+- [Convenciones de Código](./guides/conventions.md) — Organización de `src/`, geometría, comentarios, estado
 - [Troubleshooting](./guides/troubleshooting.md) — Errores reales que ya se pisaron en este repo
 
 ### Infraestructura
@@ -33,7 +33,7 @@ secuencia de cinco notas derivada de su identidad y su orientación.
 | React | 19.x | Biblioteca UI |
 | TypeScript | 5.8 | Tipado estático |
 | Tailwind CSS | 4.x | Estilos utility-first, vía `@tailwindcss/vite` |
-| Web Audio | — | Síntesis y scheduling, sin librería (`src/audio/engine.ts`) |
+| Web Audio | — | Síntesis y scheduling, sin librería (`src/audio/`) |
 
 ---
 
@@ -44,7 +44,7 @@ pnpm dev      # Dev server de Vite
 pnpm build    # tsc -b && vite build
 pnpm lint     # ESLint (flat config v9)
 pnpm preview  # Sirve el build de dist/
-pnpm test     # Vitest — tests de audio con OfflineAudioContext
+pnpm test     # Vitest — 86 tests: dominio puro + audio con OfflineAudioContext
 ```
 
 Los tests corren en `environment: 'node'` contra `node-web-audio-api`, **no en jsdom**: jsdom no
