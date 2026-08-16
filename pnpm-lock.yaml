@@ -90,6 +90,9 @@ importers:
       '@modelcontextprotocol/server':
         specifier: ^2.0.0
         version: 2.0.0
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
       zod:
         specifier: ^4.2.0
         version: 4.4.3
@@ -97,9 +100,6 @@ importers:
       '@types/node':
         specifier: ^24.3.1
         version: 24.3.1
-      typescript:
-        specifier: ~5.8.3
-        version: 5.8.3
 
 packages:
 

@@ -10,9 +10,23 @@ en `mcp-server/node_modules`. Sus tests son de `node --test`, no de Vitest — l
 Es tooling: no entra al bundle ni al deploy.
 
 - **Las tools son una fachada sobre `src/domain/` y `src/audio/`, no una copia.** Lo único propio del
-  server es el render ASCII, el parseo de los specs y el formato de las respuestas. Si al agregar o
-  tocar una tool aparece la tentación de calcular una rotación, una validez o una escala acá, falta un
-  export en `src/domain/` — y eso es un cambio de `src/`, en su propio commit.
+  server es el render ASCII, el parseo de los specs, el índice de símbolos y el formato de las
+  respuestas. Si al agregar o tocar una tool aparece la tentación de calcular una rotación, una validez
+  o una escala acá, falta un export en `src/domain/` — y eso es un cambio de `src/`, en su propio commit.
+- **`find_symbol` es la única que mira el código como texto, y su índice no se persiste.** Se construye
+  en cada consulta desde disco (medido: 112 ms en frío, ~50 ms después, sobre 36 archivos indexados y
+  16 que solo aportan aristas). Si alguna vez hace falta acelerarlo, cachear por `mtime` — **no**
+  generar un archivo de índice: el server no tiene paso de build y lo que lo hace confiable es que no
+  haya artefacto que pueda quedar viejo.
+- **El grafo de `find_symbol` incluye a este paquete, y el índice de símbolos no.** Se leen los imports
+  de `mcp-server/src/` porque las tools importan 31 símbolos del dominio y sin eso `usedBy` sub-reporta;
+  sus exports quedan afuera porque el índice describe la superficie de `src/`. Al agregar un directorio
+  nuevo que importe del dominio, sumarlo a `GRAFO` en `tools/findSymbol.ts`.
+- **El grafo casa por nombre EXPORTADO y por archivo, no por el nombre local.** Un alias
+  (`{ isValid as esValida }`) guarda `propertyName`, y un `import Board from './Board.tsx'` no aporta
+  nombre ninguno: el binding por defecto se marca aparte y se casa solo por archivo. Sin eso los seis
+  `export default` de `src/` —`App` y los cinco componentes— contestan `usedBy: []`, que se lee como
+  código muerto. Un `import * as x` sigue sin verse; no hay ninguno en `src/`.
 - **Los imports de `src/` llevan extensión `.ts`.** Node los necesita; Vite no. Un import sin extensión
   rompe el server y **no** rompe la app, así que el error sería invisible del lado del navegador —
   `pnpm mcp:test` es lo que lo ataja.

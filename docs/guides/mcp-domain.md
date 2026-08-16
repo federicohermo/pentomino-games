@@ -22,25 +22,37 @@ server sin configurar nada.
 compilar, quitando los tipos. Es tooling de desarrollo — no entra al bundle ni al deploy, así que con
 Node 20 el server no arranca y **el repo sigue funcionando igual**.
 
-## Las cuatro tools
+## Las cinco tools
 
 | Tool | Responde | En lugar de |
 |---|---|---|
+| `find_symbol` | dónde está definido un símbolo de `src/` (archivo, línea, firma, primera frase del doc) y qué archivos lo importan, `mcp-server/` incluido | `grep` + abrir el archivo para ver la firma |
 | `describe_piece` | forma transformada, ASCII con el ancla marcada, tónica, escala y las 5 notas con el retrógrado aplicado | componer cuatro puras a mano sobre cinco pares de coordenadas |
 | `simulate_board` | validez de cada colocación, los jobs que crearía el efecto de reconciliación, y la línea de tiempo de onsets del scheduler real | leer el scheduler y recorrer el lookahead a mano, o escuchar |
 | `check_invariants` | los cinco chequeos de `domain/invariants.ts`, con contraejemplos y el espacio del modelo (96 orientaciones) | correr los tests y leer la salida |
 | `spec_status` | por spec: estado, tareas hechas/total y la próxima sin marcar | leer `log.md` + todos los `tasks.md`, que crecen con cada spec |
 
-**Ninguna reimplementa nada.** `simulate_board` llama a `cellsAt`/`isValid`/`phaseFor` de
-`domain/board.ts`; `check_invariants` llama a `checkAll()`; `describe_piece` llama a
-`rotateN`/`reflect`/`notesForRotation`. Lo único propio del server es el render ASCII, el parseo de los
-specs y el formato de las respuestas.
+**Ninguna de las cuatro de dominio reimplementa nada.** `simulate_board` llama a
+`cellsAt`/`isValid`/`phaseFor` de `domain/board.ts`; `check_invariants` llama a `checkAll()`;
+`describe_piece` llama a `rotateN`/`reflect`/`notesForRotation`. Lo único propio del server es el render
+ASCII, el parseo de los specs, el índice de símbolos y el formato de las respuestas.
+
+`find_symbol` es la excepción y conviene tenerla clara: **es la única que mira el código como texto en
+vez de ejecutarlo**, porque "dónde está X y quién lo usa" no se contesta ejecutando nada. Mantiene la
+propiedad que importa igual — construye el índice **en la consulta** y no lo persiste, así que no hay
+artefacto que regenerar ni que pueda quedar viejo.
 
 ## Cuándo preferirlas a leer el código
 
-La regla corta: **localizar es barato en este repo; simular el modelo no.** `src/` entra en un par de
-reads y cualquier "¿dónde está X?" se resuelve con un `grep`. Lo caro es responder qué produce el
-modelo, y ahí la simulación mental además **no avisa cuando sale mal**.
+La regla corta: **simular el modelo es caro, y localizar dejó de ser gratis.** Lo caro sigue siendo
+responder qué produce el modelo, y ahí la simulación mental además **no avisa cuando sale mal**. Pero la
+otra mitad de la regla cambió y está medida: cuando se escribió el
+[spec 006](../../specs/006-mcp-server-de-dominio-ejecutable/spec.md), `src/` eran 8 archivos y 855
+líneas y cualquier "¿dónde está X?" se resolvía con un `grep` barato. Hoy —después de que el
+[spec 005](../../specs/005-modularizacion-de-src-en-capas/spec.md) partiera `App.tsx` en capas— son
+**38 archivos, 1.303 líneas de fuente y 84 símbolos exportados** —78 si se dejan afuera los `__tests__/`,
+que es lo que el índice muestra por defecto. Localizar sigue siendo fácil para una
+persona; lo que dejó de ser barato es el **costo en tokens** de localizar leyendo.
 
 Preguntar en vez de leer cuando la pregunta es:
 
@@ -52,6 +64,10 @@ Preguntar en vez de leer cuando la pregunta es:
   hizo audible.
 - *¿Rompí algo del modelo?* → `check_invariants`, antes y después de tocar geometría o piezas.
 - *¿En qué quedó el trabajo planificado?* → `spec_status`.
+- *¿Dónde está `cellsAt` y quién lo usa?* → `find_symbol`, **no `grep`**. Trae la firma, así que no hay
+  que abrir el archivo, y `usedBy` sale del grafo de imports: un archivo que lo llama quince veces
+  aparece una vez, y un homónimo de otro módulo no aparece.
+- *¿Qué exporta `src/` en total?* → `find_symbol` sin argumentos: el mapa entero en ~2 KB.
 
 Y **leer el código igual** cuando la pregunta es por qué algo está hecho así: eso vive en los
 comentarios, no en la salida de una tool.
@@ -73,12 +89,64 @@ pongo en `x=1` y otra pieza en `x=5`?"*
 |---|---|---|
 | Leyendo el código: `domain/{transform,music,board}` + sus `constants/` + `audio/scheduler` + sus constantes | 14.999 | ~3.750 |
 | Con las tools: `describe_piece` (414) + `simulate_board` (1.189) | **1.603** | **~400** |
-| Catálogo de las cuatro tools, una vez por sesión | 4.863 | ~1.215 |
+| Catálogo de las cinco tools, una vez por sesión | 6.787 | ~1.697 |
 
 **89% menos por pregunta**, y el catálogo se paga con la primera. Lo que no aparece en la tabla es lo
 que más importa: leyendo el código, la respuesta todavía hay que **derivarla a mano** —tres rotaciones,
 un espejo, la escala transpuesta +7, el retrógrado y el recorrido del lookahead— y nadie avisa si sale
 mal.
+
+### `find_symbol` contra `grep`
+
+Pregunta de referencia: *"¿dónde está `notesForRotation` y quién depende de él?"*
+
+| | Bytes | Qué deja |
+|---|---|---|
+| `grep -rn notesForRotation src/ mcp-server/src/` | 4.544 | 40 hits, la mayoría call-sites repetidos del mismo test |
+| + abrir `domain/music.ts` (hace falta para la firma) | 1.663 | |
+| **Camino `grep`** | **6.207** | |
+| `find_symbol("notesForRotation")` | **433** | definición, línea, firma, doc y los 4 archivos que lo importan |
+
+**14x menos.** Su entrada del catálogo cuesta 1.705 bytes y ahorra ~5.774 por consulta, así que también
+se paga con la primera. El índice completo —los 78 símbolos no-test agrupados por archivo— son 1.993
+bytes.
+
+El `grep` de la comparación barre los dos paquetes porque es lo que hace falta para igualar la
+respuesta: `usedBy` incluye a `mcp-server/`, y ahí está justamente la parte que es fácil olvidar.
+
+Costo de construirlo: **112 ms** la primera consulta, ~50 ms las siguientes, sobre 36 archivos
+indexados más 16 que solo aportan aristas. Es lo que permite no persistirlo. El día que eso duela, la
+respuesta es cachear por `mtime`, no generar un artefacto que alguien tenga que regenerar.
+
+### El alcance del grafo, y por qué es asimétrico
+
+Se **indexan** los símbolos de `src/`; se **leen los imports** de `src/` y de `mcp-server/src/`. La
+asimetría es a propósito: las tools importan 31 símbolos del dominio, así que sin esa segunda raíz
+`usedBy` contestaba 2 usuarios donde hay 4 — y quedaba *menos* completa que el `grep` que vino a
+reemplazar. Sus exports, en cambio, no entran al mapa: el índice describe la superficie de `src/`, y
+las tools no son parte de la app.
+
+### Qué casa el grafo, y qué no
+
+`usedBy` cruza el **nombre exportado** contra el **archivo resuelto**, y las dos mitades tienen su
+trampa. Un `import { isValid as esValida }` importa a `isValid`: el segundo nombre es solo cómo se llama
+del lado de acá, así que lo que se guarda es `propertyName`. Y un `import Board from './Board.tsx'` no
+trae ningún nombre —del lado del export el símbolo no tiene uno—, así que el binding por defecto se
+marca aparte y se casa solo por archivo; casarlo por nombre daría falso apenas alguien lo renombre al
+importarlo, que es lo que `src/main.tsx` no hace y `App.tsx` sí podría. Los dos casos importan acá: los
+seis `export default` de `src/` son `App` y los cinco componentes, o sea la capa de UI entera.
+
+Lo que el grafo **no** ve es `import * as x`: un namespace no dice qué símbolo se usa. Hoy `src/` no
+tiene ninguno; si aparece, `usedBy` va a sub-reportar en silencio.
+
+`includeTests` filtra las **dos** puntas —los matches y los usuarios—, no solo `usedBy`. Filtrar una
+sola devolvía los helpers de `audio/__tests__/test-context.ts` como símbolos huérfanos de `src/`, y una
+coincidencia exacta dentro de un test tapaba la búsqueda por subcadena de un símbolo real.
+
+Ojo con qué problema resuelve esto y cuál no. Romper una firma del dominio **no pasa silencioso**: el
+tsconfig del server typechequea cruzando el borde de paquete (por eso su `lib` incluye `DOM`) y
+`pnpm verify` falla señalando `describePiece.ts` y `simulateBoard.ts`. Lo que la segunda raíz arregla
+es el *input de planificación* — que al dimensionar un cambio la respuesta no diga 2 cuando son 4.
 
 ## Verificar que anda
 

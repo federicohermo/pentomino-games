@@ -14,10 +14,10 @@
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",
-    "zod": "^4.2.0"
+    "zod": "^4.2.0",
+    "typescript": "~5.8.3"
   },
   "devDependencies": {
-    "@types/node": "^24.3.1",
-    "typescript": "~5.8.3"
+    "@types/node": "^24.3.1"
   }
 }

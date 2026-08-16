@@ -3,6 +3,7 @@ import { describePiece } from './describePiece.ts';
 import { checkInvariants } from './checkInvariants.ts';
 import { simulateBoard } from './simulateBoard.ts';
 import { specStatus } from './specStatus.ts';
+import { findSymbol } from './findSymbol.ts';
 
 /**
  * El registro. Agregar una tool es un archivo mas una linea aca: el entrypoint no
@@ -13,4 +14,5 @@ export const tools: readonly ToolDef[] = [
   checkInvariants,
   simulateBoard,
   specStatus,
+  findSymbol,
 ];

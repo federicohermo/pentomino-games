@@ -111,8 +111,9 @@ porqué de cada una está en [docs/guides/conventions.md](./docs/guides/conventi
 ## Preguntarle al dominio en vez de simularlo
 
 `mcp-server/` levanta con el repo (`.mcp.json` está commiteado) y **ejecuta las funciones puras
-reales**: no indexa código, así que no hay índice, no hay staleness y no hay build. Si alguien cambia
-`notesForRotation`, la tool responde distinto en la consulta siguiente.
+reales**: no hay build y no hay artefacto que regenerar. Si alguien cambia `notesForRotation`, la tool
+responde distinto en la consulta siguiente. `find_symbol` es la única que mira el código como texto, y
+también construye su índice **en la consulta** — nada se persiste, así que sigue sin haber staleness.
 
 | Tool | Preguntarle antes de |
 |---|---|
@@ -120,10 +121,17 @@ reales**: no indexa código, así que no hay índice, no hay staleness y no hay 
 | `simulate_board` | recorrer el lookahead a mano para saber qué suena junto |
 | `check_invariants` | y después de tocar geometría, `SHAPES` o el modelo musical |
 | `spec_status` | leer `log.md` y todos los `tasks.md` |
+| `find_symbol` | `grep` para ubicar un símbolo, o abrir un archivo para ver una firma |
 
-La regla corta: **localizar es barato en este repo; simular el modelo no.** Y leer el código igual
-cuando la pregunta es *por qué* algo está hecho así — eso vive en los comentarios, no en la salida de
-una tool. [docs/guides/mcp-domain.md](./docs/guides/mcp-domain.md).
+Su `usedBy` incluye a `mcp-server/`, que importa 31 símbolos del dominio: tocar una firma de `domain/`
+puede romper una tool. Eso **no** pasa silencioso —`pnpm verify` typechequea cruzando el borde de
+paquete— pero sin esa arista la estimación del cambio sale corta.
+
+La regla corta: **simular el modelo es caro, y localizar dejó de ser gratis.** Lo segundo cambió y está
+medido: `src/` pasó de 8 archivos a 38 con el spec 005, y el camino `grep` + abrir el archivo cuesta
+~14x lo que cuesta preguntar. Y leer el código igual cuando la pregunta es *por qué* algo está hecho
+así — eso vive en los comentarios, no en la salida de una tool.
+[docs/guides/mcp-domain.md](./docs/guides/mcp-domain.md).
 
 ---
 

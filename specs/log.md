@@ -159,3 +159,51 @@ columna (spec 004, AC8), que no tenía test automático porque las puras no se p
   terminador de línea—, así que sobre los archivos de este repo, que están en CRLF, todo patrón
   terminado en `(.*)$` dejaba de matchear y `parseTasks` devolvía CERO tareas sin ningún error. Un
   parseo de markdown que cuente cosas tiene que cortar las líneas aceptando CRLF.
+
+- **2026-08-16 — El 006 dijo "sin índice de símbolos" con una medición que caducó en un día, y ahora
+  hay índice.** La nota del 2026-08-02 acá arriba dice, en presente, que «acá `src/` son 8 archivos y
+  25 KB, así que un índice de símbolos cuesta todo y ahorra nada». Era cierta **al escribirse** y dejó
+  de serlo al día siguiente: `f2b2dad` (spec 005) partió `App.tsx` en capas, y hoy `src/` son **38
+  archivos, 1.303 líneas de fuente y 84 símbolos exportados**. O sea que la medición que justificó no
+  indexar se tomó sobre el repo *anterior* al cambio que el propio 006 requería —005 salió de partirlo
+  en dos—, y nadie la volvió a mirar durante 13 días. Es la misma clase de dato derivado escrito a mano
+  que `e257caf` sacó de `docs/`: si un número va a envejecer, o se fecha o se calcula.
+  Lo que **no** cambió es la conclusión que el conteo pretendía sostener. El conteo era un proxy del
+  costo de localizar, y el proxy se rompió al revés: los 30 archivos nuevos los trajo la
+  modularización, así que hoy hay más archivos y cada uno es más fácil de ubicar (un módulo por razón
+  de cambio, ninguno arriba de 217 líneas). Lo que sí se volvió caro es otra cosa, y es la que decidió
+  agregar la tool: **el costo en tokens de localizar leyendo**. Medido sobre "¿dónde está
+  `notesForRotation` y quién depende de él?" — `grep` sobre los dos paquetes da 4.544 bytes en 40 hits,
+  la mayoría call-sites repetidos del mismo test, y como no trae la firma hay que abrir `music.ts`
+  (1.663) igual: 6.207 bytes contra los 433 de `find_symbol`, **14x**. Su entrada del catálogo cuesta
+  1.705 y se paga con la primera consulta.
+  De la decisión original sobrevive lo que de verdad importaba, y por eso esto no es una vuelta atrás
+  completa: **no hay artefacto**. El índice se construye en la consulta (112 ms en frío, ~50 ms después,
+  sobre 36 archivos indexados más 16 que solo aportan aristas) y no se persiste, así que sigue sin haber
+  build ni nada que regenerar. Si algún día eso duele, cachear por `mtime` — no generar un archivo. Y se
+  parsea con el AST de `typescript`, no con regex, por dos motivos: `usedBy` se resuelve por el grafo de
+  imports y no por coincidencia de texto (un homónimo de otro módulo no cuenta como usuario), y una
+  regex de líneas sobre este repo se equivoca en silencio con CRLF, que es exactamente el bug de la nota
+  anterior.
+  **Y el grafo cruza el borde de paquete, que fue el defecto de la primera versión.** `usedBy` salía de
+  `src/` solamente, así que escondía los **31 símbolos del dominio que importa `mcp-server/`**: para
+  `notesForRotation` contestaba 2 usuarios donde hay 4. Eso hacía a la tool *menos* completa que el
+  `grep` que venía a reemplazar —un grep sí encuentra `describePiece.ts`— y contradecía su propia
+  descripción, que vende el `usedBy` como grafo y no como coincidencia de texto. Vale precisar qué
+  arreglaba y qué no: romper una firma del dominio **nunca pasó silencioso**, porque el tsconfig del
+  server typechequea cruzando el borde y `pnpm verify` falla señalando `describePiece.ts` y
+  `simulateBoard.ts` (verificado rompiendo la firma a propósito). Lo que estaba mal era el input de
+  planificación. El arreglo es asimétrico a propósito: de `mcp-server/src/` se leen los **imports** y no
+  los **exports**, porque el índice describe la superficie de `src/` y las tools no son parte de la app.
+  **Y el grafo volvió a sub-reportar por el otro lado, que es el patrón a recordar.** El code review
+  encontró que solo se leían los `namedBindings`: el binding por defecto vive en `importClause.name`, así
+  que los seis `export default` de `src/` —`App` y los cinco componentes, o sea la capa de UI entera—
+  contestaban `usedBy: []`. Eso es peor que sub-reportar: `usedBy: []` se lee como *código muerto, se
+  puede borrar*. Junto con eso, un alias guardaba el nombre local en vez del exportado
+  (`{ isValid as esValida }` escondía a `isValid`), y `includeTests` filtraba `usedBy` pero no los
+  matches, así que un helper de `__tests__/` salía presentado como superficie de `src/` y sin usuarios.
+  Las tres son la misma falla de fondo: **el grafo tiene dos puntas —qué nombre y qué archivo— y cada
+  atajo en una de ellas falla callado**, porque una lista vacía es una respuesta válida. Un grep se
+  equivoca de más y se nota; este índice se equivocaba de menos. La lección operativa es la que salvó al
+  review: cuando lo que se audita es la herramienta, verificar sus respuestas con una fuente
+  independiente en vez de tomarla como oráculo.

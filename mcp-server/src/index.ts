@@ -3,12 +3,17 @@ import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { tools } from './tools/index.ts';
 
 /**
- * MCP server de pentomino-games: **ejecuta el dominio**, no indexa el codigo.
+ * MCP server de pentomino-games: **ejecuta el dominio** en vez de describirlo.
  *
- * No hay paso de build ni indice: node 22.18 corre este `.ts` quitando los tipos,
- * y cada tool importa las funciones puras reales de `src/`. La fuente de verdad
- * es el codigo de HEAD en el momento de la consulta, asi que no hay staleness ni
+ * No hay paso de build: node 22.18 corre este `.ts` quitando los tipos, y cada
+ * tool importa las funciones puras reales de `src/`. La fuente de verdad es el
+ * codigo de HEAD en el momento de la consulta, asi que no hay staleness ni
  * `generatedAt` que sellar.
+ *
+ * `find_symbol` es la excepcion parcial y conviene decirla: SI mira el codigo como
+ * texto, porque "donde esta X y quien lo usa" no se contesta ejecutando nada. Pero
+ * mantiene la propiedad que importa —construye el indice en la consulta y no lo
+ * persiste—, asi que sigue sin haber artefacto que alguien tenga que regenerar.
  *
  * Los imports de `src/` llevan `.ts` explicito, y eso NO es cosmetico: node los
  * necesita para resolver. Un import sin extension dentro de `src/domain/` rompe

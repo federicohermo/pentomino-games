@@ -24,13 +24,14 @@ no se ven afectados: esto es tooling.
 
 ```
 mcp-server/
-├── package.json            deps propias: @modelcontextprotocol/server + zod
+├── package.json            deps propias: @modelcontextprotocol/server + zod + typescript
 ├── tsconfig.json           noEmit; lib incluye DOM (ver abajo)
 └── src/
     ├── index.ts            entrypoint: serveStdio + registro de tools
     ├── pieces.ts           las 12 letras, sacadas de SHAPES
     ├── render.ts           ASCII de una pieza (puro)
     ├── specs.ts            parseo de log.md y de los tasks.md (puro + lectura)
+    ├── symbols.ts          índice de símbolos de src/, por AST (puro + lectura)
     ├── tools/
     │   ├── index.ts        el array de tools; una línea por tool
     │   ├── types.ts        ToolDef, defineTool y los helpers de respuesta
@@ -49,7 +50,7 @@ SDK contra el schema de zod antes de llamar al handler.
 La descripción se escribe **por intención** —cuándo conviene llamarla en vez de leer el código—, no por
 mecanismo. Sin adopción no hay ahorro, y lo único que decide la adopción es esa descripción.
 
-## Tres cosas que no son obvias
+## Cuatro cosas que no son obvias
 
 **Los imports de `src/` llevan `.ts` explícito, y no es cosmético.** Node los necesita para resolver.
 Un import sin extensión dentro de `src/domain/` rompe este server y **no** rompe la app, porque Vite
@@ -61,7 +62,19 @@ Sin `DOM` son 8 errores TS2304. En runtime nada de eso existe: los tipos se borr
 aritmética.
 
 **Nada de dominio se escribe acá.** Rotar, reflejar, colocar, validar, calcular notas y chequear
-invariantes viene todo de `src/`. Lo propio del server es el render ASCII, el parseo de los specs y el
-formato de las respuestas. Si aparece la tentación de calcular una rotación o una escala en este
-paquete, es señal de que falta un export en `src/domain/` — y eso es un cambio de `src/`, en su propio
-commit.
+invariantes viene todo de `src/`. Lo propio del server es el render ASCII, el parseo de los specs, el
+índice de símbolos y el formato de las respuestas. Si aparece la tentación de calcular una rotación o
+una escala en este paquete, es señal de que falta un export en `src/domain/` — y eso es un cambio de
+`src/`, en su propio commit.
+
+**`typescript` es una dependencia de runtime, no de desarrollo.** `symbols.ts` la importa para parsear
+`src/` con el AST del compilador, así que está en `dependencies` aunque `tsc` también la use para el
+typecheck. Y el import es del módulo entero y **estático**, así que los ~292 ms de carga se pagan en el
+**arranque del server**, lo llame alguien a `find_symbol` o no: cargar las cuatro tools de dominio
+cuesta 124 ms y sumarle `find_symbol` lo lleva a 420. Volverlo perezoso es posible —un `createRequire`
+dentro de `readIndex`, porque `typescript` es CJS y el resto de la cadena es sincrónico— y no está
+hecho a propósito: 292 ms una vez por sesión no pagan tener dos nombres para el mismo módulo.
+
+Por qué AST y no una regex: la pregunta que `find_symbol` contesta es *quién usa* un símbolo, y eso se
+resuelve por el grafo de imports —specifier relativo resuelto a archivo—, no por coincidencia de texto.
+Una regex además se equivoca en silencio con CRLF, que es el trap documentado de este repo.
