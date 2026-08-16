@@ -130,7 +130,9 @@ describe('check_invariants', () => {
       assert.equal(c.ok, true, `${c.name}: ${c.failures.join(' · ')}`);
       assert.deepEqual(c.failures, []);
     }
-    assert.deepEqual(r.checked, { pieces: 12, combinations: 96 });
+    // El espacio del modelo, que no es lo que recorre cada chequeo: `formas` mira
+    // las 12 canonicas y `BASE_MAP` el conjunto una vez.
+    assert.deepEqual(r.modelSpace, { pieces: 12, orientationsPerPiece: 8, orientations: 96 });
   });
 
   test('el filtro por pieza reconoce el prefijo del mensaje y deja pasar lo global', () => {
@@ -198,6 +200,28 @@ describe('simulate_board', () => {
     assert.equal((rapido.onsets as { total: number }).total, 10);
     // El tempo estira el patron en vez de reordenarlo: el compas dura menos.
     assert.ok((rapido.barSeconds as number) < (dos.barSeconds as number));
+  });
+
+  test('la fase NO cambia cuantos onsets suenan, ni en la ultima columna', () => {
+    // La regresion que estos tests no veian: todos los casos de arriba usan fases
+    // <= 0.6, donde el arpegio del ultimo compas termina antes del corte. Con la
+    // pieza en la columna 9 la cola cae despues, y cortar por nota en vez de por
+    // onset devolvia 7 onsets en vez de 10 — la misma pieza sonando distinto
+    // segun donde este, que es exactamente lo que la tool tiene que no hacer.
+    const izquierda = call(simulateBoard, { pieces: [{ piece: 'I', rotation: 1, at: [1, 2] }] });
+    const derecha = call(simulateBoard, { pieces: [{ piece: 'I', rotation: 1, at: [9, 2] }] });
+
+    assert.deepEqual((derecha.placements as { phase: number }[])[0].phase, 0.9);
+    assert.equal((derecha.onsets as { total: number }).total, 10);
+    assert.deepEqual(derecha.onsets, izquierda.onsets);
+  });
+
+  test('tampoco a tempo rapido, donde el compas dura menos que antes el arpegio', () => {
+    // A 240 bpm el compas dura 1 s y el arpegio 0,6: desde la fase 0.4 la cola se
+    // pasa del limite. Es el caso extremo del schema, y tiene que dar los mismos
+    // 10 onsets que a 110 bpm.
+    const r = call(simulateBoard, { pieces: [{ piece: 'I', rotation: 1, at: [9, 2] }], bpm: 240 });
+    assert.equal((r.onsets as { total: number }).total, 10);
   });
 
   test('ningun onset se emite dos veces pese al solape de ventanas', () => {

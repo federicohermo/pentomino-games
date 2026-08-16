@@ -30,6 +30,12 @@ import type { Job, ClockState } from '../../../src/audio/types/scheduler.types.t
 /** Redondeo para agrupar y para reportar: los onsets salen de aritmetica de punto flotante. */
 const round4 = (t: number): number => Math.round(t * 1e4) / 1e4;
 
+/**
+ * Tolerancia al comparar instantes, en segundos. Muy por debajo de cualquier
+ * diferencia audible y muy por encima del error de punto flotante acumulado.
+ */
+const TIME_EPSILON = 1e-9;
+
 const placementSchema = z.object({
   piece: z.enum(PIECE_KEYS),
   rotation: z.number().int().min(0).max(3).default(0),
@@ -103,19 +109,51 @@ function resolve(entries: z.output<typeof inputSchema>['pieces']): Resolved[] {
  * adelante y `scheduledUntil` estrictamente antes, que es lo que evita perder el
  * downbeat del compas 0. Los tiempos se reportan en la misma escala, con el
  * instante 0 en el arranque del reloj.
+ *
+ * Va **job por job** para conocer la fase de cada uno, que es lo que permite
+ * cortar por ONSET y no por nota (ver `jobTimeline`).
  */
 function timeline(jobs: Job[], bpm: number, bars: number): { at: number; hz: number }[] {
+  return jobs.flatMap(job => jobTimeline(job, bpm, bars));
+}
+
+/**
+ * Los onsets de UN job en la ventana de `bars` compases.
+ *
+ * **El corte va por onset y no por nota.** Un arpegio empieza en el onset del
+ * compas y se extiende `(notas - 1) * spread` despues; filtrar cada nota por
+ * `at < end` recortaba la cola del ultimo compas cuando `(1 - phase) * bar` era
+ * menor que esa duracion —o sea desde la columna 8 a 110 bpm, y antes todavia a
+ * tempos rapidos—, asi que `onsets.total` dependia de la fase: la misma pieza
+ * daba 10 onsets en la columna 1 y 7 en la columna 9. En la app esas notas
+ * suenan igual, porque el loop sigue; era la simulacion la que mentia.
+ *
+ * El limite se compara contra la ultima nota del ultimo compas de la ventana. No
+ * hay ambiguedad al asignar una nota a su onset porque los arpegios no se
+ * solapan: `(notas - 1) * spread` es 0,6 s y el compas mas corto que permite el
+ * schema —240 bpm— dura 1 s.
+ */
+function jobTimeline(job: Job, bpm: number, bars: number): { at: number; hz: number }[] {
   const bar = barDuration(bpm);
   const origin = CLOCK_START_DELAY;
+  // Los compases de la ventana son [0, bars): el downbeat del compas `bars` ya es
+  // el compas siguiente y queda afuera, que es lo que este corte siempre quiso
+  // decir.
+  const lastOnset = origin + (bars - 1 + job.phase) * bar;
+  const lastNote = lastOnset + (job.notes.length - 1) * job.spread;
+  // El bucle de ventanas tiene que llegar hasta el ultimo onset; lo que se emita
+  // despues lo descarta el corte.
   const end = origin + bars * bar;
+
   const state: ClockState = { origin, scheduledUntil: 0 };
   const hits: { at: number; hz: number }[] = [];
 
-  // El corte `at < end` y no `<=` deja afuera el downbeat del compas `bars`, que
-  // ya es el compas siguiente: `bars` compases son [origin, origin + bars*bar).
   for (let t = 0; t < end; t += TICK_MS / 1000) {
-    for (const hit of collectHits(t, LOOKAHEAD, bpm, jobs, state)) {
-      if (hit.at < end) hits.push({ at: hit.at, hz: hit.hz });
+    for (const hit of collectHits(t, LOOKAHEAD, bpm, [job], state)) {
+      // `lastNote` se calcula con las mismas operaciones y en el mismo orden que
+      // el scheduler, asi que la igualdad de floats es exacta; la tolerancia esta
+      // por si alguna de las dos formulas se reescribe.
+      if (hit.at <= lastNote + TIME_EPSILON) hits.push({ at: hit.at, hz: hit.hz });
     }
   }
   return hits;
