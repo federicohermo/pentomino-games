@@ -78,7 +78,7 @@ describe('AC5 — dur en intervalos, spec 008 (la envolvente no se movio)', () =
     // scheduleVoice tratara `dur` distinto por venir de intervalos en vez de
     // ser un literal, el pico o el sostenido se verian corridos.
     const bpm = 100;
-    const dur = NOTE_INTERVALS * intervalDuration(bpm);   // 2 * 0.15 = 0.300 s
+    const dur = NOTE_INTERVALS * intervalDuration(bpm);   // 1 * 0.15 = 0.150 s
     const at = 0.1;
     const d = await renderVoice(at, dur);
     const { attack, sustain, release } = DEFAULT_VOICE;
@@ -96,8 +96,8 @@ describe('AC5 — dur en intervalos, spec 008 (la envolvente no se movio)', () =
 
   it('a 60 bpm la nota dura mas que a 160: `dur` sigue al tempo, no es un literal fijo', async () => {
     const at = 0.1;
-    const durLento = NOTE_INTERVALS * intervalDuration(60);     // 2 * 0.25    = 0.500 s
-    const durRapido = NOTE_INTERVALS * intervalDuration(160);   // 2 * 0.09375 = 0.1875 s
+    const durLento = NOTE_INTERVALS * intervalDuration(60);     // 1 * 0.25    = 0.250 s
+    const durRapido = NOTE_INTERVALS * intervalDuration(160);   // 1 * 0.09375 = 0.09375 s
     const { sustain, release } = DEFAULT_VOICE;
     const lento = await renderVoice(at, durLento);
     const rapido = await renderVoice(at, durRapido);

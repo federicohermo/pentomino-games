@@ -16,13 +16,25 @@ export const DEFAULT_VOICE: Required<VoiceOpts> = {
  * Cuanto dura una nota, en INTERVALOS. Sin contar el release, que se suma despues.
  *
  * En intervalos y no en segundos porque una duracion fija no sobrevive al cambio
- * de tempo: la nota mantiene su relacion con el pulso —dos intervalos, media
- * negra— a cualquier bpm, mientras que un valor en segundos se estira o se pisa
- * con la nota siguiente segun el tempo. Quien la use la multiplica por
- * `intervalDuration(bpm)`. A 100 bpm da 2 * 0.15 = 0.300 s, contra los 0.350 s
- * de antes: la nota se acorta 50 ms y ese es todo el cambio a ese tempo.
+ * de tempo: la nota mantiene su relacion con el pulso a cualquier bpm, mientras
+ * que un valor en segundos se estira o se pisa con la nota siguiente segun el
+ * tempo. Quien la use la multiplica por `intervalDuration(bpm)`.
+ *
+ * UNO y no dos, que es lo que preveia el plan del spec 008: con dos, la nota
+ * dura exactamente el doble de lo que tarda en llegar la siguiente, asi que el
+ * arpegio suena con 2,88 voces encimadas de forma permanente —medido a 110 bpm,
+ * contando `(NOTE_INTERVALS * intervalo + release) / intervalo`—. Con uno la nota
+ * termina justo cuando entra la que sigue y lo unico que se solapa es la cola del
+ * release: 1,88 voces, contra las 3,13 de antes del spec. El arpegio se escucha
+ * como cinco notas y no como un acorde desplegado.
+ *
+ * A 100 bpm da 1 * 0.15 = 0.150 s, contra los 0.350 s de antes del spec.
+ *
+ * Ojo con el numero que NO esta en intervalos: `DEFAULT_VOICE.release` son 0,12 s
+ * absolutos, o sea 0,48 intervalos a 60 bpm pero 1,28 a 160. Es lo que hace que
+ * el solape restante crezca con el tempo en vez de quedarse quieto.
  */
-export const NOTE_INTERVALS = 2;
+export const NOTE_INTERVALS = 1;
 
 /** Amplitud de una nota, 0-1. */
 export const DEFAULT_VELOCITY = 0.8;
