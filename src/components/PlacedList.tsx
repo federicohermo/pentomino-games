@@ -7,6 +7,11 @@ import { PIECE_COLOR } from './constants/palette.constants.ts';
  *
  * Presentacional: sin estado, sin efectos. La `key` va por `id` y nunca por
  * indice, porque los elementos se pueden quitar.
+ *
+ * Ocupa DOS columnas y no tres: la tercera se la lleva el tablero, que es 10 × 6 y
+ * necesita la proporcion para llenar su tarjeta. Acá el contenido es texto que
+ * reflowea, asi que el precio es que la lista de notas de una pieza puede partirse
+ * en dos renglones.
  */
 
 interface Props {
@@ -16,7 +21,7 @@ interface Props {
 
 export default function PlacedList({ placed, onRemove }: Props) {
   return (
-    <div className="col-span-12 md:col-span-3 bg-white rounded-2xl shadow p-3">
+    <div className="col-span-12 md:col-span-2 bg-white rounded-2xl shadow p-3">
       <h2 className="text-lg font-semibold mb-2">Piezas colocadas</h2>
       <div className="space-y-2 max-h-[60vh] overflow-auto pr-1">
         {placed.length===0 && <div className="text-slate-500 text-sm">(Vacío — hacé click en el tablero para colocar la pieza seleccionada)</div>}
