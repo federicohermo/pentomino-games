@@ -54,15 +54,18 @@ Lo que el scheduler agenda en `currentTime` se **escucha** más tarde: `AudioCon
 lo que suena, y en un instrumento eso se percibe como que la imagen miente. `outputLatency` no está en
 todos los navegadores: el fallback es `baseLatency`, y si tampoco está, cero.
 
-**D5 — El camino concreto hay que elegirlo, y el 009 no lo eligió.**
-El 009 calcula la **distancia** en forma cerrada y nunca necesitó un camino; para dibujar hace falta
-uno. Entre el par más lejano del tablero —`(0,5)` y `(7,0)`, a distancia 12— hay **792 caminos
-mínimos**, y hasta en un salto corto de 7 celdas hay 35: elegir es obligatorio. La regla es **primero
-en X, después en Y**, y cuando el salto usa la costura, hasta la esquina y cruzar. Determinista, en una
-línea, y de nuevo pura.
+**D5 — El camino viene dado; este spec no calcula ninguno.**
+El recorrido concreto —qué celdas cruza cada salto— lo materializa el 009 en su D8, junto con la
+distancia y desde la misma decisión. Acá se **lee** `sequence.clicks[].cell` y se dibuja.
 
-Esto **no cambia lo que suena**: los clicks del 009 ya existen y ya caen en los mismos instantes. Lo
-que este spec agrega es a qué celda corresponde cada uno.
+Es deliberado y es lo que separa dibujar el modelo de tener una segunda opinión sobre él: si la UI
+eligiera su propio camino, podría mostrar un recorrido distinto del que suena, y nadie se enteraría
+hasta escuchar y mirar a la vez. Entre el par más lejano del tablero hay **792 caminos mínimos**, así
+que dos implementaciones independientes tienen 792 formas de discrepar.
+
+Por lo tanto **este spec no agrega nada al dominio**. La versión original de este documento le
+asignaba `pathBetween`; se movió al 009 cuando la medición mostró que materializar los 144 caminos de
+una matriz de 12×12 cuesta 0,0138 ms contra los 1,87 ms que el 009 ya paga por resolver el circuito.
 
 **D6 — La cabeza salta, no se desliza.**
 Nada de interpolar entre celdas. El instrumento está cuantizado a la grilla de intervalos, y un
@@ -79,8 +82,8 @@ una celda vacía y se ve tenue. Si se vieran igual, el recorrido parecería tene
   ciclo, devuelve el offset correcto, incluido el caso de `t` varios ciclos adelante (pestaña oculta).
 - **AC3** — La posición está compensada por la latencia de salida (D4), con fallback verificado cuando
   el navegador no expone `outputLatency`.
-- **AC4** — El camino dibujado entre dos piezas tiene exactamente `d − 1` celdas y coincide con los
-  `d − 1` clicks que el 009 hace sonar: misma cantidad, mismos instantes.
+- **AC4** — La cabeza dibuja **exactamente** las celdas que la secuencia trae: la capa de UI no
+  contiene ningún cálculo de camino ni de distancia (D5).
 - **AC5** — Una pieza colocada durante un ciclo se ve **pendiente** hasta que el ciclo se cierra, y en
   ese momento pasa a estado normal — sin re-render manual, en el mismo instante en que empieza a sonar.
 - **AC6** — La lista de colocadas muestra el orden del circuito, y ese orden cambia cuando una pieza
@@ -90,8 +93,8 @@ una celda vacía y se ve tenue. Si se vieran igual, el recorrido parecería tene
 
 ## Fuera de Alcance
 
-- **Cambiar el modelo temporal.** Este spec no toca `collectHits`, ni la secuencia, ni el audio. Lo
-  único que agrega al dominio es el camino concreto (D5), que no altera ningún instante.
+- **Cambiar el modelo temporal.** Este spec no toca `collectHits`, ni la secuencia, ni el audio, y
+  **no agrega nada al dominio**: el camino ya viene del 009 (D5).
 - **Animar las notas de la pieza.** El resaltado es de celda, no una animación de envolvente.
 - **Mostrar el nombre de la nota en la cabeza**, ni tooltips: la celda ya muestra su nota desde el 007.
 - **Rediseñar el espectro.** `Spectrum.tsx` se toma como precedente, no como material.
@@ -102,7 +105,7 @@ una celda vacía y se ve tenue. Si se vieran igual, el recorrido parecería tene
 | Riesgo | Mitigación |
 |---|---|
 | `outputLatency` no está en todos los navegadores, y si vale 0 la cabeza va adelantada. | Cadena de fallback declarada en D4, y se verifica a oído: con el tablero andando, la celda encendida tiene que coincidir con la nota que se escucha. Si no coincide, el offset es constante y se ve enseguida. |
-| El camino "primero en X" puede verse arbitrario cuando la pieza siguiente está en diagonal. | Es una de 35 opciones igual de cortas y ninguna es más "correcta". Se elige la que se puede explicar en una línea. Si al verlo molesta, cambiar la regla es cambiar una función pura con test. |
+| El camino "primero en X" puede verse arbitrario cuando la pieza siguiente está en diagonal. | Es una de 35 opciones igual de cortas y ninguna es más "correcta". Si al **verlo** molesta —que es cuando recién se puede juzgar—, el cambio es de una función pura del 009 con su test, y el dibujo lo sigue solo. |
 | `requestAnimationFrame` a 60 Hz para algo que cambia 10 veces por segundo es trabajo de más. | Se compara la celda calculada con la anterior y solo se escribe el estilo cuando cambió: 60 lecturas por segundo, ~10 escrituras. La lectura es aritmética sobre tres números. |
 | El estado "pendiente" (AC5) tiene que cambiar en el borde del ciclo, que lo conoce el motor y no React. | Lo dibuja el mismo loop imperativo que la cabeza, por el mismo camino: el motor ya sabe cuándo hizo el swap, y alcanza con exponerlo. |
 | Dos piezas del circuito pueden quedar tan cerca que la cabeza "no se mueve" entre ellas. | Con salto 1 el recorrido es contiguo y no hay celda intermedia: es correcto que no se dibuje ningún click. Verificar a ojo que no se lea como un cuelgue. |

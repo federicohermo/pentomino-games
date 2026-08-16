@@ -37,6 +37,41 @@ Y cuánto se usa de verdad: en los circuitos óptimos de tableros aleatorios, **
 por la costura** en el 12 % de los tableros de 2 piezas y en el 50 % de los de 10. O sea que no es un
 adorno: con el tablero poblado, la costura es parte del recorrido la mitad de las veces.
 
+## 2b. El camino cuesta 0,7 % de lo que ya se paga
+
+La primera versión de este spec calculaba solo **distancias** y dejaba los caminos concretos para el
+spec 010, que es el que los dibuja. Medido, esa separación no se sostiene:
+
+| Sobre una matriz de 12×12 | Tiempo |
+|---|---|
+| Solo distancias (`min` de tres sumas) | **0,0042 ms** |
+| Materializando los 144 caminos | **0,0138 ms** |
+| Held-Karp, que este spec ya acepta pagar | 1,87 ms |
+
+O sea que materializar **todos** los caminos —no solo las 12 patas que el circuito termina usando—
+cuesta el 0,7 % de resolver el circuito. El costo no era un argumento.
+
+Lo que sí importa es que **la distancia es una propiedad del camino y no al revés**: el modelo es un
+recorrido. Con una sola decisión compartida —`bestRoute(a,b)` elige cuál de las tres rutas conviene,
+`cellDistance` devuelve su largo, `pathBetween` materializa sus celdas— es imposible que el dibujo y el
+sonido cuenten cosas distintas. Con dos implementaciones separadas haría falta un test para atarlas.
+
+Y hay un tercer motivo, de diseño: **esquivar las piezas colocadas** (fuera de alcance, pero previsto)
+no tiene forma cerrada. Ahí la distancia solo se obtiene recorriendo, así que un modelo apoyado en la
+fórmula cerrada como concepto primario tendría que reescribirse.
+
+**El invariante, verificado sobre las 3.600 combinaciones**:
+`pathBetween(a,b).length === cellDistance(a,b) − 1` para todo par de celdas **distintas**. Falla en
+exactamente **60 casos**, que son las 60 celdas comparadas consigo mismas: con `d = 0` no existe un
+camino de largo −1. Ese caso queda excluido explícitamente y no ocurre en el circuito — la salida de
+una pieza y la entrada de otra no pueden ser la misma celda si las piezas no se solapan, y la entrada
+y la salida de una misma pieza son sus grados 0 y 4, que son celdas distintas.
+
+Un dato del propio proceso de medición, que vale como advertencia: la primera implementación de
+`pathBetween` que se escribió para medir **fallaba el invariante 114 veces**, todas en los bordes de
+la costura (cuando el origen ya *es* la esquina, o el destino lo es). El invariante lo atrapó de
+inmediato. No es un test decorativo: es el que hace que el dibujo y el sonido no puedan discrepar.
+
 ## 3. El circuito: exacto contra greedy
 
 | Medición | Valor |
@@ -140,8 +175,8 @@ con envolvente de ~10 ms, que suena a click percusivo y usa solo lo que ya funci
 | Archivo | Acción |
 |---|---|
 | `src/domain/constants/board.constants.ts` | la costura: las dos celdas que se repliegan |
-| `src/domain/board.ts` | `cellDistance(a, b)` con la costura; **sale** `phaseFor` |
-| `src/domain/sequence.ts` | **nuevo** — puertas por pieza, matriz de costos, Held-Karp, offsets del ciclo |
+| `src/domain/board.ts` | `bestRoute`, `cellDistance` y `pathBetween`, las tres sobre la misma decisión; **sale** `phaseFor` |
+| `src/domain/sequence.ts` | **nuevo** — puertas por pieza, matriz de costos, Held-Karp, offsets del ciclo y la celda de cada click |
 | `src/domain/__tests__/sequence.test.ts` | **nuevo** — AC1, AC2, AC3, AC10 |
 | `src/domain/__tests__/board.test.ts` | mueren los 5 tests de `phaseFor`; entran los de `cellDistance` |
 | `src/audio/types/scheduler.types.ts` | `Job` → `Sequence`; `Hit` gana su tipo |

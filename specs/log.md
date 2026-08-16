@@ -194,6 +194,25 @@ columna (spec 004, AC8), que no tenía test automático porque las puras no se p
   celdas cuesta 6 pasos en `F`/`T`/`Y` y **7 en `X`**, con su centro repetido dos veces. Se decidió que
   la geometría gobierne el tiempo **entre** piezas y no **dentro** de una, que es lo que deja al 007
   sin nada temporal y al 009 acotado.
+- **2026-08-16 — El corte entre el 009 y el 010 estaba mal hecho, y lo delató una pregunta.** La
+  primera versión dejaba las **distancias** en el 009 —que es todo lo que necesita para sonar, porque
+  el click no tiene altura y solo hay que contarlos— y los **caminos** en el 010, que es el que los
+  dibuja. La objeción fue de una línea: *si el modelo es un recorrido, ¿no debería calcular caminos?*.
+  Medirlo la confirmó por tres lados. Uno, el costo era el único argumento a favor de separarlos y no
+  existe: materializar los 144 caminos de una matriz de 12×12 cuesta **0,0138 ms** contra 0,0042 ms de
+  calcular solo las distancias, y las dos son ruido al lado de los **1,87 ms** que el 009 ya paga por
+  Held-Karp — el 0,7 %. Dos, la distancia **es una propiedad del camino**, así que derivar lo primario
+  de lo derivado obliga a dos implementaciones que pueden discrepar: entre las dos celdas más lejanas
+  del tablero hay **792 caminos mínimos**, o sea 792 formas de dibujar un recorrido que no es el que
+  suena. Tres, la extensión ya prevista —esquivar las piezas colocadas— **no tiene forma cerrada**: con
+  el camino como concepto primario le cambia el interior a una función, y con la distancia como
+  primario reescribe el modelo. Quedó una sola decisión (`bestRoute`) con dos lecturas (`cellDistance`,
+  `pathBetween`), y el 010 no toca el dominio.
+  El propio experimento dejó la advertencia que ahora es tarea: la implementación de prueba de
+  `pathBetween` **falló el invariante 114 veces sobre 3.600**, todas en los bordes de la costura —
+  cuando el origen ya *es* la esquina, o lo es el destino. Y el invariante vale para pares
+  **distintos**: los 60 casos de una celda contra sí misma tienen distancia 0 y no admiten un camino de
+  largo −1.
 - **2026-08-16 — El 006 dijo "sin índice de símbolos" con una medición que caducó en un día, y ahora
   hay índice.** La nota del 2026-08-02 acá arriba dice, en presente, que «acá `src/` son 8 archivos y
   25 KB, así que un índice de símbolos cuesta todo y ahorra nada». Era cierta **al escribirse** y dejó

@@ -53,6 +53,9 @@ celdas y baja la distancia máxima del tablero de 14 a 12.
 **No** hay envoltura del borde entero ni toroide: es *una* costura, la que une la primera celda con la
 última. Que el recorrido pueda usarla no cambia dónde se puede colocar una pieza — eso sigue plano.
 
+La misma comparación de tres términos decide también **por dónde** pasa el recorrido, no solo cuánto
+mide: ver D8.
+
 **D3 — El silencio entre dos piezas es su distancia, sin tope.**
 Si la salida de una pieza y la entrada de la siguiente están a `d` celdas, la primera nota de la
 segunda suena `d` intervalos después de la última de la primera. Con `d = 1` (adyacentes) el patrón es
@@ -84,6 +87,36 @@ El circuito, las distancias y los offsets son geometría pura: van a `domain/seq
 El motor recibe una lista de instantes y frecuencias y **sigue sin saber qué es un pentominó**, que es
 la separación que `.claude/rules/audio.md` protege.
 
+**D8 — El recorrido produce celdas, no solo distancias.**
+El modelo *es* un recorrido: la distancia es una **propiedad del camino**, no al revés. Así que
+`pathBetween(a, b)` vive acá, y cada click de la secuencia lleva la celda que el recorrido cruza —
+aunque para sonar solo haga falta contarlos, porque el click no tiene altura ni depende de dónde caiga.
+
+Se evaluó dejar solo las distancias en este spec y materializar los caminos en el 010, que es el que
+los dibuja. Se descartó por tres razones, la primera medida:
+
+- **El costo no era un argumento.** Materializar los 144 caminos de una matriz de 12×12 cuesta
+  0,0138 ms contra 0,0042 ms de calcular solo las distancias, y las dos cifras son ruido al lado de los
+  1,87 ms que ya cuesta Held-Karp: **el 0,7 %** de lo que el spec ya acepta pagar.
+- **Evita dos verdades.** Con distancias acá y caminos allá, hay dos funciones que pueden discrepar y
+  hace falta un test que las ate. Con una sola decisión —`bestRoute(a, b)` elige cuál de las tres rutas
+  conviene, `cellDistance` devuelve su largo y `pathBetween` materializa sus celdas— discrepar es
+  imposible por construcción.
+- **La extensión ya prevista lo exige.** Esquivar las piezas colocadas (BFS sobre celdas libres, fuera
+  de alcance) **no tiene forma cerrada**: ahí la distancia solo se puede obtener recorriendo. Si este
+  spec se apoya en la forma cerrada como concepto primario, esa extensión lo reescribe; si se apoya en
+  el camino, le cambia el interior a una función.
+
+El invariante que lo sostiene, verificado sobre las 3.600 combinaciones de celdas del tablero:
+`pathBetween(a,b).length === cellDistance(a,b) − 1` **para todo par de celdas distintas**. El caso
+`a === b` es degenerate y queda explícitamente fuera: nunca ocurre en una pata del circuito, porque la
+salida de una pieza y la entrada de otra no pueden ser la misma celda si las piezas no se solapan, y la
+entrada y la salida de una misma pieza son los grados 0 y 4, que son celdas distintas.
+
+La regla del camino es **primero en X, después en Y**, y cuando conviene la costura, hasta la esquina y
+cruzar. Entre el par más lejano del tablero hay 792 caminos mínimos y en un salto típico de 7 celdas
+hay 35: ninguna elección es más correcta que otra, así que se elige la que se explica en una línea.
+
 ## Criterios de Aceptación
 
 - **AC1** — El orden de reproducción es el del circuito más corto. Test: tres piezas colocadas en orden
@@ -99,7 +132,9 @@ la separación que `.claude/rules/audio.md` protege.
   exactamente en el cierre del ciclo (D5).
 - **AC6** — Nunca hay más de `LOOKAHEAD` de audio comprometido, con cualquier tamaño de ciclo (D6).
 - **AC7** — Las celdas recorridas suenan: `Hit` distingue nota de click, y un salto de `d` celdas
-  produce `d − 1` clicks equiespaciados.
+  produce `d − 1` clicks equiespaciados, **cada uno con la celda que el recorrido cruza** (D8).
+- **AC7b** — `pathBetween(a,b).length === cellDistance(a,b) − 1` para las 3.600 combinaciones de celdas
+  **distintas** del tablero, y las celdas del camino son adyacentes de a pares y no se repiten.
 - **AC8** — `phaseFor` no existe en el repo, ni sus tests, ni el campo `phase`.
 - **AC9** — `simulate_board` refleja el modelo nuevo: devuelve el orden del circuito, los saltos, el
   largo del ciclo y una `timeline` con notas y clicks.
@@ -113,7 +148,8 @@ la separación que `.claude/rules/audio.md` protege.
   `isValid`, el fantasma y los invariantes sobre las 96 orientaciones: es un spec propio.
 - **Esquivar piezas.** La distancia ignora lo que haya en el medio. Que el recorrido rodee las piezas
   colocadas (BFS/Dijkstra sobre celdas libres) agrega el caso "no hay camino" y hace que el silencio
-  entre dos piezas dependa del tablero entero. Es la extensión natural y es otro spec.
+  entre dos piezas dependa del tablero entero. Es la extensión natural y es otro spec — pero gracias a
+  D8 es un cambio **adentro** de `bestRoute`/`pathBetween`, no una reescritura del modelo.
 - **Tope de silencio.** Sin tope (D3).
 - **Que la forma dibuje la melodía.** Las cinco notas de una pieza suenan en el orden que fija el spec
   007, siempre, sin importar su posición. La posición manda **entre** piezas, no **dentro** de una.

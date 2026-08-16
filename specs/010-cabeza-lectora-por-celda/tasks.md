@@ -6,12 +6,11 @@
 - [ ] Verificar que el **009 esté mergeado**: sin recorrido no hay nada que seguir
 - [ ] **Crear rama** `feature/010-cabeza-lectora-por-celda`
 
-## El camino (dominio puro)
-- [ ] `pathBetween(a, b)` en `domain/board.ts`: primero en X, después en Y; por la costura si conviene
-- [ ] Reusar la comparación de `cellDistance` en vez de repetirla
-- [ ] **Test AC4** — `pathBetween(a,b).length === cellDistance(a,b) - 1` sobre las 3.600 combinaciones
-- [ ] Test — el camino no repite celdas y todas sus celdas son adyacentes de a pares
-- [ ] `domain/sequence.ts`: cada click lleva su celda. **Los offsets no se recalculan**
+## Lo que viene del 009 (verificar, no escribir)
+- [ ] `sequence.clicks[i].cell` existe y trae la celda que cruza el recorrido
+- [ ] `sequence.steps[i]` trae pieza, offset en intervalos y notas en orden de grado
+- [ ] `sequence.length` es el largo del ciclo en intervalos
+- [ ] Si falta algo, **es un cambio del 009 y va en su commit** — este spec no toca el dominio
 
 ## El motor
 - [ ] La aritmética del offset como **pura testeable**, separada de la lectura del singleton
@@ -41,6 +40,7 @@
 ## Verificación
 - [ ] `pnpm verify` en verde (AC8)
 - [ ] AC1 — profiler de React: cero renders del árbol durante la reproducción
+- [ ] AC4 — revisar el diff: no hay aritmética de caminos ni de distancias en `components/`
 - [ ] AC3 — **en el navegador y a oído**: la celda encendida coincide con lo que suena. Chrome y Firefox
 - [ ] AC5 — colocar con el ciclo andando: atenuada, y cambia justo cuando suena
 - [ ] AC6 — colocar en el medio del recorrido reordena la lista
@@ -52,7 +52,7 @@
 ## PR
 - [ ] Un GIF: es un spec que no se puede revisar leyendo el diff
 - [ ] Aclarar por qué no hay estado de React, con el número (4 a 11 cambios por segundo × 60 celdas)
-- [ ] Aclarar que el camino va en el dominio y **no cambia ningún instante** de lo que suena
+- [ ] Aclarar que el recorrido **no se calcula acá**: viene del 009 y este spec solo lo lee
 - [ ] `/pr-review` antes de pedir revisión
 
 ## Seguimiento (no bloquea)

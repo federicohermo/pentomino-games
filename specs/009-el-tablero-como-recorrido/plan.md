@@ -10,21 +10,37 @@ Guardar `simulate_board` con un tablero fijo, **antes** de la rama. Acá no sirv
 —todo va a cambiar— sino para el PR: mostrar lado a lado el patrón viejo (todo dentro de un compás) y
 el nuevo (un recorrido).
 
-## 1. La costura y la distancia → `domain/board.ts`
+## 1. La costura, la distancia y el camino → `domain/board.ts`
 
 ```ts
 // domain/constants/board.constants.ts
 export const SEAM: readonly [Cell, Cell] = [[0, 0], [GRID_W - 1, GRID_H - 1]];
 
-// domain/board.ts
-export function cellDistance(a: Cell, b: Cell): number
+// domain/board.ts — UNA decisión, tres lecturas de ella
+function bestRoute(a: Cell, b: Cell): { length: number; via: RouteKind }
+export function cellDistance(a: Cell, b: Cell): number    // el largo
+export function pathBetween(a: Cell, b: Cell): Cell[]     // las celdas INTERMEDIAS, sin a ni b
 ```
 
-Tres términos y un `min`, sin BFS ni estructuras (D2). La costura sale de una constante y no de
-literales: el día que se quiera mover, se mueve en un lugar.
+`bestRoute` compara los tres términos de D2 y dice cuál gana: directo, por la costura entrando por
+`(9,5)`, o por la costura entrando por `(0,0)`. `cellDistance` devuelve su largo y `pathBetween`
+materializa sus celdas con la regla **primero en X, después en Y** (D8). Ninguna de las dos vuelve a
+decidir: **por eso no pueden discrepar**. `RouteKind` es un conjunto cerrado, así que const-object más
+union derivado, nunca un `enum`.
+
+La costura sale de una constante y no de literales: el día que se quiera mover, se mueve en un lugar.
 
 Tests: `(0,0)`→`(9,5)` da 1; la distancia máxima del tablero es 12; simetría (`d(a,b) === d(b,a)`);
 desigualdad triangular sobre las 3.600 combinaciones — barata y es la que atrapa un `min` mal escrito.
+
+Y el que ata el dibujo al sonido, **AC7b**: `pathBetween(a,b).length === cellDistance(a,b) − 1` sobre
+las 3.600 combinaciones de celdas **distintas**, más que las celdas del camino sean adyacentes de a
+pares y no se repitan. El caso `a === b` se excluye a propósito y va documentado en la función: con
+`d = 0` no hay camino de largo −1, y no ocurre en ninguna pata del circuito.
+
+Ojo con los bordes de la costura —que el origen ya *sea* la esquina, o que lo sea el destino—: es
+donde falló la implementación de prueba que se usó para medir, 114 veces sobre 3.600
+(`research.md` §2b). Escribir ese test **antes** que la función.
 
 **En el mismo paso se borra `phaseFor` y sus 5 tests, en su propio commit**, como pide el repo para
 los borrados.
@@ -33,10 +49,15 @@ los borrados.
 
 ```ts
 export interface Step { pieceId: string; offset: number; notes: number[] }   // offset en intervalos
-export interface Sequence { steps: Step[]; clicks: number[]; length: number } // length = ciclo
+export interface Click { offset: number; cell: Cell }                        // dónde y cuándo
+export interface Sequence { steps: Step[]; clicks: Click[]; length: number } // length = ciclo
 
 export function buildSequence(placed: readonly PlacedPiece[]): Sequence
 ```
+
+Un click lleva su **celda** además de su instante (D8). Para sonar alcanzaría con contarlos —el click
+no tiene altura y suena igual en cualquier lado—, pero el recorrido *es* el modelo: la celda es el
+dato, y el instante es lo que se deriva de ella.
 
 Adentro, en este orden:
 
@@ -47,8 +68,10 @@ Adentro, en este orden:
 3. **Held-Karp** sobre el circuito dirigido. Determinista: ante dos circuitos de igual costo gana el
    primero en orden de índice, y hay un test que lo fija — sin eso, dos tableros idénticos podrían
    sonar distinto según cómo el motor de JS recorrió el `for`.
-4. **Offsets**: acumulando `4 + salto` intervalo a intervalo. `clicks` son las posiciones intermedias
-   de cada salto: un salto de `d` produce `d − 1` clicks.
+4. **Offsets**: acumulando `4 + salto` intervalo a intervalo. Los `clicks` de cada salto salen de
+   `pathBetween(salida, entrada)`: la celda `i` del camino suena en el intervalo `i + 1` después de la
+   última nota de la pieza. Un salto de `d` da `d − 1` clicks, y **la cantidad no se calcula aparte**:
+   es el largo del camino.
 
 Es todo pura aritmética sobre enteros. Sin `Math.random`, sin fecha, sin flotantes: el mismo tablero da
 siempre la misma secuencia, que es la propiedad que el spec 004 ya había peleado y hay que no perder.
@@ -105,8 +128,10 @@ El `scheduleVoice` del click va aparte, en `voice.ts`, con volumen propio. Prime
   `setSequence(buildSequence(placed))`. Sigue siendo el único lugar del repo que le habla al motor, y
   ahora es más chico que antes. `clearJobs` en la limpieza pasa a `setSequence(vacía)`.
 - `simulate_board` se reescribe: arma la secuencia con `buildSequence` —**importándola**, no
-  reimplementándola— y devuelve el orden del circuito, los saltos entre piezas, el largo del ciclo en
-  intervalos y en segundos, y la `timeline` con notas y clicks distinguidos. Su `description` se
+  reimplementándola— y devuelve el orden del circuito, los saltos entre piezas **con las celdas que
+  cruzan**, el largo del ciclo en intervalos y en segundos, y la `timeline` con notas y clicks
+  distinguidos. Que el camino salga en la respuesta es lo que permite verificar el recorrido sin
+  escucharlo, que es el propósito entero de la tool. Su `description` se
   reescribe entera: la frase sobre columnas que se desfasan es del modelo viejo.
 
 ## 6. Documentación y verificación
@@ -121,7 +146,8 @@ a `Superado`.
 | AC4 | `simulate_board` con `bars` que cubran **dos ciclos**: el espaciado en el empalme es igual al de adentro |
 | AC5 | Test del motor: cambiar la secuencia a mitad de ciclo no altera los hits hasta el borde |
 | AC6 | Test ya existente del scheduler, con un ciclo largo |
-| AC7 | `simulate_board`: un salto de `d` celdas produce `d − 1` clicks equiespaciados |
+| AC7 | `simulate_board`: un salto de `d` celdas produce `d − 1` clicks equiespaciados, con su celda |
+| **AC7b** | Test: `pathBetween.length === cellDistance − 1` sobre las 3.600 combinaciones de celdas distintas |
 | AC8 | `pnpm verify` — que `phaseFor` no exista lo verifica el compilador en los dos paquetes |
 | AC9, AC11 | `pnpm verify` + una consulta a la tool |
 | A oído | Un tablero de 2 piezas adyacentes (tiene que sonar contiguo), uno de 2 piezas en esquinas opuestas (tiene que sonar el recorrido), y uno de 8 |

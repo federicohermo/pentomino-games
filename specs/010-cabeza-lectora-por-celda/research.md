@@ -45,10 +45,16 @@ motor, limpieza con `cancelAnimationFrame`. Lo que **no** se toma: el canvas. La
 grilla de `div`s que ya existe, superpuesta, porque tiene que alinearse celda a celda con un layout que
 React ya calcula.
 
-## 4. Hay que elegir un camino, porque hay muchos
+## 4. El camino ya viene resuelto, y por qué no lo resuelve este spec
 
-El 009 nunca necesitó un camino: su distancia sale en forma cerrada. Contando caminos mínimos sobre el
-grafo del tablero (grilla de 4 vecinos **más** la costura), por BFS con conteo:
+La primera versión de este documento le asignaba a este spec el cálculo del camino concreto, porque el
+009 solo necesitaba distancias. Se movió al 009 (su D8) al medir que materializar los 144 caminos de
+una matriz de 12×12 cuesta **0,0138 ms** contra los **1,87 ms** que el 009 ya paga por resolver el
+circuito: el 0,7 %. El costo era el único argumento para separarlos, y en contra había uno más fuerte
+— con el camino calculado en dos lados, el dibujo y el sonido pueden discrepar.
+
+Cuánto pueden discrepar, contando caminos mínimos sobre el grafo del tablero (grilla de 4 vecinos
+**más** la costura), por BFS con conteo:
 
 | Par | Distancia | Caminos mínimos |
 |---|---|---|
@@ -58,7 +64,9 @@ grafo del tablero (grilla de 4 vecinos **más** la costura), por BFS con conteo:
 | `(0,0)` → `(9,5)` — los extremos de la costura | 1 | 1 |
 
 Con 792 opciones igual de cortas, ninguna es "la correcta": lo que importa es que la regla sea
-**determinista y explicable**. Primero en X y después en Y cumple las dos cosas y es una línea.
+**determinista y explicable** —primero en X y después en Y— y que haya **una sola**. Son también 792
+maneras distintas en que un cálculo propio de la UI podría dibujar un recorrido que no es el que suena,
+sin que nada falle: por eso este spec lee el camino en vez de calcularlo.
 
 Notar el último renglón: los extremos de la costura tienen **un solo** camino y no hay celda intermedia,
 así que ahí la cabeza salta directamente de una esquina a la otra. Es correcto y hay que verificar que
@@ -77,15 +85,14 @@ tiene que estar escrita antes de probar, porque el síntoma de que falte es suti
 
 | Qué | Dónde | Por qué |
 |---|---|---|
-| `pathBetween(a, b): Cell[]` | `domain/board.ts` | El 009 dejó la distancia, no el camino (§4) |
-| Las celdas de cada click en la secuencia | `domain/sequence.ts` | Hoy los clicks son offsets sin lugar |
+| ~~`pathBetween`~~ y ~~las celdas de cada click~~ | ~~`domain/`~~ | **Ya lo trae el 009** (su D8): acá no se agrega nada al dominio |
 | `playheadOffset(t)` | `audio/engine.ts` (lectura) + puro donde corresponda | Función pura del tiempo (D3) |
 | Si el motor ya hizo el swap de ciclo | `audio/engine.ts` | Es lo que apaga el estado "pendiente" (AC5) |
 | `Playhead.tsx` | `components/` | El loop de rAF, el elemento superpuesto |
 | Orden del circuito en la lista | `components/PlacedList.tsx` | AC6; esto **sí** es estado de React, y cambia rara vez |
 
-**No se toca `collectHits`, ni `buildSequence` en lo que hace a instantes.** Lo único que se agrega al
-dominio es geometría que no altera ningún tiempo.
+**No se toca `collectHits`, ni `buildSequence`, ni el dominio.** Este spec es enteramente de lectura y
+de dibujo: todo lo que necesita ya está calculado.
 
 ## 7. Deuda adyacente detectada (fuera de alcance)
 

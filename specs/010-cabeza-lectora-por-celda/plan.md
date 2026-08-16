@@ -1,24 +1,21 @@
 # Plan — Cabeza lectora por celda
 
-Cuatro pasos. El 1 es dominio puro y mergeable solo; el 2 expone lo que el motor ya sabe; el 3 es el
-único que dibuja; el 4 es la lista.
+Tres pasos y medio. El 1 es verificar que el 009 dejó lo que hace falta; el 2 expone lo que el motor ya
+sabe; el 3 es el único que dibuja; el 4 es la lista. **Este spec no agrega nada al dominio.**
 
-## 1. El camino, en el dominio
+## 1. Lo que ya viene del 009 — nada que escribir
 
-```ts
-// domain/board.ts
-export function pathBetween(a: Cell, b: Cell): Cell[]   // celdas INTERMEDIAS, sin a ni b
-```
+Antes de empezar, confirmar que la secuencia trae lo necesario:
 
-Regla: primero en X, después en Y. Si `cellDistance` dice que el camino corto pasa por la costura, se
-va hasta la esquina correspondiente, se cruza, y se sigue igual desde la otra. La decisión de si
-conviene la costura ya la toma `cellDistance`; acá se reusa esa comparación en vez de repetirla.
+- `sequence.clicks[i].cell` — la celda que el recorrido cruza, materializada por `pathBetween` (D8 del
+  009), con su invariante `pathBetween.length === cellDistance − 1` ya cubierto por el test del 009.
+- `sequence.steps[i]` — la pieza, su offset en intervalos y sus notas, en orden de grado.
+- `sequence.length` — el largo del ciclo en intervalos.
 
-**El invariante que lo ata al 009**: `pathBetween(a, b).length === cellDistance(a, b) - 1`. Ese es el
-test que garantiza que el dibujo y el sonido cuentan lo mismo, y es AC4.
-
-En `domain/sequence.ts`, cada click deja de ser un offset suelto y pasa a llevar su celda. **Los
-offsets no se recalculan**: se le agrega el lugar a lo que ya existía.
+Si algo de eso no está, **es un cambio del 009 y va en su commit**, no acá: la regla del repo para el
+MCP server vale igual para la UI, y el motivo es el mismo. Que el dibujo calcule su propio camino es
+justamente lo que D5 prohíbe — entre las dos celdas más lejanas del tablero hay 792 caminos mínimos, o
+sea 792 formas de mostrar un recorrido que no es el que suena.
 
 ## 2. Lo que el motor tiene que dejar leer
 
@@ -74,7 +71,7 @@ bien que lo sea: cambia cuando cambia el tablero, no diez veces por segundo. El 
 | Qué | Cómo |
 |---|---|
 | AC2 | Test de la pura: offsets a `t` dentro del primer ciclo, en el borde, y varios ciclos adelante |
-| **AC4** | Test: `pathBetween(a,b).length === cellDistance(a,b) - 1` sobre las 3.600 combinaciones |
+| **AC4** | Revisión del diff: no hay aritmética de caminos ni de distancias en `components/` |
 | AC1 | A mano con el profiler de React: durante la reproducción, cero renders del árbol |
 | AC3 | A oído en el navegador: la celda encendida coincide con la nota que se escucha. Probar en Chrome y en Firefox, que difieren en `outputLatency` |
 | AC5 | Colocar una pieza con el ciclo andando: se ve atenuada y cambia justo cuando suena |
@@ -90,5 +87,5 @@ otra sin escala), y el tablero a 160 bpm (10,7 celdas por segundo, el caso más 
 
 Estado de React. **La cabeza no vive en el árbol**: se lee del motor y se pinta a mano, igual que el
 espectro, y el motivo está medido — 4 a 11 cambios por segundo × 60 celdas + la lista + la paleta.
-También va a buscar el cálculo del camino en la capa de audio, y está en el dominio: es geometría, y no
-cambia ni un instante de lo que suena.
+También va a buscar el cálculo del recorrido en este diff, y **no está**: lo hace el 009, y acá se lee.
+Es la diferencia entre dibujar el modelo y opinar sobre él.

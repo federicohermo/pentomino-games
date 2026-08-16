@@ -7,9 +7,16 @@
 - [ ] Línea base de `simulate_board` (para el antes/después del PR, no para exigir igualdad)
 - [ ] **Crear rama** `feature/009-el-tablero-como-recorrido`
 
-## La costura y la distancia
+## La costura, la distancia y el camino
 - [ ] `SEAM` en `domain/constants/board.constants.ts`
-- [ ] `cellDistance(a, b)` en `domain/board.ts`: tres términos y un `min`, sin BFS
+- [ ] `RouteKind` como const-object + union derivado (nunca `enum`)
+- [ ] `bestRoute(a, b)` en `domain/board.ts`: **la única** decisión de cuál de las tres rutas conviene
+- [ ] `cellDistance` devuelve su largo; `pathBetween` materializa sus celdas intermedias (D8)
+- [ ] Documentar en `pathBetween` que `a === b` queda excluido y por qué no ocurre en el circuito
+- [ ] **Escribir AC7b antes que la función**: es donde falló 114 veces la implementación de prueba
+- [ ] Test AC7b — `pathBetween.length === cellDistance − 1` sobre los pares **distintos** (3.600 combinaciones)
+- [ ] Test — las celdas del camino son adyacentes de a pares y no se repiten
+- [ ] Test — los bordes de la costura: origen que ya es la esquina, destino que ya es la esquina
 - [ ] Test — `(0,0)` ↔ `(9,5)` da 1 (AC2)
 - [ ] Test — la distancia máxima del tablero es 12, no 14 (AC2)
 - [ ] Test — simetría y desigualdad triangular sobre las 3.600 combinaciones
@@ -19,7 +26,7 @@
 - [ ] `domain/sequence.ts`: puertas por pieza (grado 0 = entrada, grado 4 = salida)
 - [ ] Matriz de costos asimétrica `dist(salida(i), entrada(j))`
 - [ ] Held-Karp exacto, con desempate determinista por índice
-- [ ] Offsets acumulados (`4 + salto`) y posiciones de los clicks
+- [ ] Offsets acumulados (`4 + salto`); los clicks salen de `pathBetween`, con su celda y su instante
 - [ ] Test — AC1: el orden es el del circuito más corto, no el de colocación
 - [ ] Test — AC3: dos piezas adyacentes quedan contiguas (salto 1, sin silencio)
 - [ ] Test — AC10: 12 piezas en menos de 5 ms
@@ -48,7 +55,8 @@
 
 ## MCP server
 - [ ] `simulate_board` reescrita: **importa** `buildSequence`, no la reimplementa
-- [ ] Devuelve orden del circuito, saltos, ciclo (intervalos y segundos) y timeline con notas y clicks
+- [ ] Devuelve orden del circuito, saltos **con sus celdas**, ciclo (intervalos y segundos) y timeline
+      con notas y clicks — el camino en la respuesta es lo que permite verificar el recorrido sin oírlo
 - [ ] Reescribir su `description`: la frase sobre columnas que se desfasan es del modelo viejo
 - [ ] `pnpm mcp:test` en verde
 
