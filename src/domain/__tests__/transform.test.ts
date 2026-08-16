@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { rotate90, normalize, rotateN, reflect, centroid, angleFromCentroid } from '../transform.ts';
 import { SHAPES } from '../constants/pieces.constants.ts';
+// El mismo numero que usa `degreeByCellIndex` para decidir "esta celda cae sobre el
+// centroide", y no una copia local: es la misma pregunta, y dos epsilon que tienen
+// que coincidir sin que nada los sincronice es el patron que el spec 005 denuncio.
+import { DEGREE_EPSILON } from '../constants/music.constants.ts';
 import type { Cell } from '../types/transform.types.ts';
 import type { PieceKey } from '../types/pieces.types.ts';
 
@@ -113,9 +117,6 @@ describe('AC7 — el cero con signo', () => {
   });
 });
 
-/** Distancia a la que dos puntos se consideran el mismo. El centroide es un promedio de quintos. */
-const EPSILON = 1e-9;
-
 const distancia = (a: readonly [number, number], b: readonly [number, number]) =>
   Math.hypot(a[0] - b[0], a[1] - b[1]);
 
@@ -167,7 +168,7 @@ describe('centroid', () => {
     // el primer grado del arpegio. Las otras 10 piezas no tienen ninguna.
     const sobreElCentro = (p: PieceKey) => {
       const cent = centroid(SHAPES[p]);
-      return SHAPES[p].flatMap((c, k) => (distancia(c, cent) < EPSILON ? [k] : []));
+      return SHAPES[p].flatMap((c, k) => (distancia(c, cent) < DEGREE_EPSILON ? [k] : []));
     };
     for (const p of PIECES) {
       expect(sobreElCentro(p)).toEqual(p === 'I' || p === 'X' ? [2] : []);

@@ -75,13 +75,23 @@ export function notesForRotation(basePc: number, octave: number, rot: number): n
  * Los angulos se precomputan y no se piden adentro del comparador: `sort` lo
  * llama O(n log n) veces, y ademas comparar siempre el MISMO numero es lo que
  * hace que el epsilon del empate se comporte.
+ *
+ * ## Por que el empate se compara por cubeta y no con `Math.abs(a - b) < eps`
+ *
+ * Porque "estan a menos de epsilon" NO es transitivo: con tres angulos escalonados
+ * a media tolerancia, `a` empata con `b` y `b` con `c` pero `a` no con `c`, y un
+ * comparador asi le da a `sort` un orden que depende del pivote. Con las 12 formas
+ * de `SHAPES` no pasa —los empates son exactos, porque salen de restas identicas—
+ * pero esta funcion recibe formas arbitrarias a proposito. Redondear el angulo a
+ * un entero de cubetas lo vuelve un orden total por construccion: dos angulos o
+ * caen en la misma cubeta o no, y eso si es transitivo.
  */
 export function degreeByCellIndex(cells: readonly Cell[]): number[] {
   const cent = centroid(cells);
 
   const center: number[] = [];
   const ring: number[] = [];
-  const angle = new Array<number>(cells.length);
+  const bucket = new Array<number>(cells.length);
 
   for (let k = 0; k < cells.length; k++) {
     const dx = cells[k][0] - cent[0];
@@ -89,13 +99,12 @@ export function degreeByCellIndex(cells: readonly Cell[]): number[] {
     if (Math.hypot(dx, dy) < DEGREE_EPSILON) {
       center.push(k);
     } else {
-      angle[k] = angleFromCentroid(cells[k], cent);
+      bucket[k] = Math.round(angleFromCentroid(cells[k], cent) / DEGREE_EPSILON);
       ring.push(k);
     }
   }
 
-  ring.sort((a, b) =>
-    Math.abs(angle[a] - angle[b]) < DEGREE_EPSILON ? a - b : angle[a] - angle[b]);
+  ring.sort((a, b) => bucket[a] === bucket[b] ? a - b : bucket[a] - bucket[b]);
 
   const degrees = new Array<number>(cells.length);
   [...center, ...ring].forEach((k, degree) => { degrees[k] = degree; });
