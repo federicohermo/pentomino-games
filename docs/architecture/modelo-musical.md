@@ -1,21 +1,23 @@
 # Modelo Musical
 
-Cómo se traduce una pieza colocada en cinco notas y en qué momento suenan. Las tres primeras reglas
-viven en `src/domain/` —`music.ts` y sus constantes— y no dependen de React ni de la capa de audio; la cuarta
-es lo único que cruza a la capa de audio, y lo hace por un solo campo del `Job`.
+Cómo se traduce una pieza colocada en cinco notas y en qué momento suenan. Las cuatro primeras reglas
+viven en `src/domain/` —`music.ts`, `transform.ts` y sus constantes— y no dependen de React ni de la
+capa de audio; la quinta es lo único que la cruza, y lo hace por un solo campo del `Job`.
 
-## Las cuatro reglas
+## Las cinco reglas
 
 | Entrada | Determina | Mecanismo |
 |---|---|---|
 | **Qué pieza** | La tónica | `BASE_MAP` |
 | **Rotación** | La fórmula de escala | `notesForRotation` |
 | **Reflexión** | El orden de las notas | `ns.reverse()` — retrógrado |
+| **La forma** | Qué celda tiene qué nota | `degreeByCellIndex` — orden angular |
 | **La columna** | La posición dentro del compás | `Job.phase = ax / GRID_W` |
 
-La **forma** de la pieza no influye hoy en el sonido. Es la carencia que ataca el
-[spec 001](../../specs/001-notas-por-celda-en-orden-angular/spec.md). La **fila** (`y`) tampoco: octava,
-duración y velocity son los candidatos obvios, y van de a un eje por vez.
+La **forma** de la pieza decide **qué celda es dueña de cada grado** —el orden angular alrededor del
+centroide, ver [abajo](#forma--qué-celda-tiene-qué-nota)— pero no decide *cuándo* suena ninguna: el
+mapeo dice dónde está cada nota, no en qué momento. La **fila** (`y`) tampoco: octava, duración y
+velocity son los candidatos obvios, y van de a un eje por vez.
 
 ## Columna → posición en el compás
 
@@ -115,8 +117,43 @@ Mismas cinco alturas, orden inverso. Es el **retrógrado** en el sentido clásic
 promete el footer de la UI.
 
 Se compone limpiamente con la rotación: rotar elige *qué* notas, reflejar elige *en qué orden*. Son
-ortogonales a propósito, y el [spec 001](../../specs/001-notas-por-celda-en-orden-angular/spec.md) §D3
-argumenta por qué mantenerlas así al agregar el mapeo espacial.
+ortogonales a propósito, y el
+[spec 007](../../specs/007-nota-por-celda-y-lenguaje-visual/spec.md) §D3 argumenta por qué mantenerlas
+así al agregar el mapeo espacial.
+
+## Forma → qué celda tiene qué nota
+
+Cada celda de una pieza es **dueña de un grado de la escala**, y quién es dueña de cuál lo decide la
+forma. `degreeByCellIndex` (`domain/music.ts`, apoyada en `centroid` y `angleFromCentroid` de
+`domain/transform.ts`) recibe una forma y devuelve el grado **por índice de celda**:
+
+```
+centroide de la pieza → ángulo de cada celda alrededor del centroide → orden angular = grados 0..4
+```
+
+Cuatro cosas que definen la regla, y por qué son así:
+
+- **La celda que cae sobre el centroide sale del anillo** y recibe el grado 0, la tónica; las otras
+  cuatro se reparten 1–4 por ángulo. Sin esa excepción `Math.atan2(0, 0)` devuelve `0` **en silencio** y
+  la mete en el anillo como si estuviera al este. Solo `I` y `X` tienen una celda así, y musicalmente el
+  centro de la figura es su raíz.
+- **A igual ángulo desempata el índice original menor**, escrito como tercer criterio del comparador y no
+  delegado a la estabilidad del `sort`. No es una convención neutral: por índice el algoritmo reproduce
+  la lámina de referencia en **12 de 12** piezas, y por radio en **10 de 12** (`F` e `I` se intercambian
+  dos notas cada una). El empate se ejerce en 3 piezas y decide algo audible en 2.
+- **Se calcula sobre la forma canónica y viaja por índice.** Rotar **no** reordena el mapeo: se corre una
+  vez sobre `SHAPES[pieza]` sin transformar, apoyado en el invariante de orden del array. Rotar ya cambia
+  la escala; si además reordenara el mapeo espacial, dos cosas ortogonales cambiarían a la vez. Queda:
+  **la rotación cambia qué notas, la forma cambia dónde.**
+- **La reflexión no cambia qué nota muestra una celda.** El retrógrado es del *orden de reproducción*: la
+  celda de grado `g` muestra siempre `notesForRotation(...)[g]`, o sea la nota `g` del arpegio
+  **ascendente**. Ojo con la fuente de datos, porque la lectura contraria suena igual y pinta otro
+  tablero: `PlacedPiece.notes` y el campo `notes` de `describe_piece` vienen **ya invertidos**.
+
+El mapeo completo de las 12 piezas —grado por índice y nota por celda— está medido en
+[research.md §2](../../specs/007-nota-por-celda-y-lenguaje-visual/research.md#2-el-algoritmo-angular-reproduce-la-referencia--con-desempate-por-índice)
+y congelado en un test, con las notas escritas a mano. Los colores con que el tablero lo muestra están en
+[DESIGN.md](../../DESIGN.md).
 
 ## Reproducción
 
@@ -129,9 +166,9 @@ notes.forEach((m, i) => scheduleVoice(c, master, midiToHz(m), start + i * ARPEGG
 - **0.15 s entre notas** (`ARPEGGIO_SPREAD`), independiente del tempo. El slider de BPM afecta al reloj
   del motor (los loops), no al arpegio de colocación.
 - **0.35 s de duración** (`NOTE_DUR`), `0.8` de velocity, más 0.12 s de release.
-- **`i` es la posición en el array**, o sea el grado de la escala. El
-  [spec 001](../../specs/001-notas-por-celda-en-orden-angular/plan.md) §4 hace que ese orden pase a
-  derivarse del mapeo espacial en vez de ser una coincidencia del orden del array.
+- **`i` es la posición en el array**, o sea el grado de la escala. Desde el spec 007 ese orden es una
+  decisión explícita —el orden angular alrededor del centroide— y no una coincidencia del orden en que
+  alguien tipeó las coordenadas de `SHAPES`. Qué suena y cuándo no cambió; cambió de dónde sale.
 
 Cuando el loop de piezas colocadas está activo, cada pieza reagenda la misma secuencia con el mismo
 espaciado, una vez por compás. Ese camino no pasa por `playNotes()`: el espaciado lo aplica

@@ -55,9 +55,10 @@ src/
 ├── styles/
 │   └── index.css                 # @import "tailwindcss" + estilos globales de body/code
 ├── domain/                       # puro: sin React, sin Web Audio, sin DOM
-│   ├── transform.ts              # rotate90 · normalize · rotateN · reflect
-│   ├── board.ts                  # cellsAt · isValid · phaseFor · occupantAt
-│   ├── music.ts                  # midiFor · midiName · notesForRotation
+│   ├── transform.ts              # rotate90 · normalize · rotateN · reflect · centroid ·
+│   │                             #   angleFromCentroid
+│   ├── board.ts                  # cellsAt · isValid · phaseFor · occupantAt · occupantCellIndex
+│   ├── music.ts                  # midiFor · midiName · notesForRotation · degreeByCellIndex
 │   ├── invariants.ts             # los cinco chequeos del modelo + checkAll
 │   ├── types/                    # el contrato de la capa. Cero imports de afuera
 │   │   ├── transform.types.ts    #   Cell
@@ -84,12 +85,15 @@ src/
 │       └── test-context.ts       #   helpers de render y medición (no es un test)
 └── components/                   # un componente por archivo, presentacionales
     ├── PiecePalette.tsx          # paleta, rotación, reflexión, tempo, transporte
-    ├── Board.tsx                 # grilla 10×6 con el fantasma
+    ├── Board.tsx                 # grilla 10×6 con el fantasma, color por pieza y nota por celda
     ├── PiecePreview.tsx          # previsualización con el ancla marcada
     ├── PlacedList.tsx            # lista de piezas colocadas
     ├── Spectrum.tsx              # canvas del espectro: rAF + HiDPI, sin props
-    └── constants/
-        └── layout.constants.ts   # CELL_PX · PREVIEW_CELL_PX · TEMPO_MIN · TEMPO_MAX
+    ├── constants/
+    │   ├── layout.constants.ts   # CELL_PX · PREVIEW_CELL_PX · TEMPO_MIN · TEMPO_MAX
+    │   └── palette.constants.ts  # los 12 colores y su color de texto (ver DESIGN.md)
+    └── __tests__/
+        └── palette.test.ts       # contraste WCAG recalculado desde el fondo; puro, sin jsdom
 ```
 
 ## La dirección de dependencia
@@ -126,10 +130,16 @@ el dominio. El `include` (`src/**/*.test.{ts,tsx}`) toma los `__tests__/` sin co
 Los **tests del MCP server corren aparte**, con `pnpm mcp:test`: viven en `mcp-server/src/__tests__/`
 y los corre `node --test`, no Vitest. Los `include` no se pisan — el de Vitest empieza en `src/`.
 
-**No hay tests de componentes.** El `App.test.tsx` heredado de CRA se eliminó al montar el runner:
-buscaba el texto "learn react" de la plantilla, que la app nunca renderizó. Agregar tests de componentes
+**Sigue sin haber tests que rendericen un componente.** El `App.test.tsx` heredado de CRA se eliminó al
+montar el runner: buscaba el texto "learn react" de la plantilla, que la app nunca renderizó. Renderizar
 va a requerir `jsdom` en su propio bloque de config — sin cambiar el `environment` global, que rompería
 los de audio. Las `@testing-library/*` siguen en el árbol esperando eso.
+
+`components/__tests__/palette.test.ts` es el primer test de la carpeta y **no** cambia lo anterior: es de
+constantes, corre en `environment: 'node'` y no monta nada. La otra mitad de la respuesta es que la
+lógica no vive en los componentes — la derivación de `(x, y)` al nombre de nota que muestra `Board` está
+en `domain/` (`occupantCellIndex` · `degreeByCellIndex` · `notesForRotation` · `midiName`), y el
+componente solo las encadena.
 
 ## `public/`
 

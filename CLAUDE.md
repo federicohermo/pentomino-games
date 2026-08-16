@@ -141,8 +141,9 @@ así — eso vive en los comentarios, no en la salida de una tool.
 |---|---|---|
 | Visión general | [docs/architecture/overview.md](./docs/architecture/overview.md) | Las cuatro capas y su dirección de dependencia |
 | Estructura de directorios | [docs/architecture/directory-structure.md](./docs/architecture/directory-structure.md) | Dónde crear cada cosa, qué está muerto |
-| Modelo musical | [docs/architecture/modelo-musical.md](./docs/architecture/modelo-musical.md) | Pieza → tónica, rotación → escala, reflexión → retrógrado |
+| Modelo musical | [docs/architecture/modelo-musical.md](./docs/architecture/modelo-musical.md) | Pieza → tónica, rotación → escala, reflexión → retrógrado, forma → nota por celda |
 | Capa de audio | [docs/architecture/audio.md](./docs/architecture/audio.md) | Grafo Web Audio, ADSR, scheduler con lookahead, reconciliación de loops |
+| Lenguaje visual | [DESIGN.md](./DESIGN.md) | Los 12 colores y su tónica, el contraste como test, qué muestra una celda y qué no se comunica con color |
 | Inicio rápido | [docs/guides/quickstart.md](./docs/guides/quickstart.md) | Setup, comandos, flujos típicos |
 | Convenciones | [docs/guides/conventions.md](./docs/guides/conventions.md) | Organización de `src/`, TypeScript, geometría, estado, comentarios |
 | Troubleshooting | [docs/guides/troubleshooting.md](./docs/guides/troubleshooting.md) | Errores reales ya pisados en este repo |

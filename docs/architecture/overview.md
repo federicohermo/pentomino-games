@@ -38,8 +38,11 @@ expresivo, no más difícil.
 ┌───────▼─────────────────────┴───────────────────────────┐
 │  src/domain/ — puro: sin React, sin Web Audio, sin DOM  │
 │   transform.ts   rotate90 · normalize · rotateN · reflect│
-│   board.ts       cellsAt · isValid · occupantAt          │
+│                  centroid · angleFromCentroid            │
+│   board.ts       cellsAt · isValid · phaseFor            │
+│                  occupantAt · occupantCellIndex          │
 │   music.ts       midiFor · midiName · notesForRotation   │
+│                  degreeByCellIndex                       │
 │   invariants.ts  los cinco chequeos del modelo           │
 │   types/ ← constants/ ← módulos                          │
 └─────────────────────────────────────────────────────────┘
@@ -70,9 +73,9 @@ Sin React, sin audio, sin DOM. Determinísticas y testeables en aislamiento.
 
 | Módulo | Símbolos | Responsabilidad |
 |---|---|---|
-| `transform.ts` | `rotate90`, `normalize`, `rotateN`, `reflect` | Transformaciones de un `Cell[]` |
-| `board.ts` | `cellsAt`, `isValid`, `phaseFor`, `occupantAt` | Las reglas del tablero, y la columna como posición en el compás |
-| `music.ts` | `midiFor`, `midiName`, `notesForRotation` | De pieza + rotación a cinco notas MIDI |
+| `transform.ts` | `rotate90`, `normalize`, `rotateN`, `reflect`, `centroid`, `angleFromCentroid` | Transformaciones de un `Cell[]`, y el centroide con el ángulo de cada celda a su alrededor |
+| `board.ts` | `cellsAt`, `isValid`, `phaseFor`, `occupantAt`, `occupantCellIndex` | Las reglas del tablero, la columna como posición en el compás, y qué celda de la pieza cae en `(x, y)` |
+| `music.ts` | `midiFor`, `midiName`, `notesForRotation`, `degreeByCellIndex` | De pieza + rotación a cinco notas MIDI, y de la forma a qué celda lleva cuál |
 | `invariants.ts` | `checkArrayOrder`, `checkAnchors`, `checkShapes`, `checkBaseMap`, `checkNotes`, `checkAll` | Los cinco chequeos del modelo. Los dos geométricos recorren las 96 orientaciones; los otros tres, lo que les corresponde |
 
 Los datos (`SHAPES`, `ANCHOR_INDEX`, `BASE_MAP`, `PENT_*`, `GRID_W/H`) viven en `domain/constants/`, y

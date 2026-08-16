@@ -78,10 +78,15 @@ Lo que está registrado y todavía no tiene spec. Vivía en `CLAUDE.md`, que dec
 
 - **`public/manifest.json` tiene los valores por defecto de CRA** (`"name": "Create React App
   Sample"`).
-- **Las `@testing-library/*` siguen sin consumidor.** No hay tests de componentes, y montarlos va a
-  requerir `jsdom` en su propio bloque de config, sin tocar el `environment: 'node'` global que
+- **Las `@testing-library/*` siguen sin consumidor.** Ningún test renderiza un componente, y montarlos
+  va a requerir `jsdom` en su propio bloque de config, sin tocar el `environment: 'node'` global que
   necesita el audio.
-- **No hay tests de UI**, así que los cinco componentes de `components/` se verifican a ojo.
+- **No hay tests de UI**, así que los cinco componentes de `components/` se verifican a ojo. El spec 007
+  la deja **abierta pero no más grande**: la derivación de la que depende lo que se ve —de `(x, y)` al
+  nombre de nota— no vive en `Board.tsx` sino en `domain/board.ts` (`occupantCellIndex`, AC14), así que
+  el componente sigue siendo un encadenado de puras testeadas en `environment: 'node'`. Su
+  `components/__tests__/palette.test.ts` es el primer test de la carpeta, pero es de constantes: no
+  renderiza nada y **no** desbloquea ni requiere jsdom.
 - **`postcss` y `autoprefixer`** están en `devDependencies` sin ningún config que los use — Tailwind 4
   va por el plugin de Vite. Candidatos a borrar.
 - **`@types/jest`** sigue en el árbol y es lo que impide usar `globals: true` en Vitest.
@@ -95,6 +100,13 @@ Ya resueltos: los archivos huérfanos de las plantillas de CRA y Vite (`src/App.
 quedó sin consumidor cuando `reportWebVitals.ts` no se migró. También el anclaje de la fase a la
 columna (spec 004, AC8), que no tenía test automático porque las puras no se podían exportar desde
 `App.tsx`: hoy vive en `domain/board.ts` y lo cubre `domain/__tests__/board.test.ts`.
+
+Y la tarea de seguimiento que preveía que `occupantAt` devolviera **además** el índice de la celda
+dentro de la pieza —anotada como «`cellOccupied` devuelve también el índice de celda dentro de la
+pieza», con el nombre que la función tenía antes del 005, en
+[`001/tasks.md:35`](./001-notas-por-celda-en-orden-angular/tasks.md)—: la cierra el 007 **sin cambiar la
+firma**, con una pura hermana al lado (`occupantCellIndex`). Ensanchar el retorno le habría cambiado el
+tipo a todos los llamadores que solo quieren saber qué pieza ocupa una celda, para servir a uno solo.
 
 ## Notas de revisión
 
