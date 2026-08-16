@@ -123,6 +123,36 @@ Para contar loops vivos desde la consola:
 (await import('/src/audio/engine.ts')).jobCount()
 ```
 
+## MCP server
+
+### El MCP server no arranca: `ERR_MODULE_NOT_FOUND`
+
+```
+node:internal/modules/esm/resolve:274
+    throw new ERR_MODULE_NOT_FOUND(
+```
+
+Casi siempre es **un import sin extensión dentro de `src/`**. El server corre con node crudo, que
+necesita el `./music.constants.ts` completo; Vite resuelve igual sin la extensión, así que el error
+**no rompe la app** y solo aparece del lado del server.
+
+Es un modo de falla asimétrico y está verificado: sacándole el `.ts` a un import de `src/domain/`, el
+server muere con este error y `pnpm build` termina en verde.
+
+**Solución:** poner la extensión. La regla está en
+[conventions.md](./conventions.md), y `pnpm mcp:test` la ataja antes que nadie.
+
+### `ERR_UNKNOWN_FILE_EXTENSION: ".tsx"`
+
+El server importó un `.tsx`. El type-stripping de node no transforma JSX: **`App.tsx` y los componentes
+son inalcanzables desde el server, y no es cuestión de configuración.** Si una tool necesita algo que
+hoy vive en un `.tsx`, eso tiene que bajar a `src/domain/` primero — en su propio commit.
+
+### El server arranca pero Claude Code no lo ve
+
+Revisar la versión de node: el server pide **≥ 22.18** y con Node 20 no levanta. `node --version`.
+`.mcp.json` está commiteado en la raíz y no hay nada más que configurar.
+
 ## Deploy
 
 Ver [infra/deploy.md](../infra/deploy.md) para los dos errores clásicos de Netlify en este repo: la

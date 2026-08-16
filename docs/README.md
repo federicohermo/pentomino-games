@@ -15,6 +15,7 @@ secuencia de cinco notas derivada de su identidad y su orientación.
 - [Inicio Rápido](./guides/quickstart.md) — Setup y comandos
 - [Convenciones de Código](./guides/conventions.md) — Organización de `src/`, geometría, comentarios, estado
 - [Troubleshooting](./guides/troubleshooting.md) — Errores reales que ya se pisaron en este repo
+- [MCP server de dominio](./guides/mcp-domain.md) — Las cuatro tools que ejecutan el dominio, y cuándo preferirlas a leer el código
 
 ### Infraestructura
 - [Deploy](./infra/deploy.md) — Netlify, rutas relativas a `base` y versión de Node
@@ -44,7 +45,8 @@ pnpm dev      # Dev server de Vite
 pnpm build    # tsc -b && vite build
 pnpm lint     # ESLint (flat config v9)
 pnpm preview  # Sirve el build de dist/
-pnpm test     # Vitest — 86 tests: dominio puro + audio con OfflineAudioContext
+pnpm test     # Vitest — 90 tests: dominio puro + audio con OfflineAudioContext
+pnpm mcp:test # MCP server — typecheck + 38 tests con node --test
 ```
 
 Los tests corren en `environment: 'node'` contra `node-web-audio-api`, **no en jsdom**: jsdom no

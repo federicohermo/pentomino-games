@@ -38,6 +38,24 @@ export function isValid(cells: Cell[], placed: readonly PlacedPiece[]): boolean 
   return true;
 }
 
+/**
+ * Posicion de una pieza dentro del compas: la columna de su celda de agarre,
+ * como fraccion del ancho del tablero.
+ *
+ * **El eje X del tablero es tiempo**, y esta es la funcion que lo dice. Fraccion
+ * y no segundos: asi mover el tempo estira el patron en vez de reordenarlo, y el
+ * mismo tablero suena siempre igual porque la fase se deriva de la geometria y no
+ * del reloj de pared.
+ *
+ * La columna sale por INDICE y no por busqueda gracias al invariante del orden
+ * del array: `cells` se construye con `cellsAt`, que es un `map`, asi que
+ * `ANCHOR_INDEX` sigue apuntando a la celda de agarre ya en coordenadas de
+ * tablero.
+ */
+export function phaseFor(cells: readonly Cell[], anchorIndex: number): number {
+  return cells[anchorIndex][0] / GRID_W;
+}
+
 /** La pieza que ocupa `(x, y)`, o null. */
 export function occupantAt(placed: readonly PlacedPiece[], x: number, y: number): PlacedPiece | null {
   for (const p of placed) {

@@ -71,9 +71,9 @@ Sin React, sin audio, sin DOM. Determinísticas y testeables en aislamiento.
 | Módulo | Símbolos | Responsabilidad |
 |---|---|---|
 | `transform.ts` | `rotate90`, `normalize`, `rotateN`, `reflect` | Transformaciones de un `Cell[]` |
-| `board.ts` | `cellsAt`, `isValid`, `occupantAt` | Las reglas del tablero |
+| `board.ts` | `cellsAt`, `isValid`, `phaseFor`, `occupantAt` | Las reglas del tablero, y la columna como posición en el compás |
 | `music.ts` | `midiFor`, `midiName`, `notesForRotation` | De pieza + rotación a cinco notas MIDI |
-| `invariants.ts` | `checkArrayOrder`, `checkAnchors`, `checkShapes`, `checkBaseMap`, `checkNotes`, `checkAll` | Los cinco chequeos del modelo sobre las 96 combinaciones |
+| `invariants.ts` | `checkArrayOrder`, `checkAnchors`, `checkShapes`, `checkBaseMap`, `checkNotes`, `checkAll` | Los cinco chequeos del modelo. Los dos geométricos recorren las 96 orientaciones; los otros tres, lo que les corresponde |
 
 Los datos (`SHAPES`, `ANCHOR_INDEX`, `BASE_MAP`, `PENT_*`, `GRID_W/H`) viven en `domain/constants/`, y
 los tipos (`Cell`, `PieceKey`, `PlacedPiece`) en `domain/types/`. Detalle en

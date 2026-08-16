@@ -6,8 +6,14 @@ import { SHAPES, ANCHOR_INDEX, CELLS_PER_PIECE } from './constants/pieces.consta
 import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE, NOTES_PER_PIECE } from './constants/music.constants.ts';
 
 /**
- * Los cinco chequeos del modelo, sobre las 96 combinaciones de pieza x rotacion x
- * reflexion.
+ * Los cinco chequeos del modelo.
+ *
+ * El espacio son las 96 combinaciones de pieza x rotacion x reflexion, pero cada
+ * chequeo recorre lo que le corresponde y no las 96 por inercia: `checkArrayOrder`
+ * y `checkAnchors` si —son los geometricos, y la orientacion es justo lo que
+ * pueden romper—, `checkNotes` 48 porque el espejo solo invierte el orden,
+ * `checkShapes` las 12 formas canonicas porque rotar no cambia ni la cantidad de
+ * celdas ni la conexidad, y `checkBaseMap` el conjunto una sola vez.
  *
  * DEVUELVEN el resultado en vez de lanzar o asertar: asi los usa igual el test de
  * este modulo y la tool `check_invariants` del spec 006, que necesita responder

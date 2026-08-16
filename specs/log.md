@@ -13,7 +13,7 @@ Registro de todo el trabajo especificado, en orden. La convención de formato es
 | [003](./003-visualizacion-de-la-senal-con-analysernode/spec.md) | 2026-08-02 | Implementado | Visualizar la señal con `AnalyserNode`: espectro en canvas, con el mapeo bins→barras como función pura testeable |
 | [004](./004-fase-por-pieza-la-columna-como-posicion-en-el-compas/spec.md) | 2026-08-02 | Implementado | La columna de la celda de agarre determina en qué momento del compás arranca la pieza: el tablero pasa a ser un secuenciador |
 | [005](./005-modularizacion-de-src-en-capas/spec.md) | 2026-08-03 | Implementado | `src/` en capas (`domain` · `audio` · `components`) con dirección de dependencia verificada por el linter, carpetas por rol y los primeros tests del dominio. Sin cambio de comportamiento |
-| [006](./006-mcp-server-de-dominio-ejecutable/spec.md) | 2026-08-03 | Propuesto | MCP server que **ejecuta** el dominio en vez de indexar el código: forma, notas, simulación del scheduler e invariantes, en una llamada. Las tools importan de `src/`, no reimplementan |
+| [006](./006-mcp-server-de-dominio-ejecutable/spec.md) | 2026-08-03 | Implementado | MCP server que **ejecuta** el dominio en vez de indexar el código: forma, notas, simulación del scheduler e invariantes, en una llamada. Las tools importan de `src/`, no reimplementan |
 
 ## Dependencias entre specs
 
@@ -46,8 +46,12 @@ Registro de todo el trabajo especificado, en orden. La convención de formato es
 - **006 se acopla a `collectHits`, y 004 ya la reescribió.** Queda resuelto por orden: `simulate_board`
   se escribe contra la firma nueva —`ClockState` es `{ origin, scheduledUntil }` y `Job` lleva `phase`
   obligatoria—, sin trabajo de migración.
-- **006 es el único spec que no toca `src/` en absoluto.** Es tooling puro. 005 sí lo toca —es su
-  objeto— pero sin alterar comportamiento.
+- **006 casi no toca `src/`, y lo que tocó fue del 005.** Es tooling puro, salvo un commit aparte que
+  bajó `phase = ax / GRID_W` del efecto de reconciliación de `App.tsx` a `phaseFor` en
+  `domain/board.ts`: la regla más central del spec 004 vivía en el único lugar del repo que ni los
+  tests ni node pueden importar, así que `simulate_board` habría tenido que escribirla por segunda vez.
+  Es exactamente el caso que el 006 dejó previsto —"si hace falta un export nuevo en el dominio, es un
+  cambio del 005 y va en su commit"— y se resolvió así.
 
 ## Notas de revisión
 
@@ -113,3 +117,20 @@ Registro de todo el trabajo especificado, en orden. La convención de formato es
   `react-refresh/only-export-components` prohíbe que `App.tsx` exporte las puras del tablero, así que la
   regla columna→fase se verifica en el navegador hasta que el spec 005 las extraiga. Es la misma
   medición que motivó al 005, ahora pisada desde el otro lado.
+- **2026-08-16 — Implementación del 006: dos supuestos del research se cayeron al ejecutarlos.** El
+  primero es del propio 006: el research decía que en **I, T, U, V, W y X la reflexión no cambia la
+  forma**, y medido celda por celda eso vale para I y X en las cuatro rotaciones y para T y U en las
+  rotaciones 0 y 180°. En **V y W el espejo sí cambia la forma** — lo que no cambia es el conjunto de
+  formas alcanzables, porque cae sobre otra rotación de la misma pieza. La frase original mezclaba dos
+  propiedades distintas: "el espejo es la identidad acá" y "el espejo no agrega orientaciones nuevas".
+  La descripción de `describe_piece` dice la versión exacta y hay un test que la fija sobre las 48
+  combinaciones. El segundo es de aritmética de AC7: los **20 onsets en 10 instantes con
+  `maxPerInstant` 2** se midieron cuando la fase no existía, y con el spec 004 implementado ese número
+  solo aparece con las dos piezas en la **misma columna**; en columnas distintas da 20 instantes y
+  `maxPerInstant` 1. Queda cerrada así la tarea de seguimiento que pedía verificar esa baja, y
+  `simulate_board` es el instrumento que la mide sin escuchar.
+  Lo tercero no era un supuesto sino un bug propio, y vale anotarlo porque es genérico: **en
+  JavaScript el punto de una expresión regular no matchea el retorno de carro** —lo trata como
+  terminador de línea—, así que sobre los archivos de este repo, que están en CRLF, todo patrón
+  terminado en `(.*)$` dejaba de matchear y `parseTasks` devolvía CERO tareas sin ningún error. Un
+  parseo de markdown que cuente cosas tiene que cortar las líneas aceptando CRLF.

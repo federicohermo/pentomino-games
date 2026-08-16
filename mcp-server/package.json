@@ -1,0 +1,23 @@
+{
+  "name": "mcp-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "MCP server que ejecuta el dominio de pentomino-games. Tooling local: no entra al bundle ni al deploy.",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "node src/index.ts",
+    "typecheck": "tsc",
+    "test": "pnpm run typecheck && node --test \"src/__tests__/*.test.ts\""
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.0.0",
+    "zod": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1",
+    "typescript": "~5.8.3"
+  }
+}

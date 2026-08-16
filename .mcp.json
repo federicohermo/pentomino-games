@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "pentomino-domain": {
+      "command": "node",
+      "args": ["mcp-server/src/index.ts"]
+    }
+  }
+}

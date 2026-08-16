@@ -1,0 +1,32 @@
+import { McpServer } from '@modelcontextprotocol/server';
+import { serveStdio } from '@modelcontextprotocol/server/stdio';
+import { tools } from './tools/index.ts';
+
+/**
+ * MCP server de pentomino-games: **ejecuta el dominio**, no indexa el codigo.
+ *
+ * No hay paso de build ni indice: node 22.18 corre este `.ts` quitando los tipos,
+ * y cada tool importa las funciones puras reales de `src/`. La fuente de verdad
+ * es el codigo de HEAD en el momento de la consulta, asi que no hay staleness ni
+ * `generatedAt` que sellar.
+ *
+ * Los imports de `src/` llevan `.ts` explicito, y eso NO es cosmetico: node los
+ * necesita para resolver. Un import sin extension dentro de `src/domain/` rompe
+ * este server y **no** rompe la app, porque Vite resuelve igual — un modo de
+ * falla asimetrico que ataja `pnpm mcp:test`.
+ */
+
+serveStdio(() => {
+  const server = new McpServer(
+    { name: 'pentomino-domain', version: '1.0.0' },
+    { capabilities: { tools: {} } },
+  );
+  for (const t of tools) {
+    server.registerTool(
+      t.name,
+      { description: t.description, inputSchema: t.inputSchema },
+      t.run,
+    );
+  }
+  return server;
+});

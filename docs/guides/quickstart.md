@@ -4,6 +4,9 @@
 
 - **Node ≥ 20.19 o ≥ 22.12.** No es una recomendación: Vite 7 lo declara en `engines`
   (`^20.19.0 || >=22.12.0`) y con Node 18 el build falla.
+- **Node ≥ 22.18 si además se quiere el MCP server**, que corre TypeScript sin compilar. Es un piso más
+  alto y **solo para el tooling**: con Node 20 el server no arranca y la app, el build y el deploy
+  siguen igual.
 - **pnpm** (el repo versiona `pnpm-lock.yaml`). La versión está fijada en `packageManager` dentro del
   `package.json`; con Corepack activado (`corepack enable pnpm`) no hace falta instalarlo a mano.
 
@@ -30,12 +33,17 @@ pnpm exec vite --port 5199 --strictPort
 ## Comandos
 
 ```bash
-pnpm dev      # Dev server con HMR
-pnpm build    # tsc -b && vite build → dist/
-pnpm lint     # ESLint
-pnpm preview  # Sirve dist/ como lo haría producción
-pnpm test     # Vitest
+pnpm dev            # Dev server con HMR
+pnpm build          # tsc -b && vite build → dist/
+pnpm lint           # ESLint
+pnpm preview        # Sirve dist/ como lo haría producción
+pnpm test           # Vitest
+pnpm mcp:test       # MCP server: typecheck + node --test
+pnpm mcp:typecheck  # MCP server: solo tsc
 ```
+
+`pnpm install` desde la raíz instala los **dos** paquetes del workspace: la app y `mcp-server/`. No hay
+que entrar a la carpeta ni pasar prefijos.
 
 `pnpm build` corre el typecheck **antes** del bundle. Un error de tipos rompe el build aunque el
 código funcione en dev, donde Vite no typechequea.
@@ -78,6 +86,13 @@ En tests, `OfflineAudioContext` renderiza determinísticamente y permite afirmar
 envolvente e instantes. En el navegador, `jobCount()` y el conteo de osciladores. Recetas en
 [audio.md](../architecture/audio.md#cómo-verificar-el-audio).
 
+### Preguntarle al modelo en vez de simularlo
+
+Antes de derivar a mano qué notas suenan, qué forma queda o qué onsets produce un tablero, están las
+tools del MCP server: `describe_piece`, `simulate_board`, `check_invariants` y `spec_status`. Ejecutan
+las funciones puras reales, así que responden lo que el código hace hoy. Catálogo y recetas en
+[mcp-domain.md](./mcp-domain.md).
+
 ### Antes de un cambio grande
 
 Escribir un spec en `specs/`, commitearlo a `main`, y recién ahí sacar la rama de feature. Ver
@@ -88,8 +103,13 @@ Escribir un spec en `specs/`, commitearlo a `main`, y recién ahí sacar la rama
 ```bash
 pnpm exec tsc -b --noEmit   # tipos
 pnpm lint                   # estilo
+pnpm test                   # Vitest
+pnpm mcp:test               # el MCP server, si se tocó src/ o el server
 pnpm build                  # build completo
 pnpm preview                # y probarlo a mano
 ```
+
+`pnpm mcp:test` no es opcional al tocar `src/domain/` o `src/audio/`: el server importa esos módulos con
+node crudo, así que es lo único que ataja un import sin extensión — que **no** rompe el build de la app.
 
 Los tests corren en Node contra `node-web-audio-api`, no en jsdom.

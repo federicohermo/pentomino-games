@@ -1,5 +1,13 @@
 # Config de pnpm. Desde pnpm 10 los settings viven acá, no en el campo `pnpm` del package.json.
-# No hay `packages:` porque todavía no es un workspace: hoy el repo es un solo paquete.
+
+# Dos paquetes: la app en la raíz y el MCP server de dominio (spec 006). El aislamiento lo garantiza
+# el gestor y no la disciplina: `zod` y `@modelcontextprotocol/server` quedan en
+# `mcp-server/node_modules` y no aparecen en el `node_modules` de la raíz, así que el tooling no
+# puede colarse al bundle de la app. Hay un solo lockfile, el de la raíz, y un solo
+# `pnpm install` —también desde la raíz— que instala los dos.
+packages:
+  - '.'
+  - 'mcp-server'
 
 # pnpm 10 no corre postinstall de dependencias salvo que se declaren acá. esbuild queda en `false`
 # a propósito: se verificó que `pnpm run build` y `pnpm test` pasan con su script bloqueado, así que

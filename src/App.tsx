@@ -6,9 +6,8 @@ import {
 import { ARPEGGIO_SPREAD, DEFAULT_BPM } from "./audio/constants/engine.constants.ts";
 import { rotateN, reflect } from "./domain/transform.ts";
 import { notesForRotation } from "./domain/music.ts";
-import { cellsAt, isValid } from "./domain/board.ts";
+import { cellsAt, isValid, phaseFor } from "./domain/board.ts";
 import { SHAPES, ANCHOR_INDEX } from "./domain/constants/pieces.constants.ts";
-import { GRID_W } from "./domain/constants/board.constants.ts";
 import { BASE_MAP, DEFAULT_OCTAVE } from "./domain/constants/music.constants.ts";
 import type { Cell } from "./domain/types/transform.types.ts";
 import type { PieceKey } from "./domain/types/pieces.types.ts";
@@ -101,16 +100,11 @@ export default function App(){
     if (!loopPlaced) return;
     for (const p of placed){
       // La columna de la celda de agarre es la posición dentro del compás: el eje
-      // X del tablero es tiempo. Sale por índice y no por búsqueda gracias al
-      // invariante de orden del array — `cells` se construye con
-      // `transformedShape.map(...)`, así que `ANCHOR_INDEX` sigue apuntando a la
-      // celda de agarre ya en coordenadas de tablero.
-      const [ax] = p.cells[ANCHOR_INDEX[p.piece]];
-      // Fracción del compás y no segundos: así mover el tempo estira el patrón en
-      // vez de reordenarlo. El ancho del tablero ES el compás (10 pasos, no 16):
-      // con una grilla de semicorcheas, 6 subdivisiones no serían alcanzables
-      // desde ninguna columna.
-      addJob({ id: p.id, notes: p.notes, spread: ARPEGGIO_SPREAD, phase: ax / GRID_W });
+      // X del tablero es tiempo. El ancho del tablero ES el compás (10 pasos, no
+      // 16): con una grilla de semicorcheas, 6 subdivisiones no serían alcanzables
+      // desde ninguna columna. La regla vive en `domain/board.ts` para que la
+      // pueda ejecutar cualquiera —los tests y el MCP server— y no solo el shell.
+      addJob({ id: p.id, notes: p.notes, spread: ARPEGGIO_SPREAD, phase: phaseFor(p.cells, ANCHOR_INDEX[p.piece]) });
     }
   }, [placed, loopPlaced]);
 
