@@ -57,10 +57,3 @@ export function defineTool<S extends z.ZodType>(spec: ToolSpec<S>): ToolDef {
  */
 export const json = (value: unknown): CallToolResult =>
   ({ content: [{ type: 'text', text: JSON.stringify(value) }] });
-
-/**
- * Error esperable: texto con `isError`, y **con la salida adentro**. Un error que
- * solo diagnostica obliga a otra llamada para averiguar que era valido.
- */
-export const fail = (message: string): CallToolResult =>
-  ({ content: [{ type: 'text', text: message }], isError: true });
