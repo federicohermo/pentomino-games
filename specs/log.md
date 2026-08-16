@@ -8,12 +8,13 @@ Registro de todo el trabajo especificado, en orden. La convención de formato es
 
 | Spec | Fecha | Estado | Descripción |
 |------|-------|--------|-------------|
-| [001](./001-notas-por-celda-en-orden-angular/spec.md) | 2026-08-02 | Propuesto | Asignar cada nota a una celda de la pieza, en orden angular alrededor del centroide |
+| [001](./001-notas-por-celda-en-orden-angular/spec.md) | 2026-08-02 | Descartado | Asignar cada nota a una celda de la pieza, en orden angular alrededor del centroide. **Absorbido por el [007](./007-nota-por-celda-y-lenguaje-visual/spec.md)**, que conserva su mapeo (D1 y D3) y revisa su desempate (D2) con una medición |
 | [002](./002-motor-de-audio-propio-sobre-web-audio/spec.md) | 2026-08-02 | Implementado | Reemplazar Tone.js por un motor propio sobre Web Audio: síntesis, scheduler con lookahead y audio testeable |
 | [003](./003-visualizacion-de-la-senal-con-analysernode/spec.md) | 2026-08-02 | Implementado | Visualizar la señal con `AnalyserNode`: espectro en canvas, con el mapeo bins→barras como función pura testeable |
 | [004](./004-fase-por-pieza-la-columna-como-posicion-en-el-compas/spec.md) | 2026-08-02 | Implementado | La columna de la celda de agarre determina en qué momento del compás arranca la pieza: el tablero pasa a ser un secuenciador |
 | [005](./005-modularizacion-de-src-en-capas/spec.md) | 2026-08-03 | Implementado | `src/` en capas (`domain` · `audio` · `components`) con dirección de dependencia verificada por el linter, carpetas por rol y los primeros tests del dominio. Sin cambio de comportamiento |
 | [006](./006-mcp-server-de-dominio-ejecutable/spec.md) | 2026-08-03 | Implementado | MCP server que **ejecuta** el dominio en vez de indexar el código: forma, notas, simulación del scheduler e invariantes, en una llamada. Las tools importan de `src/`, no reimplementan |
+| [007](./007-nota-por-celda-y-lenguaje-visual/spec.md) | 2026-08-16 | Propuesto | Cada celda es dueña de un grado de la escala, y el tablero lo muestra: color por pieza y nota por celda. Absorbe al 001. **Sin cambio de audio** |
 
 ## Dependencias entre specs
 
@@ -52,6 +53,19 @@ Registro de todo el trabajo especificado, en orden. La convención de formato es
   tests ni node pueden importar, así que `simulate_board` habría tenido que escribirla por segunda vez.
   Es exactamente el caso que el 006 dejó previsto —"si hace falta un export nuevo en el dominio, es un
   cambio del 005 y va en su commit"— y se resolvió así.
+
+- **007 absorbe al 001 y es el cimiento de tres specs que todavía no están escritos.** El plan acordado
+  parte el rediseño del instrumento en cuatro: **007** (nota por celda y lenguaje visual, sin tocar el
+  audio) · **008** (el intervalo del arpegio deriva del BPM, y el checkbox de loop más el botón de reloj
+  se funden en un play/pause) · **009** (el tablero como recorrido: el orden y los silencios salen de la
+  geometría, muere `phaseFor` y se reescribe `collectHits`) · **010** (cabeza lectora por celda). **007 y
+  008 son ortogonales entre sí** y los dos son mergeables sin cambiar el modelo temporal; **009 necesita
+  a los dos** —del 007, la celda de entrada y la de salida de cada pieza; del 008, la unidad de tiempo— y
+  **010 necesita al 009**. El corte es deliberado: si el 009 no suena bien, revertirlo no arrastra nada.
+- **009 va a superar al 004.** La columna de la celda de agarre deja de ser la posición dentro del
+  compás; el orden lo va a dar el recorrido entre piezas. El 004 no se reescribe —es historia— pero su
+  estado pasa a `Superado` cuando el 009 se mergee, y con él se van `phaseFor`, sus tests, el campo
+  `phase` de `Job` y la mitad de `simulate_board` que lo reporta.
 
 ## Deuda conocida
 
@@ -160,6 +174,22 @@ columna (spec 004, AC8), que no tenía test automático porque las puras no se p
   terminado en `(.*)$` dejaba de matchear y `parseTasks` devolvía CERO tareas sin ningún error. Un
   parseo de markdown que cuente cosas tiene que cortar las líneas aceptando CRLF.
 
+- **2026-08-16 — El 007 salió de una lámina de referencia, y medirla contra el código corrigió al 001
+  en dos puntos.** La lámina de las 12 piezas coloreadas no era un diseño nuevo: es el algoritmo del
+  spec 001 renderizado. Correrlo sobre las 12 piezas lo confirma —coincide celda por celda— pero solo
+  con **desempate por índice del array**; con el desempate por radio que el 001 había decidido en su
+  D2, `F` e `I` salen distintas (`F` intercambia G4 y A4 entre `(1,0)` y `(1,1)`). Y la afirmación del
+  001 de que «`F`, `I`, `T` y `X` tienen empates en todas sus rotaciones» se cae en parte: **`X` no
+  tiene ninguno** una vez aplicada su propia regla D1, porque el empate lo fabricaba el
+  `atan2(0,0) = 0` de la celda central que D1 saca del anillo. El desempate se ejerce en 3 piezas y
+  decide algo audible en 2.
+  Lo otro que salió de medir, y que **descartó una idea antes de escribirla**: se evaluó que el
+  recorrido del tablero también atravesara las celdas *dentro* de cada pieza, de modo que la forma
+  dibujara la melodía. No se puede sin repetir celdas: `F`, `T` e `Y` tienen 3 puntas y `X` tiene 4, y
+  un grafo con tres o más hojas no admite camino hamiltoniano. La caminata mínima que cubre las cinco
+  celdas cuesta 6 pasos en `F`/`T`/`Y` y **7 en `X`**, con su centro repetido dos veces. Se decidió que
+  la geometría gobierne el tiempo **entre** piezas y no **dentro** de una, que es lo que deja al 007
+  sin nada temporal y al 009 acotado.
 - **2026-08-16 — El 006 dijo "sin índice de símbolos" con una medición que caducó en un día, y ahora
   hay índice.** La nota del 2026-08-02 acá arriba dice, en presente, que «acá `src/` son 8 archivos y
   25 KB, así que un índice de símbolos cuesta todo y ahorra nada». Era cierta **al escribirse** y dejó
