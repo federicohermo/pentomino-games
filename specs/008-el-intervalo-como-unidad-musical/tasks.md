@@ -3,7 +3,8 @@
 ## Backlog
 - [ ] Commitear el spec a `main` **antes** de crear la rama (convención de `specs/README.md`)
 - [ ] Fila del 008 en `specs/log.md` (`Propuesto`)
-- [ ] **Línea base**: guardar `simulate_board` a `bpm: 100` (para AC3) y a `bpm: 160` (para el PR)
+- [x] **Línea base**: guardar `simulate_board` a `bpm: 100` (para AC3) y a `bpm: 160` (para el PR) —
+      está en [`baseline.md`](./baseline.md), con la predicción de lo que tiene que dar después
 - [ ] **Crear rama** `feature/008-el-intervalo-como-unidad-musical`
 
 ## El intervalo

@@ -12,6 +12,12 @@ cambio. Es el AC que convierte "no debería sonar distinto" en algo falsable.
 
 Guardar también la de `bpm: 160`, que **sí** va a cambiar, para poder mostrar en el PR qué se ganó.
 
+**Ya está hecho: [`baseline.md`](./baseline.md).** Y midiéndolo apareció algo que este plan no
+preveía: a 160 bpm el problema de hoy no es solo que el arpegio no se estire, es que las piezas
+**se pisan** —los 30 onsets colapsan en 21 instantes, con `maxPerInstant: 2`—, porque el arpegio
+conserva sus 0,6 s mientras el compás baja a 1,5 s. Subir el tempo no acelera el instrumento, lo
+espesa. Eso le da a AC4 un número duro que se compara solo, en vez de depender del oído.
+
 ## 1. El intervalo, en el scheduler
 
 ```ts
