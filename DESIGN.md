@@ -57,7 +57,7 @@ ceremonia; es la única forma de que el par (fondo, texto) no se desincronice:
 
 | Medida | Valor | Por qué |
 |---|---|---|
-| `CELL_PX` | **63** (era 28) | el piso son 52 —`D#5` mide 27,96 px medidos a `text-[15px]`— y 63 es lo que la tarjeta deja |
+| `CELL_PX` | **63** (era 28) | el piso son 60 —`D#5` mide 35,4 px medidos a `text-[19px]`— y 63 es lo que la tarjeta deja |
 | Tablero | **630 × 378 px** (era 280 × 168) | 10 × 6 × `CELL_PX` en una tarjeta de 633 × 380: llena las dos dimensiones |
 | Tarjeta del tablero | **`md:col-span-7`** (era 6) | con 6 sobraban 68 px de alto: 10 × 6 no tenía la proporción de la tarjeta |
 | Aire de la baldosa | **2 px** por lado | separa las fichas sin sumar un segundo número al ancho |

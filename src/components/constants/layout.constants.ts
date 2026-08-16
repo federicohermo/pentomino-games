@@ -12,13 +12,18 @@
  *
  * Los dos numeros que ACOTAN el 63 son distintos y conviene no confundirlos:
  *
- * - **52 es el PISO**, medido con un `Range` sobre el nodo de texto a la fuente
+ * - **60 es el PISO**, medido con un `Range` sobre el nodo de texto a la fuente
  *   que se renderiza: los nombres con sostenido —`D#4`, `D#5`, todos iguales
- *   porque `tabular-nums` iguala los digitos— ocupan **27,96 px a los 15 px de
- *   `text-[15px]`**, que es lo que usa la celda en `Board.tsx`. Los ~24 px de
- *   aire alrededor del texto son los que antes daban un piso de 44, cuando la
- *   celda renderizaba a 11 px y el mismo nombre media 20,5: crecio la fuente y
- *   el piso con ella. Abajo de 52 la nota deja de entrar comoda.
+ *   porque `tabular-nums` iguala los digitos— ocupan **35,4 px a los 19 px de
+ *   `text-[19px]`**, que es lo que usa la celda en `Board.tsx`. Los ~24 px de
+ *   aire alrededor del texto son los mismos de siempre: daban 44 cuando la celda
+ *   renderizaba a 11 px y el nombre media 20,5, y 52 cuando paso a 15 px y 28.
+ *   El piso sube con la fuente, y por eso este numero hay que remedirlo cada vez
+ *   que se toca `text-[…]` en `Board.tsx` — es la trampa que ya se piso dos veces.
+ *
+ *   Lo que limita el tamano de la NOTA, en cambio, no es este ancho: sobran 10,8
+ *   px de aire por lado. Es el `#N` de la esquina, que compite por el alto. Esta
+ *   explicado en `Board.tsx`.
  * - **63 es el TECHO util**, y sale del tamano de la tarjeta, medido en el DOM: el
  *   tablero vive en un `md:col-span-7` de un `max-w-6xl`, o sea **633 × 380 px**
  *   de interior descontando el `gap-4` y el `p-4`. 10 × 63 = 630 y 6 × 63 = 378:

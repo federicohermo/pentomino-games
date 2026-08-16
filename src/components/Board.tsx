@@ -182,13 +182,23 @@ export default function Board({
                     tablero no se rellena, porque el fondo pintado le sacaba el
                     protagonismo a los 12 colores, que son los que tienen que
                     hablar. */}
+                {/* `pb-2` y `leading-none` no son estetica: son lo que deja crecer la
+                    nota. Lo que la limita NO es el ancho —a 19 px el nombre mas largo
+                    de los 48 (`D#5`) mide 35,4 en 57 de baldosa, o sea 10,8 de aire
+                    por lado— sino el `#N`, que esta anclado abajo mientras la nota se
+                    centra en todo el alto: compiten por el mismo espacio y a 18 px
+                    centrada ya se tocaban. Con la nota centrada en el alto que el `#N`
+                    no usa, los 19 px entran con 2,3 px de separacion medidos.
+
+                    El `pb` no mueve el `#N`: un absolute se posiciona contra la caja
+                    de PADDING del contenedor, asi que el padding no lo empuja. */}
                 <div style={style}
-                     className={`relative w-full h-full rounded-lg border border-slate-900 flex items-center justify-center text-[15px] font-semibold tabular-nums ${tone}`}>
+                     className={`relative w-full h-full rounded-lg border border-slate-900 flex items-center justify-center pb-2 text-[19px] leading-none font-semibold tabular-nums ${tone}`}>
                   {/* El grado va como el indice que devuelve el dominio (0..4) y sin
                       renumerar: lo que se lee en la celda es exactamente lo que
                       responden los tests y el MCP server. El `#` y la esquina
                       inferior derecha son de la lamina. */}
-                  {cell && <span className="absolute bottom-0.5 right-1.5 text-[11px] font-normal leading-tight opacity-70">#{cell.degree}</span>}
+                  {cell && <span className="absolute bottom-0.5 right-1.5 text-[13px] font-normal leading-tight opacity-70">#{cell.degree}</span>}
                   {cell?.note ?? ''}
                 </div>
               </div>
