@@ -4,7 +4,8 @@ Registro de todo el trabajo especificado, en orden. La convención de formato es
 [README.md](./README.md).
 
 **Estados:** `Propuesto` (spec escrito, sin implementar) · `En curso` (rama abierta) ·
-`Implementado` (mergeado) · `Descartado` (con el motivo anotado).
+`Implementado` (mergeado) · `Descartado` (con el motivo anotado) · `Superado` (se implementó y otro
+spec posterior reemplazó lo que hacía; el spec queda como historia y no se reescribe).
 
 | Spec | Fecha | Estado | Descripción |
 |------|-------|--------|-------------|
