@@ -148,14 +148,19 @@ type-stripping medido en el `research.md` (~50–70 ms) se paga una vez por sesi
 - [x] `specs/log.md` — estado de 006 a `Implementado`
 
 ## PR
-- [ ] Explicar por qué **no** hay índice de símbolos, con la medición de tamaño del repo: es la
+
+> Abierto: [#5](https://github.com/federicohermo/pentomino-games/pull/5)
+
+- [x] Explicar por qué **no** hay índice de símbolos, con la medición de tamaño del repo: es la
       diferencia con el server de bait y la primera pregunta de cualquiera que compare
-- [ ] Explicar que las tools **no reimplementan nada** y que eso fue un cambio de diseño: la versión
+- [x] Explicar que las tools **no reimplementan nada** y que eso fue un cambio de diseño: la versión
       anterior de este plan tenía su propio `board.ts`
-- [ ] Incluir los números de AC11
-- [ ] Nombrar el acoplamiento con el spec 004 (`collectHits` cambia de firma) y que la tool queda como
+- [x] Incluir los números de AC11
+- [x] Nombrar el acoplamiento con el spec 004 (`collectHits` cambia de firma) y que la tool queda como
       su instrumento de verificación
-- [ ] `/pr-review` antes de pedir revisión
+- [ ] `/pr-review` antes de pedir revisión — el skill del repo apunta a Bitbucket y este PR está
+      en GitHub ([#5](https://github.com/federicohermo/pentomino-games/pull/5)), así que queda pendiente
+      elegir con qué revisarlo
 
 ## Seguimiento (no bloquea)
 - [x] Cuando el spec 004 esté implementado, agregar a `simulate_board` la columna → `phase` y verificar
