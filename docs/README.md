@@ -45,8 +45,8 @@ pnpm dev      # Dev server de Vite
 pnpm build    # tsc -b && vite build
 pnpm lint     # ESLint (flat config v9)
 pnpm preview  # Sirve el build de dist/
-pnpm test     # Vitest — 90 tests: dominio puro + audio con OfflineAudioContext
-pnpm mcp:test # MCP server — typecheck + 38 tests con node --test
+pnpm test     # Vitest — dominio puro + audio con OfflineAudioContext
+pnpm mcp:test # MCP server — typecheck + tests con node --test
 ```
 
 Los tests corren en `environment: 'node'` contra `node-web-audio-api`, **no en jsdom**: jsdom no

@@ -29,7 +29,7 @@ Node 20 el server no arranca y **el repo sigue funcionando igual**.
 | `describe_piece` | forma transformada, ASCII con el ancla marcada, tónica, escala y las 5 notas con el retrógrado aplicado | componer cuatro puras a mano sobre cinco pares de coordenadas |
 | `simulate_board` | validez de cada colocación, los jobs que crearía el efecto de reconciliación, y la línea de tiempo de onsets del scheduler real | leer el scheduler y recorrer el lookahead a mano, o escuchar |
 | `check_invariants` | los cinco chequeos de `domain/invariants.ts`, con contraejemplos y el espacio del modelo (96 orientaciones) | correr los tests y leer la salida |
-| `spec_status` | por spec: estado, tareas hechas/total y la próxima sin marcar | leer `log.md` + todos los `tasks.md` (hoy 61 KB) |
+| `spec_status` | por spec: estado, tareas hechas/total y la próxima sin marcar | leer `log.md` + todos los `tasks.md`, que crecen con cada spec |
 
 **Ninguna reimplementa nada.** `simulate_board` llama a `cellsAt`/`isValid`/`phaseFor` de
 `domain/board.ts`; `check_invariants` llama a `checkAll()`; `describe_piece` llama a
@@ -83,7 +83,7 @@ mal.
 ## Verificar que anda
 
 ```bash
-pnpm mcp:test                    # typecheck + los 38 tests del server
+pnpm mcp:test                    # typecheck + los tests del server
 node mcp-server/src/index.ts     # arranca por stdio; se queda esperando (Ctrl+C para salir)
 ```
 

@@ -34,7 +34,7 @@ mcp-server/
     ├── render.ts                 ASCII de una pieza (puro)
     ├── specs.ts                  parseo de log.md y de los tasks.md
     ├── tools/                    una tool por archivo + el array de index.ts
-    └── __tests__/                node --test, 38 tests
+    └── __tests__/                node --test, uno por tool + los de parseo y render
 ```
 
 Que sea un paquete y no una carpeta más no es prolijidad: `zod` y `@modelcontextprotocol/server` quedan
@@ -67,7 +67,7 @@ src/
 │   │   ├── pieces.constants.ts   #   SHAPES · ANCHOR_INDEX
 │   │   ├── board.constants.ts    #   GRID_W · GRID_H
 │   │   └── music.constants.ts    #   CHROMATIC · PENT_* · BASE_MAP · DEFAULT_OCTAVE
-│   └── __tests__/                # 54 tests, uno por módulo
+│   └── __tests__/                # uno por módulo
 │       └── transform · board · music · invariants
 ├── audio/                        # Web Audio; habla MIDI, no conoce el dominio ni la UI
 │   ├── voice.ts                  # midiToHz · scheduleVoice
@@ -76,11 +76,11 @@ src/
 │   ├── spectrum.ts               # mapeo puro de bins de la FFT a alturas de barra
 │   ├── types/                    #   voice.types.ts · scheduler.types.ts
 │   ├── constants/                #   voice · scheduler · engine
-│   └── __tests__/                # 38 tests
-│       ├── voice.test.ts         #   7, con OfflineAudioContext
-│       ├── scheduler.test.ts     #   17
-│       ├── integration.test.ts   #   3
-│       ├── spectrum.test.ts      #   9, sin AudioContext (ver audio.md)
+│   └── __tests__/
+│       ├── voice.test.ts         #   síntesis, con OfflineAudioContext
+│       ├── scheduler.test.ts     #   lookahead, reloj y fase
+│       ├── integration.test.ts   #   el analyser es transparente, muestra por muestra
+│       ├── spectrum.test.ts      #   binsToBars, sin AudioContext (ver audio.md)
 │       └── test-context.ts       #   helpers de render y medición (no es un test)
 └── components/                   # un componente por archivo, presentacionales
     ├── PiecePalette.tsx          # paleta, rotación, reflexión, tempo, transporte
@@ -119,11 +119,11 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 
 ### Tests
 
-`pnpm test` corre Vitest en `environment: 'node'` contra `node-web-audio-api`. Son **90**: 36 de la capa
-de audio y 54 del dominio. El `include` (`src/**/*.test.{ts,tsx}`) toma los `__tests__/` sin
-configuración extra, y `test-context.ts` no matchea porque le falta el `.test.` antes de la extensión.
+`pnpm test` corre Vitest en `environment: 'node'` contra `node-web-audio-api`, sobre la capa de audio y
+el dominio. El `include` (`src/**/*.test.{ts,tsx}`) toma los `__tests__/` sin configuración extra, y
+`test-context.ts` no matchea porque le falta el `.test.` antes de la extensión.
 
-Los **38 tests del MCP server corren aparte**, con `pnpm mcp:test`: viven en `mcp-server/src/__tests__/`
+Los **tests del MCP server corren aparte**, con `pnpm mcp:test`: viven en `mcp-server/src/__tests__/`
 y los corre `node --test`, no Vitest. Los `include` no se pisan — el de Vitest empieza en `src/`.
 
 **No hay tests de componentes.** El `App.test.tsx` heredado de CRA se eliminó al montar el runner:

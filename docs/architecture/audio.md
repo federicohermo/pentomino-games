@@ -17,19 +17,23 @@ Una voz por nota, creada y descartada. El `master` existe para tener un punto ú
 inserción: el `AnalyserNode` del
 [spec 003](../../specs/003-visualizacion-de-la-senal-con-analysernode/spec.md) entra ahí.
 
-## Las tres capas, que son tres archivos
+## Los archivos de la capa
 
 | Archivo | Qué hace | Cómo obtiene el contexto |
 |---|---|---|
 | **`voice.ts`** | `midiToHz`, `scheduleVoice` | por parámetro |
 | **`scheduler.ts`** | `collectHits` — decide qué suena y cuándo | por parámetro |
 | **`engine.ts`** | singletons, `playNow`, `startClock`, jobs | **es** el dueño del singleton |
+| **`spectrum.ts`** | `binsToBars` — de bins de la FFT a alturas de barra | no lo toca: es puro |
+
+Los tres primeros son el motor; `spectrum.ts` es el mapeo puro que se separó del `AnalyserNode` para
+poder testearlo — [más abajo](#por-qué-el-mapeo-binsbarras-vive-aparte).
 
 **`voice.ts` y `scheduler.ts` no pueden tocar el singleton**, y no por disciplina: el singleton vive en
 `engine.ts` y ellos no lo importan. Eso es lo que permite renderizarlos con un `OfflineAudioContext` en
 los tests, y es la razón por la que el audio de este proyecto es verificable.
 
-Hasta el spec 005 los tres bloques eran secciones de un mismo archivo y el invariante lo sostenía un
+Hasta el spec 005 los tres bloques del motor eran secciones de un mismo archivo y el invariante lo sostenía un
 comentario: nada estructural impedía que `scheduleVoice` llamara a `audio()` y el audio dejara de ser
 testeable. Ahora lo sostiene el grafo de imports, y el override del linter
 ([conventions.md](../guides/conventions.md)) impide además que la capa mire al dominio o a la UI.

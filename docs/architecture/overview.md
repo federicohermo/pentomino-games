@@ -57,7 +57,7 @@ se pueden renderizar con `OfflineAudioContext` sin montar nada de React.
 **El dominio salió después, y por un motivo parecido**: `react-refresh/only-export-components` prohíbe
 que un `.tsx` exporte algo además del componente, así que mientras la geometría y la música vivieran en
 `App.tsx` **no podían exportarse, y por lo tanto no podían testearse**. La organización no era neutral:
-condenaba al dominio a no ser verificable. Hoy `src/domain/` tiene 50 tests donde antes había cero.
+condenaba al dominio a no ser verificable. Hoy `src/domain/` tiene tests donde antes había cero.
 
 Lo que queda en `App.tsx` es el shell: estado, derivados, handlers, los dos efectos y la composición de
 los componentes. Ninguna función pura y ningún literal de dominio.
@@ -100,9 +100,10 @@ esta escala no hace falta, y agregarlo sería la clase de complejidad que un pro
 Derivados con `useMemo`: `transformedShape` y `noteSet`. Derivados sin memo (baratos, se recalculan por
 render): `anchor`, `previewCells`, `previewValid`, `previewSet`.
 
-### 3. Audio — tres módulos y singletons
+### 3. Audio — el motor y sus singletons
 
-`voice.ts` (síntesis), `scheduler.ts` (lookahead) y `engine.ts` (singletons y la API que consume la UI).
+`voice.ts` (síntesis), `scheduler.ts` (lookahead), `engine.ts` (singletons y la API que consume la UI)
+y `spectrum.ts` (el mapeo puro de bins a barras, separado del `AnalyserNode` para poder testearlo).
 El `AudioContext` es un singleton de módulo —uno por pestaña, no uno por componente— y vive **solo** en
 `engine.ts`: los otros dos lo reciben por parámetro y no importan `engine.ts`, así que el invariante que
 los hace testeables lo sostiene el grafo de imports. Detalle en [audio.md](./audio.md).
