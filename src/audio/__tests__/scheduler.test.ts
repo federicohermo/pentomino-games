@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { collectHits } from '../scheduler.ts';
+import { collectHits, barDuration, intervalDuration } from '../scheduler.ts';
 import { scheduleVoice } from '../voice.ts';
 import { LOOKAHEAD, TICK_MS } from '../constants/scheduler.constants.ts';
 import type { Job, ClockState } from '../types/scheduler.types.ts';
@@ -9,21 +9,18 @@ const A4 = 69;
 const VEL = 0.8;
 
 /**
- * El espaciado del arpegio, escrito acá a proposito (AC10).
- *
- * Importarlo de `engine.ts` haria que el test de la capa 2 alcanzara a la capa 3,
- * que es justo la dependencia que la particion viene a impedir. Para el scheduler
- * el spread es un dato del job, no una constante del motor.
- */
-const SPREAD = 0.15;
-
-/**
  * El cursor de compas del spec 002, copiado tal cual, como oraculo de
  * no-regresion del reloj por origen (AC2 del spec 004).
  *
  * Es codigo muerto en produccion a proposito: la unica forma de afirmar que la
  * reformulacion no cambio ningun instante es tener las dos implementaciones vivas
  * y compararlas. Si el spec 004 se revierte, este bloque se borra con el.
+ *
+ * `interval` se recibe por parametro y ya no sale de `job.spread` (spec 008
+ * borro ese campo): el espaciado del arpegio dejo de ser un dato del job y paso
+ * a derivarse del bpm. Pasarlo desde afuera no debilita el oraculo — lo que este
+ * test compara es el mecanismo del RELOJ (cursor vs origen), no de donde sale el
+ * espaciado, y las dos implementaciones siguen usando el mismo numero.
  */
 function collectHitsPorCursor(
   fromTime: number,
@@ -31,6 +28,7 @@ function collectHitsPorCursor(
   bpm: number,
   jobs: Iterable<Job>,
   state: { nextBar: number },
+  interval: number,
 ): { at: number }[] {
   const bar = (60 / bpm) * 4;
   const out: { at: number }[] = [];
@@ -38,12 +36,34 @@ function collectHitsPorCursor(
   if (state.nextBar < fromTime) state.nextBar = fromTime + 0.05;
   while (state.nextBar < fromTime + horizon) {
     for (const job of list) {
-      job.notes.forEach((_, i) => out.push({ at: state.nextBar + i * job.spread }));
+      job.notes.forEach((_, i) => out.push({ at: state.nextBar + i * interval }));
     }
     state.nextBar += bar;
   }
   return out;
 }
+
+describe('intervalDuration y barDuration (spec 008)', () => {
+  it('a 100 bpm da el ARPEGGIO_SPREAD exacto de antes, sin epsilon', () => {
+    // 0.15 era la constante que este spec borro. Que la formula nueva la
+    // reproduzca EXACTA a 100 bpm es la garantia de que ahi no cambia nada.
+    expect(intervalDuration(100)).toBe(0.15);
+  });
+
+  it('el arpegio (4 intervalos) mide siempre un cuarto de compas, exacto', () => {
+    // La propiedad que compra el spec, no solo casos sueltos: a cualquier
+    // tempo el arpegio ocupa la misma fraccion del compas.
+    for (const bpm of [60, 100, 110, 160]) {
+      expect(intervalDuration(bpm) * 4).toBe(barDuration(bpm) / 4);
+    }
+    expect(4 * intervalDuration(60)).toBe(1.0);
+    expect(4 * intervalDuration(160)).toBe(0.375);
+  });
+
+  it('a 110 bpm el valor es periodico en binario: hace falta tolerancia', () => {
+    expect(intervalDuration(110)).toBeCloseTo(0.1363636364, 9);
+  });
+});
 
 describe('scheduler — reloj por origen (spec 004)', () => {
   const BPM = 110;
@@ -52,7 +72,7 @@ describe('scheduler — reloj por origen (spec 004)', () => {
   /** Reloj recien arrancado, igual que startClock: scheduledUntil antes de origin. */
   const ORIGIN = 0.05;
   const recienArrancado = (): ClockState => ({ origin: ORIGIN, scheduledUntil: 0 });
-  const job = (notes: number[], phase = 0): Job => ({ id: 'j', notes, spread: SPREAD, phase });
+  const job = (notes: number[], phase = 0): Job => ({ id: 'j', notes, phase });
 
   it('N compases producen N disparos en los instantes esperados', () => {
     const state: ClockState = { origin: 0.5, scheduledUntil: 0 };
@@ -63,16 +83,19 @@ describe('scheduler — reloj por origen (spec 004)', () => {
   });
 
   it('cada job aporta todas sus notas, espaciadas por el arpegio', () => {
+    const interval = intervalDuration(120);
     const hits = collectHits(0, 2, 120, [job([60, 62, 64])], { origin: 0.5, scheduledUntil: 0 });
     expect(hits).toHaveLength(3);
-    expect(hits[1].at - hits[0].at).toBeCloseTo(SPREAD, 9);
-    expect(hits[2].at - hits[1].at).toBeCloseTo(SPREAD, 9);
+    expect(hits[1].at - hits[0].at).toBeCloseTo(interval, 9);
+    expect(hits[2].at - hits[1].at).toBeCloseTo(interval, 9);
   });
 
   it('varios jobs suenan en el mismo compas', () => {
+    // Notas unicas, no `spread: 0`: con un solo elemento por array, hit y onset
+    // coinciden por construccion sin importar el espaciado del arpegio.
     const jobs: Job[] = [
-      { id: 'a', notes: [60], spread: 0, phase: 0 },
-      { id: 'b', notes: [64], spread: 0, phase: 0 },
+      { id: 'a', notes: [60], phase: 0 },
+      { id: 'b', notes: [64], phase: 0 },
     ];
     const hits = collectHits(0, 2, 120, jobs, { origin: 0.5, scheduledUntil: 0 });
     expect(hits).toHaveLength(2);
@@ -86,7 +109,7 @@ describe('scheduler — reloj por origen (spec 004)', () => {
     // origen el bucle de compases quedo adentro y los jobs se recorren una sola
     // vez, asi que ya no puede pasar. El test se queda para que si alguien vuelve
     // a invertir los bucles, se entere.
-    const map = new Map<string, Job>([['a', { id: 'a', notes: [A4], spread: 0, phase: 0 }]]);
+    const map = new Map<string, Job>([['a', { id: 'a', notes: [A4], phase: 0 }]]);
     const conIterador = collectHits(0, 8, 120, map.values(), { origin: 0.5, scheduledUntil: 0 });
     const conArray = collectHits(0, 8, 120, [...map.values()], { origin: 0.5, scheduledUntil: 0 });
     expect(conIterador).toHaveLength(4);
@@ -113,6 +136,7 @@ describe('scheduler — reloj por origen (spec 004)', () => {
   });
 
   it('AC2 — con phase 0 emite exactamente los mismos instantes que el cursor de compas', () => {
+    const interval = intervalDuration(BPM);
     const nuevo = recienArrancado();
     const viejo = { nextBar: ORIGIN };
     const nuevos: number[] = [];
@@ -120,7 +144,7 @@ describe('scheduler — reloj por origen (spec 004)', () => {
     for (let i = 0; i < 400; i++) {                 // 10 s de ticks de 25 ms
       const t = i * TICK;
       nuevos.push(...collectHits(t, LOOKAHEAD, BPM, [job([A4, 64, 67])], nuevo).map(h => h.at));
-      viejos.push(...collectHitsPorCursor(t, LOOKAHEAD, BPM, [job([A4, 64, 67])], viejo).map(h => h.at));
+      viejos.push(...collectHitsPorCursor(t, LOOKAHEAD, BPM, [job([A4, 64, 67])], viejo, interval).map(h => h.at));
     }
     expect(viejos.length).toBeGreaterThan(0);
     expect(nuevos).toHaveLength(viejos.length);
@@ -135,7 +159,7 @@ describe('scheduler — reloj por origen (spec 004)', () => {
     for (let i = 0; i < 400; i++) {
       const t = i * TICK;
       ultimo = t + LOOKAHEAD;
-      const j: Job = { id: 'j', notes: [A4], spread: 0, phase };
+      const j: Job = { id: 'j', notes: [A4], phase };   // una sola nota: hit === onset
       emitidos.push(...collectHits(t, LOOKAHEAD, BPM, [j], state).map(h => h.at));
     }
     const esperados: number[] = [];
@@ -172,16 +196,51 @@ describe('scheduler — reloj por origen (spec 004)', () => {
   });
 });
 
+describe('AC2 — el bpm afecta a un job ya creado, sin recrearlo (spec 008)', () => {
+  it('el mismo objeto job cambia de espaciado si el bpm de la llamada cambia', () => {
+    // Antes, el espaciado vivia en `job.spread`: cambiar el tempo sin reconstruir
+    // el job no tenia ningun efecto sobre el arpegio. Ahora sale de `bpm`, que es
+    // un parametro de `collectHits`, asi que agendar el MISMO job con otro bpm
+    // alcanza para que el espaciado cambie.
+    const j: Job = { id: 'j', notes: [60, 62, 64], phase: 0 };
+
+    const lento = collectHits(0, 4, 60, [j], { origin: 0.5, scheduledUntil: 0 });
+    const rapido = collectHits(0, 4, 160, [j], { origin: 0.5, scheduledUntil: 0 });
+
+    const espaciadoLento = lento[1].at - lento[0].at;
+    const espaciadoRapido = rapido[1].at - rapido[0].at;
+    expect(espaciadoLento).toBeCloseTo(intervalDuration(60), 9);
+    expect(espaciadoRapido).toBeCloseTo(intervalDuration(160), 9);
+    // Y son distintos entre si: el punto del AC es que cambian, no solo que
+    // cada uno coincide con su propio oraculo.
+    expect(espaciadoRapido).toBeLessThan(espaciadoLento);
+  });
+});
+
+describe('AC4 — el arpegio mide un cuarto de compas (spec 008)', () => {
+  it('el onset completo mide 1.000 s a 60 bpm y 0.375 s a 160 bpm', () => {
+    const j: Job = { id: 'j', notes: [60, 62, 64, 67, 69], phase: 0 };   // 5 notas, 4 intervalos punta a punta
+
+    const lento = collectHits(0, 4, 60, [j], { origin: 0, scheduledUntil: 0 });
+    const rapido = collectHits(0, 4, 160, [j], { origin: 0, scheduledUntil: 0 });
+
+    // Los primeros 5 hits son las 5 notas del primer onset (el loop de compases
+    // queda afuera del forEach de notas): la distancia entre la primera y la
+    // ultima es el arpegio completo.
+    expect(lento[4].at - lento[0].at).toBeCloseTo(1.0, 9);
+    expect(rapido[4].at - rapido[0].at).toBeCloseTo(0.375, 9);
+  });
+});
+
 describe('fase por pieza (spec 004)', () => {
   const BPM = 110;
   const BAR = (60 / BPM) * 4;
   const ORIGIN = 0.05;
-  const pieza = (id: string, notes: number[], phase: number): Job =>
-    ({ id, notes, spread: SPREAD, phase });
+  const pieza = (id: string, notes: number[], phase: number): Job => ({ id, notes, phase });
 
   it('AC1 — los onsets caen en origin + (k + phase) * bar', () => {
     const state: ClockState = { origin: 0.5, scheduledUntil: 0 };
-    const j: Job = { id: 'j', notes: [A4], spread: 0, phase: 0.25 };
+    const j: Job = { id: 'j', notes: [A4], phase: 0.25 };
     const hits = collectHits(0, 8, 120, [j], state);   // compas de 2 s
     expect(hits).toHaveLength(4);
     hits.forEach((h, k) => expect(h.at).toBeCloseTo(0.5 + (k + 0.25) * 2, 9));
@@ -189,16 +248,17 @@ describe('fase por pieza (spec 004)', () => {
 
   it('AC1 — el arpegio se expande desde el onset desfasado', () => {
     const state: ClockState = { origin: 0.5, scheduledUntil: 0 };
+    const interval = intervalDuration(120);
     const hits = collectHits(0, 2.4, 120, [pieza('j', [60, 62, 64], 0.5)], state);
     expect(hits).toHaveLength(3);
-    hits.forEach((h, i) => expect(h.at).toBeCloseTo(0.5 + 0.5 * 2 + i * SPREAD, 9));
+    hits.forEach((h, i) => expect(h.at).toBeCloseTo(0.5 + 0.5 * 2 + i * interval, 9));
   });
 
   it('AC1 — dos jobs con phase distinta arrancan en instantes distintos', () => {
     const state: ClockState = { origin: ORIGIN, scheduledUntil: 0 };
     const jobs = [
-      { id: 'a', notes: [60], spread: 0, phase: 0 },
-      { id: 'b', notes: [64], spread: 0, phase: 0.5 },
+      { id: 'a', notes: [60], phase: 0 },
+      { id: 'b', notes: [64], phase: 0.5 },
     ];
     const hits = collectHits(0, BAR, BPM, jobs, state);
     expect(hits).toHaveLength(2);
@@ -206,15 +266,17 @@ describe('fase por pieza (spec 004)', () => {
   });
 
   it('AC5 — ningun onset se agenda con mas de LOOKAHEAD de anticipacion', () => {
-    // spread 0 para que cada hit SEA un onset: AC5 se mide sobre el instante del
-    // onset, no sobre la ultima nota del arpegio, que se extiende mas alla a
-    // proposito — igual que antes de este spec.
+    // Notas unicas, no `spread: 0` (ese truco ya no existe: el espaciado sale
+    // del bpm y no se puede poner en cero). Con `notes: [A4]` cada hit ES el
+    // onset por construccion, asi que AC5 se mide sobre el instante del onset,
+    // no sobre la ultima nota del arpegio, que se extiende mas alla a proposito
+    // — igual que antes de este spec.
     for (const phase of [0, 0.25, 0.5, 0.99]) {
       const state: ClockState = { origin: ORIGIN, scheduledUntil: 0 };
       let emitidos = 0;
       for (let i = 0; i < 400; i++) {
         const t = i * (TICK_MS / 1000);
-        for (const h of collectHits(t, LOOKAHEAD, BPM, [{ id: 'j', notes: [A4], spread: 0, phase }], state)) {
+        for (const h of collectHits(t, LOOKAHEAD, BPM, [{ id: 'j', notes: [A4], phase }], state)) {
           expect(h.at).toBeLessThanOrEqual(t + LOOKAHEAD);
           emitidos++;
         }
@@ -262,6 +324,9 @@ describe('fase por pieza (spec 004)', () => {
     const g = ctx.createGain();
     g.gain.value = 1;
     g.connect(ctx.destination);
+    // 0.35 s es una duracion de render arbitraria, no la duracion de nota del
+    // spec 008 (esa es NOTE_INTERVALS * intervalDuration(bpm)): este test mide
+    // pico y cantidad de onsets, no cuanto dura cada nota.
     hits.forEach(h => scheduleVoice(ctx, g, h.hz, h.at, 0.35, VEL));
     return (await ctx.startRendering()).getChannelData(0);
   }

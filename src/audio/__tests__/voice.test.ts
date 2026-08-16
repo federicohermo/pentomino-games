@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { midiToHz, scheduleVoice } from '../voice.ts';
-import { DEFAULT_VOICE } from '../constants/voice.constants.ts';
+import { intervalDuration } from '../scheduler.ts';
+import { DEFAULT_VOICE, NOTE_INTERVALS } from '../constants/voice.constants.ts';
 import { offline, peakNear, zeroCrossHz, firstAudible } from './test-context.ts';
 
 const A4 = 69;
@@ -68,5 +69,45 @@ describe('sintesis', () => {
     const at = 0.37;
     const d = await renderVoice(at, 0.3);
     expect(Math.abs(firstAudible(d) - at)).toBeLessThan(0.001);
+  });
+});
+
+describe('AC5 — dur en intervalos, spec 008 (la envolvente no se movio)', () => {
+  it('con dur = NOTE_INTERVALS * intervalDuration(bpm), pico y sostenido son los de siempre', async () => {
+    // Mismo patron que AC3: lo unico que cambia es de donde sale `dur`. Si
+    // scheduleVoice tratara `dur` distinto por venir de intervalos en vez de
+    // ser un literal, el pico o el sostenido se verian corridos.
+    const bpm = 100;
+    const dur = NOTE_INTERVALS * intervalDuration(bpm);   // 2 * 0.15 = 0.300 s
+    const at = 0.1;
+    const d = await renderVoice(at, dur);
+    const { attack, sustain, release } = DEFAULT_VOICE;
+
+    expect(peakNear(d, at + attack)).toBeGreaterThan(VEL * 0.95);
+    expect(peakNear(d, at + attack)).toBeLessThanOrEqual(VEL * 1.001);
+    const expectedSustain = VEL * sustain;
+    expect(Math.abs(peakNear(d, at + dur - 0.02) - expectedSustain)).toBeLessThan(expectedSustain * 0.05);
+
+    // Silencio exacto antes de `at`, y de nuevo despues de dur + release: el
+    // release arranca donde termina `dur`, ni antes ni despues.
+    expect(peakNear(d, at - 0.03)).toBe(0);
+    expect(peakNear(d, at + dur + release + 0.1)).toBe(0);
+  });
+
+  it('a 60 bpm la nota dura mas que a 160: `dur` sigue al tempo, no es un literal fijo', async () => {
+    const at = 0.1;
+    const durLento = NOTE_INTERVALS * intervalDuration(60);     // 2 * 0.25    = 0.500 s
+    const durRapido = NOTE_INTERVALS * intervalDuration(160);   // 2 * 0.09375 = 0.1875 s
+    const { sustain, release } = DEFAULT_VOICE;
+    const lento = await renderVoice(at, durLento);
+    const rapido = await renderVoice(at, durRapido);
+
+    // En el instante en que la nota de 160 bpm ya termino su release, la de 60
+    // bpm sigue sostenida. Si `dur` no viniera del bpm (p.ej. quedara fija en
+    // el 0.35 s de antes de este spec) las dos curvas mostrarian el mismo
+    // estado en ese instante, y este test fallaria.
+    const tSondeo = at + durRapido + release + 0.02;
+    expect(peakNear(rapido, tSondeo)).toBe(0);
+    expect(peakNear(lento, tSondeo)).toBeGreaterThan(VEL * sustain * 0.9);
   });
 });
