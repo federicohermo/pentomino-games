@@ -32,8 +32,24 @@ pnpm lint     # ESLint (flat config v9)
 pnpm preview  # Sirve dist/
 pnpm test     # Vitest — 90 tests: dominio puro + audio con OfflineAudioContext
 pnpm mcp:test # MCP server — typecheck + 38 tests con node --test
-pnpm exec tsc -b --noEmit   # Solo typecheck
+pnpm typecheck# tsc -b --noEmit, sin emitir nada
+pnpm verify   # Los cuatro de arriba EN PARALELO: lint ‖ typecheck ‖ test ‖ mcp:test
 ```
+
+`pnpm verify` es el nodo de convergencia: es lo que hay que correr antes de un PR. Medido con caché
+caliente: 8,8 s en serie contra 4,0 s en paralelo, y un nodo rojo devuelve exit 1.
+
+Su forma exacta —`pnpm --filter "{.}" run --parallel "/^(…)$/"`— tiene dos cosas que **no** son
+cosméticas, y las dos se descubrieron fallando en verde:
+
+- **`--filter "{.}"` es obligatorio.** `--parallel` es un flag recursivo de workspace y **excluye el
+  paquete raíz**: sin el filtro corre solo los scripts de `mcp-server` y reporta éxito sin haber tocado
+  `lint`, `typecheck` ni `test` de la app. El filtro va **por ruta** (`{.}`) y no por nombre, para que
+  renombrar el paquete no lo deje mudo otra vez.
+- **El `$` del regex tampoco es decorativo:** sin él el patrón también engancha `test:watch` y arranca
+  un segundo vitest. Medido: en shell no interactiva no cuelga —vitest sin TTY no entra en modo watch y
+  termina igual—, así que el costo visible es trabajo duplicado. En una terminal interactiva sí queda
+  esperando. El ancla borra la pregunta.
 
 **El gestor es pnpm**, fijado en `packageManager` del `package.json` y versionado en `pnpm-lock.yaml`.
 No usar npm: instalaría un `node_modules` plano y dejaría un `package-lock.json` que Netlify puede
