@@ -13,8 +13,14 @@ import { BEATS_PER_BAR } from './constants/scheduler.constants.ts';
  * onsets de cada job —`origin + (k + phase) * bar`— se resuelven en forma cerrada.
  */
 
-/** Duracion de un compas, en segundos. El 60 es la conversion de minutos a segundos. */
-const barDuration = (bpm: number) => (60 / bpm) * BEATS_PER_BAR;
+/**
+ * Duracion de un compas, en segundos. El 60 es la conversion de minutos a segundos.
+ *
+ * Exportada porque es una regla, no un detalle: cualquiera que quiera saber
+ * cuanto dura `n` compases a un tempo dado la necesita, y volver a escribirla es
+ * tener dos definiciones del compas.
+ */
+export const barDuration = (bpm: number): number => (60 / bpm) * BEATS_PER_BAR;
 
 /**
  * Primer onset de un job estrictamente posterior a `after`.
