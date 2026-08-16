@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rotate90, normalize, rotateN, reflect } from '../transform.ts';
+import { rotate90, normalize, rotateN, reflect, centroid, angleFromCentroid } from '../transform.ts';
 import { SHAPES } from '../constants/pieces.constants.ts';
 import type { Cell } from '../types/transform.types.ts';
 import type { PieceKey } from '../types/pieces.types.ts';
@@ -109,6 +109,102 @@ describe('AC7 — el cero con signo', () => {
     for (const p of PIECES) {
       for (let r = 0; r < 4; r++) expect(negZero(rotateN(SHAPES[p], r))).toBe(false);
       expect(negZero(reflect(SHAPES[p]))).toBe(false);
+    }
+  });
+});
+
+/** Distancia a la que dos puntos se consideran el mismo. El centroide es un promedio de quintos. */
+const EPSILON = 1e-9;
+
+const distancia = (a: readonly [number, number], b: readonly [number, number]) =>
+  Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+describe('centroid', () => {
+  /**
+   * El centroide de las 12 piezas canonicas, congelado.
+   *
+   * Son todos promedios de quintos, asi que la comparacion va con epsilon y no con
+   * `===`: por eso `toBeCloseTo`.
+   */
+  const CENTROIDES: Record<PieceKey, [number, number]> = {
+    F: [1, 1.2],
+    I: [2, 0],
+    L: [0.2, 1.2],
+    N: [1.4, 0.6],
+    P: [0.8, 0.4],
+    T: [1, 0.6],
+    U: [1, 0.4],
+    V: [0.6, 0.6],
+    W: [1.2, 0.8],
+    X: [1, 1],
+    Y: [1.6, 0.2],
+    Z: [1.4, 0.4],
+  };
+
+  it('es el promedio de las coordenadas de las 12 piezas', () => {
+    for (const p of PIECES) {
+      const [cx, cy] = centroid(SHAPES[p]);
+      expect(cx).toBeCloseTo(CENTROIDES[p][0], 12);
+      expect(cy).toBeCloseTo(CENTROIDES[p][1], 12);
+    }
+  });
+
+  it('es el centro de MASA y no el de la bounding box: en L caen en lugares distintos', () => {
+    // La `L` es el contraejemplo barato: cuatro celdas en la columna 0 y una sola en
+    // la 1, asi que el promedio se corre hacia la columna llena mientras que el
+    // centro de la caja se queda en el medio geometrico.
+    const cent = centroid(SHAPES.L);
+    const caja: [number, number] = [
+      (Math.min(...SHAPES.L.map(c => c[0])) + Math.max(...SHAPES.L.map(c => c[0]))) / 2,
+      (Math.min(...SHAPES.L.map(c => c[1])) + Math.max(...SHAPES.L.map(c => c[1]))) / 2,
+    ];
+    expect(cent).not.toEqual(caja);
+    expect(distancia(cent, caja)).toBeGreaterThan(0.4);
+  });
+
+  it('solo I y X tienen una celda parada sobre el centroide, y es la del indice 2', () => {
+    // Medido, no supuesto: es la regla que saca esa celda del anillo angular y le da
+    // el primer grado del arpegio. Las otras 10 piezas no tienen ninguna.
+    const sobreElCentro = (p: PieceKey) => {
+      const cent = centroid(SHAPES[p]);
+      return SHAPES[p].flatMap((c, k) => (distancia(c, cent) < EPSILON ? [k] : []));
+    };
+    for (const p of PIECES) {
+      expect(sobreElCentro(p)).toEqual(p === 'I' || p === 'X' ? [2] : []);
+    }
+  });
+});
+
+describe('angleFromCentroid', () => {
+  it('la celda al SUR del centroide da π/2, no -π/2: el eje Y crece hacia abajo', () => {
+    // Coordenadas de grilla, no cartesianas. Es exactamente la clase de detalle que
+    // alguien "arregla" por error, y por eso tiene un test propio.
+    expect(angleFromCentroid([1, 2], [1, 1])).toBeCloseTo(Math.PI / 2, 12);
+  });
+
+  it('recorre el circulo en sentido horario en pantalla: este 0, sur π/2, oeste π, norte 3π/2', () => {
+    const cent: [number, number] = [1, 1];
+    expect(angleFromCentroid([2, 1], cent)).toBeCloseTo(0, 12);
+    expect(angleFromCentroid([1, 2], cent)).toBeCloseTo(Math.PI / 2, 12);
+    expect(angleFromCentroid([0, 1], cent)).toBeCloseTo(Math.PI, 12);
+    expect(angleFromCentroid([1, 0], cent)).toBeCloseTo(3 * Math.PI / 2, 12);
+  });
+
+  it('no depende de la distancia: dos celdas en la misma direccion dan el mismo angulo', () => {
+    // De aca salen los empates que despues desempata `degreeByCellIndex`.
+    expect(angleFromCentroid([1, 2], [1, 1])).toBe(angleFromCentroid([1, 9], [1, 1]));
+  });
+
+  it('normaliza a [0, 2π): ningun angulo de las 12 piezas sale negativo', () => {
+    // `atan2` devuelve `(-π, π]`, que corta el anillo justo al oeste: sin normalizar,
+    // ordenar por angulo pondria las celdas del noroeste antes que las del norte.
+    for (const p of PIECES) {
+      const cent = centroid(SHAPES[p]);
+      for (const celda of SHAPES[p]) {
+        const a = angleFromCentroid(celda, cent);
+        expect(a).toBeGreaterThanOrEqual(0);
+        expect(a).toBeLessThan(2 * Math.PI);
+      }
     }
   });
 });

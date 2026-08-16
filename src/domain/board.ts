@@ -63,3 +63,24 @@ export function occupantAt(placed: readonly PlacedPiece[], x: number, y: number)
   }
   return null;
 }
+
+/**
+ * Indice de `(x, y)` dentro de `p.cells`, o `-1` si `p` no ocupa esa celda.
+ *
+ * Hermana de `occupantAt` y no un cambio de su firma: `occupantAt` responde QUE
+ * pieza, esta responde QUE celda de esa pieza, y separarlas deja intactos a los
+ * que solo necesitan lo primero.
+ *
+ * Existe para que la derivacion celda→nota no viva adentro de `Board.tsx`. El
+ * argumento no es de costo —cinco comparaciones sobre 60 celdas es irrelevante—
+ * sino de cobertura: `components/` no tiene tests, asi que un `findIndex` ahi
+ * adentro dejaria verificado solo por captura el unico paso del que depende lo
+ * que se ve, y una captura no distingue un mapeo correcto de uno corrido en uno.
+ *
+ * El indice que devuelve sirve directamente contra la forma CANONICA gracias al
+ * invariante del orden del array: `cells` se construye con `cellsAt`, que es un
+ * `map`, asi que la celda `k` del tablero sigue siendo la celda `k` de `SHAPES`.
+ */
+export function occupantCellIndex(p: PlacedPiece, x: number, y: number): number {
+  return p.cells.findIndex(([cx, cy]) => cx === x && cy === y);
+}

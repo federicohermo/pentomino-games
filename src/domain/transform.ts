@@ -33,3 +33,36 @@ export function reflect(cells: Cell[]): Cell[]{
   const refl: Cell[] = cells.map(([x,y]): Cell => [-x, y]);
   return normalize(refl);
 }
+
+/**
+ * Centro de masa de una forma: el promedio de las coordenadas.
+ *
+ * Promedio y no centro de la bounding box: es lo que hace que el recorrido
+ * angular quede repartido alrededor de la MASA de la pieza y no de su caja.
+ * En una `L` las dos cosas caen en lugares distintos.
+ *
+ * Casi nunca da enteros —es un promedio de quintos—, asi que comparar contra
+ * el resultado pide epsilon y no `===`.
+ */
+export function centroid(cells: readonly Cell[]): [number, number] {
+  let sx = 0, sy = 0;
+  for (const [x, y] of cells) { sx += x; sy += y; }
+  return [sx / cells.length, sy / cells.length];
+}
+
+/**
+ * Angulo de una celda vista desde el centroide, normalizado a `[0, 2π)`.
+ *
+ * `y` crece hacia ABAJO: son coordenadas de grilla, no cartesianas, asi que el
+ * angulo crece en sentido HORARIO en pantalla y la celda al SUR del centroide
+ * da `π/2` y no `-π/2`. No esta mal — es exactamente la clase de detalle que
+ * alguien "arregla" por error, y por eso tiene un test propio.
+ *
+ * La normalizacion a `[0, 2π)` no es cosmetica: `atan2` devuelve `(-π, π]`, que
+ * corta el anillo justo al oeste, y ordenar con eso pondria las celdas del
+ * noroeste antes que las del norte.
+ */
+export function angleFromCentroid(cell: Cell, cent: readonly [number, number]): number {
+  const a = Math.atan2(cell[1] - cent[1], cell[0] - cent[0]);
+  return a < 0 ? a + 2 * Math.PI : a;
+}
