@@ -138,6 +138,46 @@
       `DEGREE_EPSILON`: dos números que tienen que coincidir sin nada que los sincronice
 - [x] `describe_piece` anunciaba «Dos trampas» y enumeraba tres
 
+## Salido del segundo `/code-review` (sobre el diff completo)
+- [x] **El punto de color rompía el botón entre `md` y ~950 px.** Medido en el DOM: el botón más
+      ancho (`W`) pide 42,7 px de min-content —`px-2` (16) + borde (2) + punto (8) + `gap-1` (4) +
+      la letra (13,1)— contra pistas de 18 px a 768 y 35,3 px con el `max-w-6xl` saturado. Como
+      Tailwind usa `minmax(0,1fr)` y el botón tiene `overflow: visible`, **la tarjeta no desborda**:
+      lo que se come es el padding del propio botón, que cayó de 8 px a 3,5 en pantalla ancha y a
+      **−4,6 px a 768**, o sea la letra cruzando su borde. Sin el punto el peor caso era 1,4 px.
+      Arreglado con `md:grid-cols-3 lg:grid-cols-4`: peor caso de todo el rango 8,5 px, a costa de
+      una fila. Debajo de `md` siguen 6 columnas (9,7 px a 375)
+- [x] **El piso de `CELL_PX` estaba medido a una fuente que ya no se renderiza.** El comentario
+      justificaba los 44 px con `D#5` midiendo 20,2 px **a 11 px de fuente**, pero la celda quedó en
+      `text-[15px]`. Remedido con un `Range`: 27,96 px, y con los mismos ~24 px de aire el piso pasa
+      a **52**. No cambia la elección —63 sigue siendo el techo y sigue estando arriba del piso—
+      pero el bloque además hablaba de «los dos números que fijan el 52» listando 44 y 63
+- [x] `DESIGN.md` decía que en `PlacedList` «la letra **toma** el color de pieza», y el código hace
+      lo contrario a propósito: la pone **sobre** el color, porque como texto sobre el blanco de la
+      tarjeta el amarillo de `V` da 1,07 de contraste. El porqué estaba solo en el comentario del
+      componente, que es donde no lo iba a leer alguien por «simplificar» el documento
+- [x] `DESIGN.md` documentaba la ficha como `rounded-md` y `Board.tsx` usa `rounded-lg`
+- [x] `NOTES_PER_PIECE === CELLS_PER_PIECE` pasó de coincidencia a requisito en el comentario de
+      este spec, pero **nada lo verificaba**: `checkNotes` comparaba contra `NOTES_PER_PIECE` a
+      secas. Una fórmula de 4 notas pasaba los cinco invariantes y la celda de grado 4 renderizaba
+      `undefinedNaN` —`midiName(undefined)` no explota, devuelve basura—. Ahora lo chequea
+      `checkNotes`, que es donde tiene sujeto
+- [x] **El panel se movía solo al cambiar de pieza o de rotación** (reportado a ojo, confirmado
+      midiendo). `Notas actuales:` envolvía o no según cuántos sostenidos tuviera la escala —de 0 a 5
+      sobre las 48 combinaciones de pieza × rotación—, y esos 20 px empujaban Tempo, Loop y Reset
+      hacia abajo: el botón se corre justo cuando vas a apretarlo. **No era regresión de este spec**,
+      la línea ya estaba, pero es el mismo tipo de defecto que el resto de esta tanda. Resuelto
+      reservando dos líneas (`min-h-[2lh]`), que es el máximo medido sobre el peor de los 48 strings
+      —`F#4 · G#4 · A#4 · C#5 · D#5`, en `N` rot1, `U` rot0 y `Z` rot3— desde 148 px de tarjeta hasta
+      los 252 del `max-w-6xl`. Verificado recorriendo las **96** combinaciones con reflexión incluida:
+      una sola altura de tarjeta y una sola posición del slider
+- [x] `angleFromCentroid` documenta `[0, 2π)` y la normalización no lo garantizaba: con un ángulo
+      negativo más chico que el ulp de 2π (~8,9e-16), `a + 2π` redondea a exactamente 2π. **No
+      cambiaba ningún orden** —2π y 2π−ulp caen los dos al final del anillo, que es donde va esa
+      celda—, pero el rango es el contrato que lee `degreeByCellIndex`, que recibe formas
+      arbitrarias a propósito. Con las 12 de `SHAPES` no puede pasar: coordenadas enteras y
+      centroide sobre 5
+
 ## PR
 - [x] **Aclarar que el audio no cambia**: un revisor va a esperar lo contrario (ver `plan.md` §final)
       — está en el cuerpo del PR, con la advertencia del caché de módulos del server MCP

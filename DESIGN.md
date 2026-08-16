@@ -57,7 +57,7 @@ ceremonia; es la única forma de que el par (fondo, texto) no se desincronice:
 
 | Medida | Valor | Por qué |
 |---|---|---|
-| `CELL_PX` | **63** (era 28) | el piso son 44 —`D#5` mide 20,2 px medidos— y 63 es lo que la tarjeta deja |
+| `CELL_PX` | **63** (era 28) | el piso son 52 —`D#5` mide 27,96 px medidos a `text-[15px]`— y 63 es lo que la tarjeta deja |
 | Tablero | **630 × 378 px** (era 280 × 168) | 10 × 6 × `CELL_PX` en una tarjeta de 633 × 380: llena las dos dimensiones |
 | Tarjeta del tablero | **`md:col-span-7`** (era 6) | con 6 sobraban 68 px de alto: 10 × 6 no tenía la proporción de la tarjeta |
 | Aire de la baldosa | **2 px** por lado | separa las fichas sin sumar un segundo número al ancho |
@@ -69,7 +69,7 @@ lo que se oye, el grado es la posición dentro del arpegio y es lo que deja ver 
 grado 0 es la tónica, y el recorrido 0→4 dibuja el orden angular alrededor del centroide.
 
 **Cada celda es una baldosa redondeada, no un casillero.** Los 63 px son la pista; adentro va una ficha
-`rounded-md` con 2 px de aire alrededor. Es el lenguaje de la lámina: una pieza colocada se lee como
+`rounded-lg` con 2 px de aire alrededor. Es el lenguaje de la lámina: una pieza colocada se lee como
 cinco fichas apoyadas sobre la grilla, no como cinco celdas de una tabla. El aire lo hace el padding de
 la pista y no un `gap` de la grilla, así que el ancho del tablero sigue siendo exactamente 10 × `CELL_PX`.
 
@@ -98,7 +98,12 @@ comunicaba identidad de pieza, y nunca sobre el canal de estado.*
 |---|---|---|
 | `Board` | celda ocupada = color de pieza | identidad debajo, estado encima |
 | `PiecePalette` | **el fondo del botón no se toca**; el color entra al costado | el fondo ya es el canal de "seleccionado" |
-| `PlacedList` | la letra toma el color de pieza | texto plano: no hay estado que pisar |
+| `PlacedList` | la letra va **sobre** el color de pieza | texto plano: no hay estado que pisar |
+
+En `PlacedList` la letra va **sobre** el color y no *pintada* del color, y la diferencia no es de gusto:
+como texto sobre el blanco de la tarjeta, el amarillo de `V` da **1,07 de contraste**. Sobre su propio
+fondo vale el par `bg`/`fg` de `PIECE_COLOR`, que es el que el test de la paleta mantiene en AA. Es el
+mismo criterio que en el tablero, donde la celda ocupada también es color de fondo con texto medido.
 
 *(`PiecePreview` era el cuarto caso y ya no existe: mostraba la pieza aparte, sin notas, mientras el
 fantasma la muestra en el lugar donde va a caer y con la nota de cada celda. Dos vistas del mismo objeto
