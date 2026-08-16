@@ -1,5 +1,7 @@
 import type { ToolDef } from './types.ts';
 import { describePiece } from './describePiece.ts';
+import { checkInvariants } from './checkInvariants.ts';
+import { simulateBoard } from './simulateBoard.ts';
 
 /**
  * El registro. Agregar una tool es un archivo mas una linea aca: el entrypoint no
@@ -7,4 +9,6 @@ import { describePiece } from './describePiece.ts';
  */
 export const tools: readonly ToolDef[] = [
   describePiece,
+  checkInvariants,
+  simulateBoard,
 ];
