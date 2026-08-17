@@ -117,7 +117,7 @@ export default function PiecePalette({
               del interior de la tarjeta a 768 —el ancho mas apretado, el mismo que
               gobierna la grilla de piezas de arriba—, asi que junto a Reset (62 px +
               8 de gap) la fila desbordaba 23 px y el texto envolvia a dos lineas.
-              Con el icono solo el boton mide 40 px y sobra lugar en todo el rango.
+              Con el icono solo el boton mide 37,8 px, asi que en esos 148 sobran 40.
 
               `aria-label` porque al sacar el texto el boton se queda sin nombre
               accesible: el glifo no lo es. `title` para que el puntero tambien lo diga.
