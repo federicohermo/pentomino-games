@@ -21,3 +21,14 @@ export const BEATS_PER_BAR = 4;
  * subdivision en un solo lugar sin que el arpegio y la nota se desincronicen.
  */
 export const SUBDIVISIONS_PER_BEAT = 4;
+
+/**
+ * Las dos clases de evento sonoro del recorrido: la nota que dispara una pieza y el
+ * click de una celda vacia que el circuito cruza al ir de una pieza a la siguiente.
+ *
+ * Const-object con union derivada (`HitKind`) y no un `enum`: `erasableSyntaxOnly`
+ * los rechaza, y es la misma opcion que permite cargar estos modulos con node sin
+ * compilar. Los valores son strings iguales a sus claves para que un `Hit` sea
+ * legible tal cual sale en un log o en un test, sin tener que traducir un numero.
+ */
+export const HIT = { note: 'note', click: 'click' } as const;
