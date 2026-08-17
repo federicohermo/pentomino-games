@@ -281,15 +281,40 @@ describe('simulate_board', () => {
   });
 
   test('los saltos reportados son los del dominio, no una segunda cuenta', () => {
-    // Las puertas se derivan aca (grado 0 entra, grado 4 sale) porque la `gates`
-    // de `domain/sequence.ts` es privada, y el `distance` y el `path` salen de los
-    // clicks de `buildSequence`. Este test es lo que ata las dos cosas: si las
-    // puertas se corrieran, el camino entre ellas dejaria de ser el que suena.
-    const r = call(simulateBoard, { pieces: BASE });
-    for (const h of ruta(r).hops) {
-      const donde = `${h.from}->${h.to}`;
-      assert.equal(cellDistance(h.exit, h.entry), h.distance, donde);
-      assert.deepEqual(pathBetween(h.exit, h.entry), h.path, donde);
+    // El `exit`/`entry` sale de `gates` —la MISMA del dominio, exportada, no una copia
+    // de sus tres lineas— y el `distance`/`path` sale de contar los clicks de
+    // `buildSequence`. Son dos lecturas distintas del mismo salto, y este test es lo
+    // que las ata: si las puertas se corrieran, el camino entre ellas dejaria de ser
+    // el que suena.
+    //
+    // Se recorre BASE y tambien un tablero de dos piezas: el bucle es vacuo si la
+    // respuesta no trae saltos, asi que sin la guarda de abajo un `hops: []` pasaria
+    // por verde.
+    for (const pieces of [BASE, [{ piece: 'F', at: [1, 1] }, { piece: 'Z', at: [7, 4] }]]) {
+      const r = call(simulateBoard, { pieces });
+      assert.ok(ruta(r).hops.length > 0, 'el tablero tiene saltos que contrastar');
+      for (const h of ruta(r).hops) {
+        const donde = `${h.from}->${h.to}`;
+        assert.equal(cellDistance(h.exit, h.entry), h.distance, donde);
+        assert.deepEqual(pathBetween(h.exit, h.entry), h.path, donde);
+      }
+    }
+  });
+
+  test('con una sola pieza no hay saltos: el recorrido existe ENTRE piezas', () => {
+    // La guarda que falto la primera vez, y el bug que dejo: el `map` sobre los pasos
+    // sintetizaba un tramo de la pieza a si misma con `distance` fijo en 1, porque sin
+    // clicks `path.length + 1` da 1. Ese 1 contradecia a las celdas que la misma
+    // respuesta imprimia al lado — con la `Z` sola la distancia real de salida a
+    // entrada es 3, y con la `F` es 2—, o sea que el objeto era internamente
+    // inconsistente. El dominio ya decide esto devolviendo `clicks: []`.
+    for (const piece of ['X', 'Z', 'I', 'F'] as const) {
+      const r = call(simulateBoard, { pieces: [{ piece, at: [5, 2] }] });
+      assert.deepEqual(ruta(r).order, ['1'], piece);
+      assert.deepEqual(ruta(r).hops, [], piece);
+      assert.equal(cuentas(r).clicks, 0, piece);
+      // El ciclo igual dura: son los 5 intervalos del arpegio, no un salto.
+      assert.equal(ciclo(r).intervals, CELLS_PER_PIECE, piece);
     }
   });
 
@@ -324,8 +349,9 @@ describe('simulate_board', () => {
     assert.equal(ps[0].valid, true);
     assert.equal(ps[1].valid, false);
     assert.equal(ps[1].reason, 'choque-con-1');
-    // Solo la valida entra al circuito: 5 notas por ciclo, 2 ciclos. El circuito de
-    // una pieza sola es el salto de su salida a su propia entrada.
+    // Solo la valida entra al circuito: 5 notas por ciclo, 2 ciclos. Con una pieza
+    // sola el ciclo es su arpegio y nada mas — no hay tramo, porque el recorrido
+    // existe entre piezas.
     assert.equal(cuentas(r).notes, 10);
     assert.deepEqual(ruta(r).order, ['1']);
   });

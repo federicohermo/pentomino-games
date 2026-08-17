@@ -220,7 +220,14 @@ export const simulateBoard = defineTool({
     // discrepen (D8). El tramo de la ultima pieza a la primera se calcula con la
     // misma regla que los demas —su borde es `seq.length`, que es el offset 0 del
     // ciclo siguiente—, y de eso depende que el empalme no tenga marca (AC4).
-    const hops = seq.steps.map((step, t) => {
+    // Con UNA pieza no hay saltos, y por eso la guarda es explicita: el recorrido
+    // existe ENTRE piezas y el dominio ya lo dice devolviendo `clicks: []`. Sin ella
+    // el `map` sintetiza un tramo de la pieza a si misma y le reporta
+    // `distance: path.length + 1`, que sin clicks da 1 SIEMPRE — y ese 1 contradice a
+    // las dos celdas que la respuesta imprime al lado: medido, con la `Z` sola
+    // `cellDistance(exit, entry)` es 3 y con la `F` es 2. Que el ciclo igual dure lo
+    // dice `cycle`, que son los 5 intervalos del arpegio y no un salto.
+    const hops = n === 1 ? [] : seq.steps.map((step, t) => {
       const ultima = step.offset + CELLS_PER_PIECE - 1;
       const siguiente = t + 1 < n ? seq.steps[t + 1].offset : seq.length;
       const to = seq.steps[(t + 1) % n].pieceId;
