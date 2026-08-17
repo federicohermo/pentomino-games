@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { midiToHz, scheduleVoice } from '../voice.ts';
+import { midiToHz, scheduleVoice, scheduleClick } from '../voice.ts';
 import { intervalDuration } from '../scheduler.ts';
-import { DEFAULT_VOICE, NOTE_INTERVALS } from '../constants/voice.constants.ts';
+import {
+  DEFAULT_VOICE, NOTE_INTERVALS, DEFAULT_VELOCITY, CLICK_VELOCITY, CLICK_SECONDS,
+} from '../constants/voice.constants.ts';
 import { offline, peakNear, zeroCrossHz, firstAudible } from './test-context.ts';
 
 const A4 = 69;
@@ -14,6 +16,17 @@ async function renderVoice(at: number, dur: number, freq = midiToHz(A4)) {
   g.gain.value = 1;
   g.connect(ctx.destination);
   scheduleVoice(ctx, g, freq, at, dur, VEL);
+  const buf = await ctx.startRendering();
+  return buf.getChannelData(0);
+}
+
+/** Idem para un click. Mismo molde a proposito: lo unico que cambia es que se agenda. */
+async function renderClick(at: number, vel?: number) {
+  const ctx = offline(at + 1);
+  const g = ctx.createGain();
+  g.gain.value = 1;
+  g.connect(ctx.destination);
+  scheduleClick(ctx, g, at, vel);
   const buf = await ctx.startRendering();
   return buf.getChannelData(0);
 }
@@ -109,5 +122,51 @@ describe('AC5 — dur en intervalos, spec 008 (la envolvente no se movio)', () =
     const tSondeo = at + durRapido + release + 0.02;
     expect(peakNear(rapido, tSondeo)).toBe(0);
     expect(peakNear(lento, tSondeo)).toBeGreaterThan(VEL * sustain * 0.9);
+  });
+});
+
+describe('scheduleClick — el cruce por una celda vacia (spec 009, D4)', () => {
+  it('empieza donde se lo agendo (+-1 ms), igual que una nota', async () => {
+    const at = 0.37;
+    const d = await renderClick(at);
+    expect(Math.abs(firstAudible(d) - at)).toBeLessThan(0.001);
+  });
+
+  it('dura CLICK_SECONDS y nada mas: no invade el intervalo siguiente', async () => {
+    const at = 0.1;
+    const d = await renderClick(at);
+    expect(peakNear(d, at - 0.03)).toBe(0);
+    // 30 ms despues de terminar ya es silencio absoluto. Una nota, a 110 bpm,
+    // seguiria sonando: 0,136 s de nota mas 0,12 s de release.
+    expect(peakNear(d, at + CLICK_SECONDS + 0.03)).toBe(0);
+    expect(peakNear(d, at + 0.002)).toBeGreaterThan(CLICK_VELOCITY * 0.75);
+  });
+
+  it('NO tiene altura: cruza el cero a una tasa de ruido, no de nota', async () => {
+    const at = 0.1;
+    const d = await renderClick(at);
+    // El ruido blanco cambia de signo cerca de la mitad de las muestras: medido,
+    // 10.815 Hz a 44,1 kHz de muestreo. Cualquier oscilador a una altura del
+    // instrumento —el tablero no pasa de unos 1500 Hz— daria un orden de magnitud
+    // menos. Es la diferencia entre un click y una nota corta, y es lo unico que se
+    // puede medir sin escuchar.
+    expect(zeroCrossHz(d, at + 0.002, at + 0.015)).toBeGreaterThan(4000);
+  });
+
+  it('suena mas bajo que una nota: acompana el recorrido, no compite', async () => {
+    const at = 0.1;
+    const click = peakNear(await renderClick(at), at + 0.002);
+    const nota = peakNear(await renderVoice(at, 0.15), at + DEFAULT_VOICE.attack);
+
+    expect(click).toBeLessThanOrEqual(CLICK_VELOCITY + 1e-6);
+    expect(nota).toBeGreaterThan(DEFAULT_VELOCITY * 0.95);
+    expect(click).toBeLessThan(nota / 2);
+  });
+
+  it('el volumen se puede pisar por parametro, como en scheduleVoice', async () => {
+    const at = 0.1;
+    const bajo = peakNear(await renderClick(at, CLICK_VELOCITY / 4), at + 0.002);
+    expect(bajo).toBeLessThanOrEqual(CLICK_VELOCITY / 4 + 1e-6);
+    expect(bajo).toBeGreaterThan(0);
   });
 });

@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { midiToHz, scheduleVoice } from '../voice.ts';
-import { collectHits } from '../scheduler.ts';
+import { midiToHz, scheduleVoice, scheduleClick } from '../voice.ts';
+import { collectHits, intervalDuration } from '../scheduler.ts';
 import { FFT_SIZE, SMOOTHING } from '../constants/engine.constants.ts';
+import { HIT } from '../constants/scheduler.constants.ts';
+import { CLICK_SECONDS } from '../constants/voice.constants.ts';
 import type { ClockState } from '../types/scheduler.types.ts';
 import { offline, peakNear, detectOnsets, SR } from './test-context.ts';
 
@@ -11,21 +13,56 @@ const VEL = 0.8;
 describe('scheduler + sintesis integrados', () => {
   it('AC5 — los disparos se oyen donde el scheduler dijo (+-6 ms)', async () => {
     const state: ClockState = { origin: 0.5, scheduledUntil: 0 };
-    // Una sola nota: hit y onset coinciden por construccion, sin necesitar
-    // `spread: 0` (ese campo ya no existe en Job desde el spec 008).
-    const hits = collectHits(0, 5, 120, [{ id: 'j', notes: [A4], phase: 0 }], state);
+    // Una sola nota: hit y onset coinciden por construccion. Y un ciclo de 16
+    // intervalos es un compas exacto, o sea el periodo de antes del spec 009: a
+    // 120 bpm da los mismos 2 s que este test medía con `phase`.
+    const hits = collectHits(0, 5, 120, { steps: [{ offset: 0, notes: [A4] }], clicks: [], length: 16 }, state);
     expect(hits).toHaveLength(3);
 
     const ctx = offline(5);
     const g = ctx.createGain();
     g.gain.value = 1;
     g.connect(ctx.destination);
-    hits.forEach(h => scheduleVoice(ctx, g, h.hz, h.at, 0.2, VEL));
+    for (const h of hits) if (h.kind === HIT.note) scheduleVoice(ctx, g, h.hz, h.at, 0.2, VEL);
     const d = (await ctx.startRendering()).getChannelData(0);
 
     const onsets = detectOnsets(d);
     expect(onsets).toHaveLength(hits.length);
     onsets.forEach((t, i) => expect(Math.abs(t - hits[i].at)).toBeLessThan(0.006));
+  });
+
+  it('D4 — la nota y el click del recorrido suenan donde el scheduler dijo, y el click no ocupa lugar', async () => {
+    const bpm = 110;
+    const interval = intervalDuration(bpm);
+    const state: ClockState = { origin: 0.2, scheduledUntil: 0 };
+    // Un paso y un cruce por celda vacia tres intervalos despues: el caso que el
+    // spec 009 hace posible, con las dos clases de hit en la misma grilla.
+    const hits = collectHits(0, 6 * interval, bpm, {
+      steps: [{ offset: 0, notes: [A4] }],
+      clicks: [{ offset: 3 }],
+      length: 6,
+    }, state);
+    expect(hits).toHaveLength(2);
+
+    const ctx = offline(2);
+    const g = ctx.createGain();
+    g.gain.value = 1;
+    g.connect(ctx.destination);
+    for (const h of hits) {
+      if (h.kind === HIT.note) scheduleVoice(ctx, g, h.hz, h.at, interval, VEL);
+      else scheduleClick(ctx, g, h.at);
+    }
+    const d = (await ctx.startRendering()).getChannelData(0);
+
+    const onsets = detectOnsets(d);
+    expect(onsets).toHaveLength(2);
+    onsets.forEach((t, i) => expect(Math.abs(t - hits[i].at)).toBeLessThan(0.006));
+
+    // El click no invade el intervalo que sigue: 50 ms despues ya es silencio, donde
+    // una nota del mismo instante todavia estaria sonando (0,136 s mas el release).
+    const click = hits[1].at;
+    expect(peakNear(d, click + 0.002)).toBeGreaterThan(0.1);
+    expect(peakNear(d, click + CLICK_SECONDS + 0.03)).toBe(0);
   });
 
   it('dos notas superpuestas suman amplitud', async () => {
