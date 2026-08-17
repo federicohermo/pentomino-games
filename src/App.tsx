@@ -1,12 +1,13 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import {
-  playNow, addJob, clearJobs, setBpm,
+  playNow, setSequence, setBpm, setClicksAudible,
   startClock, stopClock, clockRunning,
 } from "./audio/engine.ts";
 import { DEFAULT_BPM } from "./audio/constants/engine.constants.ts";
 import { rotateN, reflect } from "./domain/transform.ts";
 import { notesForRotation } from "./domain/music.ts";
-import { cellsAt, isValid, phaseFor } from "./domain/board.ts";
+import { cellsAt, isValid } from "./domain/board.ts";
+import { buildSequence } from "./domain/sequence.ts";
 import { SHAPES, ANCHOR_INDEX } from "./domain/constants/pieces.constants.ts";
 import { BASE_MAP, DEFAULT_OCTAVE } from "./domain/constants/music.constants.ts";
 import type { Cell } from "./domain/types/transform.types.ts";
@@ -22,8 +23,10 @@ import Spectrum from "./components/Spectrum.tsx";
  *
  * El usuario coloca pentominos en un tablero de 10x6 y cada pieza dispara un
  * arpegio de cinco notas. Que pieza determina la tonica, la rotacion la formula de
- * escala, la reflexion el orden de las notas, y la columna de la celda de agarre la
- * posicion dentro del compas.
+ * escala, la reflexion el orden de las notas, y la posicion en el tablero el orden
+ * de reproduccion: un circuito cerrado visita las piezas colocadas por el camino
+ * mas corto entre ellas (spec 009, `domain/sequence.ts`), no por el orden en que se
+ * fueron colocando.
  *
  * Este archivo es el shell: estado, derivados, handlers y efectos. La geometria, la
  * musica y las reglas del tablero viven en `src/domain/`; el sonido en
@@ -39,6 +42,9 @@ export default function App(){
   // Arranca del mismo numero que el motor: DEFAULT_BPM es una sola declaracion.
   const [tempo, setTempo] = useState<number>(DEFAULT_BPM);
   const [playing, setPlaying] = useState<boolean>(false);
+  // Los clicks del recorrido arrancan encendidos: son D4, sin ellos un salto largo
+  // es un silencio mudo y el recorrido se vuelve inaudible.
+  const [clicks, setClicks] = useState<boolean>(true);
 
   // placed pieces
   const [placed, setPlaced] = useState<PlacedPiece[]>([]);
@@ -49,6 +55,7 @@ export default function App(){
   const idRef = useRef(0);
 
   useEffect(()=>{ setBpm(tempo); }, [tempo]);
+  useEffect(()=>{ setClicksAudible(clicks); }, [clicks]);
 
   const transformedShape = useMemo(()=>{
     let c = SHAPES[selected];
@@ -72,49 +79,66 @@ export default function App(){
       piece: selected, rotation, mirror, cells, notes: noteSet,
     };
     setPlaced(prev => [...prev, newPiece]);
-    // Con el transporte corriendo, el arpegio de colocación se superpondría al
-    // job que el efecto va a agendar para esta misma pieza: dos veces las mismas
-    // cinco notas, fuera de fase entre sí. Con el transporte en pausa el click
-    // sigue siendo la única forma de escuchar lo que se coloca, así que ahí se
-    // dispara. Sin Web Audio `playing` nunca llega a true, de modo que el caso
-    // degradado cae solo del lado que suena.
+    // Con el transporte corriendo, disparar acá duplicaría el arpegio: con D5
+    // (spec 009) la pieza nueva ni siquiera entra al recorrido que está sonando
+    // —`setSequence` no interrumpe el ciclo en curso, así que hasta que cierre la
+    // pieza es muda dentro del loop— y el click sigue siendo la única forma
+    // inmediata de escucharla. Con el transporte en pausa pasa lo mismo por otra
+    // razón: no hay reloj corriendo que la vaya a tocar. Sin Web Audio `playing`
+    // nunca llega a true, de modo que el caso degradado cae solo del lado que suena.
     if (!playing) playNow(noteSet);
   }
 
   function resetBoard(){
-    setPlaced([]); // el efecto de sincronización se encarga de cancelar los loops
+    setPlaced([]); // el efecto de reconciliación se encarga de vaciar la secuencia
   }
 
-  // Reconcilia los loops contra el tablero. Al ser declarativo cubre por igual
-  // colocar, quitar, resetear y darle play o pausa al transporte — antes cada
-  // uno de esos caminos tenía que acordarse de limpiar por su cuenta, y no lo
-  // hacían.
+  // Reconcilia la secuencia del motor contra el tablero. `playing` salió de las
+  // dependencias a propósito: la secuencia es función del tablero, no del
+  // transporte, y quien corta o arranca el sonido es `togglePlay` llamando a
+  // `stopClock`/`startClock`. El `clearJobs()` + `if (!playing) return` de antes
+  // era la forma vieja de lograr lo mismo desde acá; con una sola llamada a
+  // `setSequence` deja de hacer falta — colocar o quitar con el transporte
+  // parado igual deja la secuencia lista para cuando arranque.
   //
-  // Limpia y re-agrega todo en vez de diffear, y sigue siendo seguro con la fase
-  // por pieza porque `phase` se deriva del tablero, no del reloj: re-agregar un
-  // job reconstruye exactamente la misma fase. Los jobs son datos puros que el
-  // scheduler lee, no eventos con identidad.
+  // `setSequence` no interrumpe el ciclo en curso (D5, spec 009): la secuencia
+  // nueva entra recién al cerrar el circuito activo, así que reordenar el
+  // tablero puede tardar hasta un ciclo completo en escucharse — 7,5 s con 8
+  // piezas a 110 bpm. Es el precio de que el circuito se pueda reordenar entero
+  // sin que el patrón salte a mitad de frase.
   //
-  // Tampoco hace falta el flag de cancelación que pedía Tone: addJob y clearJobs
-  // son sincrónicos, así que no hay promesa que pueda resolver después de que el
-  // efecto se limpió.
+  // La `Sequence` de `buildSequence` no es la que espera el motor: acá se
+  // proyecta, no se traduce (D7, D8, AC12). `offset` y `notes` viajan tal cual;
+  // lo que se cae es `pieceId` —el motor no tiene a quien devolvérselo— y `cell`
+  // en los clicks: el motor no puede ver `Cell`, que vive en `domain/` y el
+  // override de eslint sobre `audio/**` lo prohíbe importar incluso como `import
+  // type`. Un click tampoco tiene altura (D4): para sonar alcanza con contarlo.
+  // Las celdas no se pierden, siguen en `placed` — el spec 010 las va a leer de
+  // ahí para dibujar el recorrido.
   useEffect(()=>{
-    clearJobs();
-    if (!playing) return;
-    for (const p of placed){
-      // La columna de la celda de agarre es la posición dentro del compás: el eje
-      // X del tablero es tiempo. El ancho del tablero ES el compás (10 pasos, no
-      // 16): con una grilla de semicorcheas, 6 subdivisiones no serían alcanzables
-      // desde ninguna columna. La regla vive en `domain/board.ts` para que la
-      // pueda ejecutar cualquiera —los tests y el MCP server— y no solo el shell.
-      addJob({ id: p.id, notes: p.notes, phase: phaseFor(p.cells, ANCHOR_INDEX[p.piece]) });
-    }
-  }, [placed, playing]);
+    const s = buildSequence(placed);
+    setSequence({
+      steps: s.steps.map(({ offset, notes }) => ({ offset, notes })),
+      clicks: s.clicks.map(({ offset }) => ({ offset })),
+      length: s.length,
+    });
+  }, [placed]);
 
-  // Al desmontar, frenar el reloj y soltar los jobs. La limpieza es sincrónica:
-  // si fuera asincrónica, en StrictMode podría ejecutarse después de que el
-  // efecto de arriba ya volvió a agendar, y cancelaría los jobs nuevos.
-  useEffect(()=> ()=>{ stopClock(); clearJobs(); }, []);
+  // Al desmontar, frenar el reloj y vaciar la secuencia del motor. La limpieza
+  // sigue siendo sincrónica: si fuera asincrónica, en StrictMode podría
+  // ejecutarse después de que el efecto de arriba ya volvió a agendar, y
+  // pisaría la secuencia nueva con una vacía. Se proyecta `buildSequence([])`
+  // en vez de escribir el literal vacío a mano, para no meter la forma de un
+  // dato de dominio en el shell.
+  useEffect(()=> ()=>{
+    stopClock();
+    const s = buildSequence([]);
+    setSequence({
+      steps: s.steps.map(({ offset, notes }) => ({ offset, notes })),
+      clicks: s.clicks.map(({ offset }) => ({ offset })),
+      length: s.length,
+    });
+  }, []);
 
   function togglePlay(){
     if (playing) stopClock(); else startClock();
@@ -141,12 +165,14 @@ export default function App(){
           mirror={mirror}
           tempo={tempo}
           playing={playing}
+          clicks={clicks}
           noteSet={noteSet}
           onSelect={setSelected}
           onRotate={setRotation}
           onMirror={()=> setMirror(m=>!m)}
           onTempo={setTempo}
           onTogglePlay={togglePlay}
+          onToggleClicks={()=> setClicks(c=>!c)}
           onReset={resetBoard}
         />
 

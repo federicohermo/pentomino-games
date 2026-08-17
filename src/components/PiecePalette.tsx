@@ -17,18 +17,20 @@ interface Props {
   mirror: boolean;
   tempo: number;
   playing: boolean;
+  clicks: boolean;
   noteSet: readonly number[];
   onSelect: (piece: PieceKey) => void;
   onRotate: (rotation: number) => void;
   onMirror: () => void;
   onTempo: (bpm: number) => void;
   onTogglePlay: () => void;
+  onToggleClicks: () => void;
   onReset: () => void;
 }
 
 export default function PiecePalette({
-  selected, rotation, mirror, tempo, playing, noteSet,
-  onSelect, onRotate, onMirror, onTempo, onTogglePlay, onReset,
+  selected, rotation, mirror, tempo, playing, clicks, noteSet,
+  onSelect, onRotate, onMirror, onTempo, onTogglePlay, onToggleClicks, onReset,
 }: Props) {
   return (
     <div className="col-span-12 md:col-span-3 bg-white rounded-2xl shadow p-3">
@@ -79,6 +81,16 @@ export default function PiecePalette({
         <div className="flex items-center justify-between">
           <span className="font-medium">Reflexión</span>
           <button onClick={onMirror} className={`px-3 py-1 rounded ${mirror?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{mirror? 'ON':'OFF'}</button>
+        </div>
+        {/* El click del recorrido, con el mismo idioma que Reflexion: activo en
+            oscuro. Es un interruptor de MEZCLA y no del modelo — el recorrido
+            sigue siendo el mismo con los clicks apagados, solo que no se oye. El
+            spec 009 lo previo asi en su tabla de riesgos ("es un parametro suelto:
+            si molesta, se baja o se apaga sin tocar el modelo") y hace falta
+            mientras el camino cruce celdas ocupadas, que es deuda anotada. */}
+        <div className="flex items-center justify-between">
+          <span className="font-medium">Clicks</span>
+          <button onClick={onToggleClicks} className={`px-3 py-1 rounded ${clicks?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{clicks? 'ON':'OFF'}</button>
         </div>
         <div className="pt-2 text-sm text-slate-600">
           <p><b>{selected}</b> → tónica {CHROMATIC[BASE_MAP[selected]]}</p>
