@@ -1,11 +1,14 @@
 import type { Cell } from './types/transform.types.ts';
 import type { PlacedPiece } from './types/board.types.ts';
-import { GRID_W, GRID_H } from './constants/board.constants.ts';
+import type { RouteKind } from './types/sequence.types.ts';
+import { GRID_W, GRID_H, SEAM } from './constants/board.constants.ts';
+import { ROUTE } from './constants/route.constants.ts';
 
 /**
- * Las reglas del tablero: donde cae una pieza y si la jugada es legal.
+ * Las reglas del tablero: donde cae una pieza, si la jugada es legal, y cuanto
+ * hay —y por donde— entre dos celdas.
  *
- * Las tres reciben todo por parametro en vez de cerrar sobre estado: es lo que las
+ * Todas reciben todo por parametro en vez de cerrar sobre estado: es lo que las
  * hace testeables y lo que evita que el spec 006 tenga que reimplementar la regla
  * de colocacion en su propio modulo.
  */
@@ -38,24 +41,6 @@ export function isValid(cells: Cell[], placed: readonly PlacedPiece[]): boolean 
   return true;
 }
 
-/**
- * Posicion de una pieza dentro del compas: la columna de su celda de agarre,
- * como fraccion del ancho del tablero.
- *
- * **El eje X del tablero es tiempo**, y esta es la funcion que lo dice. Fraccion
- * y no segundos: asi mover el tempo estira el patron en vez de reordenarlo, y el
- * mismo tablero suena siempre igual porque la fase se deriva de la geometria y no
- * del reloj de pared.
- *
- * La columna sale por INDICE y no por busqueda gracias al invariante del orden
- * del array: `cells` se construye con `cellsAt`, que es un `map`, asi que
- * `ANCHOR_INDEX` sigue apuntando a la celda de agarre ya en coordenadas de
- * tablero.
- */
-export function phaseFor(cells: readonly Cell[], anchorIndex: number): number {
-  return cells[anchorIndex][0] / GRID_W;
-}
-
 /** La pieza que ocupa `(x, y)`, o null. */
 export function occupantAt(placed: readonly PlacedPiece[], x: number, y: number): PlacedPiece | null {
   for (const p of placed) {
@@ -83,4 +68,131 @@ export function occupantAt(placed: readonly PlacedPiece[], x: number, y: number)
  */
 export function occupantCellIndex(p: PlacedPiece, x: number, y: number): number {
   return p.cells.findIndex(([cx, cy]) => cx === x && cy === y);
+}
+
+/** Distancia Manhattan cruda, sin costura: el largo del tramo `direct`. */
+function manhattan(a: Cell, b: Cell): number {
+  return Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
+}
+
+/**
+ * Cual de las tres rutas conviene entre `a` y `b`, y cuanto mide.
+ *
+ * **Esta es la UNICA decision de ruta del modulo** (spec 009, D8): `cellDistance`
+ * devuelve su `length` y `pathBetween` materializa sus celdas. No son dos
+ * implementaciones que haya que atar con un test de consistencia — son dos
+ * lecturas de la misma respuesta, y por eso no pueden discrepar.
+ *
+ * El tablero se repliega sobre si mismo: `(0,0)` y `(9,5)` son adyacentes, y eso
+ * es UNA arista extra, no un toroide. Con una sola arista de mas la distancia
+ * sigue teniendo forma cerrada y no hace falta BFS: o el camino no usa la costura
+ * —y entonces es Manhattan— o la usa exactamente una vez, entrando por una de sus
+ * dos puntas. Usarla dos veces vuelve al mismo lado pagando 2 de mas, asi que
+ * nunca gana.
+ *
+ * Los empates se resuelven en el orden `direct`, `viaEnd`, `viaStart`, y no es
+ * arbitrario de cara a `pathBetween`: quedarse con `direct` cuando empata garantiza
+ * que una ruta por la costura solo se elige si es ESTRICTAMENTE mas corta, y de eso
+ * depende que sus dos tramos no compartan celdas. Si compartieran una celda `c`, el
+ * camino por `c` derecho ya seria mas corto que la ruta por la costura, que
+ * entonces no habria ganado.
+ *
+ * Medido: en 10x6 ese desempate no se ejerce NUNCA — sobre los 3.600 pares no hay
+ * ni uno donde `direct` empate con una ruta por la costura. Queda escrito igual
+ * porque es la garantia, no la casualidad: en otra grilla los empates aparecen y la
+ * propiedad de la que depende `pathBetween` tiene que seguir valiendo.
+ */
+function bestRoute(a: Cell, b: Cell): { length: number; via: RouteKind } {
+  const [start, end] = SEAM;
+  const direct = manhattan(a, b);
+  const viaEnd = manhattan(a, end) + 1 + manhattan(start, b);
+  const viaStart = manhattan(a, start) + 1 + manhattan(end, b);
+
+  const length = Math.min(direct, viaEnd, viaStart);
+  const via = length === direct ? ROUTE.direct
+    : length === viaEnd ? ROUTE.viaEnd
+    : ROUTE.viaStart;
+  return { length, via };
+}
+
+/**
+ * Cuantos pasos hay entre dos celdas, contando la costura.
+ *
+ * Con la costura la distancia maxima del tablero es 12 y no 14, y 496 de los 3.600
+ * pares se acortan (13,8 %): la esquina de abajo a la derecha dejo de ser el punto
+ * mas lejano de la de arriba a la izquierda y paso a ser su vecina.
+ */
+export function cellDistance(a: Cell, b: Cell): number {
+  return bestRoute(a, b).length;
+}
+
+/**
+ * El tramo recto de `from` a `to` **con las dos puntas adentro**: primero X,
+ * despues Y.
+ *
+ * Inclusivo a proposito, y con `from === to` devuelve `[to]` y no el array vacio.
+ * Ahi esta el bug que el spec midio en su implementacion de prueba: excluyendo los
+ * extremos tramo por tramo, el invariante del largo se cae en 114 de los 3.600
+ * pares, todos en los bordes de la costura. Devolviendo `[]` en el caso degenerado
+ * la esquina —que en el camino completo es una celda intermedia legitima—
+ * desaparece, y `pathBetween` queda una celda corto.
+ */
+function traceInclusive(from: Cell, to: Cell): Cell[] {
+  const [fx, fy] = from;
+  const [tx, ty] = to;
+  const cells: Cell[] = [];
+  const dx = Math.sign(tx - fx);
+  for (let x = fx; x !== tx; x += dx) cells.push([x, fy]);
+  const dy = Math.sign(ty - fy);
+  for (let y = fy; y !== ty; y += dy) cells.push([tx, y]);
+  cells.push([tx, ty]);
+  return cells;
+}
+
+/**
+ * Las celdas INTERMEDIAS del camino minimo entre `a` y `b`: no incluye ni `a` ni
+ * `b`. De ahi que su largo sea siempre `cellDistance(a, b) - 1`.
+ *
+ * El trazo es **primero en X, despues en Y**, y cuando gana una ruta por la
+ * costura: de `a` hasta la esquina que le toca, cruzar, y de la otra esquina hasta
+ * `b`. La eleccion no pretende ser la correcta —entre el par mas lejano del tablero
+ * hay 792 caminos minimos, y en un salto tipico de 7 celdas hay 35, todos igual de
+ * validos—, sino la que se explica en una linea.
+ *
+ * Se arma con tramos INCLUSIVOS y se recorta por las dos puntas al final, en vez de
+ * excluir extremos tramo por tramo. No es un rodeo: es lo unico que sostiene los
+ * bordes de la costura, donde un tramo puede quedarse sin celdas propias porque el
+ * origen YA es la esquina, o el destino ya lo es. Verificado a mano: forzar el caso
+ * degenerado de `traceInclusive` a `[]` pone en rojo los cuatro tests de AC7b.
+ *
+ * `a === b` queda excluido: con distancia 0 no existe un camino de largo -1. No
+ * ocurre en el circuito porque la salida de una pieza y la entrada de la siguiente
+ * no pueden ser la misma celda si las piezas no se solapan, y la entrada y la
+ * salida de una misma pieza son sus grados 0 y 4, que son celdas distintas.
+ */
+export function pathBetween(a: Cell, b: Cell): Cell[] {
+  const [start, end] = SEAM;
+  const { via } = bestRoute(a, b);
+  const full = via === ROUTE.direct ? traceInclusive(a, b)
+    : via === ROUTE.viaEnd ? [...traceInclusive(a, end), ...traceInclusive(start, b)]
+    : [...traceInclusive(a, start), ...traceInclusive(end, b)];
+  return full.slice(1, -1);
+}
+
+/**
+ * Posicion de una pieza dentro del compas: la columna de su celda de agarre,
+ * como fraccion del ancho del tablero.
+ *
+ * **El eje X del tablero es tiempo**, y esta es la funcion que lo dice. Fraccion
+ * y no segundos: asi mover el tempo estira el patron en vez de reordenarlo, y el
+ * mismo tablero suena siempre igual porque la fase se deriva de la geometria y no
+ * del reloj de pared.
+ *
+ * La columna sale por INDICE y no por busqueda gracias al invariante del orden
+ * del array: `cells` se construye con `cellsAt`, que es un `map`, asi que
+ * `ANCHOR_INDEX` sigue apuntando a la celda de agarre ya en coordenadas de
+ * tablero.
+ */
+export function phaseFor(cells: readonly Cell[], anchorIndex: number): number {
+  return cells[anchorIndex][0] / GRID_W;
 }
