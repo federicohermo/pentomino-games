@@ -60,6 +60,10 @@ coincidir y nada sincronizaba — el `0.35` de `NOTE_DUR` estaba también como d
 el `110` del tempo estaba en la UI y en el motor, y el tamaño de celda convivía con un `w-7 h-7` que
 tenía que valer lo mismo.
 
+De ese ejemplo ya no queda ninguno de los dos símbolos: el spec 008 reemplazó `NOTE_DUR` por
+`NOTE_INTERVALS` —que se mide en intervalos y no en segundos— y le sacó el default a `scheduleVoice`,
+porque una duración que depende del tempo no puede tener un valor por defecto que no lo mire.
+
 Las `Props` de cada componente son la excepción: se quedan **inline y sin exportar**, porque
 `react-refresh/only-export-components` obliga a que el componente sea el único export del `.tsx`.
 
@@ -173,7 +177,7 @@ mal, pero es la clase de cosa que alguien "arregla" por error.
 
 ## Efectos
 
-Los efectos **reconcilian**, no ejecutan comandos. El efecto de audio observa `[placed, loopPlaced]` y
+Los efectos **reconcilian**, no ejecutan comandos. El efecto de audio observa `[placed, playing]` y
 lleva los jobs del motor a donde deben estar: limpia todo y re-agrega. Los handlers solo cambian estado.
 
 Que limpiar y re-agregar sea aceptable no es casualidad, es una propiedad del diseño: los jobs son

@@ -1,5 +1,5 @@
 import type { VoiceOpts } from './types/voice.types.ts';
-import { DEFAULT_VOICE, NOTE_DUR, DEFAULT_VELOCITY, RELEASE_TAIL } from './constants/voice.constants.ts';
+import { DEFAULT_VOICE, DEFAULT_VELOCITY, RELEASE_TAIL } from './constants/voice.constants.ts';
 
 /**
  * Sintesis: una voz por nota, oscilador mas envolvente ADSR.
@@ -22,13 +22,20 @@ export const midiToHz = (m: number): number => 440 * Math.pow(2, (m - 69) / 12);
  *
  * Las rampas son lineales y no exponenciales porque exponentialRampToValueAtTime
  * no admite llegar a 0 — habria que rampar a un epsilon y cortar.
+ *
+ * `dur` es obligatorio y sin default a proposito, igual que `phase` en `Job`:
+ * desde que la duracion de la nota se cuenta en intervalos, depende del tempo y
+ * ya no puede ser una constante. Un default seria un numero fijo en segundos que
+ * miente sobre el bpm vigente, y el llamador que se olvidara el parametro no se
+ * enteraria. El calculo —`NOTE_INTERVALS * intervalDuration(bpm)`— vive donde
+ * esta el bpm, que es `engine.ts`, y este modulo sigue sin saber de tempo.
  */
 export function scheduleVoice(
   ctx: BaseAudioContext,
   dest: AudioNode,
   freq: number,
   at: number,
-  dur = NOTE_DUR,
+  dur: number,
   vel = DEFAULT_VELOCITY,
   opts: VoiceOpts = {},
 ): void {

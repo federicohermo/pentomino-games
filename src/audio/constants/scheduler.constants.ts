@@ -11,3 +11,13 @@ export const TICK_MS = 25;
  * puede caer dentro del compas (10), no en cuantos pulsos se divide (4).
  */
 export const BEATS_PER_BAR = 4;
+
+/**
+ * En cuantas partes se divide el pulso. Con 4, la unidad es la semicorchea.
+ *
+ * Es la grilla mas fina del instrumento: todo lo que se mide en tiempo —el paso
+ * del arpegio y la duracion de una nota— se cuenta en intervalos, no en segundos.
+ * Que sea una constante y no un numero suelto es lo que permite cambiar la
+ * subdivision en un solo lugar sin que el arpegio y la nota se desincronicen.
+ */
+export const SUBDIVISIONS_PER_BEAT = 4;

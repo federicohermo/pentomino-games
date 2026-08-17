@@ -1,9 +1,6 @@
 /** Ganancia del master. */
 export const MASTER_GAIN = 0.3;
 
-/** Espaciado del arpegio, en segundos. Igual para el disparo directo y el loop. */
-export const ARPEGGIO_SPREAD = 0.15;
-
 /** Tempo inicial. Lo comparten el motor y el estado de la UI: es un solo numero. */
 export const DEFAULT_BPM = 110;
 

@@ -11,7 +11,9 @@ const VEL = 0.8;
 describe('scheduler + sintesis integrados', () => {
   it('AC5 — los disparos se oyen donde el scheduler dijo (+-6 ms)', async () => {
     const state: ClockState = { origin: 0.5, scheduledUntil: 0 };
-    const hits = collectHits(0, 5, 120, [{ id: 'j', notes: [A4], spread: 0, phase: 0 }], state);
+    // Una sola nota: hit y onset coinciden por construccion, sin necesitar
+    // `spread: 0` (ese campo ya no existe en Job desde el spec 008).
+    const hits = collectHits(0, 5, 120, [{ id: 'j', notes: [A4], phase: 0 }], state);
     expect(hits).toHaveLength(3);
 
     const ctx = offline(5);
@@ -64,6 +66,10 @@ describe('analizador', () => {
       } else {
         g.connect(ctx.destination);
       }
+      // 0.35 s es una duracion de render arbitraria: este test es sobre la
+      // transparencia del analizador, no sobre cuanto dura la nota (esa cuenta
+      // es NOTE_INTERVALS * intervalDuration(bpm) desde el spec 008, y no hay
+      // bpm en juego aca).
       scheduleVoice(ctx, g, midiToHz(60), 0.1, 0.35, VEL);
       return (await ctx.startRendering()).getChannelData(0);
     };

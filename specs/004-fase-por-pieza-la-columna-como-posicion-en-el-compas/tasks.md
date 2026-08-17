@@ -132,9 +132,11 @@ justifica.
 - [ ] **Cabeza lectora en el tablero.** Es lo que vuelve legible a esta feature; encaja con el
       [spec 003](../003-visualizacion-de-la-senal-con-analysernode/spec.md), que ya trae el canvas
 - [ ] Que la fila (`y`) determine algo: octava, duración o velocity. Un eje por vez
-- [ ] **`ARPEGGIO_SPREAD` en unidades musicales en vez de 0.15 s absolutos — ahora con medición que lo
+- [x] **`ARPEGGIO_SPREAD` en unidades musicales en vez de 0.15 s absolutos — ahora con medición que lo
       justifica**: con cuatro piezas desfasadas los onsets se fusionan porque el arpegio (1.07 s) es el
-      doble de un cuarto de compás (0.545 s) a 110 bpm
+      doble de un cuarto de compás (0.545 s) a 110 bpm. La salda el
+      [spec 008](../008-el-intervalo-como-unidad-musical/spec.md): `intervalDuration(bpm)` reemplaza a
+      `ARPEGGIO_SPREAD`.
 - [ ] **AC8 como test**, apenas el [spec 005](../005-modularizacion-de-src-en-capas/spec.md) saque las
       puras del tablero de `App.tsx`
 - [ ] Cuantización configurable (10 pasos / semicorcheas / tresillos)

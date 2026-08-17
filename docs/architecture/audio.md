@@ -42,8 +42,10 @@ Efecto lateral: se puede importar `scheduler.ts` **sin** arrastrar el módulo de
 proceso de node.
 
 Los valores fijos de cada capa viven en `audio/constants/` y los tipos en `audio/types/`, con el nombre
-de su módulo. Ahí está, por ejemplo, la unificación de `NOTE_DUR`: antes el `0.35` estaba escrito dos
-veces —como constante y como default de `scheduleVoice`— sin nada que los mantuviera iguales.
+de su módulo. Ahí está, por ejemplo, la duración de la nota: `NOTE_INTERVALS` la fija en intervalos, no
+en segundos, y `scheduleVoice` no tiene default para `dur` —un default fijo sería una constante que ya
+no puede ser constante, porque la duración depende del tempo—, así que los dos llamadores (`tick` y
+`playNotes`) calculan `NOTE_INTERVALS * intervalDuration(bpm)` en cada llamada.
 
 ## Síntesis
 
@@ -111,8 +113,13 @@ Tres propiedades que salen de esa forma, y que hay que preservar:
   audio siguió corriendo y `scheduledUntil` quedó atrás; `Math.max(…, fromTime)` descarta el hueco. No
   hay bucle de recuperación que acotar, porque saltear 10 compases cuesta lo mismo que saltear 1. Esto
   **reemplaza** a la guarda `if (state.nextBar < fromTime)` del spec 002.
-- **Nunca hay más de `horizon` de audio comprometido**, con cualquier `phase`. Es lo que hace que quitar
-  una pieza la calle en 100 ms; emitir un compás entero de una la dejaría sonando 2.18 s a 110 bpm.
+- **Nunca hay más de `horizon` de *onsets* comprometidos**, con cualquier `phase`. Es lo que hace que
+  quitar una pieza la calle rápido; emitir un compás entero de una la dejaría sonando 2.18 s a 110 bpm.
+  El límite es sobre el **onset**, no sobre la última nota: el arpegio se expande después del onset y
+  esa cola siempre estuvo fuera del horizonte. Lo que cambió con el spec 008 es que la cola dejó de ser
+  fija: mide `compás / 4` más la nota y su release, o sea 1.37 s a 60 bpm y 0.59 s a 160, donde antes
+  eran 1.07 s a cualquier tempo. Quitar una pieza la calla en 100 ms **más lo que le quede de arpegio
+  ya agendado**.
 
 `firstOnsetAfter` usa `floor(x) + 1` y **no** `ceil(x)`: se quiere el primer onset *estrictamente*
 posterior a lo ya emitido. Con `ceil`, un onset que cae exacto en el borde de una ventana saldría dos
@@ -134,35 +141,48 @@ agregar un job y olvidarse la fase, que es exactamente el bug que el campo corri
 todas las piezas arrancaban en el mismo sample y agregar la segunda no agregaba una voz, agregaba
 volumen.
 
-Medido con `OfflineAudioContext` a 110 bpm, a ganancia unitaria (el master divide por 0.3):
+Medido con `OfflineAudioContext` a 110 bpm, a ganancia unitaria (el master divide por 0.3). La columna
+**antes del 008** es el estado con `ARPEGGIO_SPREAD = 0.15` y `NOTE_DUR = 0.35`, y se conserva porque es
+la medición que motivó el cambio:
 
-| | pico | onsets detectados |
-|---|---|---|
-| una pieza | 1.396 | 1 |
-| dos piezas a fase 0 y 0 | 2.298 | 1 |
-| dos piezas a fase 0 y 0.5 | **1.396** | **2** |
-| cuatro piezas a fase 0 | 4.596 | 1 |
-| cuatro piezas a fase 0 · 0.25 · 0.5 · 0.75 | **1.749** | 1 |
+| | pico (antes del 008) | onsets | pico (hoy) | onsets |
+|---|---|---|---|---|
+| una pieza | 1.396 | 1 | 1.114 | 1 |
+| dos piezas a fase 0 y 0 | 2.298 | 1 | 1.713 | 1 |
+| dos piezas a fase 0 y 0.5 | **1.396** | **2** | **1.117** | **2** |
+| cuatro piezas a fase 0 | 4.596 | 1 | 3.427 | 1 |
+| cuatro piezas a fase 0 · 0.25 · 0.5 · 0.75 | **1.749** | 1 | **1.510** | 1 |
 
-Desfasar dos piezas deja el pico exactamente en el de una sola. Con cuatro el pico baja un 62 % pero
-los onsets vuelven a fusionarse: el arpegio dura 1.07 s y un cuarto de compás 0.545 s, así que se
-solapan. **Es el comportamiento deseado** — solaparse desfasadas produce textura, solaparse alineadas
-produce volumen — y es lo que anota `ARPEGGIO_SPREAD` como candidato a pasar a unidades musicales.
+Desfasar dos piezas deja el pico prácticamente en el de una sola (1.117 contra 1.114, un 0,3 %; antes
+del 008 la igualdad era exacta porque las cinco notas de una pieza se solapaban entre sí y saturaban el
+pico igual). Con cuatro el pico baja un 56 % pero los onsets vuelven a fusionarse: el arpegio audible
+dura 0.802 s —`4 × intervalo` de espaciado, más la nota y su release— contra los 0.545 s de un cuarto de
+compás, así que se solapan. **Es el comportamiento deseado** — solaparse desfasadas produce textura,
+solaparse alineadas produce volumen.
+
+El 008 no eliminó ese solape, lo **acotó**: antes el arpegio audible medía 1.07 s, casi el doble del
+cuarto de compás, y ahora mide 1,47 veces. Y sobre todo dejó de depender del tempo, que es la medición
+que llevó el espaciado del arpegio a unidades musicales:
+`intervalDuration(bpm)` se define sobre `barDuration` como `barDuration(bpm) / (BEATS_PER_BAR *
+SUBDIVISIONS_PER_BEAT)`, así que a más tempo el arpegio se achica en la misma proporción que el
+compás. El arpegio de 5 notas mide siempre `4 × intervalo = compás / 4`: 1,000 s a 60 bpm y 0,375 s a
+160 bpm. A 100 bpm el intervalo da 0,15 s — exactamente el `ARPEGGIO_SPREAD` que reemplaza —, así que a
+ese tempo el patrón no cambia en absoluto.
 
 ## Reconciliación de loops
 
-Un único `useEffect` en `App.tsx` observa `[placed, loopPlaced]` y lleva los jobs del motor a donde
+Un único `useEffect` en `App.tsx` observa `[placed, playing]` y lleva los jobs del motor a donde
 deben estar. Los handlers solo cambian estado.
 
 ```ts
 useEffect(()=>{
   clearJobs();
-  if (!loopPlaced) return;
+  if (!playing) return;
   for (const p of placed){
     const [ax] = p.cells[ANCHOR_INDEX[p.piece]];
-    addJob({ id: p.id, notes: p.notes, spread: ARPEGGIO_SPREAD, phase: ax / GRID_W });
+    addJob({ id: p.id, notes: p.notes, phase: ax / GRID_W });
   }
-}, [placed, loopPlaced]);
+}, [placed, playing]);
 ```
 
 **Por qué limpiar y re-agregar es seguro acá**, cuando con Tone habría reiniciado la fase: los jobs son
@@ -212,11 +232,15 @@ Lo que **sí** está unificado es lo que importa para cambiar el sonido:
 
 - `scheduleVoice()` — la única función que crea un oscilador.
 - `DEFAULT_VOICE` — el timbre y la ADSR.
-- `ARPEGGIO_SPREAD` y `NOTE_DUR` — el espaciado y la duración.
+- `intervalDuration(bpm)` — el espaciado, definida sobre `barDuration` para que exista un solo lugar
+  donde el compás se convierte en segundos.
+- `NOTE_INTERVALS` — la duración de la nota, medida en intervalos y no en segundos absolutos.
 
-**La consecuencia práctica:** tocar el timbre en `DEFAULT_VOICE` alcanza para los dos caminos, pero
-cambiar *cómo se expande un arpegio* dentro de `playNotes` **no afecta al loop**. Ese cambio va en
-`collectHits`, o en los dos lugares.
+**La consecuencia práctica:** tocar el timbre en `DEFAULT_VOICE` alcanza para los dos caminos, y
+también alcanza tocar `intervalDuration` para cambiar el ritmo: las dos expansiones —la de `playNotes`
+y la que arma `collectHits`— salen de la misma función. Siguen siendo dos caminos —`playNotes` expande
+el arpegio, `tick` recibe de `collectHits` los instantes ya expandidos—, pero lo que los separa se
+achicó a la mecánica de agendado, no al espaciado.
 
 ## Análisis de la señal
 

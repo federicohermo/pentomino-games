@@ -3,7 +3,7 @@ import {
   playNow, addJob, clearJobs, setBpm,
   startClock, stopClock, clockRunning,
 } from "./audio/engine.ts";
-import { ARPEGGIO_SPREAD, DEFAULT_BPM } from "./audio/constants/engine.constants.ts";
+import { DEFAULT_BPM } from "./audio/constants/engine.constants.ts";
 import { rotateN, reflect } from "./domain/transform.ts";
 import { notesForRotation } from "./domain/music.ts";
 import { cellsAt, isValid, phaseFor } from "./domain/board.ts";
@@ -38,7 +38,7 @@ export default function App(){
   const [mirror, setMirror] = useState<boolean>(false);
   // Arranca del mismo numero que el motor: DEFAULT_BPM es una sola declaracion.
   const [tempo, setTempo] = useState<number>(DEFAULT_BPM);
-  const [loopPlaced, setLoopPlaced] = useState<boolean>(false);
+  const [playing, setPlaying] = useState<boolean>(false);
 
   // placed pieces
   const [placed, setPlaced] = useState<PlacedPiece[]>([]);
@@ -72,7 +72,13 @@ export default function App(){
       piece: selected, rotation, mirror, cells, notes: noteSet,
     };
     setPlaced(prev => [...prev, newPiece]);
-    playNow(noteSet);
+    // Con el transporte corriendo, el arpegio de colocación se superpondría al
+    // job que el efecto va a agendar para esta misma pieza: dos veces las mismas
+    // cinco notas, fuera de fase entre sí. Con el transporte en pausa el click
+    // sigue siendo la única forma de escuchar lo que se coloca, así que ahí se
+    // dispara. Sin Web Audio `playing` nunca llega a true, de modo que el caso
+    // degradado cae solo del lado que suena.
+    if (!playing) playNow(noteSet);
   }
 
   function resetBoard(){
@@ -80,8 +86,9 @@ export default function App(){
   }
 
   // Reconcilia los loops contra el tablero. Al ser declarativo cubre por igual
-  // colocar, quitar, resetear y prender/apagar el checkbox — antes cada uno de
-  // esos caminos tenía que acordarse de limpiar por su cuenta, y no lo hacían.
+  // colocar, quitar, resetear y darle play o pausa al transporte — antes cada
+  // uno de esos caminos tenía que acordarse de limpiar por su cuenta, y no lo
+  // hacían.
   //
   // Limpia y re-agrega todo en vez de diffear, y sigue siendo seguro con la fase
   // por pieza porque `phase` se deriva del tablero, no del reloj: re-agregar un
@@ -93,24 +100,30 @@ export default function App(){
   // efecto se limpió.
   useEffect(()=>{
     clearJobs();
-    if (!loopPlaced) return;
+    if (!playing) return;
     for (const p of placed){
       // La columna de la celda de agarre es la posición dentro del compás: el eje
       // X del tablero es tiempo. El ancho del tablero ES el compás (10 pasos, no
       // 16): con una grilla de semicorcheas, 6 subdivisiones no serían alcanzables
       // desde ninguna columna. La regla vive en `domain/board.ts` para que la
       // pueda ejecutar cualquiera —los tests y el MCP server— y no solo el shell.
-      addJob({ id: p.id, notes: p.notes, spread: ARPEGGIO_SPREAD, phase: phaseFor(p.cells, ANCHOR_INDEX[p.piece]) });
+      addJob({ id: p.id, notes: p.notes, phase: phaseFor(p.cells, ANCHOR_INDEX[p.piece]) });
     }
-  }, [placed, loopPlaced]);
+  }, [placed, playing]);
 
   // Al desmontar, frenar el reloj y soltar los jobs. La limpieza es sincrónica:
   // si fuera asincrónica, en StrictMode podría ejecutarse después de que el
   // efecto de arriba ya volvió a agendar, y cancelaría los jobs nuevos.
   useEffect(()=> ()=>{ stopClock(); clearJobs(); }, []);
 
-  function toggleClock(){
-    if (clockRunning()) stopClock(); else startClock();
+  function togglePlay(){
+    if (playing) stopClock(); else startClock();
+    // El motor es quien sabe si arrancó: startClock() es un no-op silencioso
+    // cuando audio() devuelve null, y sin este chequeo el botón diría "Pausa"
+    // con el reloj parado. Es la falla suave que .claude/rules/audio.md obliga
+    // a chequear en todo llamador, y era lo único que la consulta imperativa
+    // hacía bien antes de este spec.
+    setPlaying(clockRunning());
   }
 
   // Fantasma: dónde caería la pieza desde la celda bajo el cursor. Las celdas
@@ -127,14 +140,13 @@ export default function App(){
           rotation={rotation}
           mirror={mirror}
           tempo={tempo}
-          loopPlaced={loopPlaced}
+          playing={playing}
           noteSet={noteSet}
           onSelect={setSelected}
           onRotate={setRotation}
           onMirror={()=> setMirror(m=>!m)}
           onTempo={setTempo}
-          onToggleLoopPlaced={setLoopPlaced}
-          onToggleClock={toggleClock}
+          onTogglePlay={togglePlay}
           onReset={resetBoard}
         />
 
