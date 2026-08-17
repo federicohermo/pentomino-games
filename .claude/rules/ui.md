@@ -6,7 +6,7 @@ paths:
 
 # UI: el shell y los componentes
 
-`App.tsx` es el shell: estado con `useState` local, derivados, handlers, los dos efectos y la
+`App.tsx` es el shell: estado con `useState` local, derivados, handlers, los cuatro efectos y la
 composición. **Ninguna función pura y ningún literal de dominio** — eso vive en `domain/`, que es lo
 único que puede testearse.
 
@@ -14,10 +14,17 @@ Los componentes son presentacionales, uno por archivo: reciben datos y callbacks
 ni efectos propios. La excepción es `Spectrum.tsx`, que no recibe props y lee del motor por su cuenta
 para que dibujar a 60 fps no re-renderice nada del tablero.
 
-- **Toda la gestión de jobs del motor pasa por el efecto de reconciliación.** Un único `useEffect`
-  sobre `[placed, playing]` lleva los jobs a donde deben estar; los handlers solo cambian estado. El
-  patrón imperativo anterior —cada handler limpiando lo suyo— produjo loops huérfanos que sobrevivían a
-  "Quitar" y "Reset". Si hace falta agendar algo nuevo, va adentro de ese efecto.
+- **Todo lo que suena en el loop pasa por el efecto de reconciliación.** Un único `useEffect` sobre
+  `[placed]` proyecta `buildSequence(placed)` y se la entrega al motor con `setSequence`; los handlers
+  solo cambian estado. `playing` **no** está en las dependencias, y desde el spec 009 eso es
+  deliberado: la secuencia es función del tablero y no del transporte, y quien arranca o corta el
+  sonido es `togglePlay` con `startClock`/`stopClock`. El `clearJobs()` + `if (!playing) return` de
+  antes era la forma vieja de lograr lo mismo desde acá. El patrón imperativo anterior —cada handler
+  limpiando lo suyo— produjo loops huérfanos que sobrevivían a "Quitar" y "Reset". Si hace falta
+  agendar algo nuevo, va adentro de ese efecto.
+- **La proyección dominio→motor vive acá y en ningún otro lado de `src/`.** `App.tsx` es el único
+  puente entre las dos capas: entrega la `Sequence` del dominio dejando caer `pieceId` y `cell`,
+  porque `audio/` no puede ver `Cell` ni con `import type`. Ver `.claude/rules/audio.md`.
 - **Nunca mutar objetos ya entregados a React.** Ese fue exactamente el bug de los loops que motivó el
   rediseño: `newPiece._sched = id` después del `setPlaced`. Si un dato tiene que cambiar después de
   crearse, o va en el estado con su propio setter, o va afuera de React (ref o singleton de módulo).

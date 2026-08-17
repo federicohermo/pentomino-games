@@ -69,7 +69,7 @@ board.ts + music.ts ← sequence.ts          components/ y App.tsx importan de l
 2. **`audio/`** — habla MIDI y no conoce el dominio. Síntesis, scheduler con lookahead, singletons y el
    mapeo del espectro.
 3. **`components/`** — un componente por archivo, presentacionales.
-4. **`App.tsx`** — el shell: estado, derivados, handlers, los dos efectos y la composición.
+4. **`App.tsx`** — el shell: estado, derivados, handlers, los cuatro efectos y la composición.
 
 `domain/` y `audio/` son **hermanos sin aristas entre ellos**: el motor habla números MIDI y no sabe
 qué es un pentominó.

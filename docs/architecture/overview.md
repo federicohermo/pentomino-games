@@ -19,7 +19,7 @@ expresivo, no más difícil.
                            │
 ┌──────────────────────────▼──────────────────────────────┐
 │  src/App.tsx — el shell                                 │
-│   estado · derivados · handlers · los dos efectos       │
+│   estado · derivados · handlers · los cuatro efectos    │
 │   selected · rotation · mirror · tempo                  │
 │   playing · placed[] · hover                            │
 └───────┬─────────────────────────────┬───────────────────┘
@@ -64,7 +64,7 @@ que un `.tsx` exporte algo además del componente, así que mientras la geometr�
 `App.tsx` **no podían exportarse, y por lo tanto no podían testearse**. La organización no era neutral:
 condenaba al dominio a no ser verificable. Hoy `src/domain/` tiene tests donde antes había cero.
 
-Lo que queda en `App.tsx` es el shell: estado, derivados, handlers, los dos efectos y la composición de
+Lo que queda en `App.tsx` es el shell: estado, derivados, handlers, los cuatro efectos y la composición de
 los componentes. Ninguna función pura y ningún literal de dominio.
 
 ## Las cuatro capas
@@ -143,7 +143,8 @@ reordena.
 ### El estado es la fuente de verdad; los efectos reconcilian
 
 Los loops de audio no se agendan ni cancelan desde los handlers. Un único `useEffect` observa
-`[placed, playing]` y lleva los jobs del motor a donde deben estar.
+`[placed]` y le entrega al motor la secuencia del recorrido con `setSequence`. `playing` no está en
+las dependencias: la secuencia es función del tablero y no del transporte.
 
 El patrón imperativo anterior —cada handler acordándose de limpiar lo suyo— es exactamente el que
 produjo el bug de loops huérfanos que sobrevivían a "Quitar" y "Reset". Ver

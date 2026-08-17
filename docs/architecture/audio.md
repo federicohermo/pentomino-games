@@ -21,9 +21,9 @@ inserción: el `AnalyserNode` del
 
 | Archivo | Qué hace | Cómo obtiene el contexto |
 |---|---|---|
-| **`voice.ts`** | `midiToHz`, `scheduleVoice` | por parámetro |
-| **`scheduler.ts`** | `collectHits` — decide qué suena y cuándo | por parámetro |
-| **`engine.ts`** | singletons, `playNow`, `startClock`, jobs | **es** el dueño del singleton |
+| **`voice.ts`** | `midiToHz`, `scheduleVoice`, `scheduleClick` | por parámetro |
+| **`scheduler.ts`** | `collectHits` — qué suena y cuándo — y `collectWindow` — la vuelta entera, con el swap al cierre de ciclo | por parámetro |
+| **`engine.ts`** | singletons, `playNow`, `startClock`, `setSequence` | **es** el dueño del singleton |
 | **`spectrum.ts`** | `binsToBars` — de bins de la FFT a alturas de barra | no lo toca: es puro |
 
 Los tres primeros son el motor; `spectrum.ts` es el mapeo puro que se separó del `AnalyserNode` para
@@ -218,14 +218,31 @@ mitigación que el spec 009 dejó prevista en su tabla de riesgos.
 
 ## Reconciliación de loops
 
-Un único `useEffect` en `App.tsx` observa `[placed, playing]` y le entrega al motor la secuencia donde
-debe estar. Los handlers solo cambian estado.
+Un único `useEffect` en `App.tsx` observa `[placed]` y le entrega al motor la secuencia donde debe
+estar. Los handlers solo cambian estado.
 
 ```ts
 useEffect(() => {
-  setSequence(playing ? buildSequence(placed) : { steps: [], clicks: [], length: 0 });
-}, [placed, playing]);
+  const s = buildSequence(placed);
+  setSequence({
+    steps: s.steps.map(({ offset, notes }) => ({ offset, notes })),   // se cae pieceId
+    clicks: s.clicks.map(({ offset }) => ({ offset })),               // se cae cell
+    length: s.length,
+  });
+}, [placed]);
 ```
+
+Dos cosas del snippet que no son detalle:
+
+- **`playing` no está en las dependencias**, y salió a propósito con el spec 009. La secuencia es
+  función del **tablero**, no del transporte: quien corta o arranca el sonido es `togglePlay` llamando
+  a `stopClock`/`startClock`. El `clearJobs()` + `if (!playing) return` de antes era la forma vieja de
+  lograr lo mismo desde acá; con una sola llamada a `setSequence` deja de hacer falta, y colocar o
+  quitar con el transporte parado igual deja la secuencia lista para cuando arranque.
+- **Es una proyección, no una traducción.** `offset` y `notes` viajan tal cual; lo que se cae es
+  `pieceId` —el motor no tiene a quién devolvérselo— y `cell` en los clicks, porque `audio/` no puede
+  importar `Cell` ni como `import type` ([arriba](#el-recorrido-en-el-scheduler)). Las celdas no se
+  pierden: siguen en `placed`.
 
 Antes este efecto iteraba piezas y armaba un job por cada una; hoy es **una sola llamada**:
 `buildSequence` (`domain/sequence.ts`) arma el circuito entero —orden, offsets y clicks— de una vez, y
