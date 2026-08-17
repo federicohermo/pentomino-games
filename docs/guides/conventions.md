@@ -148,9 +148,10 @@ export type Rotation = (typeof ROTATION)[keyof typeof ROTATION];
 del índice `k` sigue siendo la misma celda lógica después de transformar.**
 
 De eso depende `ANCHOR_INDEX`, que guarda la celda de agarre como índice en vez de coordenada; de eso
-depende la fase por pieza, que lee la columna del ancla por índice sobre `PlacedPiece.cells`; y de eso
-dependerá el mapeo celda↔nota del spec 001. Cualquier cambio que filtre, ordene o reagrupe celdas dentro
-de esas funciones rompe la colocación de piezas **en silencio**.
+depende el mapeo celda↔nota que `degreeByCellIndex` calcula sobre la forma canónica y arrastra por
+índice (spec 007); y de eso dependen las puertas del recorrido, que leen la celda del grado 0 y la del
+grado 4 por índice sobre `PlacedPiece.cells` (spec 009). Cualquier cambio que filtre, ordene o reagrupe
+celdas dentro de esas funciones rompe la colocación de piezas **en silencio**.
 
 Hoy hay una red: `checkArrayOrder()` de `domain/invariants.ts` lo verifica sobre las 96 combinaciones, y
 su propio test comprueba que el chequeo **da rojo** cuando una transformación reordena.
@@ -190,7 +191,7 @@ closure, chequeado después del `await`, seteado en la limpieza).
 
 Y ojo con las limpiezas asincrónicas: en StrictMode pueden correr **después** del siguiente efecto. Si
 la limpieza tiene que ganarle al re-montaje, tiene que ser sincrónica — es el caso del efecto de
-desmontaje que llama a `stopClock()` y `clearJobs()`. Ver
+desmontaje que llama a `stopClock()` y entrega una secuencia vacía con `setSequence()`. Ver
 [audio.md](../architecture/audio.md#reconciliación-de-loops).
 
 ## Comentarios

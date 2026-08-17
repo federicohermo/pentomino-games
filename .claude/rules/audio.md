@@ -24,24 +24,42 @@ El porqué de cada decisión, con las mediciones que la respaldan, está en
 - **Hay dos caminos a sonido, no uno:** `playNotes()` (arpegio al colocar) y `tick()` (loop), que llama
   a `scheduleVoice()` directo porque `collectHits` ya expandió los instantes. Lo unificado es
   `scheduleVoice`, `DEFAULT_VOICE` y `intervalDuration(bpm)`: cambiar el timbre alcanza para los dos, y
-  cambiar el intervalo también, porque las dos expansiones salen de la misma función.
+  cambiar el intervalo también, porque las dos expansiones salen de la misma función. `tick()` agenda
+  además `scheduleClick()` (spec 009) para los clicks del recorrido, con volumen propio.
 - **El scheduler usa lookahead:** temporizador grueso de 25 ms que agenda 100 ms de futuro contra el
   reloj de audio. El temporizador no dispara notas, decide cuándo mirar.
 - **El reloj es un origen, no un cursor.** `ClockState` son dos escalares —`origin` y `scheduledUntil`—
-  y los onsets salen en forma cerrada (`origin + (k + phase) * bar`). `scheduledUntil` es lo único que
-  evita re-emitir cada onset cuatro veces; los compases perdidos por la pestaña oculta **se saltean, no
-  se recuperan**; y nunca hay más de `LOOKAHEAD` de **onsets** comprometidos, con cualquier fase — es lo
-  que hace que quitar una pieza la calle en 100 ms **más lo que le quede de arpegio ya agendado**, que
-  desde el spec 008 depende del tempo (`compás / 4` más la nota y su release: 1.37 s a 60 bpm, 0.59 s a
-  160, contra 1.07 s fijos de antes). `firstOnsetAfter` usa `floor(x) + 1` y no `ceil(x)`:
-  con `ceil`, un onset en el borde de la ventana sale dos veces. Y `startClock` tiene que dejar
-  `scheduledUntil` **estrictamente antes** de `origin`, o se pierde el downbeat del compás 0.
+  sin cambios desde el spec 002, y los onsets salen en forma cerrada
+  (`origin + (k × ciclo + offset + j) × intervalo`, con `offset` el desplazamiento del paso dentro del
+  ciclo y `j` el índice de la nota). `scheduledUntil` es lo único que evita re-emitir cada onset cuatro
+  veces; los ciclos perdidos por la pestaña oculta **se saltean, no se recuperan**; y nunca hay más de
+  `LOOKAHEAD` de **onsets** comprometidos, con cualquier tamaño de ciclo — es lo que hace que **pausar**
+  corte en 100 ms **más lo que le quede de arpegio ya agendado**, que desde el spec 008 depende del tempo
+  (`compás / 4` más la nota y su release: 1.37 s a 60 bpm, 0.59 s a 160). Ojo: eso vale para pausar, no
+  para **quitar una pieza** — desde el spec 009 eso reemplaza la secuencia pendiente y entra recién al
+  cerrar el ciclo (D5), o sea hasta 7,5 s con 8 piezas a 110 bpm. `firstOnsetAfter`
+  usa `floor(x) + 1` y no `ceil(x)`: con `ceil`, un onset en el borde de la ventana sale dos veces. Y
+  `startClock` tiene que dejar `scheduledUntil` **estrictamente antes** de `origin`, o se pierde el
+  primer onset del ciclo 0.
+- **El click se apaga en la mezcla, no en el modelo.** `setClicksAudible(false)` deja de cablearlo a
+  sonido en `tick()`; la secuencia sigue teniendo sus clicks y `collectHits` los sigue emitiendo.
+  Filtrarlos antes obligaría a reconstruir la secuencia por algo que no decide el tablero. Hace falta
+  porque `pathBetween` ignora obstáculos y un click puede caer sobre una pieza — los 21 del ciclo, en
+  el tablero lleno.
+- **El motor no ve celdas.** La `Sequence` de `audio/types/scheduler.types.ts` no lleva `Cell` ni
+  ningún otro tipo de `domain/` —ni con `import type`—, porque el click no tiene altura y para sonar
+  alcanza con contarlo. `App.tsx` proyecta `buildSequence(placed)` a esa versión sin celdas antes de
+  pasarla a `setSequence`. Es D7/D8 del spec 009, y lo verifica `pnpm lint` con el override de capa.
+- **El swap de secuencia al cerrar el ciclo (spec 009) tiene la misma trampa que `startClock`.** Al
+  reemplazar la secuencia activa por la pendiente hay que bajar `scheduledUntil` a estrictamente
+  **antes** del nuevo `origin`, o el primer onset del ciclo nuevo se pierde en silencio sin ningún
+  error — el mismo síntoma que la guarda de arriba.
 - **El `AnalyserNode` va en serie** entre el master y el destino, y es transparente al audio.
   `readSpectrum()` devuelve `null` en reposo —eso es información, no falla— y reusa el buffer entre
   llamadas: quien lo guarde va a verlo cambiar por debajo. El mapeo bins→barras vive aparte, en
   `spectrum.ts`, porque **`AnalyserNode` no rinde nada útil en `OfflineAudioContext`**: es lo testeable,
   y por eso está separado del nodo.
 
-**Verificar audio sin oírlo:** en tests con `OfflineAudioContext`; en el navegador con `jobCount()` y
-contando osciladores. Recetas en
+**Verificar audio sin oírlo:** en tests con `OfflineAudioContext`; en el navegador con `sequenceInfo()`
+—pasos, clicks y largo del ciclo de la secuencia activa— y contando osciladores. Recetas en
 [docs/architecture/audio.md](../../docs/architecture/audio.md#cómo-verificar-el-audio).

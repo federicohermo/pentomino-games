@@ -57,19 +57,23 @@ src/
 ├── domain/                       # puro: sin React, sin Web Audio, sin DOM
 │   ├── transform.ts              # rotate90 · normalize · rotateN · reflect · centroid ·
 │   │                             #   angleFromCentroid
-│   ├── board.ts                  # cellsAt · isValid · phaseFor · occupantAt · occupantCellIndex
+│   ├── board.ts                  # cellsAt · isValid · cellDistance · pathBetween · occupantAt ·
+│   │                             #   occupantCellIndex
 │   ├── music.ts                  # midiFor · midiName · notesForRotation · degreeByCellIndex
+│   ├── sequence.ts               # buildSequence — el circuito (Held-Karp) y los offsets del ciclo
 │   ├── invariants.ts             # los cinco chequeos del modelo + checkAll
 │   ├── types/                    # el contrato de la capa. Cero imports de afuera
 │   │   ├── transform.types.ts    #   Cell
 │   │   ├── pieces.types.ts       #   PieceKey
-│   │   └── board.types.ts        #   PlacedPiece
+│   │   ├── board.types.ts        #   PlacedPiece
+│   │   └── sequence.types.ts     #   Step · Click · Sequence · RouteKind
 │   ├── constants/                # los datos del modelo. Solo importan tipos
 │   │   ├── pieces.constants.ts   #   SHAPES · ANCHOR_INDEX
-│   │   ├── board.constants.ts    #   GRID_W · GRID_H
-│   │   └── music.constants.ts    #   CHROMATIC · PENT_* · BASE_MAP · DEFAULT_OCTAVE
+│   │   ├── board.constants.ts    #   GRID_W · GRID_H · SEAM
+│   │   ├── music.constants.ts    #   CHROMATIC · PENT_* · BASE_MAP · DEFAULT_OCTAVE
+│   │   └── route.constants.ts    #   ROUTE
 │   └── __tests__/                # uno por módulo
-│       └── transform · board · music · invariants
+│       └── transform · board · music · sequence · invariants
 ├── audio/                        # Web Audio; habla MIDI, no conoce el dominio ni la UI
 │   ├── voice.ts                  # midiToHz · scheduleVoice
 │   ├── scheduler.ts              # collectHits

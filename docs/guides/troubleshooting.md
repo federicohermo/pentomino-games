@@ -113,18 +113,22 @@ distintas.
    `handleCellClick` solo llama a `playNow` cuando `!playing`, para que el disparo de colocación no
    compita con el patrón del transporte. Si el transporte está parado y aun así no suena, seguir con los
    puntos 1 y 2.
-5. **¿Hay jobs?** `jobCount()` debe ser mayor que 0 con el transporte en marcha y piezas colocadas.
+5. **¿Hay secuencia activa?** `sequenceInfo().steps` debe ser mayor que 0 con el transporte en marcha y
+   piezas colocadas. Si da 0 con piezas puestas, todavía no cerró el ciclo: desde el spec 009 la
+   secuencia nueva entra recién en el cierre del ciclo en curso, y eso puede tardar hasta 7,5 s con 8
+   piezas a 110 bpm. **Es una decisión (D5), no un bug** — esperar un ciclo antes de seguir buscando.
 
 ### Loops que siguen sonando después de borrar la pieza
 
-Era un bug real, corregido. Si reaparece, el sospechoso es que alguien haya vuelto a agendar o cancelar
-jobs **fuera** del efecto de reconciliación. Toda la gestión de jobs tiene que pasar por ese efecto —
-ver [audio.md](../architecture/audio.md#reconciliación-de-loops).
+Era un bug real, corregido. Si reaparece, el sospechoso es que alguien le haya hablado al motor **fuera**
+del efecto de reconciliación. Desde el spec 009 hay una sola llamada —`setSequence(buildSequence(placed))`—
+y toda la gestión tiene que pasar por ese efecto — ver
+[audio.md](../architecture/audio.md#reconciliación-de-loops).
 
-Para contar loops vivos desde la consola:
+Para ver la secuencia activa desde la consola:
 
 ```js
-(await import('/src/audio/engine.ts')).jobCount()
+(await import('/src/audio/engine.ts')).sequenceInfo()
 ```
 
 ## MCP server
