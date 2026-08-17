@@ -84,10 +84,22 @@
 ## PR
 - [x] Aclarar que **a 100 bpm no cambia nada**, y por qué: 0,15 s era la semicorchea de 100 bpm
 - [x] Adjuntar las dos salidas de `simulate_board` (100 y 160) antes y después
-- [ ] `/pr-review` antes de pedir revisión
+- [x] `/pr-review` antes de pedir revisión — corrió sobre el [PR #7](https://github.com/federicohermo/pentomino-games/pull/7)
+      y encontró cuatro bloqueantes, todos de documentación y registro: `overview.md` seguía con
+      `loopPlaced`, la tabla de picos de `audio.md` estaba medida antes del spec, el docblock de
+      `jobTimeline` seguía nombrando `job.spread`, y la desviación de D3 no estaba en `log.md`
 
 ## Seguimiento (no bloquea)
-- [ ] `TEMPO_MAX` puede necesitar bajar de 160 — constante, commit aparte
+- [ ] `TEMPO_MAX` puede necesitar bajar de 160 — constante, commit aparte. **Dato nuevo para esa
+      decisión:** con `NOTE_INTERVALS = 1` la nota mide `15 / bpm` s, o sea 93,75 ms a 160 bpm contra
+      los **65 ms de `attack + decay`**: el 69 % de la nota es transitorio y casi no queda sustain. A
+      partir de ~231 bpm `dur < attack + decay` y el `setValueAtTime(sustain, at + dur)` caería antes
+      del final de la rampa de decay. No es alcanzable —`TEMPO_MAX` es 160 y `simulate_board` no
+      produce audio— pero es el techo real del modelo de envolvente actual
+- [ ] **AC10 quedó verificado por lectura, no por test**, aunque el spec lo daba por falsable sin
+      navegador. `togglePlay` vive dentro de `App.tsx` y el repo no tiene infra de tests de UI:
+      testearlo pide extraer el handler o agregar testing-library, y ninguna de las dos es parte de
+      este spec. Si el 010 trae tests de UI, este es el primer caso a cubrir
 - [ ] `CLOCK_START_DELAY` y `PLAY_DELAY` se quedan en segundos a propósito: son latencias de agenda
 - [ ] El slider de tempo no muestra la unidad ("110" a secas) — cosmético, va con el 010
 - [ ] **`DEFAULT_VOICE.release` sigue en segundos absolutos** (0,12 s), o sea 0,48 intervalos a 60 bpm

@@ -329,3 +329,17 @@ tipo a todos los llamadores que solo quieren saber qué pieza ocupa una celda, p
   intervalo da 0,15 s —el mismo valor que `ARPEGGIO_SPREAD` tenía fijo—, así que a ese tempo el patrón
   no cambia; a 160 bpm el arpegio de 5 notas pasa a medir 0,375 s en vez de mantener 0,6 s fijos
   mientras el compás baja a 1,5 s, que era lo que espesaba el instrumento en vez de acelerarlo.
+
+- **2026-08-17 — El 008 se implementó con `NOTE_INTERVALS = 1`, y su D3 decía 2.** La desviación salió
+  de escuchar la rama y está medida: con 2 la nota dura el doble de lo que tarda en llegar la siguiente,
+  así que el arpegio suena con **2,88 voces encimadas de forma permanente** a 110 bpm —contando
+  `(NOTE_INTERVALS × intervalo + release) / intervalo`—, y se oye como un acorde desplegado en vez de
+  como cinco notas. Con 1 la nota termina justo cuando entra la que sigue y quedan **1,88**, contra las
+  **3,13** de antes del spec. No mueve ningún onset, así que AC3 y AC4 se re-verificaron intactos
+  después del cambio. `spec.md` **no se reescribió** —es historia, igual que el `research.md` del 007—,
+  pero el número que quedó vivo es 1: está en la constante, en su comentario y acá.
+
+  Lo que la desviación deja abierto: `DEFAULT_VOICE.release` sigue en 0,12 s absolutos, o sea 0,48
+  intervalos a 60 bpm y **1,28 a 160**, y es lo único del modelo temporal que no quedó en unidades
+  musicales. Es lo que hace que el solape restante del arpegio crezca con el tempo en vez de quedarse
+  quieto. Anotado en el Seguimiento del 008.
