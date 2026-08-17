@@ -2,8 +2,9 @@ import { z } from 'zod';
 import { defineTool, json } from './types.ts';
 import { PIECE_KEYS } from '../pieces.ts';
 import { rotateN, reflect } from '../../../src/domain/transform.ts';
-import { cellsAt, isValid, occupantAt, phaseFor } from '../../../src/domain/board.ts';
+import { cellsAt, isValid, occupantAt } from '../../../src/domain/board.ts';
 import { notesForRotation, midiName } from '../../../src/domain/music.ts';
+import { buildSequence, gates } from '../../../src/domain/sequence.ts';
 import { SHAPES, ANCHOR_INDEX, CELLS_PER_PIECE } from '../../../src/domain/constants/pieces.constants.ts';
 import { GRID_W, GRID_H } from '../../../src/domain/constants/board.constants.ts';
 import { BASE_MAP, DEFAULT_OCTAVE } from '../../../src/domain/constants/music.constants.ts';
@@ -11,30 +12,31 @@ import type { Cell } from '../../../src/domain/types/transform.types.ts';
 import type { PlacedPiece } from '../../../src/domain/types/board.types.ts';
 import { collectHits, barDuration, intervalDuration } from '../../../src/audio/scheduler.ts';
 import { midiToHz } from '../../../src/audio/voice.ts';
-import { LOOKAHEAD, TICK_MS } from '../../../src/audio/constants/scheduler.constants.ts';
+import { LOOKAHEAD, TICK_MS, HIT } from '../../../src/audio/constants/scheduler.constants.ts';
 import { DEFAULT_BPM, CLOCK_START_DELAY } from '../../../src/audio/constants/engine.constants.ts';
-import type { Job, ClockState } from '../../../src/audio/types/scheduler.types.ts';
+import type { Sequence, ClockState, Hit } from '../../../src/audio/types/scheduler.types.ts';
 
 /**
  * Que suena un tablero, sin escucharlo.
  *
  * Recorre las mismas tres etapas que la app y **con las mismas funciones**:
- * colocar (`cellsAt`/`isValid`), armar los jobs que crearia el efecto de
- * reconciliacion, y correr el scheduler real. Nada de eso esta reescrito aca.
+ * colocar (`cellsAt`/`isValid`), armar la secuencia del recorrido (`buildSequence`)
+ * y correr el scheduler real. Nada de eso esta reescrito aca: el circuito, los
+ * saltos y los offsets salen del dominio, y el server solo compone y formatea.
  *
- * El bucle de ventanas es deliberado (D7 del plan): una formula idealizada
- * responderia lo que el scheduler *deberia* hacer, y este bucle responde lo que
- * **hace**, incluidos el corte de `scheduledUntil` y los compases que se saltean.
+ * El bucle de ventanas es deliberado: una formula idealizada responderia lo que el
+ * scheduler *deberia* hacer, y este bucle responde lo que **hace**, incluido el
+ * corte de `scheduledUntil`.
  */
 
 /** Redondeo para agrupar y para reportar: los onsets salen de aritmetica de punto flotante. */
 const round4 = (t: number): number => Math.round(t * 1e4) / 1e4;
 
-/**
- * Tolerancia al comparar instantes, en segundos. Muy por debajo de cualquier
- * diferencia audible y muy por encima del error de punto flotante acumulado.
- */
-const TIME_EPSILON = 1e-9;
+/** Por donde entra y por donde sale el recorrido de una pieza. */
+interface Gates {
+  entry: Cell;
+  exit: Cell;
+}
 
 const placementSchema = z.object({
   piece: z.enum(PIECE_KEYS),
@@ -48,18 +50,36 @@ const inputSchema = z.object({
   pieces: z.array(placementSchema).min(1).max(Math.floor(GRID_W * GRID_H / CELLS_PER_PIECE))
     .describe('Las piezas, en el orden en que se colocarían: cada una choca con las anteriores válidas.'),
   bpm: z.number().min(40).max(240).default(DEFAULT_BPM),
-  bars: z.number().int().min(1).max(8).default(2)
-    .describe('Cuántos compases simular desde el downbeat 0.'),
+  // El tope no es el de `bars` dividido a ojo. Con compases el costo del bucle de
+  // ventanas dependia del tempo y del tablero a la vez; con ciclos el peor caso
+  // esta acotado por el tablero: 10 piezas dan 8,98 s de ciclo a 110 bpm, o sea
+  // ~36 s de simulacion con 4.
+  cycles: z.number().int().min(1).max(4).default(2)
+    .describe('Cuántas vueltas del circuito simular. El ciclo lo fija el tablero, no el tempo.'),
 });
 
-/** Una colocacion ya resuelta: lo que la respuesta reporta y lo que alimenta al scheduler. */
+/** Una colocacion ya resuelta: lo que la respuesta reporta de cada jugada. */
 interface Resolved {
   id: string;
-  anchorIndex: number;
   cells: Cell[];
-  notes: number[];
   valid: boolean;
+  /** No-null exactamente cuando la jugada entro: una pieza que no esta no tiene puertas. */
+  gates: Gates | null;
   reason: string | null;
+}
+
+/**
+ * Las dos puertas de una pieza, con los nombres de la respuesta.
+ *
+ * Solo renombra: quien decide cual celda es cual es `gates` del dominio, **la misma**
+ * que usa `buildSequence` para armar el circuito. La primera version de esta tool la
+ * reimplementaba porque no estaba exportada, y eran tres lineas que podian discrepar
+ * del recorrido que la tool dice explicar; exportarla fue el cambio de `src/` que
+ * la regla del repo pide en vez de la copia.
+ */
+function gatesOf(p: PlacedPiece): Gates {
+  const { entrada, salida } = gates(p);
+  return { entry: entrada, exit: salida };
 }
 
 /**
@@ -68,10 +88,14 @@ interface Resolved {
  * El motivo del rechazo sale de las mismas funciones y no de una copia de sus
  * condiciones: `isValid(cells, [])` responde solo por los bordes —el tablero
  * vacio no puede chocar con nada— y `occupantAt` dice contra QUE pieza se choco.
+ *
+ * Devuelve tambien las `PlacedPiece` validas porque son la entrada exacta de
+ * `buildSequence`: rearmarlas afuera a partir de `Resolved` seria construir dos
+ * veces lo mismo.
  */
-function resolve(entries: z.output<typeof inputSchema>['pieces']): Resolved[] {
+function resolve(entries: z.output<typeof inputSchema>['pieces']): { resolved: Resolved[]; placed: PlacedPiece[] } {
   const placed: PlacedPiece[] = [];
-  const out: Resolved[] = [];
+  const resolved: Resolved[] = [];
 
   entries.forEach((e, i) => {
     const rotated = rotateN(SHAPES[e.piece], e.rotation);
@@ -95,11 +119,16 @@ function resolve(entries: z.output<typeof inputSchema>['pieces']): Resolved[] {
 
     // Solo lo valido pasa a ser obstaculo, igual que en la app: una jugada
     // rechazada no deja nada en el tablero.
-    if (valid) placed.push({ id, piece: e.piece, rotation: e.rotation, mirror: e.mirror, cells, notes });
-    out.push({ id, anchorIndex: ANCHOR_INDEX[e.piece], cells, notes, valid, reason });
+    let gates: Gates | null = null;
+    if (valid) {
+      const p: PlacedPiece = { id, piece: e.piece, rotation: e.rotation, mirror: e.mirror, cells, notes };
+      placed.push(p);
+      gates = gatesOf(p);
+    }
+    resolved.push({ id, cells, valid, gates, reason });
   });
 
-  return out;
+  return { resolved, placed };
 }
 
 /**
@@ -107,114 +136,127 @@ function resolve(entries: z.output<typeof inputSchema>['pieces']): Resolved[] {
  *
  * Arranca el reloj como `startClock`: el origen queda `CLOCK_START_DELAY`
  * adelante y `scheduledUntil` estrictamente antes, que es lo que evita perder el
- * downbeat del compas 0. Los tiempos se reportan en la misma escala, con el
- * instante 0 en el arranque del reloj.
+ * onset del offset 0. Los tiempos se reportan en la misma escala, con el instante
+ * 0 en el arranque del reloj.
  *
- * Va **job por job** para conocer la fase de cada uno, que es lo que permite
- * cortar por ONSET y no por nota (ver `jobTimeline`).
+ * **Una sola secuencia y un solo origen**, asi que el corte es uno solo y no hay
+ * que agrupar por onset como cuando cada job traia su propia fase dentro del
+ * compas: el limite es el fin del ultimo ciclo pedido.
+ *
+ * El corte `at < end` no necesita tolerancia. Nada cruza el borde del ciclo: los
+ * pasos ocupan `o..o+4`, sus clicks siguen hasta `o+4+(d-1)` y el paso siguiente
+ * arranca en `o+4+d`, asi que el ultimo evento de un ciclo cae en el intervalo
+ * `length - 1` y sobra un intervalo entero de margen contra el error de punto
+ * flotante.
+ *
+ * El `sort` no es cosmetico: `collectHits` emite primero todos los pasos y despues
+ * todos los clicks, cada uno recorriendo la ventana entera, asi que sale ordenado
+ * por paso y no por tiempo.
  */
-function timeline(jobs: Job[], bpm: number, bars: number): { at: number; hz: number }[] {
-  return jobs.flatMap(job => jobTimeline(job, bpm, bars));
-}
-
-/**
- * Los onsets de UN job en la ventana de `bars` compases.
- *
- * **El corte va por onset y no por nota.** Un arpegio empieza en el onset del
- * compas y se extiende `(notas - 1) * intervalDuration(bpm)` despues; filtrar
- * cada nota por `at < end` recortaba la cola del ultimo compas cuando
- * `(1 - phase) * bar` era menor que esa duracion —o sea desde la columna 8 a
- * 110 bpm, y antes todavia a tempos rapidos—, asi que `onsets.total` dependia
- * de la fase: la misma pieza daba 10 onsets en la columna 1 y 7 en la columna
- * 9. En la app esas notas suenan igual, porque el loop sigue; era la simulacion
- * la que mentia.
- *
- * El limite se compara contra la ultima nota del ultimo compas de la ventana. No
- * hay ambiguedad al asignar una nota a su onset porque los arpegios no se
- * solapan, y desde el spec 008 eso vale **por construccion** y no por aritmetica:
- * el intervalo es `bar / 16`, asi que el arpegio mide `(notas - 1) * bar / 16 =
- * bar / 4` y los onsets de un mismo job estan separados por `bar`. O sea que el
- * arpegio ocupa un cuarto del espacio entre onsets consecutivos **a cualquier
- * tempo**. Antes habia que comparar dos numeros que dependian de cosas distintas
- * —0,6 s de arpegio contra el compas de 1 s del extremo del schema, 240 bpm— y
- * revisar la cuenta cada vez que el schema se tocaba.
- */
-function jobTimeline(job: Job, bpm: number, bars: number): { at: number; hz: number }[] {
-  const bar = barDuration(bpm);
+function timeline(sequence: Sequence, bpm: number, cycles: number): Hit[] {
   const origin = CLOCK_START_DELAY;
-  // Los compases de la ventana son [0, bars): el downbeat del compas `bars` ya es
-  // el compas siguiente y queda afuera, que es lo que este corte siempre quiso
-  // decir.
-  const lastOnset = origin + (bars - 1 + job.phase) * bar;
-  const lastNote = lastOnset + (job.notes.length - 1) * intervalDuration(bpm);
-  // El bucle de ventanas tiene que llegar hasta el ultimo onset; lo que se emita
-  // despues lo descarta el corte.
-  const end = origin + bars * bar;
+  const end = origin + cycles * sequence.length * intervalDuration(bpm);
 
   const state: ClockState = { origin, scheduledUntil: 0 };
-  const hits: { at: number; hz: number }[] = [];
+  const hits: Hit[] = [];
 
   for (let t = 0; t < end; t += TICK_MS / 1000) {
-    for (const hit of collectHits(t, LOOKAHEAD, bpm, [job], state)) {
-      // `lastNote` se calcula con las mismas operaciones y en el mismo orden que
-      // el scheduler, asi que la igualdad de floats es exacta; la tolerancia esta
-      // por si alguna de las dos formulas se reescribe.
-      if (hit.at <= lastNote + TIME_EPSILON) hits.push({ at: hit.at, hz: hit.hz });
+    for (const hit of collectHits(t, LOOKAHEAD, bpm, sequence, state)) {
+      if (hit.at < end) hits.push(hit);
     }
   }
-  return hits;
+  return hits.sort((a, b) => a.at - b.at);
 }
 
 export const simulateBoard = defineTool({
   name: 'simulate_board',
   description:
     'Qué suena un tablero dado, sin escucharlo. Usar en lugar de leer el scheduler y recorrer el ' +
-    'lookahead a mano: valida cada colocación con las mismas funciones que la app, arma los jobs ' +
-    'que crearía el efecto de reconciliación y corre el scheduler real en ventanas de 25 ms, ' +
-    'devolviendo la línea de tiempo de onsets agrupada por instante.\n' +
-    'Sirve sobre todo para lo que solo se oye: `coincident.maxPerInstant` dice cuántas notas caen ' +
-    'juntas, que es la diferencia entre textura y volumen. La columna de la celda de agarre es la ' +
-    'posición dentro del compás, así que dos piezas en columnas distintas se desfasan y en la ' +
-    'misma columna se apilan.',
+    'lookahead a mano: valida cada colocación con las mismas funciones que la app, arma la secuencia ' +
+    'con `buildSequence` y corre el scheduler real en ventanas de 25 ms.\n' +
+    'El tablero es un RECORRIDO y no un compás: un circuito cerrado visita las piezas —en el orden ' +
+    'del camino más corto entre sus puertas, NO en el de colocación— y cada celda que cruza al ir de ' +
+    'una a la siguiente suena como un click. La respuesta trae ese orden, cada salto con las celdas ' +
+    'que atraviesa, el ciclo en intervalos y en segundos, y la línea de tiempo con notas y clicks ' +
+    'distinguidos: el camino en la respuesta es lo que permite verificar el recorrido sin oírlo.\n' +
+    'Dos trampas medidas: mover una pieza puede reordenar la música entera, porque cambia el ' +
+    'circuito; y el camino ignora lo que haya en el medio, así que un click puede caer sobre una ' +
+    'celda ocupada — en el teselado de 12 piezas los 21 clicks caen sobre celdas con pieza.',
   inputSchema,
-  run: ({ pieces, bpm, bars }) => {
-    const resolved = resolve(pieces);
+  run: ({ pieces, bpm, cycles }) => {
+    const { resolved, placed } = resolve(pieces);
 
-    // Etapa 2 — los jobs, tal como los crearia el efecto de reconciliacion de
-    // App.tsx. Una pieza invalida no aporta job y por lo tanto no aporta onsets.
-    const jobs: Job[] = resolved
-      .filter(r => r.valid)
-      .map(r => ({
-        id: r.id,
-        notes: r.notes,
-        phase: phaseFor(r.cells, r.anchorIndex),
-      }));
+    // Etapa 2 — la secuencia del recorrido, la misma que arma la app. Una pieza
+    // invalida no esta en `placed` y por lo tanto no entra al circuito.
+    const seq = buildSequence(placed);
+    const n = seq.steps.length;
+
+    // La proyeccion a la `Sequence` del MOTOR, que no lleva `pieceId` ni `cell`:
+    // `src/audio/**` tiene prohibido importar `Cell` (AC12), asi que las dos formas
+    // son distintas a proposito. `App.tsx` hace esta misma proyeccion por su cuenta
+    // y la duplicacion es aceptada: esta tool existe para reproducir lo que hace la
+    // app CON LAS MISMAS funciones, y sacarla a un helper compartido romperia
+    // justamente esa propiedad.
+    const engine: Sequence = {
+      steps: seq.steps.map(({ offset, notes }) => ({ offset, notes })),
+      clicks: seq.clicks.map(({ offset }) => ({ offset })),
+      length: seq.length,
+    };
 
     // Nombre de nota por frecuencia, construido con la MISMA `midiToHz` que uso
     // el scheduler: la igualdad exacta de floats vale porque es la misma funcion
     // sobre la misma entrada. Es lo que evita invertir la formula a mano.
     const nameByHz = new Map<number, string>();
-    for (const j of jobs) for (const m of j.notes) nameByHz.set(midiToHz(m), midiName(m));
+    for (const s of seq.steps) for (const m of s.notes) nameByHz.set(midiToHz(m), midiName(m));
 
-    const hits = timeline(jobs, bpm, bars);
+    // Objeto y no `Map`: `Map.get` devuelve `| undefined` aunque la clave este
+    // siempre, y taparlo pediria un `!` o un `??` que mentiria sobre el caso.
+    const puertas: Record<string, Gates> = {};
+    for (const r of resolved) if (r.gates !== null) puertas[r.id] = r.gates;
 
-    const porInstante = new Map<number, string[]>();
-    for (const h of hits) {
-      const key = round4(h.at);
-      const notas = porInstante.get(key) ?? [];
-      notas.push(nameByHz.get(h.hz) ?? `${Math.round(h.hz)}Hz`);
-      porInstante.set(key, notas);
-    }
-    const instantes = [...porInstante.entries()].sort((a, b) => a[0] - b[0]);
+    // Los saltos, leidos de la MISMA secuencia que va a sonar. `distance` sale de
+    // contar los clicks del tramo y no de volver a medir la distancia: es lo que
+    // hace imposible que el camino reportado y el instante de la nota siguiente
+    // discrepen (D8). El tramo de la ultima pieza a la primera se calcula con la
+    // misma regla que los demas —su borde es `seq.length`, que es el offset 0 del
+    // ciclo siguiente—, y de eso depende que el empalme no tenga marca (AC4).
+    // Con UNA pieza no hay saltos, y por eso la guarda es explicita: el recorrido
+    // existe ENTRE piezas y el dominio ya lo dice devolviendo `clicks: []`. Sin ella
+    // el `map` sintetiza un tramo de la pieza a si misma y le reporta
+    // `distance: path.length + 1`, que sin clicks da 1 SIEMPRE — y ese 1 contradice a
+    // las dos celdas que la respuesta imprime al lado: medido, con la `Z` sola
+    // `cellDistance(exit, entry)` es 3 y con la `F` es 2. Que el ciclo igual dure lo
+    // dice `cycle`, que son los 5 intervalos del arpegio y no un salto.
+    const hops = n === 1 ? [] : seq.steps.map((step, t) => {
+      const ultima = step.offset + CELLS_PER_PIECE - 1;
+      const siguiente = t + 1 < n ? seq.steps[t + 1].offset : seq.length;
+      const to = seq.steps[(t + 1) % n].pieceId;
+      const path = seq.clicks.filter(c => c.offset > ultima && c.offset < siguiente).map(c => c.cell);
+      return {
+        from: step.pieceId,
+        to,
+        exit: puertas[step.pieceId].exit,
+        entry: puertas[to].entry,
+        distance: path.length + 1,
+        path,
+      };
+    });
+
+    const hits = timeline(engine, bpm, cycles);
+    const instantes = new Set(hits.map(h => round4(h.at)));
 
     return json({
       bpm,
       barSeconds: round4(barDuration(bpm)),
-      // La separacion entre notas de un mismo arpegio, que desde el spec 008 sale
-      // del compas: sin este numero la `timeline` no se puede leer sin recalcular
-      // `bar / 16` a mano.
+      // La separacion entre eventos consecutivos del recorrido, que desde el spec
+      // 008 sale del compas: sin este numero la `timeline` no se puede leer sin
+      // recalcular `bar / 16` a mano.
       intervalSeconds: round4(intervalDuration(bpm)),
-      bars,
+      cycles,
+      // El ciclo en las dos unidades: el tablero lo fija en INTERVALOS y el tempo
+      // solo lo estira. Dos tableros distintos dan ciclos distintos al mismo bpm,
+      // que es la diferencia con el compas fijo del modelo anterior.
+      cycle: { intervals: seq.length, seconds: round4(seq.length * intervalDuration(bpm)) },
       placements: resolved.map((r, i) => ({
         id: r.id,
         piece: pieces[i].piece,
@@ -223,20 +265,38 @@ export const simulateBoard = defineTool({
         at: pieces[i].at,
         cells: r.cells,
         valid: r.valid,
-        ...(r.valid
-          // La fase es lo que el spec 004 hizo audible: la columna del ancla
-          // dividida por el ancho del tablero.
-          ? { phase: phaseFor(r.cells, r.anchorIndex) }
-          : { reason: r.reason }),
+        // Las puertas reemplazan a la `phase` del spec 004: la columna del ancla
+        // dejo de decir nada sobre cuando suena la pieza, y lo que hoy determina
+        // como entra al recorrido es por que celda lo recibe y por cual lo deja.
+        ...(r.gates !== null ? { gates: r.gates } : { reason: r.reason }),
       })),
-      onsets: { total: hits.length, distinctInstants: instantes.length },
-      timeline: instantes.map(([at, notes]) => ({ at, count: notes.length, notes })),
-      coincident: {
-        // Instantes con MAS de un onset: es el numero que distingue textura de
-        // volumen, y el que tiene que bajar cuando las piezas estan desfasadas.
-        instants: instantes.filter(([, n]) => n.length > 1).length,
-        maxPerInstant: instantes.reduce((max, [, n]) => Math.max(max, n.length), 0),
+      route: { order: seq.steps.map(s => s.pieceId), hops },
+      // `coincident` se fue. Media cuantos onsets caian juntos, que era la pregunta
+      // del modelo viejo: dos piezas en la misma columna se apilaban. En el
+      // recorrido dos onsets no pueden coincidir POR CONSTRUCCION —las notas de una
+      // pieza ocupan `o..o+4`, sus clicks `o+5..o+4+(d-1)` y la nota siguiente
+      // `o+4+d`, verificado sobre 3.000 tableros aleatorios sin una sola falla—,
+      // asi que `maxPerInstant` daba 1 siempre y un campo que devuelve siempre el
+      // mismo numero no informa nada.
+      //
+      // Lo que queda de el es `distinctInstants`, que ahora es una ASERCION y no un
+      // descriptor: tiene que ser igual a `total`, y de hecho las dos tienen que dar
+      // `cycles * cycle.intervals`, porque el recorrido ocupa todos sus intervalos
+      // sin huecos. Si alguna vez difieren, o se duplico un onset o dos eventos
+      // colisionaron.
+      onsets: {
+        notes: hits.filter(h => h.kind === HIT.note).length,
+        clicks: hits.filter(h => h.kind === HIT.click).length,
+        total: hits.length,
+        distinctInstants: instantes.size,
       },
+      // Plana y no agrupada por instante: al no haber coincidencias, agrupar
+      // envolvia cada evento en un array de uno. `kind` es el discriminante del
+      // `Hit` del motor tal cual sale, no una etiqueta traducida aca, y un click
+      // no trae nota porque no tiene altura. Sus celdas estan en `route.hops`.
+      timeline: hits.map(h => h.kind === HIT.note
+        ? { at: round4(h.at), kind: h.kind, note: nameByHz.get(h.hz) ?? `${Math.round(h.hz)}Hz` }
+        : { at: round4(h.at), kind: h.kind }),
     });
   },
 });

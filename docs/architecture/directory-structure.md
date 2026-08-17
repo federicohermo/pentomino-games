@@ -57,34 +57,40 @@ src/
 ├── domain/                       # puro: sin React, sin Web Audio, sin DOM
 │   ├── transform.ts              # rotate90 · normalize · rotateN · reflect · centroid ·
 │   │                             #   angleFromCentroid
-│   ├── board.ts                  # cellsAt · isValid · phaseFor · occupantAt · occupantCellIndex
+│   ├── board.ts                  # cellsAt · isValid · cellDistance · pathBetween · occupantAt ·
+│   │                             #   occupantCellIndex
 │   ├── music.ts                  # midiFor · midiName · notesForRotation · degreeByCellIndex
+│   ├── sequence.ts               # buildSequence — el circuito (Held-Karp) y los offsets del ciclo —
+│   │                             #   y gates, las dos puertas de una pieza (la usa simulate_board)
 │   ├── invariants.ts             # los cinco chequeos del modelo + checkAll
 │   ├── types/                    # el contrato de la capa. Cero imports de afuera
 │   │   ├── transform.types.ts    #   Cell
 │   │   ├── pieces.types.ts       #   PieceKey
-│   │   └── board.types.ts        #   PlacedPiece
+│   │   ├── board.types.ts        #   PlacedPiece
+│   │   └── sequence.types.ts     #   Step · Click · Sequence · RouteKind
 │   ├── constants/                # los datos del modelo. Solo importan tipos
 │   │   ├── pieces.constants.ts   #   SHAPES · ANCHOR_INDEX
-│   │   ├── board.constants.ts    #   GRID_W · GRID_H
-│   │   └── music.constants.ts    #   CHROMATIC · PENT_* · BASE_MAP · DEFAULT_OCTAVE
+│   │   ├── board.constants.ts    #   GRID_W · GRID_H · SEAM
+│   │   ├── music.constants.ts    #   CHROMATIC · PENT_* · BASE_MAP · DEFAULT_OCTAVE
+│   │   └── route.constants.ts    #   ROUTE
 │   └── __tests__/                # uno por módulo
-│       └── transform · board · music · invariants
+│       └── transform · board · music · sequence · invariants
 ├── audio/                        # Web Audio; habla MIDI, no conoce el dominio ni la UI
-│   ├── voice.ts                  # midiToHz · scheduleVoice
-│   ├── scheduler.ts              # collectHits
+│   ├── voice.ts                  # midiToHz · scheduleVoice · scheduleClick
+│   ├── scheduler.ts              # collectHits · collectWindow (el swap al cierre de ciclo) ·
+│   │                             #   barDuration · intervalDuration
 │   ├── engine.ts                 # singletons y la API que consume la UI
 │   ├── spectrum.ts               # mapeo puro de bins de la FFT a alturas de barra
 │   ├── types/                    #   voice.types.ts · scheduler.types.ts
 │   ├── constants/                #   voice · scheduler · engine
 │   └── __tests__/
 │       ├── voice.test.ts         #   síntesis, con OfflineAudioContext
-│       ├── scheduler.test.ts     #   lookahead, reloj y fase
+│       ├── scheduler.test.ts     #   lookahead, reloj por origen, offsets del ciclo y el swap (D5)
 │       ├── integration.test.ts   #   el analyser es transparente, muestra por muestra
 │       ├── spectrum.test.ts      #   binsToBars, sin AudioContext (ver audio.md)
 │       └── test-context.ts       #   helpers de render y medición (no es un test)
 └── components/                   # un componente por archivo, presentacionales
-    ├── PiecePalette.tsx          # paleta, rotación, reflexión, tempo, transporte
+    ├── PiecePalette.tsx          # paleta, rotación, reflexión, tempo, transporte, clicks
     ├── Board.tsx                 # grilla 10×6: color por pieza, nota por celda, y el fantasma
     │                             #   diciendo lo mismo antes de colocar
     ├── PlacedList.tsx            # lista de piezas colocadas

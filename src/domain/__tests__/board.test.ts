@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { cellsAt, isValid, occupantAt, occupantCellIndex, phaseFor } from '../board.ts';
+import { cellsAt, isValid, occupantAt, occupantCellIndex, cellDistance, pathBetween } from '../board.ts';
 import { rotateN, reflect } from '../transform.ts';
 import { SHAPES, ANCHOR_INDEX } from '../constants/pieces.constants.ts';
-import { GRID_W, GRID_H } from '../constants/board.constants.ts';
+import { GRID_W, GRID_H, SEAM } from '../constants/board.constants.ts';
 import type { Cell } from '../types/transform.types.ts';
 import type { PieceKey } from '../types/pieces.types.ts';
 import type { PlacedPiece } from '../types/board.types.ts';
@@ -93,34 +93,6 @@ describe('isValid', () => {
   });
 });
 
-describe('phaseFor', () => {
-  it('AC8 del spec 004 — la columna del ancla es la posicion dentro del compas', () => {
-    // La primera columna es el downbeat y la ultima, la ultima subdivision: la
-    // fase nunca llega a 1, porque 1 seria el downbeat del compas siguiente.
-    expect(phaseFor([[0, 3]], 0)).toBe(0);
-    expect(phaseFor([[5, 0]], 0)).toBe(0.5);
-    expect(phaseFor([[GRID_W - 1, 0]], 0)).toBe(0.9);
-  });
-
-  it('lee la celda de agarre por indice, no la primera del array', () => {
-    const cells: Cell[] = [[7, 0], [2, 0], [4, 0]];
-    expect(phaseFor(cells, 1)).toBe(0.2);
-  });
-
-  it('la fila no cambia la fase: el eje que es tiempo es el X', () => {
-    for (let y = 0; y < GRID_H; y++) expect(phaseFor([[3, y]], 0)).toBe(0.3);
-  });
-
-  it('dos piezas en la misma columna comparten fase, en columnas distintas no', () => {
-    const p = rotateN(SHAPES.F, 0);
-    const a = cellsAt(p, ANCHOR_INDEX.F, 2, 1);
-    const b = cellsAt(p, ANCHOR_INDEX.F, 2, 4);
-    const c = cellsAt(p, ANCHOR_INDEX.F, 7, 1);
-    expect(phaseFor(a, ANCHOR_INDEX.F)).toBe(phaseFor(b, ANCHOR_INDEX.F));
-    expect(phaseFor(a, ANCHOR_INDEX.F)).not.toBe(phaseFor(c, ANCHOR_INDEX.F));
-  });
-});
-
 describe('occupantAt', () => {
   it('devuelve la pieza que ocupa la celda', () => {
     const a = piezaEn('a', [[1,1],[2,1]]);
@@ -194,5 +166,143 @@ describe('occupantCellIndex', () => {
         }
       }
     }
+  });
+});
+
+/** Las 60 celdas del tablero. Recorrerlas de a pares da las 3.600 combinaciones. */
+const TODAS: Cell[] = [];
+for (let x = 0; x < GRID_W; x++) for (let y = 0; y < GRID_H; y++) TODAS.push([x, y]);
+
+const [COSTURA_INICIO, COSTURA_FIN] = SEAM;
+const misma = (p: Cell, q: Cell): boolean => p[0] === q[0] && p[1] === q[1];
+const manhattan = (p: Cell, q: Cell): number => Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]);
+
+/** Vecinas en el grafo real: pegadas en la grilla, o las dos puntas de la costura. */
+const adyacentes = (p: Cell, q: Cell): boolean =>
+  manhattan(p, q) === 1
+  || (misma(p, COSTURA_INICIO) && misma(q, COSTURA_FIN))
+  || (misma(p, COSTURA_FIN) && misma(q, COSTURA_INICIO));
+
+describe('cellDistance', () => {
+  it('AC2 — las dos esquinas de la costura estan a un paso', () => {
+    // Es la definicion del repliegue: (0,0) y (9,5) son las mas lejanas de la
+    // grilla y la costura las vuelve vecinas.
+    expect(cellDistance([0, 0], [GRID_W - 1, GRID_H - 1])).toBe(1);
+    expect(cellDistance([GRID_W - 1, GRID_H - 1], [0, 0])).toBe(1);
+  });
+
+  it('AC2 — la distancia maxima del tablero es 12, no 14', () => {
+    // 14 es el diametro Manhattan de una grilla 10x6 sin costura. Con la arista
+    // extra ningun par supera 12: el que era el par mas lejano ahora mide 1.
+    let maxima = 0;
+    for (const a of TODAS) for (const b of TODAS) maxima = Math.max(maxima, cellDistance(a, b));
+    expect(maxima).toBe(12);
+  });
+
+  it('sin costura de por medio coincide con la distancia Manhattan', () => {
+    // La costura no reescribe todo el tablero: es UNA arista, y en el centro no
+    // cambia nada.
+    expect(cellDistance([4, 2], [4, 2])).toBe(0);
+    expect(cellDistance([4, 2], [5, 2])).toBe(1);
+    expect(cellDistance([4, 2], [6, 4])).toBe(4);
+  });
+
+  it('es simetrica en las 3.600 combinaciones', () => {
+    const fallas: string[] = [];
+    for (const a of TODAS) for (const b of TODAS) {
+      if (cellDistance(a, b) !== cellDistance(b, a)) fallas.push(`${a} / ${b}`);
+    }
+    expect(fallas).toEqual([]);
+  });
+
+  it('cumple la desigualdad triangular en las 3.600 combinaciones', () => {
+    // Es lo que distingue una distancia de grafo de una formula que se parece a
+    // una: si un atajo por la costura estuviera mal contado, existiria un rodeo
+    // mas barato que el camino directo. Cada par se mide contra las 60 celdas
+    // como escala intermedia.
+    const fallas: string[] = [];
+    for (const a of TODAS) for (const b of TODAS) {
+      const directa = cellDistance(a, b);
+      for (const c of TODAS) {
+        if (directa > cellDistance(a, c) + cellDistance(c, b)) fallas.push(`${a} -> ${c} -> ${b}`);
+      }
+    }
+    expect(fallas).toEqual([]);
+  });
+});
+
+describe('pathBetween', () => {
+  it('AC7b — el camino tiene exactamente una celda menos que la distancia', () => {
+    // Se recorren las 3.600 combinaciones y se asevera sobre 3.540: los 60 pares
+    // de una celda consigo misma quedan afuera porque con distancia 0 no existe un
+    // camino de largo -1, y ese caso no ocurre en el circuito.
+    let recorridos = 0;
+    let aseverados = 0;
+    for (const a of TODAS) for (const b of TODAS) {
+      recorridos++;
+      if (misma(a, b)) continue;
+      aseverados++;
+      expect(pathBetween(a, b).length, `${a} -> ${b}`).toBe(cellDistance(a, b) - 1);
+    }
+    expect(recorridos).toBe(3600);
+    expect(aseverados).toBe(3540);
+  });
+
+  it('AC7b — es un camino de verdad: celdas adyacentes de a pares y ninguna repetida', () => {
+    // El largo solo no alcanza: un array del tamano correcto con celdas salteadas
+    // lo cumpliria igual. Se mide sobre el recorrido COMPLETO —con a y b en las
+    // puntas— porque la costura puede caer entre dos celdas intermedias.
+    const fallas: string[] = [];
+    for (const a of TODAS) for (const b of TODAS) {
+      if (misma(a, b)) continue;
+      const completo = [a, ...pathBetween(a, b), b];
+      for (let i = 1; i < completo.length; i++) {
+        if (!adyacentes(completo[i - 1], completo[i])) fallas.push(`salto ${a} -> ${b} en ${i}`);
+      }
+      const vistas = new Set(completo.map(([x, y]) => `${x},${y}`));
+      if (vistas.size !== completo.length) fallas.push(`repetida ${a} -> ${b}`);
+    }
+    expect(fallas).toEqual([]);
+  });
+
+  it('no incluye ni el origen ni el destino', () => {
+    const camino = pathBetween([0, 0], [3, 0]);
+    expect(camino).toEqual([[1, 0], [2, 0]]);
+  });
+
+  it('traza primero en X y despues en Y', () => {
+    // Ninguna eleccion es mas correcta —entre (0,0) y (3,2) hay 10 caminos
+    // minimos—, asi que se fija la que se explica en una linea.
+    expect(pathBetween([0, 0], [3, 2])).toEqual([[1, 0], [2, 0], [3, 0], [3, 1]]);
+  });
+
+  it('AC7b — el borde de la costura: el origen ya ES la esquina', () => {
+    // Es donde fallaba la version que excluia los extremos tramo por tramo: el
+    // primer tramo se queda sin celdas propias y la esquina de llegada, que en el
+    // camino completo es intermedia, se perdia.
+    expect(cellDistance([0, 0], [GRID_W - 1, GRID_H - 2])).toBe(2);
+    expect(pathBetween([0, 0], [GRID_W - 1, GRID_H - 2])).toEqual([[GRID_W - 1, GRID_H - 1]]);
+  });
+
+  it('AC7b — el borde de la costura: el destino ya ES la esquina', () => {
+    expect(cellDistance([GRID_W - 1, GRID_H - 2], [0, 0])).toBe(2);
+    expect(pathBetween([GRID_W - 1, GRID_H - 2], [0, 0])).toEqual([[GRID_W - 1, GRID_H - 1]]);
+  });
+
+  it('AC7b — el borde de la costura: origen y destino son las dos esquinas', () => {
+    expect(pathBetween([0, 0], [GRID_W - 1, GRID_H - 1])).toEqual([]);
+    expect(pathBetween([GRID_W - 1, GRID_H - 1], [0, 0])).toEqual([]);
+  });
+
+  it('cruza la costura solo cuando acorta', () => {
+    // (8,5) -> (1,0): 12 derecho contra 1+1+1=3 por la costura, asi que la usa y
+    // el camino pasa por sus dos puntas.
+    expect(cellDistance([8, 5], [1, 0])).toBe(3);
+    expect(pathBetween([8, 5], [1, 0])).toEqual([[GRID_W - 1, GRID_H - 1], [0, 0]]);
+    // (9,0) -> (0,4): 13 derecho contra 5+1+4=10 por la costura. Tambien acorta.
+    expect(cellDistance([GRID_W - 1, 0], [0, 4])).toBe(10);
+    // En el centro no acorta nada y la costura queda afuera del camino.
+    expect(cellDistance([4, 2], [6, 3])).toBe(3);
+    expect(pathBetween([4, 2], [6, 3]).some((c) => misma(c, COSTURA_FIN) || misma(c, COSTURA_INICIO))).toBe(false);
   });
 });

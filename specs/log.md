@@ -12,11 +12,11 @@ spec posterior reemplazó lo que hacía; el spec queda como historia y no se ree
 | [001](./001-notas-por-celda-en-orden-angular/spec.md) | 2026-08-02 | Descartado | Asignar cada nota a una celda de la pieza, en orden angular alrededor del centroide. **Absorbido por el [007](./007-nota-por-celda-y-lenguaje-visual/spec.md)**, que conserva su mapeo (D1 y D3) y revisa su desempate (D2) con una medición |
 | [002](./002-motor-de-audio-propio-sobre-web-audio/spec.md) | 2026-08-02 | Implementado | Reemplazar Tone.js por un motor propio sobre Web Audio: síntesis, scheduler con lookahead y audio testeable |
 | [003](./003-visualizacion-de-la-senal-con-analysernode/spec.md) | 2026-08-02 | Implementado | Visualizar la señal con `AnalyserNode`: espectro en canvas, con el mapeo bins→barras como función pura testeable |
-| [004](./004-fase-por-pieza-la-columna-como-posicion-en-el-compas/spec.md) | 2026-08-02 | Implementado | La columna de la celda de agarre determina en qué momento del compás arranca la pieza: el tablero pasa a ser un secuenciador |
+| [004](./004-fase-por-pieza-la-columna-como-posicion-en-el-compas/spec.md) | 2026-08-02 | Superado | La columna de la celda de agarre determina en qué momento del compás arranca la pieza: el tablero pasa a ser un secuenciador. **Superado por el [009](./009-el-tablero-como-recorrido/spec.md)** |
 | [005](./005-modularizacion-de-src-en-capas/spec.md) | 2026-08-03 | Implementado | `src/` en capas (`domain` · `audio` · `components`) con dirección de dependencia verificada por el linter, carpetas por rol y los primeros tests del dominio. Sin cambio de comportamiento |
 | [006](./006-mcp-server-de-dominio-ejecutable/spec.md) | 2026-08-03 | Implementado | MCP server que **ejecuta** el dominio en vez de indexar el código: forma, notas, simulación del scheduler e invariantes, en una llamada. Las tools importan de `src/`, no reimplementan |
-| [007](./007-nota-por-celda-y-lenguaje-visual/spec.md) | 2026-08-16 | Propuesto | Cada celda es dueña de un grado de la escala, y el tablero lo muestra: color por pieza y nota por celda. Absorbe al 001. **Sin cambio de audio** |
-| [008](./008-el-intervalo-como-unidad-musical/spec.md) | 2026-08-16 | Propuesto | El espaciado del arpegio deja de ser 0,15 s fijos y pasa a ser la semicorchea del tempo; `Job` pierde `spread`; el checkbox de loop y el botón de reloj se funden en un play/pausa con estado |
+| [007](./007-nota-por-celda-y-lenguaje-visual/spec.md) | 2026-08-16 | Implementado | Cada celda es dueña de un grado de la escala, y el tablero lo muestra: color por pieza y nota por celda. Absorbe al 001. **Sin cambio de audio** |
+| [008](./008-el-intervalo-como-unidad-musical/spec.md) | 2026-08-16 | Implementado | El espaciado del arpegio deja de ser 0,15 s fijos y pasa a ser la semicorchea del tempo; `Job` pierde `spread`; el checkbox de loop y el botón de reloj se funden en un play/pausa con estado |
 | [009](./009-el-tablero-como-recorrido/spec.md) | 2026-08-16 | Propuesto | El tablero deja de ser un compás y pasa a ser un circuito cerrado: el orden y los silencios salen de la geometría, `(0,0)` y `(9,5)` se repliegan, las celdas recorridas suenan. Muere `phaseFor` y **supera al 004** |
 | [010](./010-cabeza-lectora-por-celda/spec.md) | 2026-08-16 | Propuesto | Cabeza lectora celda por celda, fuera del estado de React: cierra la limitación que el 004 dejó anotada y da señal visual a la espera de un ciclo que introduce el 009 |
 
@@ -66,10 +66,10 @@ spec posterior reemplazó lo que hacía; el spec queda como historia y no se ree
   008 son ortogonales entre sí** y los dos son mergeables sin cambiar el modelo temporal; **009 necesita
   a los dos** —del 007, la celda de entrada y la de salida de cada pieza; del 008, la unidad de tiempo— y
   **010 necesita al 009**. El corte es deliberado: si el 009 no suena bien, revertirlo no arrastra nada.
-- **009 va a superar al 004.** La columna de la celda de agarre deja de ser la posición dentro del
-  compás; el orden lo va a dar el recorrido entre piezas. El 004 no se reescribe —es historia— pero su
-  estado pasa a `Superado` cuando el 009 se mergee, y con él se van `phaseFor`, sus tests, el campo
-  `phase` de `Job` y la mitad de `simulate_board` que lo reporta.
+- **El 009 supera al 004.** La columna de la celda de agarre deja de ser la posición dentro del compás;
+  el orden lo da el recorrido entre piezas. El 004 no se reescribe —es historia— pero su estado pasa a
+  `Superado`, y con él se van `phaseFor`, sus tests, el campo `phase` de `Job` y la mitad de
+  `simulate_board` que lo reporta.
 
 ## Deuda conocida
 

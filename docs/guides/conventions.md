@@ -148,9 +148,10 @@ export type Rotation = (typeof ROTATION)[keyof typeof ROTATION];
 del índice `k` sigue siendo la misma celda lógica después de transformar.**
 
 De eso depende `ANCHOR_INDEX`, que guarda la celda de agarre como índice en vez de coordenada; de eso
-depende la fase por pieza, que lee la columna del ancla por índice sobre `PlacedPiece.cells`; y de eso
-dependerá el mapeo celda↔nota del spec 001. Cualquier cambio que filtre, ordene o reagrupe celdas dentro
-de esas funciones rompe la colocación de piezas **en silencio**.
+depende el mapeo celda↔nota que `degreeByCellIndex` calcula sobre la forma canónica y arrastra por
+índice (spec 007); y de eso dependen las puertas del recorrido, que leen la celda del grado 0 y la del
+grado 4 por índice sobre `PlacedPiece.cells` (spec 009). Cualquier cambio que filtre, ordene o reagrupe
+celdas dentro de esas funciones rompe la colocación de piezas **en silencio**.
 
 Hoy hay una red: `checkArrayOrder()` de `domain/invariants.ts` lo verifica sobre las 96 combinaciones, y
 su propio test comprueba que el chequeo **da rojo** cuando una transformación reordena.
@@ -167,8 +168,8 @@ mal, pero es la clase de cosa que alguien "arregla" por error.
 
 - **Sin estado global.** No hay Context, Redux ni Zustand. Todo es `useState` local en `App`.
 - **Lo que no es estado de UI, no va en estado.** El contador de ids vive en un `useRef` porque
-  cambiarlo no debe re-renderizar. El `AudioContext` y los jobs del motor viven en singletons de módulo
-  porque hay uno por pestaña, no uno por componente.
+  cambiarlo no debe re-renderizar. El `AudioContext` y la secuencia del motor —la activa y la
+  pendiente— viven en singletons de módulo porque hay uno por pestaña, no uno por componente.
 - **Nunca mutar objetos ya entregados a React.** Es literalmente el bug que tuvieron los loops:
   `newPiece._sched = id` después de `setPlaced(prev => [...prev, newPiece])`. Si un dato tiene que
   cambiar después, o va en el estado con su propio `set`, o va afuera de React.
@@ -177,12 +178,17 @@ mal, pero es la clase de cosa que alguien "arregla" por error.
 
 ## Efectos
 
-Los efectos **reconcilian**, no ejecutan comandos. El efecto de audio observa `[placed, playing]` y
-lleva los jobs del motor a donde deben estar: limpia todo y re-agrega. Los handlers solo cambian estado.
+Los efectos **reconcilian**, no ejecutan comandos. El efecto de audio observa `[placed]` y le entrega
+al motor la secuencia entera con `setSequence`. Los handlers solo cambian estado.
 
-Que limpiar y re-agregar sea aceptable no es casualidad, es una propiedad del diseño: los jobs son
-**datos puros** y la fase de los loops vive en el cursor del reloj, que el efecto no toca. Con Tone,
-donde cada job era un evento con identidad, el mismo patrón habría reiniciado la fase de todos.
+`playing` **no** está en las dependencias: la secuencia es función del tablero y no del transporte, y
+quien corta o arranca el sonido es `togglePlay` con `stopClock`/`startClock`.
+
+Que reemplazar la secuencia entera sea aceptable no es casualidad, es una propiedad del diseño: la
+secuencia es un **dato puro** que `tick()` lee, y el reloj es un origen que el efecto no toca —
+`setSequence` ni siquiera la pone en vigencia, la deja **pendiente** hasta que el ciclo activo cierre
+(D5 del spec 009). Con Tone, donde cada loop era un evento con identidad, el mismo patrón habría
+reiniciado la fase de todos, y perder su ID dejaba loops huérfanos.
 
 Hoy **ningún efecto del repo hace trabajo asincrónico**, así que no hay flag de cancelación en ningún
 lado. Si vuelve a hacer falta, el patrón es el de siempre (`let cancelled = false` capturado en el
@@ -190,7 +196,7 @@ closure, chequeado después del `await`, seteado en la limpieza).
 
 Y ojo con las limpiezas asincrónicas: en StrictMode pueden correr **después** del siguiente efecto. Si
 la limpieza tiene que ganarle al re-montaje, tiene que ser sincrónica — es el caso del efecto de
-desmontaje que llama a `stopClock()` y `clearJobs()`. Ver
+desmontaje que llama a `stopClock()` y entrega una secuencia vacía con `setSequence()`. Ver
 [audio.md](../architecture/audio.md#reconciliación-de-loops).
 
 ## Comentarios

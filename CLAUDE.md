@@ -7,9 +7,10 @@ se puede averiguar mirando un archivo. El detalle vive en `docs/`, las reglas po
 ## Qué es
 
 Un prototipo de **instrumento musical**, no un juego con reglas de resolución. El usuario coloca
-pentominós en un tablero de 10×6 y cada pieza dispara un arpegio de cinco notas. No hay puntaje ni
-condición de victoria — al evaluar una feature, la pregunta es si vuelve al instrumento más expresivo,
-no más difícil.
+pentominós en un tablero de 10×6 y cada pieza dispara un arpegio de cinco notas. Desde el spec 009 el
+tablero es un **recorrido**, no un compás: un circuito cerrado visita las piezas, y el orden y los
+silencios salen de la geometría. No hay puntaje ni condición de victoria — al evaluar una feature, la
+pregunta es si vuelve al instrumento más expresivo, no más difícil.
 
 **Stack:** Vite 7 · React 19 · TypeScript 5.8 · Tailwind CSS 4 · Web Audio (sin librería de audio)
 
@@ -60,7 +61,7 @@ TypeScript sin compilar; es un piso de tooling y con Node 20 solo se pierde el s
 types/ ← constants/ ← módulos              types/ no importa nada de afuera de types/
 transform.ts ← board.ts                    domain/ no importa nada de fuera de domain/
              ← music.ts ← invariants.ts    audio/  no importa nada de fuera de audio/
-                                           components/ y App.tsx importan de las dos
+board.ts + music.ts ← sequence.ts          components/ y App.tsx importan de las dos
 ```
 
 1. **`domain/`** — puro: sin React, sin Web Audio, sin DOM. Geometría, reglas del tablero, modelo
@@ -68,7 +69,7 @@ transform.ts ← board.ts                    domain/ no importa nada de fuera de
 2. **`audio/`** — habla MIDI y no conoce el dominio. Síntesis, scheduler con lookahead, singletons y el
    mapeo del espectro.
 3. **`components/`** — un componente por archivo, presentacionales.
-4. **`App.tsx`** — el shell: estado, derivados, handlers, los dos efectos y la composición.
+4. **`App.tsx`** — el shell: estado, derivados, handlers, los cuatro efectos y la composición.
 
 `domain/` y `audio/` son **hermanos sin aristas entre ellos**: el motor habla números MIDI y no sabe
 qué es un pentominó.
@@ -141,7 +142,7 @@ así — eso vive en los comentarios, no en la salida de una tool.
 |---|---|---|
 | Visión general | [docs/architecture/overview.md](./docs/architecture/overview.md) | Las cuatro capas y su dirección de dependencia |
 | Estructura de directorios | [docs/architecture/directory-structure.md](./docs/architecture/directory-structure.md) | Dónde crear cada cosa, qué está muerto |
-| Modelo musical | [docs/architecture/modelo-musical.md](./docs/architecture/modelo-musical.md) | Pieza → tónica, rotación → escala, reflexión → retrógrado, forma → nota por celda |
+| Modelo musical | [docs/architecture/modelo-musical.md](./docs/architecture/modelo-musical.md) | Pieza → tónica, rotación → escala, reflexión → retrógrado, forma → nota por celda, posición → orden y silencio |
 | Capa de audio | [docs/architecture/audio.md](./docs/architecture/audio.md) | Grafo Web Audio, ADSR, scheduler con lookahead, reconciliación de loops |
 | Lenguaje visual | [DESIGN.md](./DESIGN.md) | Los 12 colores y su tónica, el contraste como test, qué muestra una celda y qué no se comunica con color |
 | Inicio rápido | [docs/guides/quickstart.md](./docs/guides/quickstart.md) | Setup, comandos, flujos típicos |

@@ -1,8 +1,8 @@
-import type { Job, ClockState } from './types/scheduler.types.ts';
-import { midiToHz, scheduleVoice } from './voice.ts';
-import { collectHits, intervalDuration } from './scheduler.ts';
+import type { Sequence, ClockState } from './types/scheduler.types.ts';
+import { midiToHz, scheduleVoice, scheduleClick } from './voice.ts';
+import { collectWindow, intervalDuration } from './scheduler.ts';
 import { NOTE_INTERVALS } from './constants/voice.constants.ts';
-import { LOOKAHEAD, TICK_MS } from './constants/scheduler.constants.ts';
+import { LOOKAHEAD, TICK_MS, HIT } from './constants/scheduler.constants.ts';
 import {
   MASTER_GAIN, DEFAULT_BPM, PLAY_DELAY, CLOCK_START_DELAY,
   FFT_SIZE, SMOOTHING,
@@ -116,17 +116,65 @@ export function playNow(notes: number[]): void {
 
 // —— reloj ——
 
-const jobs = new Map<string, Job>();
+/**
+ * El recorrido que esta sonando y el que va a sonar cuando este cierre su ciclo.
+ *
+ * Dos y no una: colocar o quitar una pieza no interrumpe lo que suena (D5). El
+ * cambio de una por otra lo hace `collectWindow`, al cerrar el ciclo.
+ */
+let active: Sequence = { steps: [], clicks: [], length: 0 };
+let pending: Sequence | null = null;
 const clock: ClockState = { origin: 0, scheduledUntil: 0 };
 let timer: number | null = null;
 let bpm = DEFAULT_BPM;
 
 export const setBpm = (v: number): void => { bpm = v; };
-export const addJob = (job: Job): void => { jobs.set(job.id, job); };
-export const removeJob = (id: string): void => { jobs.delete(id); };
-export const clearJobs = (): void => { jobs.clear(); };
-/** Expuesto para verificacion manual desde la consola. */
-export const jobCount = (): number => jobs.size;
+
+/**
+ * Si los clicks del recorrido suenan. Es MEZCLA, no modelo.
+ *
+ * Vive aca y no en la secuencia por eso: apagarlos no cambia el recorrido —los
+ * clicks siguen en la `Sequence` y `collectHits` los sigue emitiendo—, solo deja de
+ * cablearlos a sonido en `tick()`. Filtrar antes obligaria a reconstruir la
+ * secuencia para algo que no es una decision del tablero, y ademas haria que el
+ * ciclo pareciera distinto segun el volumen.
+ *
+ * El spec 009 lo dejo previsto en su tabla de riesgos —"es un parametro suelto: si
+ * molesta, se baja o se apaga sin tocar el modelo"— y salio de escuchar: mientras
+ * `pathBetween` cruce celdas ocupadas, hay clicks que caen encima de la pieza que
+ * acaba de sonar.
+ */
+let clicksAudible = true;
+export const setClicksAudible = (v: boolean): void => { clicksAudible = v; };
+
+/**
+ * Encola el recorrido nuevo. NO toca lo que esta sonando: entra en vigencia recien
+ * al cerrar el ciclo activo, que es lo que permite que el circuito se reordene
+ * entero sin que el patron salte a mitad de frase (D5).
+ *
+ * El precio esta medido y es la decision mas cara del spec 009: con 8 piezas a 110
+ * bpm el ciclo dura 7,5 s, asi que una pieza recien colocada puede tardar eso en
+ * escucharse dentro del loop. Lo que si suena al instante es su arpegio, por el otro
+ * camino a sonido (`playNotes`).
+ *
+ * Solo se guarda la ultima: dos cambios antes del cierre valen por uno, porque lo que
+ * se encola es el recorrido COMPLETO y no un delta.
+ */
+export function setSequence(next: Sequence): void { pending = next; }
+
+/**
+ * Expuesto para verificacion manual desde la consola: reemplaza a `jobCount()`, que
+ * era la forma de mirar el motor sin oirlo y que este spec borro junto con los jobs.
+ * Informa la secuencia ACTIVA —la que esta sonando—, no la pendiente: preguntarle al
+ * motor que agendo y que le contesten lo que todavia no agendo seria peor que no
+ * tener la funcion.
+ */
+export const sequenceInfo = (): { steps: number; clicks: number; length: number } => ({
+  steps: active.steps.length,
+  clicks: active.clicks.length,
+  length: active.length,
+});
+
 export const clockRunning = (): boolean => timer !== null;
 
 function tick(): void {
@@ -135,8 +183,15 @@ function tick(): void {
   // El bpm no cambia dentro de la vuelta, asi que la duracion sale una sola vez
   // y todas las notas de esta ventana quedan medidas contra el mismo tempo.
   const dur = NOTE_INTERVALS * intervalDuration(bpm);
-  for (const hit of collectHits(c.currentTime, LOOKAHEAD, bpm, jobs.values(), clock)) {
-    scheduleVoice(c, master, hit.hz, hit.at, dur);
+  // Toda la decision —incluido el swap al cierre del ciclo— vive en el scheduler,
+  // que es testeable; aca queda el cableado a sonido, que sin AudioContext no se
+  // puede correr. Ver el docblock de collectWindow.
+  const w = collectWindow(c.currentTime, LOOKAHEAD, bpm, active, pending, clock);
+  active = w.active;
+  pending = w.pending;
+  for (const hit of w.hits) {
+    if (hit.kind === HIT.note) scheduleVoice(c, master, hit.hz, hit.at, dur);
+    else if (clicksAudible) scheduleClick(c, master, hit.at);
   }
 }
 
@@ -147,8 +202,10 @@ export function startClock(): void {
   if (c.state === 'suspended') void c.resume();
   clock.origin = c.currentTime + CLOCK_START_DELAY;
   // Estrictamente ANTES de origin: firstOnsetAfter devuelve el primer onset
-  // POSTERIOR a lo ya emitido, asi que con scheduledUntil = origin el downbeat
-  // del compas 0 se saltearia y el primer sonido llegaria un compas tarde.
+  // POSTERIOR a lo ya emitido, asi que con scheduledUntil = origin el primer onset
+  // del ciclo 0 se saltearia y el primer sonido llegaria un ciclo tarde — que desde
+  // el spec 009 son 7,5 s con 8 piezas, no un compas. Es la misma trampa que vuelve
+  // a aparecer en el swap de collectWindow.
   clock.scheduledUntil = c.currentTime;
   timer = window.setInterval(tick, TICK_MS);
 }

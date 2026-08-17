@@ -19,11 +19,11 @@ expresivo, no más difícil.
                            │
 ┌──────────────────────────▼──────────────────────────────┐
 │  src/App.tsx — el shell                                 │
-│   estado · derivados · handlers · los dos efectos       │
+│   estado · derivados · handlers · los cuatro efectos    │
 │   selected · rotation · mirror · tempo                  │
 │   playing · placed[] · hover                            │
 └───────┬─────────────────────────────┬───────────────────┘
-        │ compone                     │ playNow · addJob · startClock
+        │ compone                     │ playNow · setSequence · startClock
 ┌───────▼──────────────────┐  ┌───────▼───────────────────┐
 │  src/components/         │  │  src/audio/               │
 │   PiecePalette · Board   │  │   voice.ts     síntesis   │
@@ -39,10 +39,12 @@ expresivo, no más difícil.
 │  src/domain/ — puro: sin React, sin Web Audio, sin DOM  │
 │   transform.ts   rotate90 · normalize · rotateN · reflect│
 │                  centroid · angleFromCentroid            │
-│   board.ts       cellsAt · isValid · phaseFor            │
-│                  occupantAt · occupantCellIndex          │
+│   board.ts       cellsAt · isValid · cellDistance ·      │
+│                  pathBetween · occupantAt ·               │
+│                  occupantCellIndex                        │
 │   music.ts       midiFor · midiName · notesForRotation   │
 │                  degreeByCellIndex                       │
+│   sequence.ts    buildSequence                            │
 │   invariants.ts  los cinco chequeos del modelo           │
 │   types/ ← constants/ ← módulos                          │
 └─────────────────────────────────────────────────────────┘
@@ -62,7 +64,7 @@ que un `.tsx` exporte algo además del componente, así que mientras la geometr�
 `App.tsx` **no podían exportarse, y por lo tanto no podían testearse**. La organización no era neutral:
 condenaba al dominio a no ser verificable. Hoy `src/domain/` tiene tests donde antes había cero.
 
-Lo que queda en `App.tsx` es el shell: estado, derivados, handlers, los dos efectos y la composición de
+Lo que queda en `App.tsx` es el shell: estado, derivados, handlers, los cuatro efectos y la composición de
 los componentes. Ninguna función pura y ningún literal de dominio.
 
 ## Las cuatro capas
@@ -74,8 +76,9 @@ Sin React, sin audio, sin DOM. Determinísticas y testeables en aislamiento.
 | Módulo | Símbolos | Responsabilidad |
 |---|---|---|
 | `transform.ts` | `rotate90`, `normalize`, `rotateN`, `reflect`, `centroid`, `angleFromCentroid` | Transformaciones de un `Cell[]`, y el centroide con el ángulo de cada celda a su alrededor |
-| `board.ts` | `cellsAt`, `isValid`, `phaseFor`, `occupantAt`, `occupantCellIndex` | Las reglas del tablero, la columna como posición en el compás, y qué celda de la pieza cae en `(x, y)` |
+| `board.ts` | `cellsAt`, `isValid`, `cellDistance`, `pathBetween`, `occupantAt`, `occupantCellIndex` | Las reglas del tablero, la distancia entre celdas replegando la costura `(0,0)↔(9,5)`, y qué celda de la pieza cae en `(x, y)` |
 | `music.ts` | `midiFor`, `midiName`, `notesForRotation`, `degreeByCellIndex` | De pieza + rotación a cinco notas MIDI, y de la forma a qué celda lleva cuál |
+| `sequence.ts` | `buildSequence` | El circuito que visita las piezas colocadas (Held-Karp sobre `cellDistance`) y los offsets del ciclo — orden, silencios y clicks |
 | `invariants.ts` | `checkArrayOrder`, `checkAnchors`, `checkShapes`, `checkBaseMap`, `checkNotes`, `checkAll` | Los cinco chequeos del modelo. Los dos geométricos recorren las 96 orientaciones; los otros tres, lo que les corresponde |
 
 Los datos (`SHAPES`, `ANCHOR_INDEX`, `BASE_MAP`, `PENT_*`, `GRID_W/H`) viven en `domain/constants/`, y
@@ -140,7 +143,8 @@ reordena.
 ### El estado es la fuente de verdad; los efectos reconcilian
 
 Los loops de audio no se agendan ni cancelan desde los handlers. Un único `useEffect` observa
-`[placed, playing]` y lleva los jobs del motor a donde deben estar.
+`[placed]` y le entrega al motor la secuencia del recorrido con `setSequence`. `playing` no está en
+las dependencias: la secuencia es función del tablero y no del transporte.
 
 El patrón imperativo anterior —cada handler acordándose de limpiar lo suyo— es exactamente el que
 produjo el bug de loops huérfanos que sobrevivían a "Quitar" y "Reset". Ver

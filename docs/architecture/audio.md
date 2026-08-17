@@ -21,9 +21,9 @@ inserción: el `AnalyserNode` del
 
 | Archivo | Qué hace | Cómo obtiene el contexto |
 |---|---|---|
-| **`voice.ts`** | `midiToHz`, `scheduleVoice` | por parámetro |
-| **`scheduler.ts`** | `collectHits` — decide qué suena y cuándo | por parámetro |
-| **`engine.ts`** | singletons, `playNow`, `startClock`, jobs | **es** el dueño del singleton |
+| **`voice.ts`** | `midiToHz`, `scheduleVoice`, `scheduleClick` | por parámetro |
+| **`scheduler.ts`** | `collectHits` — qué suena y cuándo — y `collectWindow` — la vuelta entera, con el swap al cierre de ciclo | por parámetro |
+| **`engine.ts`** | singletons, `playNow`, `startClock`, `setSequence` | **es** el dueño del singleton |
 | **`spectrum.ts`** | `binsToBars` — de bins de la FFT a alturas de barra | no lo toca: es puro |
 
 Los tres primeros son el motor; `spectrum.ts` es el mapeo puro que se separó del `AnalyserNode` para
@@ -84,23 +84,28 @@ El estado del reloj son dos escalares, y ninguno es "el próximo compás":
 
 ```ts
 export interface ClockState {
-  origin: number;          // instante del compás 0 en el reloj del contexto
+  origin: number;          // instante del ciclo 0 en el reloj del contexto
   scheduledUntil: number;  // hasta dónde ya se emitieron onsets
 }
 ```
 
-Los onsets de un job son una progresión aritmética que se resuelve **en forma cerrada**, sin avanzar un
-cursor:
+`ClockState` no cambió con el spec 009 — sigue siendo dos escalares. Lo que cambió es el período: los
+onsets se resuelven **en forma cerrada**, sin avanzar un cursor, pero la unidad pasó del compás al
+**ciclo** del recorrido:
 
 ```
-onset(k) = origin + (k + phase) * bar
+onset(k) = origin + (k × ciclo + offset + j) × intervalo
 ```
+
+con `offset` el desplazamiento entero del paso dentro del ciclo (en intervalos) y `j` el índice de la
+nota dentro de la pieza. Detalle de cómo se arma en
+[#el-recorrido-en-el-scheduler](#el-recorrido-en-el-scheduler).
 
 ```ts
 const from = Math.max(state.scheduledUntil, fromTime);
 if (from >= until) return out;                    // ventana ya cubierta
-for (const job of jobs) {
-  for (let at = firstOnsetAfter(from, state.origin, bar, job.phase); at <= until; at += bar) { … }
+for (const step of sequence.steps) {
+  for (let at = firstOnsetAfter(from, state.origin, ciclo, step.offset / sequence.length); at <= until; at += ciclo) { … }
 }
 state.scheduledUntil = until;
 ```
@@ -108,93 +113,155 @@ state.scheduledUntil = until;
 Tres propiedades que salen de esa forma, y que hay que preservar:
 
 - **`scheduledUntil` es lo que evita la re-emisión.** Los ticks son de 25 ms y el horizonte de 100 ms:
-  sin él, cada onset saldría cuatro veces. Es un escalar compartido, no estado por job.
-- **Los compases perdidos se saltean, no se recuperan.** Cuando la pestaña estuvo oculta el reloj de
+  sin él, cada onset saldría cuatro veces. Es un escalar compartido, no estado por paso.
+- **Los ciclos perdidos se saltean, no se recuperan.** Cuando la pestaña estuvo oculta el reloj de
   audio siguió corriendo y `scheduledUntil` quedó atrás; `Math.max(…, fromTime)` descarta el hueco. No
-  hay bucle de recuperación que acotar, porque saltear 10 compases cuesta lo mismo que saltear 1. Esto
+  hay bucle de recuperación que acotar, porque saltear 10 ciclos cuesta lo mismo que saltear 1. Esto
   **reemplaza** a la guarda `if (state.nextBar < fromTime)` del spec 002.
-- **Nunca hay más de `horizon` de *onsets* comprometidos**, con cualquier `phase`. Es lo que hace que
-  quitar una pieza la calle rápido; emitir un compás entero de una la dejaría sonando 2.18 s a 110 bpm.
-  El límite es sobre el **onset**, no sobre la última nota: el arpegio se expande después del onset y
-  esa cola siempre estuvo fuera del horizonte. Lo que cambió con el spec 008 es que la cola dejó de ser
-  fija: mide `compás / 4` más la nota y su release, o sea 1.37 s a 60 bpm y 0.59 s a 160, donde antes
-  eran 1.07 s a cualquier tempo. Quitar una pieza la calla en 100 ms **más lo que le quede de arpegio
-  ya agendado**.
+- **Nunca hay más de `horizon` de *onsets* comprometidos**, con cualquier tamaño de ciclo. Es lo que
+  hace que quitar una pieza la calle rápido; emitir un ciclo entero de una lo dejaría sonando hasta
+  8,98 s con 10 piezas a 110 bpm (`research.md` del spec 009, §4). El límite es sobre el **onset**, no
+  sobre la última nota: el arpegio se expande después del onset y esa cola siempre estuvo fuera del
+  horizonte. Desde el spec 008 la cola mide `compás / 4` más la nota y su release, o sea 1.37 s a 60 bpm
+  y 0.59 s a 160.
+
+  **Ojo con leer esto como "quitar una pieza la calla en 100 ms": desde el spec 009 ya no es cierto.**
+  El horizonte acota lo que está *comprometido*, no cuándo entra en vigencia el cambio: quitar una pieza
+  reemplaza la secuencia **pendiente**, y la pendiente entra recién al cerrar el ciclo activo (D5). Con 8
+  piezas a 110 bpm eso son hasta 7,5 s. Lo que el horizonte sigue garantizando es que **pausar** corta en
+  100 ms más la cola, porque ahí se frena el temporizador y no hay ciclo que esperar.
 
 `firstOnsetAfter` usa `floor(x) + 1` y **no** `ceil(x)`: se quiere el primer onset *estrictamente*
 posterior a lo ya emitido. Con `ceil`, un onset que cae exacto en el borde de una ventana saldría dos
 veces — al cerrar una ventana y al abrir la siguiente.
 
 `startClock` deja `scheduledUntil = currentTime` y `origin = currentTime + 0.05`, en ese orden de
-magnitud: **`scheduledUntil` tiene que quedar estrictamente antes de `origin`**, o el downbeat del
-compás 0 se saltea y el primer sonido llega un compás tarde.
+magnitud: **`scheduledUntil` tiene que quedar estrictamente antes de `origin`**, o el primer onset del
+ciclo 0 se saltea y el primer sonido llega un ciclo tarde. Es la misma trampa que reaparece en el swap
+de secuencia al cerrar un ciclo — ver [más abajo](#el-swap-en-el-cierre-de-ciclo).
 
-## Fase por pieza
+## El recorrido en el scheduler
 
-`Job.phase` es la posición del job dentro del compás, `0 ≤ phase < 1`. Es **fracción y no segundos**:
-así mover el tempo estira el patrón en vez de reordenarlo. `App.tsx` la deriva de la columna de la
-celda de agarre (`ax / GRID_W`) — ver
-[modelo-musical.md](./modelo-musical.md).
+`domain/sequence.ts` arma el circuito y los offsets; el motor no recalcula ni reordena nada, solo lee
+lo que le entregan. `App.tsx` llama a `buildSequence(placed)` y proyecta el resultado a la `Sequence`
+del motor, que **no lleva celdas**:
 
-Es un campo **obligatorio, sin default**. Un `phase?: number` dejaría pasar en silencio el caso de
-agregar un job y olvidarse la fase, que es exactamente el bug que el campo corrige: antes del spec 004
-todas las piezas arrancaban en el mismo sample y agregar la segunda no agregaba una voz, agregaba
-volumen.
+```ts
+// audio/types/scheduler.types.ts
+export interface Sequence {
+  steps: { offset: number; notes: number[] }[];   // sin pieceId: el motor no tiene a quién devolvérselo
+  clicks: { offset: number }[];                    // sin cell: para sonar solo hace falta contar
+  length: number;                                  // el ciclo, en intervalos
+}
+```
 
-Medido con `OfflineAudioContext` a 110 bpm, a ganancia unitaria (el master divide por 0.3). La columna
-**antes del 008** es el estado con `ARPEGGIO_SPREAD = 0.15` y `NOTE_DUR = 0.35`, y se conserva porque es
-la medición que motivó el cambio:
+El click no tiene altura y suena igual en cualquier celda (ver [más abajo](#el-click)), así que la
+celda no es información que el motor pueda usar — y no puede importar `Cell` del dominio ni con
+`import type`, porque `audio/` y `domain/` son hermanos sin aristas entre ellos. `setSequence(next)`
+reemplaza a `addJob`/`removeJob`/`clearJobs`; `sequenceInfo()` reemplaza a `jobCount()` como receta de
+verificación en el navegador — ver [más abajo](#cómo-verificar-el-audio).
 
-| | pico (antes del 008) | onsets | pico (hoy) | onsets |
-|---|---|---|---|---|
-| una pieza | 1.396 | 1 | 1.114 | 1 |
-| dos piezas a fase 0 y 0 | 2.298 | 1 | 1.713 | 1 |
-| dos piezas a fase 0 y 0.5 | **1.396** | **2** | **1.117** | **2** |
-| cuatro piezas a fase 0 | 4.596 | 1 | 3.427 | 1 |
-| cuatro piezas a fase 0 · 0.25 · 0.5 · 0.75 | **1.749** | 1 | **1.510** | 1 |
+### El período pasa del compás al ciclo
 
-Desfasar dos piezas deja el pico prácticamente en el de una sola (1.117 contra 1.114, un 0,3 %; antes
-del 008 la igualdad era exacta porque las cinco notas de una pieza se solapaban entre sí y saturaban el
-pico igual). Con cuatro el pico baja un 56 % pero los onsets vuelven a fusionarse: el arpegio audible
-dura 0.802 s —`4 × intervalo` de espaciado, más la nota y su release— contra los 0.545 s de un cuarto de
-compás, así que se solapan. **Es el comportamiento deseado** — solaparse desfasadas produce textura,
-solaparse alineadas produce volumen.
+`firstOnsetAfter` **no cambia ni una línea** — sigue resolviendo la progresión en forma cerrada (ver
+[arriba](#el-reloj-es-un-origen-no-un-cursor)). Lo que cambia es qué se le pasa: el período pasa a ser
+el ciclo entero (`sequence.length * intervalDuration(bpm)`) y la fase de cada paso es
+`offset / sequence.length`, en vez de la columna del ancla. Los clicks son offsets sueltos sin notas:
+mismo `firstOnsetAfter`, sin expansión de arpegio.
 
-El 008 no eliminó ese solape, lo **acotó**: antes el arpegio audible medía 1.07 s, casi el doble del
-cuarto de compás, y ahora mide 1,47 veces. Y sobre todo dejó de depender del tempo, que es la medición
-que llevó el espaciado del arpegio a unidades musicales:
-`intervalDuration(bpm)` se define sobre `barDuration` como `barDuration(bpm) / (BEATS_PER_BAR *
-SUBDIVISIONS_PER_BEAT)`, así que a más tempo el arpegio se achica en la misma proporción que el
-compás. El arpegio de 5 notas mide siempre `4 × intervalo = compás / 4`: 1,000 s a 60 bpm y 0,375 s a
-160 bpm. A 100 bpm el intervalo da 0,15 s — exactamente el `ARPEGGIO_SPREAD` que reemplaza —, así que a
-ese tempo el patrón no cambia en absoluto.
+### El swap en el cierre de ciclo
+
+Colocar o quitar una pieza puede reordenar el circuito entero (D1 del spec 009) — el motor no puede
+aplicar ese cambio a mitad de ciclo sin que el patrón salte. `setSequence(next)` guarda `next` como
+**pendiente** y no toca la secuencia **activa**; `tick()`, antes de recolectar hits, revisa si el reloj
+cruzó el borde del ciclo: si lo cruzó y hay pendiente, la activa pasa a ser la pendiente y ese borde
+pasa a ser el nuevo `origin`.
+
+**En ese swap hay que bajar `scheduledUntil` a estrictamente antes del nuevo `origin`.** Es la misma
+trampa que `startClock` ya evita (ver arriba) y con el mismo síntoma: el horizonte es de 100 ms y el
+borde se detecta cada 25 ms, así que al cruzarlo `scheduledUntil` ya quedó **adelante** del borde; si se
+lo deja quieto, el primer onset del ciclo nuevo cae antes de donde `firstOnsetAfter` empieza a buscar y
+se pierde en silencio, sin ningún error.
+
+Si la secuencia activa está vacía, la pendiente entra en vigor **ya** — si no, la primera pieza jamás
+sonaría, porque no hay ciclo que cerrar. Y con `sequence.length === 0` no hay borde que cruzar: la
+guarda es explícita, porque calcular un período de longitud 0 divide por cero o da el borde por cruzado
+en cada tick — es el estado real de "se quitó la última pieza", no un caso teórico.
+
+**El precio es la latencia, y es una decisión, no un bug.** Colocar una pieza puede tardar hasta un
+ciclo entero en escucharse: 7,5 s con 8 piezas a 110 bpm, 4,4 s con 4 (`research.md` del spec 009, §4).
+Es el costo de que el circuito se pueda reordenar entero sin que el patrón salte a mitad de frase (D5).
+Si al usarlo resulta intolerable, la salida no es aplicar los cambios en caliente —eso reordena el
+patrón a mitad de frase— sino aplicarlos en el próximo cruce por la pieza afectada, que es una regla
+más fina y su propio cambio.
+
+### El click
+
+Un salto de `d` celdas entre la salida de una pieza y la entrada de la siguiente produce `d − 1`
+clicks, uno por celda intermedia de `pathBetween` — sin altura, a volumen bajo (`CLICK_VELOCITY`,
+`CLICK_SECONDS` en `audio/constants/`), para que no compita armónicamente con las notas.
+`scheduleClick` en `voice.ts` es la otra forma de sonido de la capa, aparte de `scheduleVoice`. Con 8
+piezas un ciclo tiene ~15 clicks contra 40 notas (`research.md` del spec 009, §4) — sin el click, un
+salto de varias celdas es un silencio mudo de casi un segundo, y el recorrido —que es todo el modelo—
+se vuelve inaudible.
+
+**Se pueden apagar, y el interruptor es de mezcla y no del modelo.** `setClicksAudible(false)` —el
+toggle «Clicks» de la paleta— deja de cablearlos a sonido en `tick()`; la `Sequence` sigue teniendo sus
+clicks y `collectHits` los sigue emitiendo. Filtrarlos antes obligaría a reconstruir la secuencia por
+algo que no es una decisión del tablero, y haría que el ciclo pareciera distinto según el volumen.
+
+El interruptor existe porque **el camino cruza celdas ocupadas**: `pathBetween` es el camino mínimo
+ignorando obstáculos, así que un click puede caer encima de una pieza. No es un caso raro — en el
+tablero lleno de 12 piezas caen ahí los 21 clicks del ciclo. Esquivar las piezas es un spec propio
+(BFS sobre celdas libres, con el caso "no hay camino"), y hasta entonces poder apagarlos es la
+mitigación que el spec 009 dejó prevista en su tabla de riesgos.
 
 ## Reconciliación de loops
 
-Un único `useEffect` en `App.tsx` observa `[placed, playing]` y lleva los jobs del motor a donde
-deben estar. Los handlers solo cambian estado.
+Un único `useEffect` en `App.tsx` observa `[placed]` y le entrega al motor la secuencia donde debe
+estar. Los handlers solo cambian estado.
 
 ```ts
-useEffect(()=>{
-  clearJobs();
-  if (!playing) return;
-  for (const p of placed){
-    const [ax] = p.cells[ANCHOR_INDEX[p.piece]];
-    addJob({ id: p.id, notes: p.notes, phase: ax / GRID_W });
-  }
-}, [placed, playing]);
+useEffect(() => {
+  const s = buildSequence(placed);
+  setSequence({
+    steps: s.steps.map(({ offset, notes }) => ({ offset, notes })),   // se cae pieceId
+    clicks: s.clicks.map(({ offset }) => ({ offset })),               // se cae cell
+    length: s.length,
+  });
+}, [placed]);
 ```
 
-**Por qué limpiar y re-agregar es seguro acá**, cuando con Tone habría reiniciado la fase: los jobs son
-datos puros que `tick()` lee, no eventos agendados. Con Tone cada job cargaba su propio ID de evento del
-Transport y perderlo dejaba loops huérfanos — de hecho ese fue un bug real.
+Dos cosas del snippet que no son detalle:
 
-Y sigue siendo seguro con la fase por pieza, porque **`phase` se deriva del tablero y no del reloj**:
-re-agregar un job reconstruye exactamente la misma fase. Si la fase se hubiera derivado del momento de
-colocación —lo que hacía Tone, por accidente— este patrón la habría destruido en cada reconciliación.
+- **`playing` no está en las dependencias**, y salió a propósito con el spec 009. La secuencia es
+  función del **tablero**, no del transporte: quien corta o arranca el sonido es `togglePlay` llamando
+  a `stopClock`/`startClock`. El `clearJobs()` + `if (!playing) return` de antes era la forma vieja de
+  lograr lo mismo desde acá; con una sola llamada a `setSequence` deja de hacer falta, y colocar o
+  quitar con el transporte parado igual deja la secuencia lista para cuando arranque.
+- **Es una proyección, no una traducción.** `offset` y `notes` viajan tal cual; lo que se cae es
+  `pieceId` —el motor no tiene a quién devolvérselo— y `cell` en los clicks, porque `audio/` no puede
+  importar `Cell` ni como `import type` ([arriba](#el-recorrido-en-el-scheduler)). Las celdas no se
+  pierden: siguen en `placed`.
 
-Tampoco hace falta flag de cancelación: `addJob` y `clearJobs` son sincrónicos, así que no hay promesa
-que pueda resolver después de que el efecto se limpió.
+Antes este efecto iteraba piezas y armaba un job por cada una; hoy es **una sola llamada**:
+`buildSequence` (`domain/sequence.ts`) arma el circuito entero —orden, offsets y clicks— de una vez, y
+`App.tsx` sigue siendo el único puente entre las dos capas, ahora más chico que antes.
+
+**Por qué reemplazar la secuencia entera es seguro acá**, cuando con Tone habría reiniciado la fase de
+cada loop: `setSequence` no agenda nada, solo deja la secuencia nueva como **pendiente** — `tick()` la
+adopta recién al cerrar el ciclo (D5, ver
+[#el-swap-en-el-cierre-de-ciclo](#el-swap-en-el-cierre-de-ciclo)). Con Tone cada job cargaba su propio
+ID de evento del Transport y perderlo dejaba loops huérfanos — de hecho ese fue un bug real. Acá no hay
+evento que perder: la secuencia es un dato que `tick()` lee, no algo agendado.
+
+Y sigue siendo determinista porque **`buildSequence` se deriva del tablero y no del reloj**:
+reconstruir la secuencia en cada reconciliación da siempre el mismo circuito para el mismo conjunto de
+piezas. Si el orden se hubiera derivado del momento de colocación —lo que hacía Tone, por accidente—
+este patrón lo habría destruido en cada reconciliación.
+
+Tampoco hace falta flag de cancelación: `setSequence` es sincrónica, así que no hay promesa que pueda
+resolver después de que el efecto se limpió.
 
 ## `AudioContext` y el gesto del usuario
 
@@ -222,7 +289,7 @@ Hay **dos** funciones que producen sonido, y conviene saber cuál es cuál:
 | Camino | Quién lo usa | Cómo llega a `scheduleVoice` |
 |---|---|---|
 | `playNotes()` | `playNow()`, al colocar una pieza | expande el arpegio y agenda |
-| `tick()` | el loop por compás | `collectHits()` ya devolvió los instantes; agenda directo |
+| `tick()` | el loop por ciclo del recorrido | `collectHits()` ya devolvió los instantes; agenda directo |
 
 **No están unificados en una sola función, y es a propósito**: `collectHits` tiene que ser pura para
 poder testear el scheduler, así que devuelve instantes en vez de producir sonido. Volver a pasar por
@@ -323,7 +390,7 @@ Dos trampas que costaron un ciclo de tests cada una:
 
 ```js
 const m = await import('/src/audio/engine.ts');   // en dev, mismo singleton
-m.jobCount();                                      // loops vivos
+m.sequenceInfo();                                  // { steps, clicks, length } de la secuencia activa
 m.clockRunning();                                  // reloj
 m.audio().state;                                   // 'running' | 'suspended'
 m.readSpectrum();                                  // null en reposo; Uint8Array(128) sonando
@@ -334,7 +401,7 @@ Para comprobar que el scheduler realmente dispara, contar osciladores creados:
 ```js
 const c = m.audio(), orig = c.createOscillator.bind(c);
 let n = 0; c.createOscillator = () => { n++; return orig(); };
-// esperar N segundos…  n ≈ (segundos / duraciónCompás) * notasPorPieza
+// esperar N segundos… n ≈ (segundos / duraciónDelCiclo) × notas del ciclo
+// duraciónDelCiclo = sequenceInfo().length * intervalDuration(bpm)
+// notas del ciclo = 5 × sequenceInfo().steps
 ```
-
-Medido: 10 voces en 5.02 s a 110 bpm con una pieza = exactamente 2 compases × 5 notas.

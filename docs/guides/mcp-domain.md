@@ -28,14 +28,15 @@ Node 20 el server no arranca y **el repo sigue funcionando igual**.
 |---|---|---|
 | `find_symbol` | dónde está definido un símbolo de `src/` (archivo, línea, firma, primera frase del doc) y qué archivos lo importan, `mcp-server/` incluido | `grep` + abrir el archivo para ver la firma |
 | `describe_piece` | forma transformada, ASCII con el ancla marcada, tónica, escala y las 5 notas con el retrógrado aplicado | componer cuatro puras a mano sobre cinco pares de coordenadas |
-| `simulate_board` | validez de cada colocación, los jobs que crearía el efecto de reconciliación, y la línea de tiempo de onsets del scheduler real | leer el scheduler y recorrer el lookahead a mano, o escuchar |
+| `simulate_board` | validez de cada colocación, el orden del circuito con sus saltos, y la línea de tiempo de notas y clicks que produce el recorrido | leer el scheduler y recorrer el lookahead a mano, o escuchar |
 | `check_invariants` | los cinco chequeos de `domain/invariants.ts`, con contraejemplos y el espacio del modelo (96 orientaciones) | correr los tests y leer la salida |
 | `spec_status` | por spec: estado, tareas hechas/total y la próxima sin marcar | leer `log.md` + todos los `tasks.md`, que crecen con cada spec |
 
-**Ninguna de las cuatro de dominio reimplementa nada.** `simulate_board` llama a
-`cellsAt`/`isValid`/`phaseFor` de `domain/board.ts`; `check_invariants` llama a `checkAll()`;
-`describe_piece` llama a `rotateN`/`reflect`/`notesForRotation`. Lo único propio del server es el render
-ASCII, el parseo de los specs, el índice de símbolos y el formato de las respuestas.
+**Ninguna de las cuatro de dominio reimplementa nada.** `simulate_board` llama a `cellsAt`/`isValid` de
+`domain/board.ts` y a `buildSequence` de `domain/sequence.ts` para armar el circuito; `check_invariants`
+llama a `checkAll()`; `describe_piece` llama a `rotateN`/`reflect`/`notesForRotation`. Lo único propio
+del server es el render ASCII, el parseo de los specs, el índice de símbolos y el formato de las
+respuestas.
 
 `find_symbol` es la excepción y conviene tenerla clara: **es la única que mira el código como texto en
 vez de ejecutarlo**, porque "dónde está X y quién lo usa" no se contesta ejecutando nada. Mantiene la
@@ -59,9 +60,9 @@ Preguntar en vez de leer cuando la pregunta es:
 - *¿Qué notas suenan con la pieza `Z` rotada 270° y reflejada?* → `describe_piece`. A mano hay que
   aplicar la fórmula de escala, el corrimiento de octava y el retrógrado, en ese orden.
 - *¿Qué forma tiene la `F` rotada 180°, y dónde queda su celda de agarre?* → `describe_piece`.
-- *¿Este tablero suena apilado o desfasado?* → `simulate_board`, y mirar `coincident.maxPerInstant`.
-  Es la diferencia entre textura y volumen, y es lo que el [spec 004](../../specs/004-fase-por-pieza-la-columna-como-posicion-en-el-compas/spec.md)
-  hizo audible.
+- *¿Este tablero suena como un recorrido continuo o con saltos largos?* → `simulate_board`, y mirar el
+  orden del circuito, sus saltos y el largo del ciclo. Es lo que el
+  [spec 009](../../specs/009-el-tablero-como-recorrido/spec.md) hizo audible.
 - *¿Rompí algo del modelo?* → `check_invariants`, antes y después de tocar geometría o piezas.
 - *¿En qué quedó el trabajo planificado?* → `spec_status`.
 - *¿Dónde está `cellsAt` y quién lo usa?* → `find_symbol`, **no `grep`**. Trae la firma, así que no hay
@@ -87,11 +88,17 @@ pongo en `x=1` y otra pieza en `x=5`?"*
 
 | | Bytes | ~Tokens |
 |---|---|---|
-| Leyendo el código: `domain/{transform,music,board}` + sus `constants/` + `audio/scheduler` + sus constantes | 14.999 | ~3.750 |
-| Con las tools: `describe_piece` (414) + `simulate_board` (1.189) | **1.603** | **~400** |
+| Leyendo el código: `domain/{transform,music,board,sequence}` + sus `constants/` y `types/` + `audio/scheduler` + sus constantes | 48.565 | ~12.141 |
+| Con las tools: `describe_piece` (621) + `simulate_board` (2.064) | **2.685** | **~671** |
 | Catálogo de las cinco tools, una vez por sesión | 6.787 | ~1.697 |
 
-**89% menos por pregunta**, y el catálogo se paga con la primera. Lo que no aparece en la tabla es lo
+Las dos primeras filas se re-midieron con el spec 009 y **la brecha se ensanchó**: la respuesta de
+`simulate_board` creció de 1.189 a 2.064 bytes porque ahora lleva el camino de cada salto, pero el
+código a leer creció mucho más —de 14.999 a 48.565— y encima ya no alcanza con esos archivos, porque
+el orden y los silencios salen de `sequence.ts`. La fila del catálogo es la medición del spec 006 y no
+se volvió a tomar: se serializa a través del SDK y no con el mismo método que las otras dos.
+
+**94% menos por pregunta**, y el catálogo se paga con la primera. Lo que no aparece en la tabla es lo
 que más importa: leyendo el código, la respuesta todavía hay que **derivarla a mano** —tres rotaciones,
 un espejo, la escala transpuesta +7, el retrógrado y el recorrido del lookahead— y nadie avisa si sale
 mal.

@@ -1,12 +1,28 @@
 import { describe, it, expect } from 'vitest';
-import { collectHits, barDuration, intervalDuration } from '../scheduler.ts';
-import { scheduleVoice } from '../voice.ts';
-import { LOOKAHEAD, TICK_MS } from '../constants/scheduler.constants.ts';
-import type { Job, ClockState } from '../types/scheduler.types.ts';
+import { collectHits, collectWindow, barDuration, intervalDuration } from '../scheduler.ts';
+import { midiToHz, scheduleVoice } from '../voice.ts';
+import { LOOKAHEAD, TICK_MS, HIT } from '../constants/scheduler.constants.ts';
+import { CLOCK_START_DELAY } from '../constants/engine.constants.ts';
+import type { Sequence, ClockState, Hit } from '../types/scheduler.types.ts';
 import { offline, detectOnsets } from './test-context.ts';
 
 const A4 = 69;
 const VEL = 0.8;
+const BPM = 110;
+const TICK = TICK_MS / 1000;
+/** Reloj recien arrancado, igual que startClock: scheduledUntil antes de origin. */
+const ORIGIN = 0.05;
+const recienArrancado = (): ClockState => ({ origin: ORIGIN, scheduledUntil: 0 });
+
+/** Un recorrido. `length` primero porque sin el los offsets no significan nada. */
+const seq = (
+  length: number,
+  steps: { offset: number; notes: number[] }[],
+  clicks: { offset: number }[] = [],
+): Sequence => ({ steps, clicks, length });
+
+/** Un ciclo de 16 intervalos es exactamente un compas: el periodo de antes del spec 009. */
+const UN_COMPAS = 16;
 
 /**
  * El cursor de compas del spec 002, copiado tal cual, como oraculo de
@@ -21,27 +37,111 @@ const VEL = 0.8;
  * a derivarse del bpm. Pasarlo desde afuera no debilita el oraculo — lo que este
  * test compara es el mecanismo del RELOJ (cursor vs origen), no de donde sale el
  * espaciado, y las dos implementaciones siguen usando el mismo numero.
+ *
+ * El spec 009 tampoco lo debilita: recibe los pasos sueltos porque `Job` ya no
+ * existe, y se lo compara contra una secuencia de UN paso en offset 0 y ciclo de
+ * 16 intervalos, que es un compas exacto. O sea el mismo periodo que este cursor
+ * recorre, que es lo unico que el oraculo mide.
  */
 function collectHitsPorCursor(
   fromTime: number,
   horizon: number,
   bpm: number,
-  jobs: Iterable<Job>,
+  steps: Iterable<{ notes: number[] }>,
   state: { nextBar: number },
   interval: number,
 ): { at: number }[] {
   const bar = (60 / bpm) * 4;
   const out: { at: number }[] = [];
-  const list = [...jobs];
+  const list = [...steps];
   if (state.nextBar < fromTime) state.nextBar = fromTime + 0.05;
   while (state.nextBar < fromTime + horizon) {
-    for (const job of list) {
-      job.notes.forEach((_, i) => out.push({ at: state.nextBar + i * interval }));
+    for (const step of list) {
+      step.notes.forEach((_, i) => out.push({ at: state.nextBar + i * interval }));
     }
     state.nextBar += bar;
   }
   return out;
 }
+
+/**
+ * Corre `ticks` vueltas del temporizador desde t = 0, como el motor: una ventana de
+ * LOOKAHEAD cada TICK_MS. El empalme del swap solo existe ENTRE dos llamadas
+ * consecutivas, asi que una sola llamada no lo puede ver.
+ *
+ * Devuelve tambien `comprometido`: hasta donde habia emitido la secuencia vieja en el
+ * momento de encolar la nueva. Es el dato con el que se deriva el borde esperado sin
+ * copiar la cuenta que hace la implementacion.
+ */
+function simular(
+  inicial: Sequence,
+  ticks: number,
+  state: ClockState,
+  cambio?: { enTick: number; a: Sequence },
+): { hits: Hit[]; ultimo: number; comprometido: number } {
+  let active = inicial;
+  let pending: Sequence | null = null;
+  const hits: Hit[] = [];
+  let comprometido = 0;
+  let ultimo = 0;
+
+  for (let i = 0; i < ticks; i++) {
+    const t = i * TICK;
+    if (cambio && i === cambio.enTick) {
+      comprometido = Math.max(state.scheduledUntil, t);
+      pending = cambio.a;
+    }
+    const w = collectWindow(t, LOOKAHEAD, BPM, active, pending, state);
+    active = w.active;
+    pending = w.pending;
+    hits.push(...w.hits);
+    ultimo = t + LOOKAHEAD;
+  }
+  return { hits, ultimo, comprometido };
+}
+
+/**
+ * QUE evento es, mas alla de cuando: sin esto un onset de la secuencia vieja que
+ * cae exacto en el borde se confunde con el de la nueva y el empalme parece sano
+ * cuando en realidad sono la secuencia equivocada. Medido: la primera version de
+ * este oraculo comparaba solo instantes y dejaba pasar esa mutacion entera.
+ */
+const clave = (h: Hit) => (h.kind === HIT.note ? `note:${h.hz.toFixed(4)}` : 'click');
+
+/**
+ * Todos los eventos de una secuencia en (desde, hasta], por enumeracion de la grilla.
+ *
+ * Enumera y filtra en vez de resolver el primer k en forma cerrada: si copiara la
+ * cuenta de `firstOnsetAfter` no seria un oraculo, seria la misma implementacion
+ * escrita dos veces.
+ *
+ * Vale con pasos de UNA nota: con arpegios, las notas de un onset que entra en la
+ * ventana se emiten aunque caigan despues de `hasta`, y el filtro las contaria como
+ * faltantes. Los que lo usan arman las secuencias asi a proposito.
+ */
+function eventosDe(
+  s: Sequence, origin: number, interval: number, desde: number, hasta: number,
+): { at: number; clave: string }[] {
+  const cycle = s.length * interval;
+  const eventos = [
+    ...s.steps.map(x => ({ offset: x.offset, clave: `note:${midiToHz(x.notes[0]).toFixed(4)}` })),
+    ...s.clicks.map(x => ({ offset: x.offset, clave: 'click' })),
+  ];
+  const out: { at: number; clave: string }[] = [];
+  for (let k = -1; origin + k * cycle <= hasta; k++) {
+    for (const e of eventos) {
+      const at = origin + k * cycle + e.offset * interval;
+      if (at > desde && at <= hasta) out.push({ at, clave: e.clave });
+    }
+  }
+  return out.sort((a, b) => a.at - b.at);
+}
+
+const casiIgual = (a: number, b: number) => Math.abs(a - b) < 1e-9;
+const mismoEvento = (
+  a: { at: number; clave: string },
+  b: { at: number; clave: string },
+) => casiIgual(a.at, b.at) && a.clave === b.clave;
 
 describe('intervalDuration y barDuration (spec 008)', () => {
   it('a 100 bpm da el ARPEGGIO_SPREAD exacto de antes, sin epsilon', () => {
@@ -66,76 +166,64 @@ describe('intervalDuration y barDuration (spec 008)', () => {
 });
 
 describe('scheduler — reloj por origen (spec 004)', () => {
-  const BPM = 110;
   const BAR = (60 / BPM) * 4;
-  const TICK = TICK_MS / 1000;
-  /** Reloj recien arrancado, igual que startClock: scheduledUntil antes de origin. */
-  const ORIGIN = 0.05;
-  const recienArrancado = (): ClockState => ({ origin: ORIGIN, scheduledUntil: 0 });
-  const job = (notes: number[], phase = 0): Job => ({ id: 'j', notes, phase });
+  const unPaso = (notes: number[], offset = 0): Sequence => seq(UN_COMPAS, [{ offset, notes }]);
 
-  it('N compases producen N disparos en los instantes esperados', () => {
+  it('N ciclos producen N disparos en los instantes esperados', () => {
     const state: ClockState = { origin: 0.5, scheduledUntil: 0 };
-    const hits = collectHits(0, 8, 120, [job([A4])], state);   // 120 bpm -> compas de 2 s
+    const hits = collectHits(0, 8, 120, unPaso([A4]), state);   // 120 bpm -> ciclo de 2 s
     expect(hits).toHaveLength(4);
     hits.forEach((h, k) => expect(h.at).toBeCloseTo(0.5 + k * 2, 9));
     expect(state.scheduledUntil).toBeCloseTo(8, 9);
   });
 
-  it('cada job aporta todas sus notas, espaciadas por el arpegio', () => {
+  it('cada paso aporta todas sus notas, espaciadas por el arpegio', () => {
     const interval = intervalDuration(120);
-    const hits = collectHits(0, 2, 120, [job([60, 62, 64])], { origin: 0.5, scheduledUntil: 0 });
+    const hits = collectHits(0, 2, 120, unPaso([60, 62, 64]), { origin: 0.5, scheduledUntil: 0 });
     expect(hits).toHaveLength(3);
     expect(hits[1].at - hits[0].at).toBeCloseTo(interval, 9);
     expect(hits[2].at - hits[1].at).toBeCloseTo(interval, 9);
   });
 
-  it('varios jobs suenan en el mismo compas', () => {
-    // Notas unicas, no `spread: 0`: con un solo elemento por array, hit y onset
-    // coinciden por construccion sin importar el espaciado del arpegio.
-    const jobs: Job[] = [
-      { id: 'a', notes: [60], phase: 0 },
-      { id: 'b', notes: [64], phase: 0 },
-    ];
-    const hits = collectHits(0, 2, 120, jobs, { origin: 0.5, scheduledUntil: 0 });
+  it('dos pasos en el mismo offset suenan juntos', () => {
+    // Notas unicas: con un solo elemento por array, hit y onset coinciden por
+    // construccion sin importar el espaciado del arpegio.
+    const s = seq(UN_COMPAS, [{ offset: 0, notes: [60] }, { offset: 0, notes: [64] }]);
+    const hits = collectHits(0, 2, 120, s, { origin: 0.5, scheduledUntil: 0 });
     expect(hits).toHaveLength(2);
     expect(hits[0].at).toBeCloseTo(hits[1].at, 9);
   });
 
-  it('acepta un iterador de una sola pasada', () => {
-    // Regresion heredada del 002: tick() pasa jobs.values(), un iterador de Map
-    // que se agota en la primera pasada. Con el cursor de compas el for de jobs
-    // estaba ADENTRO del while y los compases 2..N salian vacios; con el reloj por
-    // origen el bucle de compases quedo adentro y los jobs se recorren una sola
-    // vez, asi que ya no puede pasar. El test se queda para que si alguien vuelve
-    // a invertir los bucles, se entere.
-    const map = new Map<string, Job>([['a', { id: 'a', notes: [A4], phase: 0 }]]);
-    const conIterador = collectHits(0, 8, 120, map.values(), { origin: 0.5, scheduledUntil: 0 });
-    const conArray = collectHits(0, 8, 120, [...map.values()], { origin: 0.5, scheduledUntil: 0 });
-    expect(conIterador).toHaveLength(4);
-    expect(conIterador.map(h => h.at)).toEqual(conArray.map(h => h.at));
+  it('sin pasos no agenda nada, pero el reloj igual avanza', () => {
+    const state = recienArrancado();
+    expect(collectHits(0, 8, 120, seq(UN_COMPAS, []), state)).toHaveLength(0);
+    expect(state.scheduledUntil).toBeCloseTo(8, 9);
   });
 
-  it('sin jobs no agenda nada, pero el reloj igual avanza', () => {
+  it('con length 0 no agenda ni se cuelga: el periodo seria cero', () => {
+    // La guarda no es teorica: es el estado de "quite la ultima pieza". Sin ella
+    // firstOnsetAfter divide por cero y el bucle de ciclos no termina, asi que si
+    // esto se rompe el test no falla — se cuelga.
     const state = recienArrancado();
-    expect(collectHits(0, 8, 120, [], state)).toHaveLength(0);
+    expect(collectHits(0, 8, 120, seq(0, [{ offset: 0, notes: [A4] }]), state)).toHaveLength(0);
     expect(state.scheduledUntil).toBeCloseTo(8, 9);
+    expect(Number.isFinite(state.scheduledUntil)).toBe(true);
   });
 
   it('una ventana ya cubierta no vuelve a emitir ni hace retroceder el reloj', () => {
     const state = recienArrancado();
-    expect(collectHits(0, 1, BPM, [job([A4])], state)).toHaveLength(1);   // el downbeat
+    expect(collectHits(0, 1, BPM, unPaso([A4]), state)).toHaveLength(1);   // el primer onset
     expect(state.scheduledUntil).toBeCloseTo(1, 9);
-    expect(collectHits(0, 0.5, BPM, [job([A4])], state)).toHaveLength(0);
-    expect(state.scheduledUntil).toBeCloseTo(1, 9);                       // no retrocedio
+    expect(collectHits(0, 0.5, BPM, unPaso([A4]), state)).toHaveLength(0);
+    expect(state.scheduledUntil).toBeCloseTo(1, 9);                        // no retrocedio
   });
 
-  it('el tempo cambia la duracion del compas', () => {
-    expect(collectHits(0, 4, 60, [job([A4])], { origin: 0.5, scheduledUntil: 0 })).toHaveLength(1);
-    expect(collectHits(0, 4, 240, [job([A4])], { origin: 0.5, scheduledUntil: 0 })).toHaveLength(4);
+  it('el tempo cambia la duracion del ciclo', () => {
+    expect(collectHits(0, 4, 60, unPaso([A4]), { origin: 0.5, scheduledUntil: 0 })).toHaveLength(1);
+    expect(collectHits(0, 4, 240, unPaso([A4]), { origin: 0.5, scheduledUntil: 0 })).toHaveLength(4);
   });
 
-  it('AC2 — con phase 0 emite exactamente los mismos instantes que el cursor de compas', () => {
+  it('AC2 — con un ciclo de un compas emite los mismos instantes que el cursor de compas', () => {
     const interval = intervalDuration(BPM);
     const nuevo = recienArrancado();
     const viejo = { nextBar: ORIGIN };
@@ -143,8 +231,8 @@ describe('scheduler — reloj por origen (spec 004)', () => {
     const viejos: number[] = [];
     for (let i = 0; i < 400; i++) {                 // 10 s de ticks de 25 ms
       const t = i * TICK;
-      nuevos.push(...collectHits(t, LOOKAHEAD, BPM, [job([A4, 64, 67])], nuevo).map(h => h.at));
-      viejos.push(...collectHitsPorCursor(t, LOOKAHEAD, BPM, [job([A4, 64, 67])], viejo, interval).map(h => h.at));
+      nuevos.push(...collectHits(t, LOOKAHEAD, BPM, unPaso([A4, 64, 67]), nuevo).map(h => h.at));
+      viejos.push(...collectHitsPorCursor(t, LOOKAHEAD, BPM, [{ notes: [A4, 64, 67] }], viejo, interval).map(h => h.at));
     }
     expect(viejos.length).toBeGreaterThan(0);
     expect(nuevos).toHaveLength(viejos.length);
@@ -152,18 +240,24 @@ describe('scheduler — reloj por origen (spec 004)', () => {
   });
 
   it('AC3 — ventanas solapadas emiten cada onset una sola vez, y todos', () => {
-    const phase = 0.37;
-    const state: ClockState = { origin: ORIGIN, scheduledUntil: 0 };
+    const LARGO = 19;                                  // primo: el offset no divide al ciclo
+    const OFFSET = 7;
+    const interval = intervalDuration(BPM);
+    const cycle = LARGO * interval;
+    const state = recienArrancado();
     const emitidos: number[] = [];
     let ultimo = 0;
     for (let i = 0; i < 400; i++) {
       const t = i * TICK;
       ultimo = t + LOOKAHEAD;
-      const j: Job = { id: 'j', notes: [A4], phase };   // una sola nota: hit === onset
-      emitidos.push(...collectHits(t, LOOKAHEAD, BPM, [j], state).map(h => h.at));
+      // Una sola nota: hit === onset.
+      const s = seq(LARGO, [{ offset: OFFSET, notes: [A4] }]);
+      emitidos.push(...collectHits(t, LOOKAHEAD, BPM, s, state).map(h => h.at));
     }
     const esperados: number[] = [];
-    for (let k = 0; ORIGIN + (k + phase) * BAR <= ultimo; k++) esperados.push(ORIGIN + (k + phase) * BAR);
+    for (let k = 0; ORIGIN + k * cycle + OFFSET * interval <= ultimo; k++) {
+      esperados.push(ORIGIN + k * cycle + OFFSET * interval);
+    }
 
     expect(new Set(emitidos).size).toBe(emitidos.length);   // ninguno repetido
     expect(emitidos).toHaveLength(esperados.length);        // ninguno perdido
@@ -172,40 +266,41 @@ describe('scheduler — reloj por origen (spec 004)', () => {
 
   it('AC4 — ningun hit cae en el pasado', () => {
     const state = recienArrancado();
+    const s = seq(13, [{ offset: 9, notes: [60, 62, 64] }], [{ offset: 3 }]);
     for (let i = 0; i < 400; i++) {
       const t = i * TICK;
-      for (const h of collectHits(t, LOOKAHEAD, BPM, [job([60, 62, 64], 0.6)], state)) {
+      for (const h of collectHits(t, LOOKAHEAD, BPM, s, state)) {
         expect(h.at).toBeGreaterThanOrEqual(t);
       }
     }
   });
 
-  it('AC6 — un salto de 10 compases se saltea, sin avalancha y sin trabarse', () => {
+  it('AC6 — un salto de 10 ciclos se saltea, sin avalancha y sin trabarse', () => {
     const state = recienArrancado();
-    collectHits(0, LOOKAHEAD, BPM, [job([60, 62, 64])], state);
+    const s = unPaso([60, 62, 64]);
+    collectHits(0, LOOKAHEAD, BPM, s, state);
     const salto = LOOKAHEAD + 10 * BAR;
-    // Como mucho un compas de notas: los 10 perdidos se descartan, no se recuperan.
-    expect(collectHits(salto, LOOKAHEAD, BPM, [job([60, 62, 64])], state).length)
-      .toBeLessThanOrEqual(3);
-    // Y el reloj no queda trabado: el compas siguiente vuelve a salir, uno solo.
+    // Como mucho un ciclo de notas: los 10 perdidos se descartan, no se recuperan.
+    expect(collectHits(salto, LOOKAHEAD, BPM, s, state).length).toBeLessThanOrEqual(3);
+    // Y el reloj no queda trabado: el ciclo siguiente vuelve a salir, uno solo.
     const sigue: number[] = [];
     for (let t = salto + LOOKAHEAD; t < salto + LOOKAHEAD + BAR; t += TICK) {
-      sigue.push(...collectHits(t, LOOKAHEAD, BPM, [job([60, 62, 64])], state).map(h => h.at));
+      sigue.push(...collectHits(t, LOOKAHEAD, BPM, s, state).map(h => h.at));
     }
     expect(sigue).toHaveLength(3);
   });
 });
 
-describe('AC2 — el bpm afecta a un job ya creado, sin recrearlo (spec 008)', () => {
-  it('el mismo objeto job cambia de espaciado si el bpm de la llamada cambia', () => {
+describe('AC2 — el bpm afecta a una secuencia ya armada, sin rehacerla (spec 008)', () => {
+  it('la misma secuencia cambia de espaciado si el bpm de la llamada cambia', () => {
     // Antes, el espaciado vivia en `job.spread`: cambiar el tempo sin reconstruir
     // el job no tenia ningun efecto sobre el arpegio. Ahora sale de `bpm`, que es
-    // un parametro de `collectHits`, asi que agendar el MISMO job con otro bpm
-    // alcanza para que el espaciado cambie.
-    const j: Job = { id: 'j', notes: [60, 62, 64], phase: 0 };
+    // un parametro de `collectHits`, asi que agendar la MISMA secuencia con otro
+    // bpm alcanza para que el espaciado cambie.
+    const s = seq(UN_COMPAS, [{ offset: 0, notes: [60, 62, 64] }]);
 
-    const lento = collectHits(0, 4, 60, [j], { origin: 0.5, scheduledUntil: 0 });
-    const rapido = collectHits(0, 4, 160, [j], { origin: 0.5, scheduledUntil: 0 });
+    const lento = collectHits(0, 4, 60, s, { origin: 0.5, scheduledUntil: 0 });
+    const rapido = collectHits(0, 4, 160, s, { origin: 0.5, scheduledUntil: 0 });
 
     const espaciadoLento = lento[1].at - lento[0].at;
     const espaciadoRapido = rapido[1].at - rapido[0].at;
@@ -219,12 +314,12 @@ describe('AC2 — el bpm afecta a un job ya creado, sin recrearlo (spec 008)', (
 
 describe('AC4 — el arpegio mide un cuarto de compas (spec 008)', () => {
   it('el onset completo mide 1.000 s a 60 bpm y 0.375 s a 160 bpm', () => {
-    const j: Job = { id: 'j', notes: [60, 62, 64, 67, 69], phase: 0 };   // 5 notas, 4 intervalos punta a punta
+    const s = seq(UN_COMPAS, [{ offset: 0, notes: [60, 62, 64, 67, 69] }]);   // 5 notas, 4 intervalos punta a punta
 
-    const lento = collectHits(0, 4, 60, [j], { origin: 0, scheduledUntil: 0 });
-    const rapido = collectHits(0, 4, 160, [j], { origin: 0, scheduledUntil: 0 });
+    const lento = collectHits(0, 4, 60, s, { origin: 0, scheduledUntil: 0 });
+    const rapido = collectHits(0, 4, 160, s, { origin: 0, scheduledUntil: 0 });
 
-    // Los primeros 5 hits son las 5 notas del primer onset (el loop de compases
+    // Los primeros 5 hits son las 5 notas del primer onset (el loop de ciclos
     // queda afuera del forEach de notas): la distancia entre la primera y la
     // ultima es el arpegio completo.
     expect(lento[4].at - lento[0].at).toBeCloseTo(1.0, 9);
@@ -232,51 +327,87 @@ describe('AC4 — el arpegio mide un cuarto de compas (spec 008)', () => {
   });
 });
 
-describe('fase por pieza (spec 004)', () => {
-  const BPM = 110;
-  const BAR = (60 / BPM) * 4;
-  const ORIGIN = 0.05;
-  const pieza = (id: string, notes: number[], phase: number): Job => ({ id, notes, phase });
+describe('el offset dentro del ciclo (spec 009)', () => {
+  const interval = intervalDuration(BPM);
 
-  it('AC1 — los onsets caen en origin + (k + phase) * bar', () => {
+  it('AC1 — los onsets caen en origin + k * ciclo + offset * intervalo', () => {
     const state: ClockState = { origin: 0.5, scheduledUntil: 0 };
-    const j: Job = { id: 'j', notes: [A4], phase: 0.25 };
-    const hits = collectHits(0, 8, 120, [j], state);   // compas de 2 s
+    const i120 = intervalDuration(120);
+    const s = seq(8, [{ offset: 2, notes: [A4] }]);   // ciclo de 8 intervalos = medio compas
+    const hits = collectHits(0, 4, 120, s, state);
+    const cycle = 8 * i120;
     expect(hits).toHaveLength(4);
-    hits.forEach((h, k) => expect(h.at).toBeCloseTo(0.5 + (k + 0.25) * 2, 9));
+    hits.forEach((h, k) => expect(h.at).toBeCloseTo(0.5 + k * cycle + 2 * i120, 9));
   });
 
-  it('AC1 — el arpegio se expande desde el onset desfasado', () => {
+  it('AC1 — el arpegio se expande desde el onset desplazado', () => {
     const state: ClockState = { origin: 0.5, scheduledUntil: 0 };
-    const interval = intervalDuration(120);
-    const hits = collectHits(0, 2.4, 120, [pieza('j', [60, 62, 64], 0.5)], state);
+    const i120 = intervalDuration(120);
+    const s = seq(UN_COMPAS, [{ offset: 8, notes: [60, 62, 64] }]);
+    const hits = collectHits(0, 2.4, 120, s, state);
     expect(hits).toHaveLength(3);
-    hits.forEach((h, i) => expect(h.at).toBeCloseTo(0.5 + 0.5 * 2 + i * interval, 9));
+    hits.forEach((h, i) => expect(h.at).toBeCloseTo(0.5 + 8 * i120 + i * i120, 9));
   });
 
-  it('AC1 — dos jobs con phase distinta arrancan en instantes distintos', () => {
-    const state: ClockState = { origin: ORIGIN, scheduledUntil: 0 };
-    const jobs = [
-      { id: 'a', notes: [60], phase: 0 },
-      { id: 'b', notes: [64], phase: 0.5 },
-    ];
-    const hits = collectHits(0, BAR, BPM, jobs, state);
+  it('AC1 — dos pasos con offset distinto arrancan en instantes distintos', () => {
+    const state = recienArrancado();
+    const s = seq(10, [{ offset: 0, notes: [60] }, { offset: 5, notes: [64] }]);
+    const hits = collectHits(0, 10 * interval, BPM, s, state);
     expect(hits).toHaveLength(2);
-    expect(hits[1].at - hits[0].at).toBeCloseTo(0.5 * BAR, 9);
+    expect(hits[1].at - hits[0].at).toBeCloseTo(5 * interval, 9);
   });
 
-  it('AC5 — ningun onset se agenda con mas de LOOKAHEAD de anticipacion', () => {
-    // Notas unicas, no `spread: 0` (ese truco ya no existe: el espaciado sale
-    // del bpm y no se puede poner en cero). Con `notes: [A4]` cada hit ES el
-    // onset por construccion, asi que AC5 se mide sobre el instante del onset,
-    // no sobre la ultima nota del arpegio, que se extiende mas alla a proposito
-    // — igual que antes de este spec.
-    for (const phase of [0, 0.25, 0.5, 0.99]) {
-      const state: ClockState = { origin: ORIGIN, scheduledUntil: 0 };
+  it('D4 — un click es un solo hit sin altura, en la misma grilla que los pasos', () => {
+    const state = recienArrancado();
+    const s = seq(6, [{ offset: 0, notes: [60, 62, 64, 67, 69] }], [{ offset: 3 }]);
+    const hits = collectHits(0, 6 * interval, BPM, s, state);
+
+    const notas = hits.filter(h => h.kind === HIT.note);
+    const clicks = hits.filter(h => h.kind === HIT.click);
+    expect(notas).toHaveLength(5);       // el arpegio se expande
+    expect(clicks).toHaveLength(1);      // el click no: no tiene notas
+    expect(clicks[0].at).toBeCloseTo(ORIGIN + 3 * interval, 9);
+    // Y no lleva altura ni en tiempo de ejecucion: la union discriminada la deja
+    // afuera de esta rama, y este test afirma que ademas no se cuela un campo suelto.
+    expect(Object.keys(clicks[0]).sort()).toEqual(['at', 'kind']);
+  });
+
+  it('AC9 — cambiar el tempo estira el recorrido sin reordenarlo', () => {
+    const s = seq(10, [{ offset: 0, notes: [60] }, { offset: 5, notes: [67] }], [{ offset: 8 }]);
+    // Fracciones de ciclo desde el origen: si son iguales a los dos tempos, el
+    // patron es el mismo estirado, no otro patron.
+    const fracciones = (bpm: number) => {
+      const cycle = 10 * intervalDuration(bpm);
+      // Arrancar 1 ms antes del origen y no mucho antes: la progresion de onsets
+      // esta definida para todo k, asi que una ventana que empieza ciclos antes
+      // del origen tambien emite los ciclos negativos.
+      const state: ClockState = { origin: 1, scheduledUntil: 0.999 };
+      return collectHits(0.999, 1.9 * cycle, bpm, s, state)
+        .map(h => (h.at - 1) / cycle)
+        .sort((x, y) => x - y);
+    };
+    const lento = fracciones(60);
+    const rapido = fracciones(160);
+    expect(lento).toHaveLength(6);    // 3 eventos x 2 ciclos
+    expect(rapido).toHaveLength(6);
+    lento.forEach((f, i) => expect(f).toBeCloseTo(rapido[i], 6));
+  });
+
+  it('AC6 — nunca mas de LOOKAHEAD comprometido, tampoco con un ciclo largo', () => {
+    // 55 y 66 intervalos son los ciclos medidos de 8 y 10 piezas: 7,5 s y 9,0 s a
+    // 110 bpm. Es el caso que el spec 009 hace posible y el 004 no tenia, donde el
+    // periodo pasa a ser 7 veces el compas y una implementacion que agendara "el
+    // ciclo entero de una" comprometeria 75 veces el lookahead.
+    for (const largo of [55, 66]) {
+      const state = recienArrancado();
+      const s = seq(largo, [
+        { offset: 0, notes: [A4] },
+        { offset: Math.floor(largo / 3), notes: [60] },
+      ], [{ offset: largo - 1 }]);
       let emitidos = 0;
-      for (let i = 0; i < 400; i++) {
-        const t = i * (TICK_MS / 1000);
-        for (const h of collectHits(t, LOOKAHEAD, BPM, [{ id: 'j', notes: [A4], phase }], state)) {
+      for (let i = 0; i < 800; i++) {   // 20 s: mas de dos ciclos completos
+        const t = i * TICK;
+        for (const h of collectHits(t, LOOKAHEAD, BPM, s, state)) {
           expect(h.at).toBeLessThanOrEqual(t + LOOKAHEAD);
           emitidos++;
         }
@@ -285,64 +416,189 @@ describe('fase por pieza (spec 004)', () => {
     }
   });
 
-  it('AC9 — cambiar el tempo estira el patron sin reordenarlo', () => {
-    const jobs = [
-      pieza('a', [60], 0),
-      pieza('b', [67], 0.5),
-      pieza('c', [72], 0.8),
-    ];
-    // Fracciones de compas desde el origen: si son iguales a los dos tempos, el
-    // patron es el mismo estirado, no otro patron.
-    const fracciones = (bpm: number) => {
-      const bar = (60 / bpm) * 4;
-      // Arrancar 1 ms antes del origen y no mucho antes: la progresion de onsets
-      // esta definida para todo k, asi que una ventana que empieza compases antes
-      // del origen tambien emite los compases negativos.
-      const state: ClockState = { origin: 1, scheduledUntil: 0.999 };
-      return collectHits(0.999, 1.9 * bar, bpm, jobs, state)
-        .map(h => (h.at - 1) / bar)
-        .sort((x, y) => x - y);
-    };
-    const lento = fracciones(60);     // compas de 4 s
-    const rapido = fracciones(160);   // compas de 1.5 s
-    expect(lento).toHaveLength(6);    // 3 jobs x 2 compases
-    expect(rapido).toHaveLength(6);
-    lento.forEach((f, i) => expect(f).toBeCloseTo(rapido[i], 6));
-  });
-
   /**
-   * Renderiza UN compas de los jobs dados, a ganancia unitaria.
+   * Renderiza UN ciclo de la secuencia dada, a ganancia unitaria.
    *
-   * El horizonte de un compas entero es deliberadamente el que el motor real
-   * nunca usa (alla es LOOKAHEAD): es la unica forma de juntar de una todos los
-   * onsets del compas para medirlos como audio.
+   * El horizonte de un ciclo entero es deliberadamente el que el motor real nunca
+   * usa (alla es LOOKAHEAD): es la unica forma de juntar de una todos los onsets
+   * del ciclo para medirlos como audio.
    */
-  async function renderCompas(jobs: Job[]) {
-    const state: ClockState = { origin: ORIGIN, scheduledUntil: 0 };
-    const hits = collectHits(0, BAR, BPM, jobs, state);
-    const ctx = offline(BAR + 1);
+  async function renderCiclo(s: Sequence) {
+    const state = recienArrancado();
+    const cycle = s.length * interval;
+    const hits = collectHits(0, cycle, BPM, s, state);
+    const ctx = offline(cycle + 1);
     const g = ctx.createGain();
     g.gain.value = 1;
     g.connect(ctx.destination);
     // 0.35 s es una duracion de render arbitraria, no la duracion de nota del
     // spec 008 (esa es NOTE_INTERVALS * intervalDuration(bpm)): este test mide
     // pico y cantidad de onsets, no cuanto dura cada nota.
-    hits.forEach(h => scheduleVoice(ctx, g, h.hz, h.at, 0.35, VEL));
+    for (const h of hits) if (h.kind === HIT.note) scheduleVoice(ctx, g, h.hz, h.at, 0.35, VEL);
     return (await ctx.startRendering()).getChannelData(0);
   }
 
   const peak = (d: Float32Array) => d.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
 
-  it('AC7 — desfasar dos piezas baja el pico y separa los eventos', async () => {
+  it('AC7 — separar dos piezas en el recorrido baja el pico y separa los eventos', async () => {
     const A = [60, 62, 64, 67, 69];   // pentatonica mayor de C
     const B = [67, 69, 71, 74, 76];   // la de G
-    const alineadas = await renderCompas([pieza('a', A, 0), pieza('b', B, 0)]);
-    const desfasadas = await renderCompas([pieza('a', A, 0), pieza('b', B, 0.5)]);
+    const juntas = seq(UN_COMPAS, [{ offset: 0, notes: A }, { offset: 0, notes: B }]);
+    const separadas = seq(UN_COMPAS, [{ offset: 0, notes: A }, { offset: 8, notes: B }]);
+    const alineadas = await renderCiclo(juntas);
+    const desfasadas = await renderCiclo(separadas);
 
-    // El pico de dos piezas alineadas es volumen apilado sobre la misma voz; el de
-    // dos desfasadas es el de una pieza sola. Es el problema que ataca el spec.
+    // El pico de dos piezas en el mismo instante es volumen apilado sobre la misma
+    // voz; el de dos separadas es el de una pieza sola. Es el problema que ataca el
+    // spec 004 y que el recorrido del 009 mantiene resuelto.
     expect(peak(desfasadas)).toBeLessThan(peak(alineadas));
     // Y donde habia un evento pasan a haber dos: la textura que el volumen tapaba.
     expect(detectOnsets(desfasadas)).toHaveLength(detectOnsets(alineadas).length * 2);
+  });
+});
+
+describe('D5 — la secuencia cambia al cerrar el ciclo', () => {
+  const interval = intervalDuration(BPM);
+  /** Dos pasos de una nota: cada hit ES un onset, asi que se pueden contar. */
+  const A = seq(8, [{ offset: 0, notes: [60] }, { offset: 4, notes: [64] }]);
+  const B = seq(6, [{ offset: 0, notes: [72] }], [{ offset: 3 }]);
+  const TICKS = 240;        // 6 s
+  const CAMBIO = 100;       // a mitad del tercer ciclo de A
+
+  /** El primer cierre de ciclo de A posterior a lo que A ya tenia comprometido. */
+  const bordeEsperado = (comprometido: number) => {
+    const cycle = A.length * interval;
+    for (let k = 1; k < 100; k++) {
+      const b = ORIGIN + k * cycle;
+      if (b > comprometido) return b;
+    }
+    throw new Error('sin borde en rango');
+  };
+
+  it('con la activa vacia la pendiente entra ya, no espera un ciclo que no existe', () => {
+    // Sin este caso la primera pieza no sonaria nunca: no hay ciclo que cerrar.
+    const state: ClockState = { origin: 0, scheduledUntil: 0 };
+    const w = collectWindow(0.5, LOOKAHEAD, BPM, seq(0, []), B, state);
+
+    expect(w.active).toBe(B);
+    expect(w.pending).toBeNull();
+    expect(state.origin).toBeCloseTo(0.5 + CLOCK_START_DELAY, 9);
+    // Y el primer onset del ciclo nuevo SUENA: si scheduledUntil hubiera quedado en
+    // origin en vez de antes, firstOnsetAfter lo saltearia y esto daria 0 hits.
+    expect(w.hits).toHaveLength(1);
+    expect(w.hits[0].at).toBeCloseTo(0.5 + CLOCK_START_DELAY, 9);
+  });
+
+  it('sin pendiente la activa sigue igual y el reloj no se mueve de su origen', () => {
+    const state = recienArrancado();
+    const w = collectWindow(0, LOOKAHEAD, BPM, A, null, state);
+    expect(w.active).toBe(A);
+    expect(w.pending).toBeNull();
+    expect(state.origin).toBe(ORIGIN);
+  });
+
+  it('AC5 — cambiar la secuencia a mitad de ciclo no altera los hits hasta el borde', () => {
+    const sinCambio = simular(A, TICKS, recienArrancado());
+    const conCambio = simular(A, TICKS, recienArrancado(), { enTick: CAMBIO, a: B });
+    const borde = bordeEsperado(conCambio.comprometido);
+
+    // Hasta el borde los dos recorridos tienen que ser el MISMO audio, instante por
+    // instante y nota por nota: encolar no interrumpe lo que esta sonando.
+    const hasta = (hits: Hit[]) => hits.filter(h => h.at < borde - 1e-9);
+    const conInstante = (h: Hit) => `${clave(h)}@${h.at.toFixed(9)}`;
+    expect(hasta(conCambio.hits).map(conInstante)).toEqual(hasta(sinCambio.hits).map(conInstante));
+    expect(hasta(conCambio.hits).length).toBeGreaterThan(4);   // que no pase por vacio
+
+    // Y despues del borde ya no son el mismo: el cambio efectivamente entro.
+    expect(conCambio.hits.length).not.toBe(sinCambio.hits.length);
+  });
+
+  it('AC13 — en el empalme del swap no se pierde ni se repite ningun onset', () => {
+    const state = recienArrancado();
+    const { hits, ultimo, comprometido } = simular(A, TICKS, state, { enTick: CAMBIO, a: B });
+    const borde = bordeEsperado(comprometido);
+
+    // La vieja hasta el borde (sin llegar a el) y la nueva desde el borde: el
+    // instante del borde es el onset de offset 0 del ciclo nuevo, de nadie mas.
+    const esperados = [
+      ...eventosDe(A, ORIGIN, interval, 0, borde - 1e-9),
+      ...eventosDe(B, borde, interval, borde - 1e-9, ultimo),
+    ].sort((a, b) => a.at - b.at);
+    const emitidos = hits.map(h => ({ at: h.at, clave: clave(h) })).sort((a, b) => a.at - b.at);
+
+    const perdidos = esperados.filter(e => !emitidos.some(x => mismoEvento(x, e)));
+    const inesperados = emitidos.filter(x => !esperados.some(e => mismoEvento(x, e)));
+    const repetidos = emitidos.filter((x, i) => emitidos.findIndex(y => mismoEvento(y, x)) !== i);
+
+    expect({ perdidos, inesperados, repetidos, total: emitidos.length })
+      .toEqual({ perdidos: [], inesperados: [], repetidos: [], total: esperados.length });
+    // Que el empalme haya tenido las dos mitades: eventos de A antes y de B despues.
+    expect(emitidos.filter(x => x.at < borde).length).toBeGreaterThan(4);
+    expect(emitidos.filter(x => x.at >= borde).length).toBeGreaterThan(4);
+    // Y que en el borde haya sonado la NUEVA, no un paso mas de la vieja.
+    expect(emitidos.find(x => casiIgual(x.at, borde))?.clave).toBe(`note:${midiToHz(72).toFixed(4)}`);
+  });
+
+  it('AC13 — el borde es el nuevo origin, y el primer onset del ciclo nuevo cae ahi', () => {
+    const state = recienArrancado();
+    const { hits, comprometido } = simular(A, TICKS, state, { enTick: CAMBIO, a: B });
+    const borde = bordeEsperado(comprometido);
+
+    expect(state.origin).toBeCloseTo(borde, 9);
+    expect(hits.some(h => casiIgual(h.at, borde))).toBe(true);
+    // Uno solo en el borde: si la vieja no se hubiera acotado, ahi habria dos.
+    expect(hits.filter(h => casiIgual(h.at, borde))).toHaveLength(1);
+  });
+
+  it('AC13 — el swap se decide antes de cruzar el borde: nada se agenda en el pasado', () => {
+    // El horizonte es de 100 ms y el borde se mira cada 25 ms. Si el swap esperara a
+    // que currentTime pasara el borde, el primer onset del ciclo nuevo ya seria
+    // pasado al agendarlo. Se decide adentro del lookahead justamente para evitarlo.
+    const state = recienArrancado();
+    let active: Sequence = A;
+    let pending: Sequence | null = B;
+    for (let i = 0; i < TICKS; i++) {
+      const t = i * TICK;
+      const w = collectWindow(t, LOOKAHEAD, BPM, active, pending, state);
+      active = w.active;
+      pending = w.pending;
+      for (const h of w.hits) expect(h.at).toBeGreaterThanOrEqual(t);
+    }
+  });
+
+  it('quitar la ultima pieza deja la secuencia vacia sin colgar el reloj', () => {
+    const state = recienArrancado();
+    const vacia = seq(0, []);
+    let active: Sequence = A;
+    let pending: Sequence | null = null;
+    const hits: Hit[] = [];
+    for (let i = 0; i < TICKS; i++) {
+      const t = i * TICK;
+      if (i === CAMBIO) pending = vacia;
+      const w = collectWindow(t, LOOKAHEAD, BPM, active, pending, state);
+      active = w.active;
+      pending = w.pending;
+      hits.push(...w.hits);
+    }
+    expect(active).toBe(vacia);
+    // Y despues del cierre no vuelve a sonar nada.
+    const borde = state.origin;
+    expect(hits.filter(h => h.at >= borde)).toHaveLength(0);
+  });
+
+  it('encolar dos veces antes del cierre deja la ultima: se encola el recorrido entero', () => {
+    const state = recienArrancado();
+    const C = seq(5, [{ offset: 0, notes: [80] }]);
+    let active: Sequence = A;
+    let pending: Sequence | null = null;
+    for (let i = 0; i < TICKS; i++) {
+      const t = i * TICK;
+      if (i === CAMBIO) pending = B;
+      if (i === CAMBIO + 1) pending = C;
+      const w = collectWindow(t, LOOKAHEAD, BPM, active, pending, state);
+      active = w.active;
+      pending = w.pending;
+    }
+    expect(active).toBe(C);
   });
 });

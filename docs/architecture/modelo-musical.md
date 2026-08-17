@@ -1,8 +1,10 @@
 # Modelo Musical
 
-Cómo se traduce una pieza colocada en cinco notas y en qué momento suenan. Las cuatro primeras reglas
-viven en `src/domain/` —`music.ts`, `transform.ts` y sus constantes— y no dependen de React ni de la
-capa de audio; la quinta es lo único que la cruza, y lo hace por un solo campo del `Job`.
+Cómo se traduce una pieza colocada en cinco notas y en qué momento suena el recorrido que las conecta.
+Las cuatro primeras reglas viven en `src/domain/` —`music.ts`, `transform.ts` y sus constantes— y no
+dependen de React ni de la capa de audio; la quinta también es dominio puro (`domain/sequence.ts`), y es
+la única que cruza a la capa de audio — proyectada a una `Sequence` sin celdas, porque el motor no ve
+qué es un pentominó (ver [audio.md](./audio.md#el-recorrido-en-el-scheduler)).
 
 ## Las cinco reglas
 
@@ -12,53 +14,69 @@ capa de audio; la quinta es lo único que la cruza, y lo hace por un solo campo 
 | **Rotación** | La fórmula de escala | `notesForRotation` |
 | **Reflexión** | El orden de las notas | `ns.reverse()` — retrógrado |
 | **La forma** | Qué celda tiene qué nota | `degreeByCellIndex` — orden angular |
-| **La columna** | La posición dentro del compás | `Job.phase = ax / GRID_W` |
+| **La posición en el tablero** | El orden de reproducción y el silencio entre piezas | `buildSequence` — circuito + `cellDistance` |
 
 La **forma** de la pieza decide **qué celda es dueña de cada grado** —el orden angular alrededor del
 centroide, ver [abajo](#forma--qué-celda-tiene-qué-nota)— pero no decide *cuándo* suena ninguna: el
 mapeo dice dónde está cada nota, no en qué momento. La **fila** (`y`) tampoco: octava, duración y
 velocity son los candidatos obvios, y van de a un eje por vez.
 
-## Columna → posición en el compás
+## El recorrido: orden y silencio entre piezas
 
-**El eje X del tablero es tiempo.** La columna de la celda de agarre decide en qué momento del compás
-arranca la pieza:
+Hasta el spec 008 el tablero era un compás: cada pieza sonaba una vez por compás, en la fracción que le
+daba la columna de su celda de agarre. El spec 009 lo reemplaza — la columna dejó de decidir nada, y con
+ella se fue `phaseFor`. Hoy el tablero es un **recorrido**: un circuito cerrado visita las piezas
+colocadas una por una, y una celda recorrida es un intervalo (la unidad del spec 008).
 
-```
-compás  ├────────────────────────────────────────────────┤
-col 0   ●━━━━━                                              arranca en el downbeat
-col 3          ●━━━━━                                       a 3/10 del compás
-col 7                          ●━━━━━                       a 7/10
-```
+**El orden lo da el circuito más corto, no el orden de colocación.** Colocar una pieza en el medio de
+otras dos hace que suene entre las dos — es la propiedad que se quiere, y por eso manda la posición.
+`domain/sequence.ts` resuelve el circuito **exacto** (Held-Karp) sobre las piezas colocadas: un
+vecino-más-cercano da recorridos 20,1 % más largos en promedio y hasta 79 % peor en el peor caso
+(`research.md` del spec 009, §3), y el exacto cuesta 1,87 ms con las 12 piezas posibles — el tope
+estructural, porque hay 12 pentominós libres y no se repiten.
 
-```ts
-const [ax] = p.cells[ANCHOR_INDEX[p.piece]];
-addJob({ …, phase: ax / GRID_W });
-```
+**Cada pieza tiene una puerta de entrada y una de salida**: la celda de grado 0 (la tónica) y la de
+grado 4, según el mapeo de [arriba](#forma--qué-celda-tiene-qué-nota). El costo de ir de la pieza `i` a
+la `j` es `cellDistance(salida(i), entrada(j))` — asimétrico, porque volver no cuesta lo mismo.
 
-Cuatro cosas que definen la regla, y por qué son así:
+**Con una sola pieza no hay recorrido, y por lo tanto no hay clicks.** El ciclo es su arpegio y vuelve
+a empezar contiguo: mide 5 intervalos, uno más que los 4 que abarcan las cinco notas, porque con 4 la
+última nota de una vuelta y la primera de la siguiente caerían en el mismo instante. El plan del spec
+009 cerraba ese ciclo con el salto de la pieza a sí misma —de su salida a su entrada—; **se cambió
+después de escucharlo**, porque ese camino atraviesa la propia pieza y lo que se oye no es un
+recorrido sino golpes encima del arpegio que acaba de sonar. El recorrido existe *entre* piezas.
 
-- **La celda de agarre, no el borde izquierdo de la pieza.** Es la celda que el usuario clickeó —control
-  directo— y `ANCHOR_INDEX` ya es el punto de referencia canónico de cada pieza, estable ante rotaciones
-  por el invariante de orden del array.
-- **El ancho del tablero es el compás**: 10 pasos, no 16. Con una grilla de semicorcheas, 6 de las 16
-  subdivisiones no serían alcanzables desde ninguna columna. Que la grilla no sea 4/4 es aceptable: esto
-  es un instrumento, no una caja de ritmos.
-- **Fracción, no segundos.** Mover el tempo estira el patrón proporcionalmente en vez de reordenarlo.
-- **Geometría, no reloj de pared.** Antes del spec 002, con Tone, cada pieza quedaba desfasada por el
-  *momento* en que se la colocó: no era reproducible, no era visible y no se podía testear. El mismo
-  tablero suena siempre igual.
+**La distancia es la de la grilla, más una arista.** El tablero se repliega sobre sí mismo: la celda
+`(0,0)` y la celda `(9,5)` son adyacentes, una sola costura extra y no un toroide. Con ella la distancia
+máxima del tablero baja de 14 a **12**, y el 13,8 % de los 3.600 pares de celdas se acorta
+(`research.md` del spec 009, §2); `(0,0)` a `(9,5)` pasa de 14 celdas a **1**.
 
-El disparo al colocar (`playNow`) **no** lleva fase: cuando suena, hacés click y suena en el acto. Es
-retroalimentación del gesto, no parte del patrón — la fase solo gobierna el transporte. Con el
-transporte corriendo, `playNow` no se llama: la retroalimentación del gesto y el patrón del transporte
-no compiten por el mismo instante — ver [audio.md](./audio.md#reconciliación-de-loops).
+**El silencio entre dos piezas es su distancia en intervalos, sin tope.** Con `d = 1` (piezas contiguas)
+la nota siguiente cae exactamente un intervalo después de la última de la anterior, sin costura audible.
+Separar dos piezas en el tablero es la forma de crear espacio entre ellas, y no hay tope porque uno
+volvería la distancia ilegible pasado cierto punto.
 
-**Limitación conocida:** no hay retroalimentación visual de la fase. Una cabeza lectora recorriendo el
-tablero es lo que volvería *legible* a esta regla; hoy se oye pero no se lee. Encaja con el
-[spec 003](../../specs/003-visualizacion-de-la-senal-con-analysernode/spec.md), que ya trae el canvas.
+**Las celdas que el recorrido cruza sin detenerse suenan como un click**, sin altura y a volumen bajo —
+si no, un salto de varias celdas es un silencio mudo. `pathBetween(a, b)` materializa esas celdas
+intermedias con la regla "primero en X, después en Y", y cada click de la `Sequence` lleva la celda que
+cruza — aunque para sonar alcance con contarlas, porque el recorrido *es* el modelo. Detalle del click
+—volumen y cómo se agenda— en [audio.md](./audio.md#el-click).
 
-Detalle del scheduler que la implementa en [audio.md](./audio.md#fase-por-pieza).
+**El ciclo no tiene marca de inicio ni de fin.** Cuando el recorrido termina en la última pieza, sigue
+hacia la primera con la misma regla de distancia: el circuito se cierra sin costura audible propia.
+
+El disparo al colocar (`playNow`) **no** participa del recorrido: cuando suena, hacés click y suena en
+el acto. Es retroalimentación del gesto, no parte del patrón. Con el transporte corriendo, `playNow` no
+se llama: la retroalimentación del gesto y el patrón del transporte no compiten por el mismo instante —
+ver [audio.md](./audio.md#reconciliación-de-loops).
+
+**Limitación conocida:** no hay retroalimentación visual del recorrido. Una cabeza lectora recorriendo
+el tablero es lo que volvería *legible* a este modelo; hoy se oye pero no se lee. Es la limitación
+consciente que cierra el [spec 010](../../specs/010-cabeza-lectora-por-celda/spec.md), que depende de
+este.
+
+Detalle del scheduler que implementa el recorrido, y del precio de latencia que paga por no interrumpir
+lo que está sonando, en [audio.md](./audio.md#el-recorrido-en-el-scheduler).
 
 ## Pieza → tónica
 
@@ -181,8 +199,8 @@ notes.forEach((m, i) => scheduleVoice(c, master, midiToHz(m), start + i * iv, NO
   alguien tipeó las coordenadas de `SHAPES`. Qué suena y cuándo no cambió; cambió de dónde sale.
 
 Mientras el transporte está corriendo, cada pieza colocada reagenda la misma secuencia con el mismo
-espaciado, una vez por compás, y el arpegio de colocación deja de sonar: son las dos caras del mismo
-transporte, no dos fuentes de sonido independientes. Ese camino no pasa por `playNotes()`: el espaciado
+espaciado, una vez por ciclo del recorrido, y el arpegio de colocación deja de sonar: son las dos caras
+del mismo transporte, no dos fuentes de sonido independientes. Ese camino no pasa por `playNotes()`: el espaciado
 lo aplica `collectHits()` en el motor — ver [audio.md](./audio.md#los-dos-caminos-de-reproducción).
 
 ## Utilidades MIDI
