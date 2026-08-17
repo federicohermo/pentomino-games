@@ -9,15 +9,21 @@ Todo lo de acá se midió **ejecutando el dominio real** (`transform.ts`, `board
 | Pieza del modelo actual | Dónde | Qué le pasa |
 |---|---|---|
 | `phaseFor(cells, anchorIndex)` = columna / `GRID_W` | `domain/board.ts:41-57` | **muere** |
-| Sus 5 tests | `domain/__tests__/board.test.ts:96-121` | mueren |
-| `Job.phase` | `audio/types/scheduler.types.ts:6-17` | muere; lo reemplaza el offset dentro del ciclo |
-| `Job` entero (`id`, `notes`) | ídem | lo reemplaza una `Sequence` con offsets |
-| `addJob` / `removeJob` / `clearJobs` / `jobCount` | `audio/engine.ts:116-120` | los reemplaza `setSequence` |
-| El período de `collectHits` | `audio/scheduler.ts:89` | pasa de `bar` a `ciclo` |
-| `firstOnsetAfter` | `audio/scheduler.ts:38-41` | **no cambia** |
-| `simulate_board`: `phase` en jobs y en `placements` | `mcp-server/src/tools/simulateBoard.ts:185,220` | se reescribe |
-| Su `description`: *"la columna de la celda de agarre es la posición dentro del compás"* | ídem `:170-172` | pasa a ser falsa |
+| Sus 5 tests | `domain/__tests__/board.test.ts:96-122` | mueren |
+| `Job.phase` | `audio/types/scheduler.types.ts:5-15` | muere; lo reemplaza el offset dentro del ciclo |
+| `Job` entero (`id`, `notes`) | ídem, `:2-16` | lo reemplaza una `Sequence` con offsets |
+| `addJob` / `removeJob` / `clearJobs` | `audio/engine.ts:125-127` | los reemplaza `setSequence` |
+| `jobCount` | `audio/engine.ts:128-129` | **no basta con borrarlo**: `.claude/rules/audio.md` lo nombra como la forma de verificar el audio en el navegador. Lo reemplaza el mismo dato sobre la secuencia activa |
+| `bars` en el `inputSchema` de `simulate_board` | `mcp-server/src/tools/simulateBoard.ts:51-52` | pasa a `cycles` (1–4, default 2): el compás deja de ser una unidad del instrumento |
+| `jobTimeline` y su corte por onset | ídem `:120-166` | se va: el corte existía porque cada job tenía su propia fase dentro del compás, y ahora hay una sola secuencia con un solo origen |
+| El período de `collectHits` | `audio/scheduler.ts:81` (`const bar`) y `:110` (`at += bar`) | pasa de `bar` a `ciclo` |
+| `firstOnsetAfter` | `audio/scheduler.ts:56-59` | **no cambia** |
+| El docblock de `GRID_W`: *"10 es también la cantidad de posiciones dentro del compás (spec 004)"* | `domain/constants/board.constants.ts:1-7` | pasa a ser falso: el eje X deja de ser tiempo |
+| `simulate_board`: `phase` en jobs y en `placements` | `mcp-server/src/tools/simulateBoard.ts:190,229` | se reescribe |
+| Su `description`: *"la columna de la celda de agarre es la posición dentro del compás"* | ídem `:176-178` | pasa a ser falsa |
+| **Los tests de la tool que afirman la fase** | `mcp-server/src/__tests__/tools.test.ts:202,208,211,262` | mueren o se reescriben; sin esto `pnpm mcp:test` queda rojo |
 | `docs/architecture/modelo-musical.md` §fase, `audio.md#fase-por-pieza` | | se reescriben |
+| Tres docs más que **nombran `phaseFor`** | `docs/architecture/overview.md:42,77` · `docs/architecture/directory-structure.md:60` · `docs/guides/mcp-domain.md:36` | quedan falsas al borrarlo |
 
 El spec 004 pasa a `Superado`. No se reescribe: es historia, y su `research.md` sigue siendo el mejor
 registro de por qué el problema existía.
@@ -63,7 +69,8 @@ fórmula cerrada como concepto primario tendría que reescribirse.
 **El invariante, verificado sobre las 3.600 combinaciones**:
 `pathBetween(a,b).length === cellDistance(a,b) − 1` para todo par de celdas **distintas**. Falla en
 exactamente **60 casos**, que son las 60 celdas comparadas consigo mismas: con `d = 0` no existe un
-camino de largo −1. Ese caso queda excluido explícitamente y no ocurre en el circuito — la salida de
+camino de largo −1. O sea que el test recorre 3.600 pares y **asevera sobre 3.540**: 60 × 60 menos la
+diagonal. Los dos números aparecen en el spec y en el plan y no son intercambiables. Ese caso queda excluido explícitamente y no ocurre en el circuito — la salida de
 una pieza y la entrada de otra no pueden ser la misma celda si las piezas no se solapan, y la entrada
 y la salida de una misma pieza son sus grados 0 y 4, que son celdas distintas.
 
@@ -166,17 +173,25 @@ Lo que sí es nuevo:
 (`DEFAULT_VOICE`, `type: 'triangle'`). Un click sin altura pide **ruido**, que es un
 `AudioBufferSourceNode` con un buffer de muestras aleatorias — un nodo que la capa nunca creó.
 
-Los tests corren contra `node-web-audio-api`, no contra el navegador, así que hay que verificar que ese
-entorno implemente `createBuffer`/`AudioBufferSourceNode` antes de comprometerse. Plan B: un oscilador
-con envolvente de ~10 ms, que suena a click percusivo y usa solo lo que ya funciona.
+Los tests corren contra `node-web-audio-api`, no contra el navegador, así que había que verificar que
+ese entorno implemente `createBuffer`/`AudioBufferSourceNode` antes de comprometerse. **Medido —
+soporta los dos**: sobre un `OfflineAudioContext(1, 44100, 44100)` de esa librería, `createBuffer`,
+`getChannelData`, `createBufferSource` y `startRendering` corren y la muestra escrita en el buffer
+llega intacta a la salida (`0.5` adentro, `0.5` renderizado). O sea que el ruido es viable en los tests
+y la decisión ya no queda abierta al implementar.
+
+Plan B, si el ruido igual no convence a oído: un oscilador con envolvente de ~10 ms, que suena a click
+percusivo y usa solo lo que ya funciona. Pasa a ser una decisión de timbre, no de entorno.
 
 ## 8. Archivos afectados
 
 | Archivo | Acción |
 |---|---|
-| `src/domain/constants/board.constants.ts` | la costura: las dos celdas que se repliegan |
+| `src/domain/constants/board.constants.ts` | la costura: las dos celdas que se repliegan. Y **el docblock de `GRID_W`**, que hoy dice que el ancho es la cantidad de posiciones dentro del compás |
+| `src/domain/constants/route.constants.ts` | **nuevo** — el const-object de `RouteKind`: los módulos de capa no declaran constantes |
 | `src/domain/board.ts` | `bestRoute`, `cellDistance` y `pathBetween`, las tres sobre la misma decisión; **sale** `phaseFor` |
 | `src/domain/sequence.ts` | **nuevo** — puertas por pieza, matriz de costos, Held-Karp, offsets del ciclo y la celda de cada click |
+| `src/domain/types/sequence.types.ts` | **nuevo** — `Step`, `Click`, `Sequence` y `RouteKind`: los tipos que cruzan un límite van a `<capa>/types/`, no al módulo |
 | `src/domain/__tests__/sequence.test.ts` | **nuevo** — AC1, AC2, AC3, AC10 |
 | `src/domain/__tests__/board.test.ts` | mueren los 5 tests de `phaseFor`; entran los de `cellDistance` |
 | `src/audio/types/scheduler.types.ts` | `Job` → `Sequence`; `Hit` gana su tipo |
@@ -187,7 +202,9 @@ con envolvente de ~10 ms, que suena a click percusivo y usa solo lo que ya funci
 | `src/audio/__tests__/` | scheduler, voice e integración |
 | `src/App.tsx` | el efecto de reconciliación arma la secuencia y la entrega entera |
 | `mcp-server/src/tools/simulateBoard.ts` | reescritura: orden, saltos, ciclo, timeline con clicks |
+| `mcp-server/src/__tests__/tools.test.ts` | **los cuatro asserts sobre `phase`** (`:202,208,211,262`) se caen con el campo; sin tocarlos `pnpm mcp:test` queda rojo |
 | `docs/architecture/audio.md`, `modelo-musical.md` | la fase por pieza deja de existir |
+| `docs/architecture/overview.md`, `directory-structure.md`, `docs/guides/mcp-domain.md` | **las tres nombran `phaseFor` en un inventario de `board.ts`**: entran `cellDistance`, `pathBetween` y `sequence.ts` |
 | `.claude/rules/audio.md`, `domain.md` | ídem |
 | `specs/log.md` | el 004 pasa a `Superado` |
 

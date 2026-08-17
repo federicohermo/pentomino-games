@@ -107,7 +107,8 @@ los dibuja. Se descartó por tres razones, la primera medida:
   spec se apoya en la forma cerrada como concepto primario, esa extensión lo reescribe; si se apoya en
   el camino, le cambia el interior a una función.
 
-El invariante que lo sostiene, verificado sobre las 3.600 combinaciones de celdas del tablero:
+El invariante que lo sostiene, verificado recorriendo las 3.600 combinaciones de celdas del tablero y
+aseverando sobre las **3.540** que son de celdas distintas:
 `pathBetween(a,b).length === cellDistance(a,b) − 1` **para todo par de celdas distintas**. El caso
 `a === b` es degenerate y queda explícitamente fuera: nunca ocurre en una pata del circuito, porque la
 salida de una pieza y la entrada de otra no pueden ser la misma celda si las piezas no se solapan, y la
@@ -126,20 +127,37 @@ hay 35: ninguna elección es más correcta que otra, así que se elige la que se
 - **AC3** — Dos piezas adyacentes suenan **contiguas**: la primera nota de la segunda cae exactamente
   un intervalo después de la última de la primera, sin silencio.
 - **AC4** — El ciclo no tiene marca de inicio: el salto entre la última pieza y la primera se calcula
-  con la misma regla que los demás, y `simulate_board` sobre dos ciclos consecutivos muestra un espaciado
-  uniforme en el empalme.
+  con la misma regla que los demás, y `simulate_board` con `cycles: 2` muestra un espaciado uniforme en
+  el empalme — el mismo que adentro del ciclo.
 - **AC5** — Colocar o quitar una pieza no altera el ciclo en curso; la secuencia nueva empieza a sonar
   exactamente en el cierre del ciclo (D5).
 - **AC6** — Nunca hay más de `LOOKAHEAD` de audio comprometido, con cualquier tamaño de ciclo (D6).
 - **AC7** — Las celdas recorridas suenan: `Hit` distingue nota de click, y un salto de `d` celdas
   produce `d − 1` clicks equiespaciados, **cada uno con la celda que el recorrido cruza** (D8).
-- **AC7b** — `pathBetween(a,b).length === cellDistance(a,b) − 1` para las 3.600 combinaciones de celdas
-  **distintas** del tablero, y las celdas del camino son adyacentes de a pares y no se repiten.
+- **AC7b** — `pathBetween(a,b).length === cellDistance(a,b) − 1` para las **3.540** combinaciones de
+  celdas **distintas** del tablero —60 × 60 menos las 60 de la diagonal, que quedan excluidas por D8—,
+  y las celdas del camino son adyacentes de a pares y no se repiten.
 - **AC8** — `phaseFor` no existe en el repo, ni sus tests, ni el campo `phase`.
-- **AC9** — `simulate_board` refleja el modelo nuevo: devuelve el orden del circuito, los saltos, el
-  largo del ciclo y una `timeline` con notas y clicks.
-- **AC10** — El circuito se resuelve exacto en menos de 5 ms para 12 piezas.
+- **AC9** — `simulate_board` refleja el modelo nuevo **de los dos lados**: devuelve el orden del
+  circuito, los saltos, el largo del ciclo y una `timeline` con notas y clicks; y su ventana se pide en
+  **ciclos**, no en compases. El parámetro `bars` pasa a `cycles` (entero, 1–4, default 2) porque en
+  este modelo el compás dejó de ser una unidad del instrumento: con 10 piezas el ciclo mide 4,1
+  compases, así que los dos ciclos que pide AC4 no entraban en el tope de 8 del schema viejo.
+- **AC10** — El circuito se resuelve exacto en menos de 5 ms para 12 piezas, medido como la **mediana
+  de 21 corridas** y no como una sola. Es lo único que separa a este AC de un test que falla por una
+  pausa de GC: el margen contra los 1,87 ms medidos es de 2,7x, y una corrida suelta en una máquina
+  cargada se lo come. Las 12 piezas se construyen **a mano** y no colocando al azar: 12 × 5 = 60 celdas
+  es teselar el tablero entero, y el `research.md` §5 midió 0 de 200 tableros aleatorios con 12.
 - **AC11** — `pnpm verify` en verde.
+- **AC12** *(no-regresión)* — **`audio/` sigue sin importar nada de `domain/`.** Lo verifica
+  `pnpm lint` con el override de capa de `eslint.config.js`, que también ve los `import type`. La
+  `Sequence` que entra al motor no puede arrastrar `Cell` ni ningún otro tipo del dominio: si el motor
+  necesita las celdas del recorrido, el spec está mal cortado (ver D7 y la advertencia del review).
+- **AC13** *(no-regresión)* — **El swap del cierre de ciclo no pierde ni duplica onsets en el borde.**
+  Al reemplazar la secuencia activa, `scheduledUntil` queda estrictamente **antes** del nuevo `origin`
+  —la misma regla que `startClock` ya tiene y que `.claude/rules/audio.md` registra como trampa: sin
+  eso se pierde el primer onset del ciclo nuevo— y ningún hit de la secuencia vieja agendado más allá
+  del borde vuelve a salir desde la nueva. Test con un ciclo corto y una ventana que cruce el borde.
 
 ## Fuera de Alcance
 
@@ -164,6 +182,6 @@ hay 35: ninguna elección es más correcta que otra, así que se elige la que se
 | **D5 hace esperar hasta un ciclo entero** para escuchar una pieza nueva: 4,4 s con 4 piezas y 7,5 s con 8, a 110 bpm. | Es la consecuencia directa de la continuidad que el diseño pide, y el spec 010 la vuelve legible mostrando dónde va el recorrido y dónde entró la pieza nueva. Si al usarlo resulta intolerable, la salida **no** es aplicar los cambios en caliente —eso reordena el patrón a la mitad— sino aplicarlos en el próximo *cruce por la pieza afectada*, que es una regla más fina y su propio cambio. |
 | Agregar una pieza puede **reordenar el circuito entero**, no solo insertarla. | Es lo que se pidió: la posición manda sobre el orden de colocación. D5 hace que el reordenamiento nunca se oiga a mitad de frase, y el 010 lo hace visible. |
 | El click de D4 puede resultar molesto o tapar las notas. | Volumen bajo y sin altura, para que no compita armónicamente. Es un parámetro suelto: si molesta, se baja o se apaga sin tocar el modelo. |
-| Sintetizar ruido puede no andar en `node-web-audio-api` (los tests corren ahí, no en el navegador). | Si `createBuffer` falla en ese entorno, el click se hace con un oscilador de envolvente muy corta, que ya se sabe que anda porque es lo que hace toda la capa hoy. Decisión al implementar, con el test como árbitro. |
+| ~~Sintetizar ruido puede no andar en `node-web-audio-api`~~ — **cerrado por medición**: `createBuffer` + `AudioBufferSourceNode` corren en ese entorno y la muestra llega intacta al render (`research.md` §7). | Sin riesgo de entorno. El oscilador de envolvente corta sigue disponible, pero como alternativa de **timbre** y no como plan B forzado. |
 | Reescribir `collectHits` es tocar el corazón del audio. | La firma y `firstOnsetAfter` no cambian (D6): lo que cambia es el período y el significado de la fase. Los tests de scheduler existentes son la red, y se adaptan antes de tocar la implementación. |
 | Con 12 piezas el tablero está **lleno** (12 × 5 = 60 celdas = el tablero entero), así que los saltos tienden a 1 y el modelo pierde espacio. | Medido: colocar 12 piezas al azar no ocurrió ni una vez en 200 intentos, y 11 ocurrió 4 veces. El caso de tablero lleno es un rompecabezas de teselación, no el uso normal — pero conviene verificar a mano que un tablero casi lleno sigue sonando bien. |

@@ -16,11 +16,22 @@ el nuevo (un recorrido).
 // domain/constants/board.constants.ts
 export const SEAM: readonly [Cell, Cell] = [[0, 0], [GRID_W - 1, GRID_H - 1]];
 
+// domain/constants/route.constants.ts — el const-object
+export const ROUTE = { direct: 'direct', viaEnd: 'viaEnd', viaStart: 'viaStart' } as const;
+// domain/types/sequence.types.ts — el union derivado
+export type RouteKind = typeof ROUTE[keyof typeof ROUTE];
+
 // domain/board.ts — UNA decisión, tres lecturas de ella
 function bestRoute(a: Cell, b: Cell): { length: number; via: RouteKind }
 export function cellDistance(a: Cell, b: Cell): number    // el largo
 export function pathBetween(a: Cell, b: Cell): Cell[]     // las celdas INTERMEDIAS, sin a ni b
 ```
+
+El const-object va a `constants/` y el union a `types/`, no adentro de `board.ts`: la regla del repo es
+que **un módulo de capa tiene funciones y nada más** (`CLAUDE.md`, y la tabla de
+`docs/architecture/directory-structure.md:163-164`). El docblock de `GRID_W` se corrige en el mismo
+commit: hoy dice que el ancho del tablero es la cantidad de posiciones dentro del compás, y este spec
+lo deja de ser.
 
 `bestRoute` compara los tres términos de D2 y dice cuál gana: directo, por la costura entrando por
 `(9,5)`, o por la costura entrando por `(0,0)`. `cellDistance` devuelve su largo y `pathBetween`
@@ -34,7 +45,7 @@ Tests: `(0,0)`→`(9,5)` da 1; la distancia máxima del tablero es 12; simetría
 desigualdad triangular sobre las 3.600 combinaciones — barata y es la que atrapa un `min` mal escrito.
 
 Y el que ata el dibujo al sonido, **AC7b**: `pathBetween(a,b).length === cellDistance(a,b) − 1` sobre
-las 3.600 combinaciones de celdas **distintas**, más que las celdas del camino sean adyacentes de a
+las **3.540** combinaciones de celdas **distintas**, más que las celdas del camino sean adyacentes de a
 pares y no se repitan. El caso `a === b` se excluye a propósito y va documentado en la función: con
 `d = 0` no hay camino de largo −1, y no ocurre en ninguna pata del circuito.
 
@@ -48,10 +59,12 @@ los borrados.
 ## 2. La secuencia → `domain/sequence.ts` (nuevo)
 
 ```ts
+// domain/types/sequence.types.ts — los tipos que cruzan un límite NO viven en el módulo
 export interface Step { pieceId: string; offset: number; notes: number[] }   // offset en intervalos
 export interface Click { offset: number; cell: Cell }                        // dónde y cuándo
 export interface Sequence { steps: Step[]; clicks: Click[]; length: number } // length = ciclo
 
+// domain/sequence.ts
 export function buildSequence(placed: readonly PlacedPiece[]): Sequence
 ```
 
@@ -81,8 +94,48 @@ pieza, y dos piezas adyacentes (salto 1 → contiguo, AC3).
 
 ## 3. Los tipos del motor
 
-`Job` desaparece. `Sequence` entra al motor **tal como la devuelve el dominio** — el motor no la
-recalcula ni la reordena, solo la lee.
+`Job` desaparece. El motor no recalcula ni reordena nada: solo lee lo que le entregan.
+
+**Pero no es literalmente la `Sequence` del dominio.** `Click` lleva un `Cell`, que es un tipo de
+`domain/types/`, y `eslint.config.js:75-91` prohíbe que `src/audio/**` importe `../domain/*` —con la
+variante de `typescript-eslint`, que también ve los `import type`—. Importarlo no falla en el
+navegador: falla `pnpm lint`, o sea AC11.
+
+**La decisión: el motor no ve celdas.**
+
+```ts
+// audio/types/scheduler.types.ts — la Sequence del MOTOR, sin nada del dominio
+export interface Sequence {
+  steps: { offset: number; notes: number[] }[];   // sin pieceId: el motor no tiene a quién devolvérselo
+  clicks: { offset: number }[];                   // sin cell: para sonar solo hace falta contar
+  length: number;
+}
+```
+
+El click no tiene altura y suena igual en cualquier lado (D4), así que la celda no es información que
+el motor pueda usar. `App.tsx`, que ya es el único puente entre las dos capas, entrega
+`buildSequence(placed)` dejando caer las celdas — una proyección, no una traducción: los `offset` y los
+`notes` viajan tal cual, y el motor sigue sin recalcular ni reordenar nada.
+
+Las celdas **no se pierden**: siguen en el dominio, que es de donde el spec 010 las va a leer para
+dibujar. El 010 no necesita sacárselas al motor, y de hecho no puede — `Spectrum.tsx` es el único
+componente que lee del motor, y lee el espectro, no la secuencia.
+
+**Lo que sí hay que reponer es la observabilidad.** `jobCount()` no es un resto: `.claude/rules/audio.md`
+lo nombra como **la** forma de verificar el audio en el navegador sin oírlo ("con `jobCount()` y
+contando osciladores"). Si desaparece con `addJob`, esa receta queda rota. Lo reemplaza una función
+igual de barata sobre la secuencia activa —cuántos pasos, cuántos clicks y cuánto mide el ciclo—, y la
+regla se actualiza con el nombre nuevo en el mismo commit.
+
+Las dos alternativas quedan registradas por si alguien las vuelve a proponer: **duplicar `Cell` en
+`audio/types/`** deja dos definiciones que alguien tiene que mantener iguales, que es lo que la regla
+de constantes del repo existe para evitar; **aflojar el override del linter** compra la comodidad
+tirando abajo la separación que D7 dice conservar, y que desde el spec 005 sostiene el grafo de imports
+y no un comentario.
+
+Así D7 se cumple al pie de la letra —«el motor recibe una lista de instantes y frecuencias y sigue sin
+saber qué es un pentominó»— y D8 también, porque el camino sigue siendo el concepto primario del
+dominio. Lo verifica AC12.
 
 `Hit` deja de ser una sola cosa:
 
@@ -114,9 +167,21 @@ En `engine.ts`:
 - `setSequence(next)` guarda la **pendiente**. No toca la activa.
 - `tick()`, antes de recolectar: si el reloj cruzó el borde del ciclo y hay pendiente, la activa pasa a
   ser la pendiente y **ese borde pasa a ser el nuevo `origin`** (D5).
+- **En ese swap hay que bajar `scheduledUntil` a justo antes del nuevo `origin`** (AC13). No es
+  simetría con el caso de abajo: es la misma trampa que `.claude/rules/audio.md` ya registra. El
+  horizonte es de 100 ms y el borde se detecta cada 25 ms, así que al cruzarlo `scheduledUntil` ya está
+  **adelante** del borde; si se lo deja quieto, `firstOnsetAfter` arranca la secuencia nueva después de
+  su propio comienzo y **el primer onset del ciclo nuevo se pierde en silencio** — el mismo bug que
+  `startClock` evita, con el mismo síntoma y sin ningún error. El precio del ajuste es el simétrico y
+  hay que verificarlo en el test: los hits de la secuencia **vieja** ya agendados más allá del borde no
+  tienen que volver a salir desde la nueva.
 - Si la activa está vacía, la pendiente entra en vigor **ya**, con `origin = currentTime +
   CLOCK_START_DELAY` y `scheduledUntil` estrictamente **antes** de `origin` — la misma regla que
   `startClock` ya tiene, y por el mismo motivo: si no, se pierde el primer onset.
+- **Con `sequence.length === 0` no hay borde que cruzar.** El período del ciclo es `length × intervalo`,
+  o sea 0, y calcular el borde con eso divide por cero o lo da por cruzado en cada tick. La guarda va
+  explícita: sin pasos no se recolecta y no se busca borde. Es el estado real de "quité la última
+  pieza", no un caso teórico.
 
 El `scheduleVoice` del click va aparte, en `voice.ts`, con volumen propio. Primero se verifica que
 `node-web-audio-api` soporte `AudioBufferSourceNode`; si no, oscilador de envolvente corta (ver
@@ -133,6 +198,18 @@ El `scheduleVoice` del click va aparte, en `voice.ts`, con volumen propio. Prime
   distinguidos. Que el camino salga en la respuesta es lo que permite verificar el recorrido sin
   escucharlo, que es el propósito entero de la tool. Su `description` se
   reescribe entera: la frase sobre columnas que se desfasan es del modelo viejo.
+- **Y se reescribe su entrada, no solo su salida.** `bars: 1–8` pasa a `cycles: 1–4` (default 2):
+
+  ```ts
+  cycles: z.number().int().min(1).max(4).default(2)
+    .describe('Cuántas vueltas del circuito simular. El ciclo lo fija el tablero, no el tempo.')
+  ```
+
+  El tope de 4 no es el de 8 dividido a ojo: con `bars` el costo del bucle de ventanas dependía del
+  tempo y del tablero a la vez, y con `cycles` el peor caso está acotado —10 piezas son 8,98 s de ciclo
+  a 110 bpm (`research.md` §4), o sea ~36 s de simulación con 4—. `jobTimeline` deja de existir como
+  tal: el corte por onset que resolvía el problema de la fase ya no aplica, porque ahora hay una sola
+  secuencia con un solo origen y el límite es el fin del último ciclo pedido.
 
 ## 6. Documentación y verificación
 
@@ -140,16 +217,24 @@ Docs: `modelo-musical.md` (la sección de fase se reemplaza por la del recorrido
 (`#fase-por-pieza`), las dos reglas de `.claude/rules/`, la tabla de `CLAUDE.md`, y `log.md` con el 004
 a `Superado`.
 
+Y las **tres que el inventario original no tenía**, todas con `phaseFor` escrito en una lista de lo que
+exporta `board.ts`: `docs/architecture/overview.md:42,77`,
+`docs/architecture/directory-structure.md:60` y `docs/guides/mcp-domain.md:36`. Es el mismo hallazgo
+que dejó anotado el review del 007 —*un spec que cambia lo que algo dice tiene que revisar todo lo que
+lo dice*—, y acá el inventario sí lo da un `grep` de un solo símbolo.
+
 | Qué | Cómo |
 |---|---|
 | AC1, AC2, AC3, AC10 | `pnpm test` sobre `domain/__tests__/sequence.test.ts` |
-| AC4 | `simulate_board` con `bars` que cubran **dos ciclos**: el espaciado en el empalme es igual al de adentro |
+| AC4 | `simulate_board` con `cycles: 2`: el espaciado en el empalme es igual al de adentro |
 | AC5 | Test del motor: cambiar la secuencia a mitad de ciclo no altera los hits hasta el borde |
 | AC6 | Test ya existente del scheduler, con un ciclo largo |
 | AC7 | `simulate_board`: un salto de `d` celdas produce `d − 1` clicks equiespaciados, con su celda |
-| **AC7b** | Test: `pathBetween.length === cellDistance − 1` sobre las 3.600 combinaciones de celdas distintas |
-| AC8 | `pnpm verify` — que `phaseFor` no exista lo verifica el compilador en los dos paquetes |
+| **AC7b** | Test: `pathBetween.length === cellDistance − 1` sobre las **3.540** combinaciones de celdas distintas |
+| AC8 | `pnpm verify` — que nadie **importe** `phaseFor` lo verifica el compilador en los dos paquetes; que la función y sus 5 tests estén **borrados** es el commit aparte, y no lo verifica nada automático |
 | AC9, AC11 | `pnpm verify` + una consulta a la tool |
+| **AC12** | `pnpm lint`: el override de `src/audio/**` de `eslint.config.js` falla si el motor importa del dominio, incluso con `import type` |
+| **AC13** | Test del scheduler: un ciclo corto, una ventana que cruce el borde, y ni un onset perdido ni uno repetido en el empalme |
 | A oído | Un tablero de 2 piezas adyacentes (tiene que sonar contiguo), uno de 2 piezas en esquinas opuestas (tiene que sonar el recorrido), y uno de 8 |
 
 ## Lo que un revisor va a esperar y no va a encontrar
