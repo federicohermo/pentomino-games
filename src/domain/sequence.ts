@@ -19,16 +19,19 @@ import { SHAPES, CELLS_PER_PIECE } from './constants/pieces.constants.ts';
 /**
  * Las dos puertas de una pieza: por donde entra el recorrido y por donde sale.
  *
- * Entrada = grado 0, salida = grado 4 (spec 009, D3). El grado sale de la forma
+ * Entrada = grado 0, salida = grado 4 (spec 009, D8). El grado sale de la forma
  * CANONICA y se lee POR INDICE: `degreeByCellIndex(SHAPES[p.piece])[k]` es el grado
  * de `p.cells[k]`, porque rotar, reflejar y trasladar son `map` y la celda `k` sigue
  * siendo la celda `k`. Correrla sobre `p.cells` compila igual y devuelve otro mapeo
  * en 75 de las 96 orientaciones, porque rotar corre el origen del angulo — es la
  * trampa mas cara de esta capa.
  *
- * Las dos nunca son la misma celda: son dos grados distintos de la misma pieza, y
- * de eso depende que `pathBetween` no reciba nunca `a === b` ni siquiera con una
- * sola pieza en el tablero, donde el circuito es el salto de la pieza a si misma.
+ * Las dos nunca son la misma celda: son dos grados distintos de la misma pieza. Hoy
+ * no es lo que protege a `pathBetween` de recibir `a === b` —de eso se encargan que
+ * dos piezas no se solapen, asi que la salida de una y la entrada de la siguiente
+ * son celdas distintas, y la guarda de `n === 1`, porque con una sola pieza no hay
+ * tramo que trazar—, pero es la propiedad que dejaria seguro cualquier tramo futuro
+ * que saliera y entrara por la misma pieza.
  *
  * El grado de salida se deriva de `CELLS_PER_PIECE` y no se escribe `4`: es el
  * ultimo grado del arpegio, y el 4 y el 5 de "cinco notas" son el mismo numero

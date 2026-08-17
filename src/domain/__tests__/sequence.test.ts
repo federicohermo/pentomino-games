@@ -147,9 +147,12 @@ describe('las puertas de una pieza', () => {
     expect(distintas).toBe(74);
   });
 
-  it('entrada y salida nunca son la misma celda: por eso pathBetween no recibe nunca a === b', () => {
-    // De esto depende que el caso degenerado no exista ni con una sola pieza en el
-    // tablero, donde el unico tramo del circuito va de la pieza a si misma.
+  it('entrada y salida nunca son la misma celda, en las 96 orientaciones', () => {
+    // Quien protege hoy a `pathBetween` del caso degenerado son otras dos cosas: que
+    // dos piezas no se solapen —el tramo va de la salida de una a la entrada de OTRA—
+    // y que con una sola pieza no haya tramo (la guarda de `n === 1` en
+    // `buildSequence`). Esta propiedad es la que dejaria seguro un tramo futuro que
+    // saliera y entrara por la misma pieza.
     for (const k of PIECES) {
       for (let rot = 0; rot < 4; rot++) {
         for (const mirror of [false, true]) {
