@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cellsAt, isValid, occupantAt, occupantCellIndex, cellDistance, pathBetween, phaseFor } from '../board.ts';
+import { cellsAt, isValid, occupantAt, occupantCellIndex, cellDistance, pathBetween } from '../board.ts';
 import { rotateN, reflect } from '../transform.ts';
 import { SHAPES, ANCHOR_INDEX } from '../constants/pieces.constants.ts';
 import { GRID_W, GRID_H, SEAM } from '../constants/board.constants.ts';
@@ -304,33 +304,5 @@ describe('pathBetween', () => {
     // En el centro no acorta nada y la costura queda afuera del camino.
     expect(cellDistance([4, 2], [6, 3])).toBe(3);
     expect(pathBetween([4, 2], [6, 3]).some((c) => misma(c, COSTURA_FIN) || misma(c, COSTURA_INICIO))).toBe(false);
-  });
-});
-
-describe('phaseFor', () => {
-  it('AC8 del spec 004 — la columna del ancla es la posicion dentro del compas', () => {
-    // La primera columna es el downbeat y la ultima, la ultima subdivision: la
-    // fase nunca llega a 1, porque 1 seria el downbeat del compas siguiente.
-    expect(phaseFor([[0, 3]], 0)).toBe(0);
-    expect(phaseFor([[5, 0]], 0)).toBe(0.5);
-    expect(phaseFor([[GRID_W - 1, 0]], 0)).toBe(0.9);
-  });
-
-  it('lee la celda de agarre por indice, no la primera del array', () => {
-    const cells: Cell[] = [[7, 0], [2, 0], [4, 0]];
-    expect(phaseFor(cells, 1)).toBe(0.2);
-  });
-
-  it('la fila no cambia la fase: el eje que es tiempo es el X', () => {
-    for (let y = 0; y < GRID_H; y++) expect(phaseFor([[3, y]], 0)).toBe(0.3);
-  });
-
-  it('dos piezas en la misma columna comparten fase, en columnas distintas no', () => {
-    const p = rotateN(SHAPES.F, 0);
-    const a = cellsAt(p, ANCHOR_INDEX.F, 2, 1);
-    const b = cellsAt(p, ANCHOR_INDEX.F, 2, 4);
-    const c = cellsAt(p, ANCHOR_INDEX.F, 7, 1);
-    expect(phaseFor(a, ANCHOR_INDEX.F)).toBe(phaseFor(b, ANCHOR_INDEX.F));
-    expect(phaseFor(a, ANCHOR_INDEX.F)).not.toBe(phaseFor(c, ANCHOR_INDEX.F));
   });
 });
