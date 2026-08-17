@@ -21,7 +21,7 @@ expresivo, no más difícil.
 │  src/App.tsx — el shell                                 │
 │   estado · derivados · handlers · los dos efectos       │
 │   selected · rotation · mirror · tempo                  │
-│   loopPlaced · placed[] · hover                         │
+│   playing · placed[] · hover                            │
 └───────┬─────────────────────────────┬───────────────────┘
         │ compone                     │ playNow · addJob · startClock
 ┌───────▼──────────────────┐  ┌───────▼───────────────────┐
@@ -96,7 +96,7 @@ esta escala no hace falta, y agregarlo sería la clase de complejidad que un pro
 | `rotation` | `0..3` | Cuartos de vuelta |
 | `mirror` | `boolean` | Reflexión activa |
 | `tempo` | `number` | BPM del reloj del motor |
-| `loopPlaced` | `boolean` | Si las piezas colocadas re-disparan cada compás |
+| `playing` | `boolean` | Si el transporte está corriendo. Lo escribe `togglePlay` con lo que devuelve `clockRunning()`, no con la negación del valor anterior: `startClock()` es un no-op silencioso sin Web Audio |
 | `placed` | `PlacedPiece[]` | Piezas en el tablero |
 | `hover` | `Cell \| null` | Celda bajo el cursor, para el fantasma |
 
@@ -140,7 +140,7 @@ reordena.
 ### El estado es la fuente de verdad; los efectos reconcilian
 
 Los loops de audio no se agendan ni cancelan desde los handlers. Un único `useEffect` observa
-`[placed, loopPlaced]` y lleva los jobs del motor a donde deben estar.
+`[placed, playing]` y lleva los jobs del motor a donde deben estar.
 
 El patrón imperativo anterior —cada handler acordándose de limpiar lo suyo— es exactamente el que
 produjo el bug de loops huérfanos que sobrevivían a "Quitar" y "Reset". Ver
