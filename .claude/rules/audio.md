@@ -30,8 +30,10 @@ El porqué de cada decisión, con las mediciones que la respaldan, está en
 - **El reloj es un origen, no un cursor.** `ClockState` son dos escalares —`origin` y `scheduledUntil`—
   y los onsets salen en forma cerrada (`origin + (k + phase) * bar`). `scheduledUntil` es lo único que
   evita re-emitir cada onset cuatro veces; los compases perdidos por la pestaña oculta **se saltean, no
-  se recuperan**; y nunca hay más de `LOOKAHEAD` de audio comprometido, con cualquier fase — es lo que
-  hace que quitar una pieza la calle en 100 ms. `firstOnsetAfter` usa `floor(x) + 1` y no `ceil(x)`:
+  se recuperan**; y nunca hay más de `LOOKAHEAD` de **onsets** comprometidos, con cualquier fase — es lo
+  que hace que quitar una pieza la calle en 100 ms **más lo que le quede de arpegio ya agendado**, que
+  desde el spec 008 depende del tempo (`compás / 4` más la nota y su release: 1.37 s a 60 bpm, 0.59 s a
+  160, contra 1.07 s fijos de antes). `firstOnsetAfter` usa `floor(x) + 1` y no `ceil(x)`:
   con `ceil`, un onset en el borde de la ventana sale dos veces. Y `startClock` tiene que dejar
   `scheduledUntil` **estrictamente antes** de `origin`, o se pierde el downbeat del compás 0.
 - **El `AnalyserNode` va en serie** entre el master y el destino, y es transparente al audio.
