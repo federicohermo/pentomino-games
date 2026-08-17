@@ -121,12 +121,13 @@ function timeline(jobs: Job[], bpm: number, bars: number): { at: number; hz: num
  * Los onsets de UN job en la ventana de `bars` compases.
  *
  * **El corte va por onset y no por nota.** Un arpegio empieza en el onset del
- * compas y se extiende `(notas - 1) * spread` despues; filtrar cada nota por
- * `at < end` recortaba la cola del ultimo compas cuando `(1 - phase) * bar` era
- * menor que esa duracion —o sea desde la columna 8 a 110 bpm, y antes todavia a
- * tempos rapidos—, asi que `onsets.total` dependia de la fase: la misma pieza
- * daba 10 onsets en la columna 1 y 7 en la columna 9. En la app esas notas
- * suenan igual, porque el loop sigue; era la simulacion la que mentia.
+ * compas y se extiende `(notas - 1) * intervalDuration(bpm)` despues; filtrar
+ * cada nota por `at < end` recortaba la cola del ultimo compas cuando
+ * `(1 - phase) * bar` era menor que esa duracion —o sea desde la columna 8 a
+ * 110 bpm, y antes todavia a tempos rapidos—, asi que `onsets.total` dependia
+ * de la fase: la misma pieza daba 10 onsets en la columna 1 y 7 en la columna
+ * 9. En la app esas notas suenan igual, porque el loop sigue; era la simulacion
+ * la que mentia.
  *
  * El limite se compara contra la ultima nota del ultimo compas de la ventana. No
  * hay ambiguedad al asignar una nota a su onset porque los arpegios no se
