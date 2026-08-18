@@ -40,15 +40,29 @@ const FUERA_DE_DOMAIN = [
  *
  * Los specifiers van exactos (`./sequence.ts`) y no como glob de nombre: asi no
  * enganchan a `./types/sequence.types.ts`, que es la carpeta de tipos y esta permitida
- * para todos.
+ * para todos. Por eso los modulos se nombran SIN extension aca y `especificadores()`
+ * arma las tres formas: exacto sigue siendo exacto, pero exacto de las tres.
  */
 const DOMAIN_INTERNO = {
-  'transform.ts': ['./board.ts', './music.ts', './sequence.ts', './invariants.ts'],
-  'board.ts': ['./music.ts', './sequence.ts', './invariants.ts'],
-  'music.ts': ['./board.ts', './sequence.ts', './invariants.ts'],
-  'sequence.ts': ['./invariants.ts'],
-  'invariants.ts': ['./sequence.ts'],
+  'transform.ts': ['board', 'music', 'sequence', 'invariants'],
+  'board.ts': ['music', 'sequence', 'invariants'],
+  'music.ts': ['board', 'sequence', 'invariants'],
+  'sequence.ts': ['invariants'],
+  'invariants.ts': ['sequence'],
 }
+
+/**
+ * Las tres formas en que se puede escribir el mismo import de un hermano de `domain/`.
+ * Las tres hay que prohibirlas juntas o la regla no prohibe nada: el repo escribe
+ * `./music.ts` por convencion, pero `./music` y `./music.js` RESUELVEN IGUAL —el
+ * `moduleResolution: bundler` del tsconfig los acepta a los dos y Vite tambien— y nada
+ * en el repo lintea la convencion de la extension. O sea que listar solo `./music.ts`
+ * dejaba la puerta abierta a quien escribiera el import de la forma corta, que es
+ * justo la forma que un refactor descuidado escribe. Verificado a mano antes de este
+ * cambio: `import { arpeggioFor } from './music'` en `board.ts` pasaba `eslint` y
+ * `tsc` sin decir nada, y con `.ts` fallaba.
+ */
+const especificadores = (modulo) => [`./${modulo}.ts`, `./${modulo}`, `./${modulo}.js`]
 
 export default tseslint.config([
   globalIgnores(['dist']),
@@ -122,8 +136,10 @@ export default tseslint.config([
             message: 'domain/ es puro: no conoce React, ni el audio, ni la UI, ni el tooling.',
           },
           {
-            group: prohibidos,
-            message: `La direccion adentro de domain/ es una sola: ${archivo} no puede importar ${prohibidos.join(', ')}.`,
+            group: prohibidos.flatMap(especificadores),
+            // El mensaje nombra solo la forma canonica (`./music.ts`) y no las tres
+            // variantes: lo que hay que aprender es la direccion, no el glob.
+            message: `La direccion adentro de domain/ es una sola: ${archivo} no puede importar ${prohibidos.map(m => `./${m}.ts`).join(', ')}.`,
           },
         ],
       }],
