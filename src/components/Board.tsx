@@ -108,14 +108,14 @@ export default function Board({
 }: Props) {
   // Que celda del fantasma cae en (x,y), POR INDICE: es lo que permite pedirle su
   // grado al mapeo canonico. Se arma una vez por render y no una vez por celda.
-  const ghostIndexAt = new Map(previewCells.map(([x,y], k)=> [`${x},${y}`, k]));
+  const ghostIndexAt = new Map(previewCells.map(([x, y], k) => [`${x},${y}`, k]));
 
   // El texto de las celdas de una (pieza, rotacion), calculado UNA vez y no una por
   // celda: `degreeByCellIndex` ordena, hay hasta 60 celdas por render y hay un
   // render por movimiento del cursor. Es el mismo argumento con el que
   // `palette.constants.ts` guarda `fg` en vez de recalcular la luminancia.
   const textCache = new Map<string, { degree: number; note: string }[]>();
-  function cellText(piece: PieceKey, rot: number){
+  function cellText(piece: PieceKey, rot: number) {
     const key = `${piece}${rot}`;
     const hit = textCache.get(key);
     if (hit) return hit;
@@ -150,11 +150,11 @@ export default function Board({
         <Playhead />
         <div
           className="grid w-max"
-          style={{gridTemplateColumns:`repeat(${GRID_W}, ${CELL_PX}px)`}}
+          style={{ gridTemplateColumns: `repeat(${GRID_W}, ${CELL_PX}px)` }}
           onMouseLeave={onMouseLeave}
         >
-          {Array.from({length: GRID_W*GRID_H}, (_,i)=>{
-            const x = i % GRID_W; const y = Math.floor(i/GRID_W);
+          {Array.from({ length: GRID_W * GRID_H }, (_, i) => {
+            const x = i % GRID_W; const y = Math.floor(i / GRID_W);
             const occ = occupantAt(placed, x, y);
             const ghostIndex = ghostIndexAt.get(`${x},${y}`);
             const ghost = ghostIndex !== undefined;
@@ -185,26 +185,26 @@ export default function Board({
             // Gris y no verde: el fantasma es estado, y el color ya esta ocupado
             // diciendo que pieza es. El rosa del invalido se queda — es el unico
             // canal que dice "aca no entra" ademas del cursor.
-            else if (ghost) tone = previewValid? 'bg-slate-300' : 'bg-rose-300';
+            else if (ghost) tone = previewValid ? 'bg-slate-300' : 'bg-rose-300';
             else tone = 'bg-white hover:bg-slate-100';
 
             return (
               <div key={i}
-                   onClick={()=> onCellClick(x,y)}
-                   onMouseEnter={()=> onCellEnter([x,y])}
-                   style={{width: CELL_PX, height: CELL_PX}}
-                   className={`p-[2px] ${previewValid || !hover? 'cursor-pointer':'cursor-not-allowed'}`}
-                   /* El title dice las tres cosas de la celda, no solo su coordenada: la
-                      nota entra en la baldosa pero el grado va abreviado a `#3`, y sobre
-                      el fantasma las dos son lo que decide la jugada. Sale del MISMO
-                      `cell` que se pinta, asi que no puede decir una nota y mostrar otra.
-                      NO es accesibilidad: la celda es un `div` con `onClick` y sin
-                      `role`, sin `tabIndex` y sin nombre accesible, y un `title` sobre un
-                      elemento generico que no recibe foco no lo anuncia ningun lector de
-                      pantalla — es un tooltip de mouse y nada mas. El hueco real (la
-                      celda no se alcanza con el teclado) esta en Deuda conocida de
-                      `specs/log.md`; darlo por cubierto con esto lo dejaba invisible. */
-                   title={cell? `(${x},${y}) · ${cell.note} · grado ${cell.degree}` : `(${x},${y})`}
+                onClick={() => onCellClick(x, y)}
+                onMouseEnter={() => onCellEnter([x, y])}
+                style={{ width: CELL_PX, height: CELL_PX }}
+                className={`p-0.5 ${previewValid || !hover ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                /* El title dice las tres cosas de la celda, no solo su coordenada: la
+                   nota entra en la baldosa pero el grado va abreviado a `#3`, y sobre
+                   el fantasma las dos son lo que decide la jugada. Sale del MISMO
+                   `cell` que se pinta, asi que no puede decir una nota y mostrar otra.
+                   NO es accesibilidad: la celda es un `div` con `onClick` y sin
+                   `role`, sin `tabIndex` y sin nombre accesible, y un `title` sobre un
+                   elemento generico que no recibe foco no lo anuncia ningun lector de
+                   pantalla — es un tooltip de mouse y nada mas. El hueco real (la
+                   celda no se alcanza con el teclado) esta en Deuda conocida de
+                   `specs/log.md`; darlo por cubierto con esto lo dejaba invisible. */
+                title={cell ? `(${x},${y}) · ${cell.note} · grado ${cell.degree}` : `(${x},${y})`}
               >
                 {/* La baldosa: el padding del contenedor hace la separacion y el
                     redondeo la forma. La celda ocupada se lee como una ficha y no
@@ -226,7 +226,7 @@ export default function Board({
                     El `pb` no mueve el `#N`: un absolute se posiciona contra la caja
                     de PADDING del contenedor, asi que el padding no lo empuja. */}
                 <div style={style}
-                     className={`relative w-full h-full rounded-lg border border-slate-900 flex items-center justify-center pb-2 text-[19px] leading-none font-semibold tabular-nums ${tone}`}>
+                  className={`relative w-full h-full rounded-lg border border-slate-900 flex items-center justify-center pb-2 text-[19px] leading-none font-semibold tabular-nums ${tone}`}>
                   {/* El grado va como el indice que devuelve el dominio (0..4) y sin
                       renumerar: lo que se lee en la celda es exactamente lo que
                       responden los tests y el MCP server. El `#` y la esquina
