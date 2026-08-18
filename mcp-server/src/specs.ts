@@ -33,6 +33,17 @@ export interface LogRow {
   dir: string;
 }
 
+/**
+ * Estados de los que ya no sale trabajo.
+ *
+ * Un spec `Descartado` no se implemento y no se va a implementar; uno `Superado`
+ * se implemento y otro spec posterior lo reemplazo. En los dos casos las casillas
+ * que quedaron abiertas son resto historico, no deuda, y ofrecerlas como
+ * `proxima` es lo que hacia que esta tool contestara "Crear rama `feature/001`"
+ * sobre un spec cerrado hace diez specs.
+ */
+const ESTADOS_TERMINALES = new Set(['Descartado', 'Superado']);
+
 export interface TasksInfo {
   hechas: number;
   total: number;
@@ -42,8 +53,23 @@ export interface TasksInfo {
    * seis sin marcar y no deberle nada a nadie.
    */
   seguimiento: number;
-  /** La primera sin marcar que NO es de seguimiento — o sea, la que realmente falta. */
+  /**
+   * Cuantas del total llevan `[M]`: piden una persona —navegador, oido, captura—
+   * y por eso sobreviven al merge. Se cuentan aparte por el mismo motivo que las
+   * de seguimiento, pero no son lo mismo: `Seguimiento` es *donde* esta anotada
+   * la tarea, `[M]` es *quien* la puede hacer. Una tarea puede ser las dos cosas,
+   * y entonces suma en los dos contadores.
+   */
+  manual: number;
+  /**
+   * Las que de verdad faltan: sin marcar, fuera de `Seguimiento` y sin `[M]`.
+   * Vale `0` exactamente cuando `proxima` es `null`.
+   */
+  pendientes: number;
+  /** La primera de las `pendientes`. */
   proxima: string | null;
+  /** El `T###` de `proxima`, cuando el spec numera sus tareas. */
+  proximaId: string | null;
 }
 
 /**
@@ -73,18 +99,24 @@ export function parseLog(md: string): LogRow[] {
 /**
  * Checkboxes de un `tasks.md`, incluidos los anidados.
  *
+ * La forma de una tarea es `- [ ] T012 [P] [M] texto`: el ID y los marcadores son
+ * opcionales, asi que los specs anteriores a la convencion se leen igual. Los
+ * grupos son estado, ID, marcadores y texto — el texto sale sin el ID ni los
+ * marcadores, que ya estan parseados y repetirlos ensuciaria `proxima`.
+ *
  * Una tarea puede ocupar varias lineas —el texto sigue indentado abajo—, asi que
  * las continuaciones se pegan a la tarea abierta. Sin eso, `proxima` responderia
  * media frase.
  */
 export function parseTasks(md: string): TasksInfo {
   const encabezado = /^#{2,}\s+(.*)$/;
-  const checkbox = /^\s*-\s\[([ xX])\]\s*(.*)$/;
+  const tarea = /^\s*-\s\[([ xX])\]\s*(?:(T\d{3})\s+)?((?:\[[PM]\]\s*)*)(.*)$/;
   const continuacion = /^\s+\S/;
 
-  let hechas = 0, total = 0, seguimiento = 0;
+  let hechas = 0, total = 0, seguimiento = 0, manual = 0, pendientes = 0;
   let enSeguimiento = false;
   let proxima: string[] | null = null;
+  let proximaId: string | null = null;
   let abierta: string[] | null = null;
 
   for (const line of lines(md)) {
@@ -95,17 +127,25 @@ export function parseTasks(md: string): TasksInfo {
       continue;
     }
 
-    const c = checkbox.exec(line);
-    if (c) {
-      const marcada = c[1] !== ' ';
+    const t = tarea.exec(line);
+    if (t) {
+      const marcada = t[1] !== ' ';
+      const esManual = t[3].includes('[M]');
       total++;
       if (marcada) hechas++;
       if (enSeguimiento) seguimiento++;
+      if (esManual) manual++;
 
-      abierta = [c[2].trim()];
-      // La primera sin marcar que no sea de seguimiento se queda como `proxima`,
-      // y sigue abierta para recibir sus continuaciones.
-      if (!marcada && !enSeguimiento && proxima === null) proxima = abierta;
+      abierta = [t[4].trim()];
+      // La primera sin marcar que no es de seguimiento ni pide una persona se
+      // queda como `proxima`, y sigue abierta para recibir sus continuaciones.
+      if (!marcada && !enSeguimiento && !esManual) {
+        pendientes++;
+        if (proxima === null) {
+          proxima = abierta;
+          proximaId = t[2] ?? null;
+        }
+      }
       continue;
     }
 
@@ -114,8 +154,9 @@ export function parseTasks(md: string): TasksInfo {
   }
 
   return {
-    hechas, total, seguimiento,
+    hechas, total, seguimiento, manual, pendientes,
     proxima: proxima === null ? null : proxima.join(' '),
+    proximaId,
   };
 }
 
@@ -160,6 +201,17 @@ export function readSpecStatus(specsDir: string): { specs: SpecStatus[]; totales
     let tareas: TasksInfo | null = null;
     if (existsSync(tasksPath)) tareas = parseTasks(readFileSync(tasksPath, 'utf8'));
     else notas.push('sin tasks.md');
+
+    // De un spec terminal no sale trabajo, asi que sus casillas abiertas no son
+    // "lo proximo". Se anota por que en vez de silenciarlas: el conteo sigue
+    // mostrando el resto historico y la nota dice que nadie lo debe.
+    if (tareas && row && ESTADOS_TERMINALES.has(row.estado)) {
+      const abiertas = tareas.total - tareas.hechas;
+      if (abiertas > 0) {
+        notas.push(`${row.estado}: las ${abiertas} casillas abiertas son historia, no deuda`);
+      }
+      tareas = { ...tareas, pendientes: 0, proxima: null, proximaId: null };
+    }
 
     return {
       id: row?.id ?? dir.split('-', 1)[0],

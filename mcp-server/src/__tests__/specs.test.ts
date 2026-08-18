@@ -36,6 +36,18 @@ const TASKS = `# Tareas — Ejemplo
 - [ ] Más deuda
 `;
 
+/** El formato con ID y marcadores, que estrena el spec 011. */
+const MARCADAS = `# Tareas — Con ID y marcadores
+
+## Backlog
+- [x] T001 Commitear el spec
+- [ ] T002 Escribir el dominio
+- [ ] T003 [P] [M] Escuchar el resultado a 160 bpm
+
+## Seguimiento (no bloquea)
+- [ ] T004 [M] Capturas del tablero
+`;
+
 describe('parseLog', () => {
   test('saca id, carpeta, fecha, estado y descripción de cada fila', () => {
     const rows = parseLog(LOG);
@@ -86,7 +98,10 @@ describe('parseTasks', () => {
 
   test('con todo marcado no hay próxima', () => {
     const t = parseTasks('## A\n- [x] una\n- [x] otra\n');
-    assert.deepEqual(t, { hechas: 2, total: 2, seguimiento: 0, proxima: null });
+    assert.deepEqual(t, {
+      hechas: 2, total: 2, seguimiento: 0, manual: 0, pendientes: 0,
+      proxima: null, proximaId: null,
+    });
   });
 
   test('solo las de seguimiento sin marcar tampoco dan próxima', () => {
@@ -110,7 +125,77 @@ describe('parseTasks', () => {
   });
 
   test('un tasks.md sin checkboxes devuelve ceros, no falla', () => {
-    assert.deepEqual(parseTasks('# Tareas\n\nTodavía nada.\n'),
-      { hechas: 0, total: 0, seguimiento: 0, proxima: null });
+    assert.deepEqual(parseTasks('# Tareas\n\nTodavía nada.\n'), {
+      hechas: 0, total: 0, seguimiento: 0, manual: 0, pendientes: 0,
+      proxima: null, proximaId: null,
+    });
+  });
+
+  test('`pendientes` vale 0 exactamente cuando no hay próxima', () => {
+    // Es la invariante que hace legible la respuesta: sin ella hay que restar
+    // hechas, seguimiento y manual a mano para saber si falta algo.
+    for (const md of [TASKS, MARCADAS, '## A\n- [x] una\n', '# Nada\n']) {
+      const t = parseTasks(md);
+      assert.equal(t.pendientes === 0, t.proxima === null, md.slice(0, 20));
+    }
+  });
+});
+
+describe('parseTasks — ID y marcadores', () => {
+  test('el ID sale del texto y viaja aparte', () => {
+    // Si el ID se quedara en el texto, `proxima` empezaría con "T002 " y el
+    // consumidor tendría que volver a parsearlo.
+    const t = parseTasks(MARCADAS);
+    assert.equal(t.proxima, 'Escribir el dominio');
+    assert.equal(t.proximaId, 'T002');
+  });
+
+  test('`[M]` no bloquea: pide una persona, no trabajo pendiente', () => {
+    // El caso real: nueve specs `Implementado` con una verificación a oído
+    // abierta. Sin esto, `spec_status` los reporta como si algo faltara.
+    const t = parseTasks(MARCADAS);
+    assert.equal(t.manual, 2);
+    assert.equal(t.pendientes, 1);
+  });
+
+  test('`[P]` se parsea pero no cambia el conteo', () => {
+    const t = parseTasks('## A\n- [ ] T001 [P] una\n- [ ] T002 [P] otra\n');
+    assert.deepEqual([t.pendientes, t.manual, t.proximaId], [2, 0, 'T001']);
+  });
+
+  test('los dos marcadores juntos, en cualquier orden', () => {
+    const pm = parseTasks('## A\n- [ ] T001 [P] [M] una\n');
+    const mp = parseTasks('## A\n- [ ] T001 [M] [P] una\n');
+    assert.deepEqual(pm, mp);
+    assert.equal(pm.manual, 1);
+    assert.equal(pm.proxima, null);
+  });
+
+  test('una tarea de Seguimiento con `[M]` suma en los dos contadores', () => {
+    // Son ejes distintos —dónde está anotada y quién la puede hacer— así que no
+    // se excluyen, y contarla una sola vez escondería una de las dos cosas.
+    const t = parseTasks('## Seguimiento (no bloquea)\n- [ ] [M] escuchar\n');
+    assert.deepEqual([t.seguimiento, t.manual, t.pendientes], [1, 1, 0]);
+  });
+
+  test('un tasks.md sin IDs ni marcadores se lee igual que antes', () => {
+    // Los diez specs anteriores a la convención no se reescriben, así que el
+    // formato viejo tiene que seguir contando bien.
+    const t = parseTasks(TASKS);
+    assert.deepEqual([t.total, t.hechas, t.manual], [8, 3, 0]);
+    assert.equal(t.proximaId, null);
+    assert.equal(t.proxima, '**Crear rama** `feature/002-motor`');
+  });
+
+  test('un corchete que no es marcador se queda en el texto', () => {
+    // `[AC3]`, un link `[docs](…)` o un `[NEEDS CLARIFICATION]` no son `[P]` ni
+    // `[M]`: el patrón no los puede comer sin mutilar la descripción.
+    const t = parseTasks('## A\n- [ ] T001 [AC3] revisar [docs](./d.md)\n');
+    assert.equal(t.proxima, '[AC3] revisar [docs](./d.md)');
+    assert.equal(t.proximaId, 'T001');
+  });
+
+  test('CRLF tampoco rompe los marcadores', () => {
+    assert.deepEqual(parseTasks(MARCADAS.replace(/\n/g, '\r\n')), parseTasks(MARCADAS));
   });
 });
