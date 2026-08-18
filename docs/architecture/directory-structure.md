@@ -81,6 +81,7 @@ src/
 │   │                             #   barDuration · intervalDuration
 │   ├── engine.ts                 # singletons y la API que consume la UI
 │   ├── spectrum.ts               # mapeo puro de bins de la FFT a alturas de barra
+│   ├── playhead.ts               # offsetAt — aritmética del offset de la cabeza lectora (spec 010)
 │   ├── types/                    #   voice.types.ts · scheduler.types.ts
 │   ├── constants/                #   voice · scheduler · engine
 │   └── __tests__/
@@ -95,6 +96,9 @@ src/
     │                             #   diciendo lo mismo antes de colocar
     ├── PlacedList.tsx            # lista de piezas colocadas
     ├── Spectrum.tsx              # canvas del espectro: rAF + HiDPI, sin props
+    ├── Playhead.tsx              # cabeza lectora: rAF + estilo imperativo, sin props (spec 010)
+    ├── route-source.ts           # singleton fuera de React (no un componente): espeja active/
+    │                             #   pending del motor con la Sequence del dominio, con celdas
     ├── constants/
     │   ├── layout.constants.ts   # CELL_PX · TEMPO_MIN · TEMPO_MAX
     │   └── palette.constants.ts  # los 12 colores y su color de texto (ver DESIGN.md)

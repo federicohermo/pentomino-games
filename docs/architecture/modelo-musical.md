@@ -12,7 +12,7 @@ qué es un pentominó (ver [audio.md](./audio.md#el-recorrido-en-el-scheduler)).
 |---|---|---|
 | **Qué pieza** | La tónica | `BASE_MAP` |
 | **Rotación** | La fórmula de escala | `notesForRotation` |
-| **Reflexión** | El orden de las notas | `ns.reverse()` — retrógrado |
+| **Reflexión** | El orden de las notas, y con él la puerta de entrada y salida del recorrido | `ns.reverse()` — retrógrado; `gates` lee `cellsByPlayOrder` |
 | **La forma** | Qué celda tiene qué nota | `degreeByCellIndex` — orden angular |
 | **La posición en el tablero** | El orden de reproducción y el silencio entre piezas | `buildSequence` — circuito + `cellDistance` |
 
@@ -35,9 +35,14 @@ vecino-más-cercano da recorridos 20,1 % más largos en promedio y hasta 79 % pe
 (`research.md` del spec 009, §3), y el exacto cuesta 1,87 ms con las 12 piezas posibles — el tope
 estructural, porque hay 12 pentominós libres y no se repiten.
 
-**Cada pieza tiene una puerta de entrada y una de salida**: la celda de grado 0 (la tónica) y la de
-grado 4, según el mapeo de [arriba](#forma--qué-celda-tiene-qué-nota). El costo de ir de la pieza `i` a
-la `j` es `cellDistance(salida(i), entrada(j))` — asimétrico, porque volver no cuesta lo mismo.
+**Cada pieza tiene una puerta de entrada y una de salida**: la celda donde suena la primera nota del
+arpegio y la celda donde suena la última, según `cellsByPlayOrder` — no un grado fijo. Sin reflexión eso
+coincide con la celda de grado 0 (la tónica) y la de grado 4, según el mapeo de
+[arriba](#forma--qué-celda-tiene-qué-nota); con reflexión el retrógrado invierte el orden de reproducción
+sin mover qué nota le toca a qué celda, así que las puertas se invierten también — entra por la celda de
+grado 4 y sale por la de grado 0. Detalle y el bug que esto corrigió en
+[Reflexión → retrógrado](#reflexión--retrógrado). El costo de ir de la pieza `i` a la `j` es
+`cellDistance(salida(i), entrada(j))` — asimétrico, porque volver no cuesta lo mismo.
 
 **Con una sola pieza no hay recorrido, y por lo tanto no hay clicks.** El ciclo es su arpegio y vuelve
 a empezar contiguo: mide 5 intervalos, uno más que los 4 que abarcan las cinco notas, porque con 4 la
@@ -70,10 +75,13 @@ el acto. Es retroalimentación del gesto, no parte del patrón. Con el transport
 se llama: la retroalimentación del gesto y el patrón del transporte no compiten por el mismo instante —
 ver [audio.md](./audio.md#reconciliación-de-loops).
 
-**Limitación conocida:** no hay retroalimentación visual del recorrido. Una cabeza lectora recorriendo
-el tablero es lo que volvería *legible* a este modelo; hoy se oye pero no se lee. Es la limitación
-consciente que cierra el [spec 010](../../specs/010-cabeza-lectora-por-celda/spec.md), que depende de
-este.
+**Retroalimentación visual del recorrido.** Esta sección anotaba como limitación conocida que no había
+ninguna: hoy se oía el recorrido pero no se leía. El [spec
+010](../../specs/010-cabeza-lectora-por-celda/spec.md) la cierra con una cabeza lectora
+(`components/Playhead.tsx`) que recorre el tablero celda por celda, leyendo `playheadOffset()` del motor
+— sin pasar por estado de React, porque la frecuencia de actualización (4 a 10,6 veces por segundo) lo
+haría re-renderizar el tablero entero para mover un resaltado. Detalle en
+[audio.md](./audio.md#la-cabeza-lectora).
 
 Detalle del scheduler que implementa el recorrido, y del precio de latencia que paga por no interrumpir
 lo que está sonando, en [audio.md](./audio.md#el-recorrido-en-el-scheduler).
@@ -140,6 +148,26 @@ Se compone limpiamente con la rotación: rotar elige *qué* notas, reflejar elig
 ortogonales a propósito, y el
 [spec 007](../../specs/007-nota-por-celda-y-lenguaje-visual/spec.md) §D3 argumenta por qué mantenerlas
 así al agregar el mapeo espacial.
+
+**Desde el spec 010 esto también decide por dónde entra y sale el recorrido.** `gates(p)` lee de
+`cellsByPlayOrder(p)` —las celdas de la pieza en orden de reproducción, con el retrógrado ya aplicado
+adentro— y toma `{ entrada: orden[0], salida: orden[orden.length - 1] }`. Sin `mirror` eso coincide con
+la celda de grado 0 y la de grado 4; con `mirror` el orden de reproducción se invierte sin mover qué nota
+le toca a qué celda, así que la primera nota que suena es la del grado 4 y las puertas se invierten con
+ella.
+
+Hasta el spec 010 `gates` leía los grados 0 y 4 directamente y no por el orden de reproducción, así que
+con reflexión entraba y salía exactamente al revés de la melodía — un bug del spec 009 (D9) que ningún
+test de audio podía encontrar, porque el circuito era válido y los onsets los esperados; el error estaba
+en la correspondencia entre el tiempo y el espacio, no en el tiempo. Medido con `L` rotación 0 reflejada
+en `(1,1)`: celdas `[1,0] [1,1] [1,2] [1,3] [0,0]`, `degreeByCellIndex(SHAPES.L)` da `[3,2,1,0,4]`, el
+arpegio ascendente es D4 E4 F#4 A4 B4 y con retrógrado suena B4 A4 F#4 E4 D4. El 009 entraba por `[1,3]`
+—el grado 0, que es la **última** nota— y salía por `[0,0]`, la **primera**: entrada y salida quedaban
+exactamente invertidas respecto de la melodía, en la mitad del espacio de colocación. El efecto es
+audible y medido: con esa `L` reflejada más una `P` rotación 0 en `(7,1)`, el ciclo pasa de 23 a 21
+intervalos; todo tablero **sin** reflexión suena exactamente igual que antes, y las 48 orientaciones al
+derecho lo verifican con un test. Historia completa en la nota de revisión del 009 en
+[log.md](../../specs/log.md#notas-de-revisión).
 
 ## Forma → qué celda tiene qué nota
 

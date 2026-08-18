@@ -11,8 +11,14 @@ composición. **Ninguna función pura y ningún literal de dominio** — eso viv
 único que puede testearse.
 
 Los componentes son presentacionales, uno por archivo: reciben datos y callbacks por props, sin estado
-ni efectos propios. La excepción es `Spectrum.tsx`, que no recibe props y lee del motor por su cuenta
-para que dibujar a 60 fps no re-renderice nada del tablero.
+ni efectos propios. La excepción ya no es una sola: `Spectrum.tsx` y `Playhead.tsx` (spec 010) no reciben
+props y leen del motor por su cuenta, dibujando imperativamente. La regla que las habilita es la misma en
+las dos: un componente puede leer del motor por su cuenta y dibujar imperativamente cuando la frecuencia
+de actualización haría que el estado de React re-renderizara el árbol para nada —60 fps en `Spectrum`,
+4 a 10,6 veces por segundo en `Playhead`—. El número que separa este caso del estado normal de React es
+el de `pendingIds` (spec 010): cambia una vez por ciclo del recorrido —hasta 7,5 s con 8 piezas a
+110 bpm—, no varias veces por segundo, y esa distancia de **60x** entre las dos frecuencias es el
+argumento para usar `useState` ahí en vez del motor directo.
 
 - **Todo lo que suena en el loop pasa por el efecto de reconciliación.** Un único `useEffect` sobre
   `[placed]` proyecta `buildSequence(placed)` y se la entrega al motor con `setSequence`; los handlers

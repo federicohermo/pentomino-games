@@ -23,11 +23,13 @@ inserción: el `AnalyserNode` del
 |---|---|---|
 | **`voice.ts`** | `midiToHz`, `scheduleVoice`, `scheduleClick` | por parámetro |
 | **`scheduler.ts`** | `collectHits` — qué suena y cuándo — y `collectWindow` — la vuelta entera, con el swap al cierre de ciclo | por parámetro |
-| **`engine.ts`** | singletons, `playNow`, `startClock`, `setSequence` | **es** el dueño del singleton |
+| **`engine.ts`** | singletons, `playNow`, `startClock`, `setSequence`, `playheadOffset`, `cycleGeneration` | **es** el dueño del singleton |
 | **`spectrum.ts`** | `binsToBars` — de bins de la FFT a alturas de barra | no lo toca: es puro |
+| **`playhead.ts`** | `offsetAt` — la aritmética del offset de la cabeza lectora | no lo toca: es puro |
 
-Los tres primeros son el motor; `spectrum.ts` es el mapeo puro que se separó del `AnalyserNode` para
-poder testearlo — [más abajo](#por-qué-el-mapeo-binsbarras-vive-aparte).
+Los tres primeros son el motor; `spectrum.ts` y `playhead.ts` son los mapeos puros que se separaron del
+singleton para poder testearlos — [más abajo](#por-qué-el-mapeo-binsbarras-vive-aparte) y
+[más abajo](#la-cabeza-lectora).
 
 **`voice.ts` y `scheduler.ts` no pueden tocar el singleton**, y no por disciplina: el singleton vive en
 `engine.ts` y ellos no lo importan. Eso es lo que permite renderizarlos con un `OfflineAudioContext` en
@@ -361,6 +363,56 @@ Dos decisiones dentro del mapeo:
 El canvas (`src/components/Spectrum.tsx`) dibuja imperativamente dentro de `requestAnimationFrame` y
 **no pasa por estado de React**: 60 renders por segundo para pintar barras competirían con el
 re-render del tablero. React monta el `<canvas>` y arranca/frena el loop; nada más.
+
+## La cabeza lectora
+
+Segundo consumidor del motor por fuera de React, con el mismo patrón que `readSpectrum()`: leer un
+singleton sin pasar por estado de React porque la frecuencia de actualización lo prohíbe.
+
+**Superficie:** `playheadOffset(): number | null` y `cycleGeneration(): number`, dos exports nuevos de
+`engine.ts`. `playheadOffset` lee del singleton y de la secuencia **activa**, y devuelve `null` en pausa,
+sin contexto o con la secuencia vacía — exactamente como `readSpectrum()` devuelve `null` en reposo.
+`cycleGeneration` es un contador de swaps de ciclo: es el único observador del instante exacto en que la
+secuencia pendiente reemplaza a la activa (ver [el swap en el cierre de
+ciclo](#el-swap-en-el-cierre-de-ciclo)), y `components/route-source.ts` lo usa para saber cuándo cambiar
+de tablero.
+
+**La aritmética vive en `audio/playhead.ts`, aparte de `engine.ts`, por el mismo motivo que
+`spectrum.ts`:** lo testeable va separado del singleton, que en los tests no existe. `offsetAt(now,
+origin, intervalSeconds, cycleIntervals)` calcula `floor((now − origin) / intervalo) mod ciclo` en
+**módulo euclídeo**, y devuelve `null` —nunca `NaN`— en tres degradados: ciclo 0 (tablero vacío, se
+alcanza con solo apretar play), `t` anterior al `origin` (el `%` de JS conserva el signo del dividendo) y
+argumentos no finitos.
+
+**La posición está compensada por la latencia de salida.** Sin restar `outputLatency` (con
+`baseLatency`, o `0`, como fallback en ese orden) la cabeza va sistemáticamente adelantada, y en un
+instrumento eso se percibe como que la imagen miente. Trampa de tipos medida: `lib.dom.d.ts` declara
+`readonly outputLatency: number`, **no opcional**, mientras que Firefox no lo implementa — TypeScript
+dice que el fallback sobra justo donde hace falta, y como el repo prohíbe `any` y `@ts-ignore`, la
+lectura se tipa como `number | undefined` de forma explícita.
+
+**Por qué no pasa por estado de React, con el número exacto:** el intervalo dura entre 0,25 s (60 bpm) y
+0,094 s (160 bpm), o sea 4 a 10,6 actualizaciones por segundo. Llevar eso a `useState` re-renderizaría 60
+celdas más la paleta y la lista, diez veces por segundo, para mover un resaltado — es exactamente lo que
+`Spectrum.tsx` ya evita (ver [arriba](#análisis-de-la-señal)). `components/Playhead.tsx` compara la
+celda calculada contra la anterior y solo escribe el estilo **cuando cambió**: 60 lecturas por segundo,
+~10 escrituras. Y la cabeza **salta, no se desliza**: el instrumento está cuantizado a la grilla de
+intervalos, y un movimiento continuo sugeriría una continuidad que no existe.
+
+**El estado "pendiente" sí pasa por React, y es la excepción declarada.** Cambia una vez por ciclo —7,5 s
+con 8 piezas a 110 bpm—, no entre 4 y 11 veces por segundo: la medición de arriba es sobre la
+**frecuencia**, así que no la cubre. `components/route-source.ts` es el singleton de módulo que espeja el
+par `active`/`pending` del motor pero con la `Sequence` del **dominio**, que es la única que lleva
+celdas: el motor tiene el par pero su `Sequence` no puede ver `Cell` (ver
+[arriba](#el-recorrido-en-el-scheduler)), y la UI tiene las celdas pero solo del tablero de *ahora*, o
+sea la pendiente. Sin esto, durante la espera de hasta 7,5 s que el swap de ciclo introduce, la cabeza
+recorrería el circuito nuevo mientras suena el viejo. El swap está atado a `cycleGeneration()`, que es el
+único observador del instante exacto.
+
+**Este spec no calcula ningún recorrido: lo lee.** Entre el par de celdas más lejano del tablero hay 792
+caminos mínimos, o sea 792 formas de que el dibujo discrepe del sonido si la UI eligiera el suyo — el
+mismo argumento que ya separó al 009 del 010 (ver la nota de revisión correspondiente en
+[log.md](../../specs/log.md#notas-de-revisión)).
 
 ## Cómo verificar el audio
 
