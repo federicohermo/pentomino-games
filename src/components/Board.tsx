@@ -9,6 +9,7 @@ import type { PieceKey } from '../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../domain/types/board.types.ts';
 import { CELL_PX } from './constants/layout.constants.ts';
 import { PIECE_COLOR } from './constants/palette.constants.ts';
+import Playhead from './Playhead.tsx';
 
 /**
  * Panel central: la grilla del tablero con el fantasma de previsualizacion.
@@ -62,6 +63,24 @@ import { PIECE_COLOR } from './constants/palette.constants.ts';
  * invalido se queda, porque es el unico canal que distingue una jugada imposible
  * ademas del cursor.
  *
+ * ## La pieza PENDIENTE, y por que esta es la unica parte del 010 que pasa por React
+ *
+ * Desde el spec 009 una pieza recien colocada no entra al recorrido hasta que el ciclo
+ * en curso cierra —hasta 7,5 s con 8 piezas a 110 bpm— y durante esa espera no pasaba
+ * nada: ni un cambio visual, ni un sonido, o sea indistinguible de "el click no
+ * registro". `pendingIds` es esa espera hecha visible (AC5).
+ *
+ * Va por props y no por el loop imperativo de `Playhead.tsx`, y no es una incoherencia:
+ * cambia UNA vez por cierre de ciclo, no entre 4 y 11 veces por segundo como la cabeza
+ * lectora. D1 es una medicion sobre la FRECUENCIA, y los 60x que separan las dos son el
+ * argumento. Ademas las celdas de la pieza las renderiza este archivo con `key={i}` y
+ * sin refs ni `data-*`: darle un handle al loop significaria partir el estilo de una
+ * celda entre React y el bucle, que es lo que el review del 007 pago caro.
+ *
+ * Se dibuja atenuada y con el borde punteado, y NO con otro color: el color es
+ * identidad y el estado no se comunica con hue. La opacidad sola no alcanzaba sobre los
+ * colores mas claros de la paleta.
+ *
  * ## La celda es una baldosa, no un casillero
  *
  * Cada celda de 63 px contiene una BALDOSA redondeada con 2 px de aire alrededor,
@@ -76,6 +95,8 @@ interface Props {
   // readonly a la entrada, igual que en domain/board.ts: nunca mutar lo que ya se
   // entrego a React.
   placed: readonly PlacedPiece[];
+  /** Las piezas ya colocadas que todavia no entraron al ciclo que suena (AC5). */
+  pendingIds: readonly string[];
   previewCells: readonly Cell[];
   previewValid: boolean;
   hover: Cell | null;
@@ -86,10 +107,20 @@ interface Props {
   onMouseLeave: () => void;
 }
 
+/**
+ * Cuanto se atenua una pieza que todavia no entro al ciclo. 0.45 y no menos: por debajo
+ * la nota de la celda deja de leerse, y lo que la pieza dice —su nota por celda, spec
+ * 007— tiene que seguir siendo legible mientras espera.
+ */
+const PENDING_OPACITY = 0.45;
+
 export default function Board({
-  placed, previewCells, previewValid, hover, selected, rotation,
+  placed, pendingIds, previewCells, previewValid, hover, selected, rotation,
   onCellClick, onCellEnter, onMouseLeave,
 }: Props) {
+  // Set y no `includes`: son hasta 60 celdas por render y la lista se consulta una vez
+  // por cada una. Se arma una sola vez, igual que `ghostIndexAt`.
+  const pendientes = new Set(pendingIds);
   // Que celda del fantasma cae en (x,y), POR INDICE: es lo que permite pedirle su
   // grado al mapeo canonico. Se arma una vez por render y no una vez por celda.
   const ghostIndexAt = new Map(previewCells.map(([x,y], k)=> [`${x},${y}`, k]));
@@ -124,7 +155,14 @@ export default function Board({
           cadena de ancestros es `overflow-x: visible`— empuja scroll horizontal a
           la PAGINA entera. Scrollea el tablero, que es lo que sobra, en vez de
           achicar la celda: la nota es lo que hay que poder leer. */}
+      {/* La cabeza lectora se monta ACA, dentro del contenedor que scrollea: un
+          absoluto se posiciona contra la caja de padding de su contenedor posicionado,
+          asi que scrollea con la grilla y sigue alineada debajo de `md`. Se importa
+          directo y no llega por una ranura de `children`: `Playhead` no recibe props, o
+          sea que no le pide nada a `App`, y una ranura generica reabriria la puerta que
+          el review del 007 cerro midiendo. */}
       <div className="relative overflow-x-auto">
+        <Playhead />
         <div
           className="grid w-max"
           style={{gridTemplateColumns:`repeat(${GRID_W}, ${CELL_PX}px)`}}
@@ -153,11 +191,15 @@ export default function Board({
             const style: CSSProperties = {};
             if (occ && ghost) tone = 'bg-rose-500 text-white';   // choque contra pieza colocada
             else if (occ) {
-              tone = 'shadow-sm';
+              // El punteado va ADEMAS de la opacidad y no en su lugar: sobre los
+              // colores mas claros de la paleta un 45 % de opacidad casi no se nota,
+              // y el borde discontinuo se lee igual sobre los doce.
+              tone = pendientes.has(occ.id) ? 'shadow-sm border-dashed' : 'shadow-sm';
               // Inline y no `bg-[...]`: Tailwind escanea el fuente y una clase
               // interpolada desde PIECE_COLOR no se generaria.
               style.background = PIECE_COLOR[occ.piece].bg;
               style.color = PIECE_COLOR[occ.piece].fg;
+              if (pendientes.has(occ.id)) style.opacity = PENDING_OPACITY;
             }
             // Gris y no verde: el fantasma es estado, y el color ya esta ocupado
             // diciendo que pieza es. El rosa del invalido se queda — es el unico

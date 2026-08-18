@@ -17,6 +17,7 @@ import PiecePalette from "./components/PiecePalette.tsx";
 import Board from "./components/Board.tsx";
 import PlacedList from "./components/PlacedList.tsx";
 import Spectrum from "./components/Spectrum.tsx";
+import { encolar, suscribirPendientes } from "./components/route-source.ts";
 
 /**
  * Pentomino Music — prototipo de instrumento, no un juego con reglas de resolucion.
@@ -52,7 +53,18 @@ export default function App(){
   // celda del tablero bajo el cursor, para el fantasma de previsualización
   const [hover, setHover] = useState<Cell | null>(null);
 
+  // Las piezas que ya estan en el tablero pero todavia no entraron al ciclo que suena.
+  // Es la UNICA parte del spec 010 que pasa por estado de React, y es la excepcion
+  // declarada a D1: cambia una vez por cierre de ciclo —7,5 s con 8 piezas a 110 bpm—,
+  // no entre 4 y 11 veces por segundo como la cabeza lectora. D1 mide FRECUENCIA, y esos
+  // 60x son la diferencia. Quien avisa es `route-source.ts`, que tiene las dos rutas.
+  const [pendientes, setPendientes] = useState<string[]>([]);
+
   const idRef = useRef(0);
+
+  // Deps vacias y la baja devuelta directo: la suscripcion no depende de nada del
+  // render, y StrictMode monta y desmonta dos veces sin dejar oyentes colgados.
+  useEffect(()=> suscribirPendientes(setPendientes), []);
 
   useEffect(()=>{ setBpm(tempo); }, [tempo]);
   useEffect(()=>{ setClicksAudible(clicks); }, [clicks]);
@@ -63,6 +75,13 @@ export default function App(){
     if (mirror) c = reflect(c);
     return c; // normalized
   }, [selected, rotation, mirror]);
+
+  // El recorrido, calculado UNA vez por tablero y consumido por tres: el motor (por la
+  // proyeccion sin celdas), la cabeza lectora (por `encolar`) y la lista lateral (por el
+  // orden del circuito). Recalcularlo en cada consumidor abriria la puerta a que dos de
+  // ellos miren circuitos distintos, que es la clase de discrepancia que D5 del 009
+  // existe para cerrar.
+  const secuencia = useMemo(()=> buildSequence(placed), [placed]);
 
   const noteSet = useMemo(()=>{
     const basePc = BASE_MAP[selected];
@@ -113,16 +132,28 @@ export default function App(){
   // en los clicks: el motor no puede ver `Cell`, que vive en `domain/` y el
   // override de eslint sobre `audio/**` lo prohíbe importar incluso como `import
   // type`. Un click tampoco tiene altura (D4): para sonar alcanza con contarlo.
-  // Las celdas no se pierden, siguen en `placed` — el spec 010 las va a leer de
-  // ahí para dibujar el recorrido.
+  // Las celdas no se pierden: siguen en la secuencia del dominio, y por eso este efecto
+  // encola en DOS colas con la misma `secuencia`. Leerlas de `placed` —que es lo que
+  // decía este comentario antes del spec 010— no alcanza, y ese es justo el punto de
+  // AC9: `placed` es el tablero de AHORA, o sea la ruta PENDIENTE, mientras que la
+  // cabeza tiene que dibujar la que está sonando. Quien guarda el par es
+  // `components/route-source.ts`, y hace su swap cuando el motor reporta el suyo.
+  //
+  // Las dos colas se encolan desde acá y con la MISMA instancia a propósito: si cada una
+  // llamara a su propio `buildSequence`, el dibujo y el sonido podrían quedar mirando
+  // circuitos distintos sin que nada falle.
   useEffect(()=>{
-    const s = buildSequence(placed);
+    encolar(secuencia, placed);
     setSequence({
-      steps: s.steps.map(({ offset, notes }) => ({ offset, notes })),
-      clicks: s.clicks.map(({ offset }) => ({ offset })),
-      length: s.length,
+      steps: secuencia.steps.map(({ offset, notes }) => ({ offset, notes })),
+      clicks: secuencia.clicks.map(({ offset }) => ({ offset })),
+      length: secuencia.length,
     });
-  }, [placed]);
+    // `placed` esta en las dependencias aunque `secuencia` ya se derive de el: no agrega
+    // ni una corrida —`secuencia` es un `useMemo` sobre `[placed]`, asi que cambian
+    // juntos— y evita callar la regla de exhaustividad con un disable, que taparia el
+    // dia en que alguien desacople las dos.
+  }, [secuencia, placed]);
 
   // Al desmontar, frenar el reloj y vaciar la secuencia del motor. La limpieza
   // sigue siendo sincrónica: si fuera asincrónica, en StrictMode podría
@@ -178,6 +209,7 @@ export default function App(){
 
         <Board
           placed={placed}
+          pendingIds={pendientes}
           previewCells={previewCells}
           previewValid={previewValid}
           hover={hover}
