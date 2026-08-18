@@ -12,6 +12,15 @@ import { CELL_PX } from './constants/layout.constants.ts';
  * celdas— mas la paleta y la lista, diez veces por segundo, para mover un resaltado.
  * React monta el elemento y arranca el loop; el resto es imperativo.
  *
+ * ## Va ARRIBA de las celdas, y eso necesita `z-10`
+ *
+ * Las baldosas de `Board.tsx` son `relative`, asi que son elementos POSICIONADOS y se
+ * pintan en orden de documento entre ellos. Como la grilla viene despues de este
+ * componente en el DOM, sin `z-index` la cabeza queda DEBAJO de todas las celdas — y
+ * como hasta la celda vacia tiene fondo opaco (`bg-white`), queda directamente
+ * invisible. No lo atrapa ningun test ni se ve en el atributo `style`: hay que mirar
+ * los pixeles, o preguntarle a `elementFromPoint` quien esta arriba.
+ *
  * ## Se mueve UN elemento, no cambian sesenta (D2)
  *
  * La alternativa era recalcular la clase de las 60 celdas en cada cuadro: tocar 60
@@ -34,41 +43,66 @@ import { CELL_PX } from './constants/layout.constants.ts';
  */
 
 /**
- * Grosor de los dos anillos, en px. El doble anillo —claro adentro, oscuro afuera— no
- * es decoracion: la cabeza tiene que leerse sobre los 12 colores de pieza Y sobre el
- * blanco de una celda vacia, y ningun color solo lo consigue en los dos casos. Es la
- * misma razon por la que la cabeza no usa HUE: en este repo el color es IDENTIDAD (que
- * pieza es) y el estado nunca se comunica con color.
+ * El resaltado: la celda que suena ENGROSA su borde, hacia adentro y hacia afuera.
+ * Nada mas — sin relleno, sin cambio de color y sin `scale`.
+ *
+ * ## Por que el borde y no un relleno
+ *
+ * En un secuenciador de fondo oscuro el estandar es ENCENDER el step activo, porque la
+ * metafora es un LED. Este tablero es tema claro —panel blanco, celdas vacias blancas—
+ * y ahi subir luminancia hace desaparecer la celda: el amarillo de `V` se va a blanco.
+ * Un relleno oscuro funciona (medido: al 30 % el peor caso de las 12 piezas, la `W`,
+ * da ΔL* 8,8) pero tapa la nota que la celda muestra desde el spec 007, que es lo que
+ * hay que poder leer. El borde marca el limite sin pisar el contenido.
+ *
+ * ## Por que engorda para los DOS lados
+ *
+ * Hacia adentro solo no alcanza: las 60 celdas ya tienen `border-slate-900`, ocupadas o
+ * no, asi que engrosarlo es un cambio de grado contra un campo lleno de bordes negros.
+ * El anillo exterior es lo que agrega el salto de tamano — la celda se lee mas grande
+ * sin que crezca su caja.
+ *
+ * ## Y por que NO se usa `transform: scale`, que es lo obvio
+ *
+ * Porque `scale` cuenta para el overflow SCROLLEABLE del contenedor: en la ultima
+ * columna y la ultima fila la celda crecida se sale del `overflow-x-auto` de `Board` y
+ * aparecen las barras de desplazamiento —y como Tailwind fija solo `overflow-x`, el eje
+ * Y computa a `auto` y tambien saca la suya. Medido en el DOM, mas abajo en este spec.
+ * `box-shadow` es ink overflow: pinta afuera de la caja sin agrandar la region
+ * scrolleable, asi que consigue el mismo efecto y no puede generar una barra.
+ *
+ * Gris pizarra y no un color: el color es IDENTIDAD —que pieza es— y el estado nunca se
+ * comunica con hue. Es la misma regla por la que el fantasma es gris y no verde.
  */
-const ANILLO_NOTA = 3;
-const ANILLO_CLICK = 2;
+const BORDE_COLOR = '#0f172a';
 
-/** Nota fuerte, click tenue (D7): si se vieran igual, el recorrido parece tener piezas donde no hay. */
-const OPACIDAD_NOTA = 1;
-const OPACIDAD_CLICK = 0.5;
+/** Grosor hacia adentro y hacia afuera, en px. */
+const NOTA = { dentro: 3, fuera: 2 };
 
-const CLARO = 'rgba(255,255,255,0.95)';
-const OSCURO = 'rgba(15,23,42,0.9)';
+/**
+ * Nota fuerte, click tenue (D7): si se vieran igual, el recorrido pareceria tener piezas
+ * donde no hay. El click engorda solo hacia adentro y la mitad — se lee como un roce.
+ */
+const CLICK = { dentro: 2, fuera: 0 };
 
-/** Los dos anillos como un solo `box-shadow` hacia adentro, para no agrandar la caja. */
-const anillos = (grosor: number): string =>
-  `inset 0 0 0 ${grosor}px ${CLARO}, inset 0 0 0 ${grosor * 2}px ${OSCURO}`;
+const borde = ({ dentro, fuera }: { dentro: number; fuera: number }): string =>
+  `inset 0 0 0 ${dentro}px ${BORDE_COLOR}` + (fuera > 0 ? `, 0 0 0 ${fuera}px ${BORDE_COLOR}` : '');
 
 export default function Playhead() {
   const ref = useRef<HTMLDivElement>(null);
   // Dos refs y no una: el `transform` va en la caja de 63 px —que es la que se mueve
-  // sobre la grilla— y el anillo en la baldosa de adentro, 2 px mas chica. Un `inset`
-  // sobre la caja externa se dibujaria contra SU borde y quedaria 2 px corrido en los
-  // cuatro lados, justo encima de la separacion entre celdas.
-  const anilloRef = useRef<HTMLDivElement>(null);
+  // sobre la grilla— y el borde en la baldosa de adentro, 2 px mas chica, que es la que
+  // tiene la forma y el redondeo de la celda. Dibujarlo en la caja externa daria un
+  // rectangulo que pisa la separacion entre celdas.
+  const resalteRef = useRef<HTMLDivElement>(null);
 
   // Dependencias vacias a proposito: el loop se monta una vez y lee del motor y del
   // par de rutas por su cuenta, asi que no hay nada que re-suscribir cuando la app
   // re-renderiza. Es la misma forma que `Spectrum.tsx`.
   useEffect(() => {
     const el = ref.current;
-    const anillo = anilloRef.current;
-    if (!el || !anillo) return;
+    const resalte = resalteRef.current;
+    if (!el || !resalte) return;
 
     // Clave de lo ULTIMO escrito, no la marca en si: comparar strings evita comparar
     // tuplas y deja el caso "oculto" expresado como cadena vacia. Es lo que baja de 60
@@ -98,8 +132,7 @@ export default function Playhead() {
           // generaria. Es la misma regla que ya rige en `Board.tsx`.
           el.style.display = 'block';
           el.style.transform = `translate(${marca.cell[0] * CELL_PX}px, ${marca.cell[1] * CELL_PX}px)`;
-          el.style.opacity = String(marca.nota ? OPACIDAD_NOTA : OPACIDAD_CLICK);
-          anillo.style.boxShadow = anillos(marca.nota ? ANILLO_NOTA : ANILLO_CLICK);
+          resalte.style.boxShadow = borde(marca.nota ? NOTA : CLICK);
         }
       }
 
@@ -117,12 +150,12 @@ export default function Playhead() {
     <div
       ref={ref}
       aria-hidden="true"
-      className="absolute top-0 left-0 p-[2px] pointer-events-none"
+      className="absolute top-0 left-0 z-10 p-[2px] pointer-events-none"
       style={{ width: CELL_PX, height: CELL_PX, display: 'none' }}
     >
       {/* Misma caja que la baldosa de `Board.tsx` —2 px de aire y `rounded-lg`— para que
-          el anillo caiga exactamente sobre el borde de la celda y no medio pixel afuera. */}
-      <div ref={anilloRef} className="w-full h-full rounded-lg" style={{ boxShadow: anillos(ANILLO_NOTA) }} />
+          el gris cubra la celda exacta y no medio pixel afuera. */}
+      <div ref={resalteRef} className="w-full h-full rounded-lg" style={{ boxShadow: borde(NOTA) }} />
     </div>
   );
 }
