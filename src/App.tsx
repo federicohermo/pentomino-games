@@ -220,8 +220,11 @@ export default function App(){
           onMouseLeave={()=> setHover(null)}
         />
 
+        {/* El orden sale de la misma `secuencia` que alimenta al motor y no de un
+            `buildSequence` propio: la lista dice el orden que se escucha, no otro. */}
         <PlacedList
           placed={placed}
+          orden={secuencia.steps.map(s=> s.pieceId)}
           onRemove={id=> setPlaced(arr=> arr.filter(q=> q.id!==id))}
         />
 
