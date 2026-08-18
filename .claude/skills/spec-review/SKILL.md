@@ -1,0 +1,92 @@
+---
+name: spec-review
+description: Especialización de /spec-review para pentomino-games. Cablea las rutas de specs/, el formato de tarea del repo y las tools MCP de dominio. Se lee junto con el skill global, que aporta los ejes; acá está solo lo que difiere.
+---
+
+# spec-review — pentomino-games
+
+Este archivo **no reemplaza** al skill global: aporta lo que en este repo es distinto. Los ejes A–F,
+los gates y el formato del reporte salen de allá.
+
+## Rutas — dónde está cada cosa acá
+
+El global dice que `specs/README.md` "suele ser el registro de deuda abierta". **Acá no lo es**, y
+buscar la deuda ahí la deja fuera del review entero. El registro está partido en cuatro:
+
+| Archivo | Qué tiene | Para qué eje |
+|---|---|---|
+| `specs/log.md` | La tabla de specs con su estado, y las dependencias entre specs | Alcance, colisión de número |
+| `specs/deuda.md` | **La deuda registrada sin spec.** Es el mapa síntoma → deuda del eje D | D · Deuda |
+| `specs/revisiones.md` | Qué se aprendió escribiendo o revisando cada spec, con fecha. Acá está el "esto ya se probó y no funcionó" | D · Deuda, y anclaje |
+| `specs/README.md` | Solo la convención de formato y el flujo | F · Estructura |
+
+**Los estados `Descartado` y `Superado` son terminales.** Un spec en uno de esos dos no se revisa ni
+se corrige: es historia. Si el spec bajo review contradice a uno terminal, eso no es un hallazgo.
+
+## El contrato de `tasks.md`
+
+Además de lo que pide el eje F del global, en este repo un `tasks.md` nuevo tiene que cumplir el
+formato de [`specs/README.md`](../../../specs/README.md#formato-de-una-tarea):
+
+```
+- [ ] T012 [P] [M] Descripción, con la ruta del archivo que toca
+```
+
+Al revisar, verificá:
+
+- **Cada tarea lleva su `T0NN`**, sin duplicados ni saltos, y **los IDs no se renumeraron** respecto
+  de la versión anterior del archivo. Renumerar rompe toda referencia que otra tarea le hiciera.
+- **`[M]` está donde corresponde.** El global ya pide que "un AC que solo un humano puede firmar esté
+  marcado como tal: no es material de loop" — `[M]` es cómo se marca acá. Una tarea que dice
+  *escuchar*, *a oído*, *a ojo*, *captura*, *GIF* o *en el navegador* y **no** lleva `[M]` es un
+  hallazgo: sin el marcador, `spec_status` la reporta como trabajo pendiente para siempre.
+- **`[P]` no miente.** Dos tareas `[P]` del mismo bloque no pueden tocar el mismo archivo. Es el
+  hallazgo más caro de los tres, porque `spec-implement` las abanica en paralelo y el conflicto
+  aparece recién al escribir.
+- Las de `## Seguimiento (no bloquea)` son deuda anotada a propósito y **no** cuentan como pendientes.
+
+Los specs 001–010 son anteriores a esta convención y **no se reescriben** (ver abajo): no lleves su
+falta de IDs como hallazgo.
+
+## Un spec mergeado no se reescribe
+
+Acá los specs son ADR, no documentación viva: registro de qué se decidió y con qué evidencia. Lo que
+sí se mantiene al día es `docs/`, `.claude/rules/` y `CLAUDE.md`.
+
+Consecuencia para el review: si el spec bajo revisión **falsifica** algo que un spec anterior afirma,
+el hallazgo no es "corregir el spec viejo" — es *"actualizar los archivos de `docs/` y
+`.claude/rules/` que lo afirman en presente"*, y anotar el aprendizaje en `specs/revisiones.md`. Hay
+precedente: los commits `d936597` (once archivos afirmaban que el eje X del tablero era tiempo) y
+`eb154a0` (cinco archivos afirmaban en presente cosas que el 008 falsifica).
+
+## Preguntale al dominio en vez de leerlo
+
+El repo levanta un MCP server que **ejecuta las funciones puras reales** (`.mcp.json` está
+commiteado, no hay build). Para los ejes que verifican afirmaciones sobre el modelo, sale más barato
+y no puede quedar viejo:
+
+| En vez de | Usá |
+|---|---|
+| Leer `log.md` y los once `tasks.md` para saber en qué quedó cada spec | `spec_status` — devuelve estado, hechas/total, y `pendientes`, que descuenta `Seguimiento`, `[M]` y specs terminales |
+| Derivar a mano una rotación, una escala o un retrógrado que el spec afirma | `describe_piece` |
+| Recorrer el lookahead a mano para saber qué suena junto | `simulate_board` |
+| Verificar que el spec no rompe geometría, `SHAPES` o el modelo musical | `check_invariants`, **en proceso fresco** — el MCP de la sesión cachea los módulos y contesta con el código viejo |
+| `grep` para ubicar un símbolo, o abrir un archivo para ver una firma | `find_symbol`, que además da `usedBy` |
+
+`find_symbol` incluye a `mcp-server/`, que importa 31 símbolos del dominio: **tocar una firma de
+`domain/` puede romper una tool**, y ese borde de paquete es un eje B que sin la tool se estima
+corto. No pasa silencioso —`pnpm verify` typechequea cruzando el borde— pero el spec tiene que
+declararlo.
+
+## Convenciones que el eje C tiene que mirar acá
+
+Están en `CLAUDE.md` y `docs/guides/conventions.md`, y las verifica el linter, no la revisión. Las
+que un spec suele violar por escrito:
+
+- **Cero `enum`** — `erasableSyntaxOnly` los rechaza (`TS1294`). Conjunto cerrado = const-object en
+  `<capa>/constants/` + union type derivado en `<capa>/types/`.
+- **Cero `any` y cero `@ts-ignore`.**
+- **Los módulos no declaran constantes**, y los imports locales llevan extensión explícita.
+- **La dirección de dependencia entre capas** (`domain/` y `audio/` son hermanos sin aristas).
+- **Español** en comentarios, commits y specs.
+- Un spec que propone una constante nueva tiene que decir **en qué `constants/` va**, y por qué ahí.

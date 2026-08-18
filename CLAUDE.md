@@ -86,7 +86,12 @@ Detalle en [docs/architecture/overview.md](./docs/architecture/overview.md).
 ## Reglas que valen en todo el repo
 
 Las de cada capa se cargan solas al tocar sus archivos (`.claude/rules/`). Estas valen siempre, y el
-porqué de cada una está en [docs/guides/conventions.md](./docs/guides/conventions.md):
+porqué de cada una está en [docs/guides/conventions.md](./docs/guides/conventions.md). En
+`.claude/skills/` viven además las especializaciones de `/spec-review` y `/spec-implement`: esos
+skills globales son el piso genérico, y las locales cablean las rutas de `specs/` y el formato de
+tarea del repo.
+
+Estas son las reglas:
 
 - **La dirección de dependencia la verifica el linter**, no la revisión. `eslint.config.js` tiene un
   override por capa con `@typescript-eslint/no-restricted-imports` —la variante que también ve los
