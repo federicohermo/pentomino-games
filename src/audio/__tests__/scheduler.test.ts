@@ -20,7 +20,7 @@ const recienArrancado = (): ClockState => ({ origin: ORIGIN, scheduledUntil: 0 }
 const seq = (
   length: number,
   steps: { offset: number; notes: number[] }[],
-  clicks: { offset: number }[] = [],
+  clicks: Sequence['clicks'] = [],
 ): Sequence => ({ steps, clicks, length });
 
 /** Un ciclo de 16 intervalos es exactamente un compas: el periodo de antes del spec 009. */
@@ -108,7 +108,7 @@ function simular(
  * cuando en realidad sono la secuencia equivocada. Medido: la primera version de
  * este oraculo comparaba solo instantes y dejaba pasar esa mutacion entera.
  */
-const clave = (h: Hit) => (h.kind === HIT.note ? `note:${h.hz.toFixed(4)}` : 'click');
+const clave = (h: Hit) => (h.kind === HIT.click ? 'click' : `${h.kind}:${h.hz.toFixed(4)}`);
 
 /**
  * Todos los eventos de una secuencia en (desde, hasta], por enumeracion de la grilla.
@@ -127,7 +127,10 @@ function eventosDe(
   const cycle = s.length * interval;
   const eventos = [
     ...s.steps.map(x => ({ offset: x.offset, clave: `note:${midiToHz(x.notes[0]).toFixed(4)}` })),
-    ...s.clicks.map(x => ({ offset: x.offset, clave: 'click' })),
+    ...s.clicks.map(x => ({
+      offset: x.offset,
+      clave: x.note === undefined ? 'click' : `cross:${midiToHz(x.note).toFixed(4)}`,
+    })),
   ];
   const out: { at: number; clave: string }[] = [];
   for (let k = -1; origin + k * cycle <= hasta; k++) {
@@ -458,6 +461,81 @@ describe('el offset dentro del ciclo (spec 009)', () => {
     expect(peak(desfasadas)).toBeLessThan(peak(alineadas));
     // Y donde habia un evento pasan a haber dos: la textura que el volumen tapaba.
     expect(detectOnsets(desfasadas)).toHaveLength(detectOnsets(alineadas).length * 2);
+  });
+});
+
+describe('el cruce por celda ocupada (spec 011)', () => {
+  const interval = intervalDuration(BPM);
+
+  /**
+   * `filter` sobre una union no estrecha por si solo, y el `hz` vive en una sola rama.
+   * El predicado explicito es lo que permite afirmar sobre el, que es justo la mitad
+   * del contrato que un `hz?: number` habria dejado sin verificar.
+   */
+  const esCruce = (h: Hit): h is Extract<Hit, { kind: typeof HIT.cross }> => h.kind === HIT.cross;
+
+  // El caso testigo del spec: `P` rot 1 en (3,2) e `Y` rot 1 en (7,2) hacen que el
+  // recorrido pise (7,2), que suena F5 = MIDI 77. Aca entra ya proyectado a la forma
+  // del motor, que es todo lo que este lado del borde puede ver.
+  const F5 = 77;
+
+  it('AC13 — un cruce con nota es una TERCERA clase de hit, con su altura', () => {
+    const state = recienArrancado();
+    const s = seq(8, [{ offset: 0, notes: [60] }], [{ offset: 3 }, { offset: 5, note: F5 }]);
+    const hits = collectHits(0, 8 * interval, BPM, s, state);
+
+    const mudos = hits.filter(h => h.kind === HIT.click);
+    const cruces = hits.filter(esCruce);
+    expect(hits).toHaveLength(3);        // la nota, el click mudo y el cruce
+    expect(mudos).toHaveLength(1);
+    expect(cruces).toHaveLength(1);
+    // Misma grilla que todo lo demas: el cruce no cambia CUANDO suena, solo COMO.
+    expect(cruces[0].at).toBeCloseTo(ORIGIN + 5 * interval, 9);
+    // En Hz y no en MIDI: la conversion es del motor, igual que con `steps.notes`.
+    expect(cruces[0].hz).toBeCloseTo(midiToHz(F5), 9);
+    expect(Object.keys(cruces[0]).sort()).toEqual(['at', 'hz', 'kind']);
+    // Y el mudo sigue sin altura: la union lo deja afuera, y ademas no se cuela un
+    // campo suelto con `undefined` adentro.
+    expect(Object.keys(mudos[0]).sort()).toEqual(['at', 'kind']);
+  });
+
+  it('D6 — apagar los clicks no puede apagar el cruce con altura', () => {
+    const state = recienArrancado();
+    const s = seq(8, [{ offset: 0, notes: [60] }], [{ offset: 3 }, { offset: 5, note: F5 }]);
+    const hits = collectHits(0, 8 * interval, BPM, s, state);
+
+    // `tick()` apaga la rama muda con un `else if (clicksAudible)`, o sea que con el
+    // interruptor en false sobrevive todo lo que no es `HIT.click`. Esa rama no se
+    // puede correr aca —`engine.ts` toca el singleton del AudioContext, que en estos
+    // tests no existe—, asi que lo que este test clava es lo que la hace posible: que
+    // el cruce con altura NO sea un click, ni siquiera un click con `hz`. Con el campo
+    // opcional que AC13 descarta, este filtro se llevaria puesta la floritura y el
+    // recorrido diria que cruzo por el vacio donde cruzo por una pieza.
+    const conClicksApagados = hits.filter(h => h.kind !== HIT.click);
+    expect(conClicksApagados.map(clave)).toEqual([
+      `note:${midiToHz(60).toFixed(4)}`,
+      `cross:${midiToHz(F5).toFixed(4)}`,
+    ]);
+  });
+
+  it('el cruce sigue al tempo y al swap como cualquier otro evento', () => {
+    // Que la clase nueva no se salga de las dos propiedades que sostienen el reloj:
+    // periodicidad (dos ciclos, dos cruces) y independencia del tempo (la fraccion
+    // del ciclo es la misma a 60 y a 160 bpm).
+    const s = seq(10, [{ offset: 0, notes: [60] }], [{ offset: 7, note: F5 }]);
+    const fracciones = (bpm: number) => {
+      const cycle = 10 * intervalDuration(bpm);
+      const state: ClockState = { origin: 1, scheduledUntil: 0.999 };
+      return collectHits(0.999, 1.9 * cycle, bpm, s, state)
+        .filter(esCruce)
+        .map(h => (h.at - 1) / cycle)
+        .sort((x, y) => x - y);
+    };
+    const lento = fracciones(60);
+    const rapido = fracciones(160);
+    expect(lento).toHaveLength(2);
+    expect(rapido).toHaveLength(2);
+    lento.forEach((f, i) => expect(f).toBeCloseTo(rapido[i], 6));
   });
 });
 

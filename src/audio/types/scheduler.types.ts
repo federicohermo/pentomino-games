@@ -4,17 +4,24 @@ import type { HIT } from '../constants/scheduler.constants.ts';
  * Un ciclo listo para sonar: lo unico que el motor necesita saber, y nada mas.
  *
  * El modelo del spec 009 es un RECORRIDO: un circuito cerrado visita las piezas, y
- * las celdas vacias que cruza entre una y otra suenan como clicks. En el dominio un
- * click lleva su celda ademas de su instante, porque alli el recorrido ES el modelo.
- * Aca no: el click no tiene altura y suena igual en cualquier lado (D4), asi que la
- * celda no es informacion que el motor pueda usar — para sonar solo hace falta
- * CONTAR clicks.
+ * las celdas que cruza entre una y otra suenan al pasar. En el dominio un cruce lleva
+ * su celda ademas de su instante, porque alli el recorrido ES el modelo.
  *
- * Y aunque pudiera usarla, no podria verla: `Cell` vive en el dominio y el override
- * de eslint sobre esta capa prohibe importarlo, tambien como `import type` (usa la
- * variante de typescript-eslint, que si ve los imports de tipo). Importarlo no
- * romperia el navegador —los tipos se borran—: rompe `pnpm lint`, que es donde la
- * separacion de capas se verifica de verdad.
+ * Aca la celda igual no viaja, pero desde el spec 011 hay que decir POR QUE, porque
+ * de las dos razones que habia sobrevive una sola:
+ *
+ * - **Ya NO vale** que para sonar alcance con contar. Eso era cierto mientras todo
+ *   cruce fuera un click sin altura (D4 del spec 009); hoy el recorrido puede pisar
+ *   una celda OCUPADA y ese cruce suena la nota de la celda (D5 del spec 011), asi
+ *   que `clicks` lleva su `note` en MIDI.
+ * - **Sigue valiendo** que no podria verla: `Cell` vive en el dominio y el override
+ *   de eslint sobre esta capa prohibe importarlo, tambien como `import type` (usa la
+ *   variante de typescript-eslint, que si ve los imports de tipo). Importarlo no
+ *   romperia el navegador —los tipos se borran—: rompe `pnpm lint`, que es donde la
+ *   separacion de capas se verifica de verdad.
+ *
+ * O sea que el numero MIDI cruza el borde y la coordenada no, y eso no es un
+ * accidente: el motor sabe sonar alturas y no sabe que es un tablero.
  *
  * Las dos salidas faciles quedaron descartadas, y conviene que quede escrito por si
  * alguien las vuelve a proponer:
@@ -27,9 +34,9 @@ import type { HIT } from '../constants/scheduler.constants.ts';
  *
  * Por eso esta forma es la del dominio MENOS `pieceId` y MENOS `cell`: `App.tsx` es
  * el unico puente entre las dos capas y entrega la secuencia dejando caer esos
- * campos. Es una PROYECCION, no una traduccion —los `offset` y los `notes` viajan
- * tal cual, sin recalcularse—, y eso solo se sostiene mientras las dos formas sigan
- * siendo estructuralmente compatibles.
+ * campos. Es una PROYECCION, no una traduccion —los `offset`, los `notes` y la `note`
+ * del cruce viajan tal cual, en MIDI y sin recalcularse—, y eso solo se sostiene
+ * mientras las dos formas sigan siendo estructuralmente compatibles.
  */
 export interface Sequence {
   /**
@@ -39,8 +46,14 @@ export interface Sequence {
    * pieza sono es la UI, y la UI mira la secuencia del dominio, no esta.
    */
   steps: { offset: number; notes: number[] }[];
-  /** Los cruces por celda vacia. Sin `cell`: para sonar solo hace falta contar. */
-  clicks: { offset: number }[];
+  /**
+   * Los cruces del recorrido entre una pieza y la siguiente. Sin `cell` — ver arriba.
+   *
+   * `note` presente = la celda cruzada esta OCUPADA y el cruce suena su altura como
+   * floritura; ausente = celda vacia y suena el click mudo de siempre. Va en MIDI, la
+   * misma unidad que `steps.notes`, y quien lo convierte a Hz es `collectHits`.
+   */
+  clicks: { offset: number; note?: number }[];
   /**
    * Cuanto mide el ciclo completo, en INTERVALOS — la misma unidad que los `offset`.
    *
@@ -84,7 +97,20 @@ export type HitKind = (typeof HIT)[keyof typeof HIT];
  *
  * Con la union, `kind` obliga a elegir y el compilador reclama el `hz` en la rama que
  * lo lleva.
+ *
+ * El spec 011 agrega la TERCERA rama y vuelve a poner a prueba el mismo argumento
+ * (AC13): el cruce por celda ocupada lleva altura, y la salida corta habria sido un
+ * `hz?: number` sobre la rama del click. Es la misma trampa de antes y ademas una
+ * peor, porque `tick()` DESPACHA por `kind`: `setClicksAudible` tiene que apagar el
+ * click mudo y dejar sonar el cruce con altura (D6), y con un campo opcional esa
+ * decision seria un `hz === undefined` que el compilador no obliga a mirar.
+ *
+ * `cross` y `note` tienen la misma forma a proposito y no se colapsan en una: lo que
+ * las distingue no es que datos llevan sino como suenan —el cruce va mas corto y mas
+ * suave (`GRACE_INTERVALS`, `GRACE_VELOCITY`)—, y eso lo decide `tick()` mirando el
+ * `kind`.
  */
 export type Hit =
   | { kind: typeof HIT.note; hz: number; at: number }
+  | { kind: typeof HIT.cross; hz: number; at: number }
   | { kind: typeof HIT.click; at: number };

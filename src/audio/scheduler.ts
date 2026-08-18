@@ -87,9 +87,11 @@ function firstOnsetAfter(after: number, origin: number, bar: number, phase: numb
  * una pieza la calla casi al instante. Importa mas que antes: el ciclo dejo de
  * durar un compas y con 8 piezas mide 7,5 s a 110 bpm.
  *
- * Los clicks recorren la misma grilla que los pasos y salen del mismo calculo; lo
+ * Los cruces recorren la misma grilla que los pasos y salen del mismo calculo; lo
  * unico que los distingue es que no tienen notas que expandir, asi que aportan un
- * solo hit por onset.
+ * solo hit por onset. Desde el spec 011 son de dos clases —celda vacia o celda
+ * ocupada— y esta funcion es quien decide cual: la de mas abajo (`collectWindow`)
+ * solo empalma ciclos, y `engine.ts` solo despacha lo que sale de aca.
  *
  * Muta `state.scheduledUntil`.
  */
@@ -146,8 +148,17 @@ export function collectHits(
   }
 
   for (const click of sequence.clicks) {
+    // Fuera del bucle por lo mismo que `interval`: la clase del cruce y su altura no
+    // dependen de en que ciclo cae, y el bucle puede dar varias vueltas con un
+    // horizonte de varios ciclos. `null` y no `undefined` para que la rama que elige
+    // el `kind` sea una comparacion y no una lectura de un campo que puede faltar.
+    const hz = click.note === undefined ? null : midiToHz(click.note);
     for (let at = firstOnsetAfter(from, state.origin, cycle, click.offset / sequence.length); at <= until; at += cycle) {
-      out.push({ kind: HIT.click, at });
+      // Aca nace la tercera clase de evento (AC13 del spec 011). El cruce por celda
+      // OCUPADA suena la nota de esa celda y el motor tiene que poder distinguirlo del
+      // click mudo: `tick()` los agenda con constantes distintas y `setClicksAudible`
+      // apaga solo al segundo (D6).
+      out.push(hz === null ? { kind: HIT.click, at } : { kind: HIT.cross, hz, at });
     }
   }
 
