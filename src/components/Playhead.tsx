@@ -190,6 +190,13 @@ export default function Playhead() {
       // `>=` y no `===`: si un cuadro se pierde —la pestana oculta suspende el rAF— el
       // offset ya avanzo, y con igualdad la celda quedaria tapada hasta la vuelta
       // siguiente.
+      //
+      // Que sea `>=` es tambien lo que ata este bucle a la guarda `now < origin` de
+      // `playheadOffset`: el swap se decide DENTRO del lookahead, y si en ese cuadro la
+      // cabeza contestara la cola del ciclo nuevo —el offset MAXIMO— este `for`
+      // destaparia las cinco celdas de un saque, en el mismo cuadro en que se crearon.
+      // Es el bug que el review encontro. Si alguna vez `playheadOffset` deja de
+      // devolver `null` antes del origin, esto vuelve callado.
       if (offset !== null) {
         for (const { entrada, nodo } of tapas) {
           if (entrada.offset === null || nodo.style.display === 'none') continue;

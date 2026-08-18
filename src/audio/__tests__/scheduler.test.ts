@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { collectHits, collectWindow, barDuration, intervalDuration } from '../scheduler.ts';
+import { offsetAt } from '../playhead.ts';
 import { midiToHz, scheduleVoice } from '../voice.ts';
 import { LOOKAHEAD, TICK_MS, HIT } from '../constants/scheduler.constants.ts';
 import { CLOCK_START_DELAY } from '../constants/engine.constants.ts';
@@ -581,6 +582,41 @@ describe('D5 — la secuencia cambia al cerrar el ciclo', () => {
       pending = w.pending;
       for (const h of w.hits) expect(h.at).toBeGreaterThanOrEqual(t);
     }
+  });
+
+  it('spec 010 — el swap deja `origin` en el FUTURO, asi que el ciclo nuevo todavia no suena', () => {
+    // La contracara del test de arriba, y lo que obliga a la guarda `now < origin` de
+    // `playheadOffset`. El swap se decide DENTRO del lookahead: cuando ocurre, `origin`
+    // es el borde y todavia no llego, mientras lo que se escucha sigue siendo la cola
+    // de la vieja, agendada hasta medio intervalo antes.
+    //
+    // Sin la guarda, `offsetAt` contesta —bien, como funcion total— la COLA del ciclo
+    // nuevo, o sea `ciclo - 1`. Ese numero es el MAXIMO posible, y el velo de
+    // `Playhead.tsx` destapa toda celda con `offset <= offset actual`: las cinco de la
+    // pieza se estrenaban juntas en el cuadro del swap, o sea que el estreno celda por
+    // celda no se veia nunca. Lo que se afirma aca es el hecho del scheduler que lo
+    // causa; es testeable, y la lectura del reloj que lo consume no.
+    const state = recienArrancado();
+    let active: Sequence = A;
+    let pending: Sequence | null = B;
+    let swaps = 0;
+    for (let i = 0; i < TICKS; i++) {
+      const t = i * TICK;
+      const previa = active;
+      const w = collectWindow(t, LOOKAHEAD, BPM, active, pending, state);
+      active = w.active;
+      pending = w.pending;
+      if (active === previa) continue;
+
+      swaps++;
+      expect(state.origin).toBeGreaterThan(t);
+      expect(state.origin - t).toBeLessThanOrEqual(LOOKAHEAD);
+      // Sin latencia de salida y con ella: la resta solo agranda la ventana.
+      for (const latencia of [0, 0.01, 0.05]) {
+        expect(offsetAt(t - latencia, state.origin, interval, active.length)).toBe(active.length - 1);
+      }
+    }
+    expect(swaps).toBe(1);
   });
 
   it('quitar la ultima pieza deja la secuencia vacia sin colgar el reloj', () => {

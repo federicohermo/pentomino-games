@@ -195,20 +195,42 @@ export const cycleGeneration = (): number => cycleGen;
 /**
  * En que intervalo del ciclo esta la cabeza lectora, o null si no hay nada que marcar.
  *
- * Devuelve null en pausa, sin contexto, con el contexto que no esta corriendo y con la
- * secuencia activa vacia. Es informacion y no una falla, igual que `readSpectrum()` en
- * reposo: "no hay cabeza" y "la cabeza esta en 0" se dibujan distinto.
+ * Devuelve null en pausa, sin contexto, con el contexto que no esta corriendo, con la
+ * secuencia activa vacia y ANTES de que la activa empiece a sonar (ver abajo). Es
+ * informacion y no una falla, igual que `readSpectrum()` en reposo: "no hay cabeza" y
+ * "la cabeza esta en 0" se dibujan distinto.
  *
  * Lee `ctx` y no `audio()` por el mismo motivo que readSpectrum: el llamador previsto es
  * un loop de dibujo y crear el AudioContext desde ahi seria hacerlo sin gesto del usuario.
  *
  * Mira la secuencia ACTIVA, no la pendiente: la cabeza tiene que recorrer lo que suena.
  * Que la UI dibuje el circuito correcto abajo es problema de `components/route-source.ts`.
+ *
+ * ## `now < origin` es "todavia no empezo", y ahi no hay nada que dibujar
+ *
+ * `collectWindow` pone la pendiente en vigencia DENTRO del lookahead y deja `origin` en
+ * el borde, que en ese momento es futuro: medido, hasta 82 ms a 110 bpm, mas la latencia
+ * de salida. Durante esa ventana la secuencia activa ya es la nueva pero lo que se
+ * escucha sigue siendo la cola de la vieja, que quedo agendada hasta medio intervalo
+ * antes del borde. Lo mismo pasa en el primer arranque, con los 50 ms de
+ * `CLOCK_START_DELAY`.
+ *
+ * Sin este corte, `offsetAt` contesta —correctamente, como funcion total— la COLA del
+ * ciclo nuevo, o sea `ciclo - 1`. Y ese numero, que es el MAXIMO posible, destapaba de
+ * un saque las cinco celdas del velo de `Playhead.tsx`: el estreno celda por celda no se
+ * veia nunca, ni al colocar con el ciclo andando ni al apretar play. Es el bug que el
+ * test «el swap deja `origin` en el FUTURO» de `scheduler.test.ts` deja clavado.
+ *
+ * El precio es que la cabeza se apaga esa ventana en cada swap. Es lo correcto: la ruta
+ * vieja ya no esta y la nueva todavia no empezo, asi que cualquier celda que se dibujara
+ * ahi seria mentira.
  */
 export function playheadOffset(): number | null {
   if (timer === null || !ctx || ctx.state !== 'running') return null;
   if (active.length <= 0) return null;
-  return offsetAt(ctx.currentTime - outputLatency(ctx), clock.origin, intervalDuration(bpm), active.length);
+  const now = ctx.currentTime - outputLatency(ctx);
+  if (now < clock.origin) return null;
+  return offsetAt(now, clock.origin, intervalDuration(bpm), active.length);
 }
 
 /**

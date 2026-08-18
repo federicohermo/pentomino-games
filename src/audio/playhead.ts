@@ -28,9 +28,16 @@
  *   por el tiene el mismo final.
  * - un argumento no finito envenena la cuenta entera; se corta antes.
  *
- * `now < origin` NO es un degradado: es la ventana de `CLOCK_START_DELAY` entre
- * `startClock` y el primer onset, y tiene que dar la cola del ciclo. Por eso el modulo
- * es euclideo: el `%` de JS conserva el signo del dividendo y devolveria -1.
+ * `now < origin` NO es un degradado: la progresion esta definida para todo `k`, asi que
+ * la respuesta es la cola del ciclo. Por eso el modulo es euclideo: el `%` de JS
+ * conserva el signo del dividendo y devolveria -1.
+ *
+ * Que sea la respuesta CORRECTA no la vuelve la respuesta UTIL, y esa distincion costo
+ * un bug: `playheadOffset()` corta antes de llegar aca cuando `now < origin`, porque en
+ * esa ventana —los 50 ms de `CLOCK_START_DELAY`, o los hasta 82 ms entre un swap de
+ * ciclo y el borde— la secuencia activa todavia no empezo a sonar y la cola del ciclo
+ * nuevo es una celda que nadie esta escuchando. El detalle vive en el docblock de
+ * `playheadOffset`; aca la funcion se queda total, que es lo que la hace afirmable.
  */
 export function offsetAt(
   now: number,
