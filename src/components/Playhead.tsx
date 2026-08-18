@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { playheadOffset } from '../audio/engine.ts';
 import { rutaActiva, velo } from './route-source.ts';
 import { CELL_PX } from './constants/layout.constants.ts';
+import { MARCA } from './constants/route.constants.ts';
 import type { CeldaPorEstrenar } from './types/route.types.ts';
 
 /**
@@ -96,13 +97,25 @@ const BORDE_COLOR = '#0f172a';
 const NOTA = { dentro: 3, fuera: 2 };
 
 /**
- * Nota fuerte, click tenue (D7): si se vieran igual, el recorrido pareceria tener piezas
- * donde no hay. El click engorda solo hacia adentro y la mitad — se lee como un roce.
+ * El cruce (spec 011, D8): la cabeza pasa sobre una celda OCUPADA que no es su turno
+ * pero que igual suena una floritura (`Click.note`) — ni la nota propia de una pieza
+ * ni el click mudo de siempre, asi que su borde va en el escalon intermedio entre los
+ * otros dos. Los tres numeros —3/2, 2/1, 2/0— estan fijados en DESIGN.md.
+ */
+const CRUCE = { dentro: 2, fuera: 1 };
+
+/**
+ * Nota fuerte, cruce intermedio, click tenue (D7 del spec 010 mas D8 del 011): si dos
+ * de los tres se vieran igual, el recorrido mentiria sobre cual de las tres cosas paso.
+ * El click engorda solo hacia adentro y la mitad — se lee como un roce.
  */
 const CLICK = { dentro: 2, fuera: 0 };
 
 const borde = ({ dentro, fuera }: { dentro: number; fuera: number }): string =>
   `inset 0 0 0 ${dentro}px ${BORDE_COLOR}` + (fuera > 0 ? `, 0 0 0 ${fuera}px ${BORDE_COLOR}` : '');
+
+/** Que escalon de borde le toca a cada `MarcaKind` — la tabla de D8 hecha funcion. */
+const BORDE_POR_KIND = { [MARCA.nota]: NOTA, [MARCA.cruce]: CRUCE, [MARCA.click]: CLICK } as const;
 
 /**
  * Las clases del velo van como literales enteros y no armadas por concatenacion:
@@ -207,7 +220,11 @@ export default function Playhead() {
       }
 
       const marca = offset === null ? null : marcas[offset] ?? null;
-      const clave = marca ? `${marca.cell[0]},${marca.cell[1]},${marca.nota}` : '';
+      // `marca.kind` y no un booleano en la clave: con tres casos, dos marcas en la
+      // misma celda pero de kind distinto (nota vs. cruce, por ejemplo si la ruta
+      // volviera a pasar por ahi en otro offset del mismo cuadro dibujado) no pueden
+      // deduplicarse como si fueran la misma.
+      const clave = marca ? `${marca.cell[0]},${marca.cell[1]},${marca.kind}` : '';
       if (clave !== dibujado) {
         dibujado = clave;
         if (!marca) {
@@ -218,7 +235,7 @@ export default function Playhead() {
           // generaria. Es la misma regla que ya rige en `Board.tsx`.
           el.style.display = 'block';
           el.style.transform = `translate(${marca.cell[0] * CELL_PX}px, ${marca.cell[1] * CELL_PX}px)`;
-          resalte.style.boxShadow = borde(marca.nota ? NOTA : CLICK);
+          resalte.style.boxShadow = borde(BORDE_POR_KIND[marca.kind]);
         }
       }
 

@@ -3,6 +3,7 @@ import { buildSequence, cellsByPlayOrder } from '../../domain/sequence.ts';
 import { cellsAt } from '../../domain/board.ts';
 import { rotateN, reflect } from '../../domain/transform.ts';
 import { SHAPES, ANCHOR_INDEX } from '../../domain/constants/pieces.constants.ts';
+import { MARCA } from '../constants/route.constants.ts';
 import type { PieceKey } from '../../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../../domain/types/board.types.ts';
 
@@ -56,6 +57,23 @@ const claves = (cs: readonly (readonly number[])[]): Set<string> => new Set(cs.m
 
 const UNA = [colocar('F', 0, false, 2, 2)];
 const DOS = [colocar('F', 0, false, 2, 2), colocar('L', 0, true, 7, 1)];
+
+/**
+ * El caso ESTRUCTURAL del spec 011, y no el caso testigo: su recorrido cruza una celda
+ * OCUPADA —[4,1] y [4,3], los dos brazos de la `X` pegados a su centro— que no es el
+ * turno de esa pieza, y esos cruces suenan una floritura (`Click.note`, 78 = F#5 y
+ * 73 = C#5). Verificado corriendo `buildSequence` sobre este mismo tablero: son los
+ * UNICOS dos de los 11 clicks que traen `note`.
+ *
+ * Es la `X` y no el par `P`/`Y` del caso testigo **a proposito**. El testigo depende del
+ * valor de `CROSS_COST`: con 2 cruzaba y con 5 rodea, asi que un test apoyado en el deja
+ * de probar el caso real en cuanto alguien mueve la constante — que es justamente lo que
+ * `research.md` §8 y AC11 invitan a hacer. La `X` no depende del peso: su celda central
+ * esta rodeada por sus propios cuatro brazos y es siempre una de sus dos puertas
+ * (research.md §4), asi que entrar a ella cruza una celda ocupada por mucho que suba el
+ * peso. Es el unico tablero donde este test no puede volverse vacio en silencio.
+ */
+const CON_CRUCE = [colocar('X', 0, false, 4, 2), colocar('F', 0, false, 3, 4), colocar('I', 0, false, 5, 0)];
 
 describe('AC9 — la ruta activa es la que suena, no la encolada', () => {
   it('encolar no cambia lo que la cabeza dibuja: hace falta que el motor cierre el ciclo', () => {
@@ -125,13 +143,15 @@ describe('la tabla por offset', () => {
       const celdas = cellsByPlayOrder(pieza!);
       for (let j = 0; j < celdas.length; j++) {
         expect(marcas[step.offset + j], `paso ${step.pieceId} nota ${j}`)
-          .toEqual({ cell: celdas[j], nota: true });
+          .toEqual({ cell: celdas[j], kind: MARCA.nota });
       }
     }
 
     // Los clicks: la celda la trae la propia secuencia (D5 — la UI no calcula caminos).
+    // Ninguno de `DOS` cruza una celda ocupada, asi que los 8 son click mudo (MARCA.click).
     expect(s.clicks.length).toBeGreaterThan(0);
-    for (const c of s.clicks) expect(marcas[c.offset]).toEqual({ cell: c.cell, nota: false });
+    expect(s.clicks.every((c) => c.note === undefined)).toBe(true);
+    for (const c of s.clicks) expect(marcas[c.offset]).toEqual({ cell: c.cell, kind: MARCA.click });
 
     // Y no hay agujeros ni sobrantes: el ciclo del recorrido esta cubierto entero.
     expect(marcas).toHaveLength(s.length);
@@ -144,8 +164,8 @@ describe('la tabla por offset', () => {
     const marcas = rs.rutaActiva();
     // El ciclo mide 5 y el arpegio ocupa 5: el ultimo intervalo es el silencio con el
     // que el ciclo vuelve a empezar contiguo (spec 009), no un click.
-    expect(marcas.filter((m) => m?.nota === false)).toEqual([]);
-    expect(marcas.filter((m) => m?.nota === true)).toHaveLength(5);
+    expect(marcas.filter((m) => m?.kind === MARCA.click)).toEqual([]);
+    expect(marcas.filter((m) => m?.kind === MARCA.nota)).toHaveLength(5);
   });
 
   it('un tablero vacio no deja marcas', () => {
@@ -153,6 +173,24 @@ describe('la tabla por offset', () => {
     cerrarCiclo();
     expect(rs.rutaActiva()).toEqual([]);
     expect(rs.velo()).toEqual([]);
+  });
+
+  it('AC9/D8 (spec 011) — un click sobre celda ocupada suena floritura y se marca MARCA.cruce', () => {
+    encolarTablero(CON_CRUCE);
+    cerrarCiclo();
+    const marcas = rs.rutaActiva();
+    const s = buildSequence(CON_CRUCE);
+
+    // Guarda del propio test: exactamente DOS de los clicks traen `note` (los dos brazos
+    // de la `X` pegados a su centro) y el resto no. Si esto dejara de ser cierto, los dos
+    // `for` de abajo podrian quedarse sin nada que recorrer y el test pasaria vacio.
+    const conNota = s.clicks.filter((c) => c.note !== undefined);
+    const sinNota = s.clicks.filter((c) => c.note === undefined);
+    expect(conNota).toHaveLength(2);
+    expect(sinNota.length).toBeGreaterThan(0);
+
+    for (const c of conNota) expect(marcas[c.offset]).toEqual({ cell: c.cell, kind: MARCA.cruce });
+    for (const c of sinNota) expect(marcas[c.offset]).toEqual({ cell: c.cell, kind: MARCA.click });
   });
 });
 

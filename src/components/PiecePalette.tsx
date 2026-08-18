@@ -82,14 +82,24 @@ export default function PiecePalette({
           <span className="font-medium">Reflexión</span>
           <button onClick={onMirror} className={`px-3 py-1 rounded ${mirror?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{mirror? 'ON':'OFF'}</button>
         </div>
-        {/* El click del recorrido, con el mismo idioma que Reflexion: activo en
+        {/* El click MUDO del recorrido, con el mismo idioma que Reflexion: activo en
             oscuro. Es un interruptor de MEZCLA y no del modelo — el recorrido
             sigue siendo el mismo con los clicks apagados, solo que no se oye. El
             spec 009 lo previo asi en su tabla de riesgos ("es un parametro suelto:
-            si molesta, se baja o se apaga sin tocar el modelo") y hace falta
-            mientras el camino cruce celdas ocupadas, que es deuda anotada. */}
+            si molesta, se baja o se apaga sin tocar el modelo").
+
+            Dice "mudos" y no "Clicks" a secas desde el spec 011: el recorrido pasó a
+            tener DOS clases de cruce y este boton apaga solo una. El cruce sobre una
+            celda ocupada suena su nota y no se apaga, porque es modelo y no mezcla
+            (D6) — apagarlo seria silenciar parte de lo que el tablero dice. Con la
+            etiqueta vieja el boton prometia mas de lo que hace.
+
+            Y ojo con el motivo por el que nacio: existia para tapar los golpes sordos
+            que produce cruzar una pieza, o sea el problema que el 011 arregla. Si con
+            el peso y la floritura el recorrido deja de molestar, se queda sin razon de
+            ser — esta anotado como Seguimiento del 011 y se decide escuchando. */}
         <div className="flex items-center justify-between">
-          <span className="font-medium">Clicks</span>
+          <span className="font-medium">Clicks mudos</span>
           <button onClick={onToggleClicks} className={`px-3 py-1 rounded ${clicks?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{clicks? 'ON':'OFF'}</button>
         </div>
         <div className="pt-2 text-sm text-slate-600">
