@@ -2,10 +2,16 @@
 
 ## 1. La limitación ya estaba escrita, y el 009 la agrava
 
-`docs/architecture/modelo-musical.md:53` la declara desde el spec 004:
+`docs/architecture/modelo-musical.md:73` la declara. Nació con el spec 004 hablando de la **fase**, y el
+009 ya la reescribió sobre el **recorrido** —o sea que la limitación no se heredó sin mirarla, se
+actualizó al modelo nuevo—:
 
-> **Limitación conocida:** no hay retroalimentación visual de la fase. Una cabeza lectora recorriendo
-> el tablero es lo que volvería *legible* a esta regla; hoy se oye pero no se lee.
+> **Limitación conocida:** no hay retroalimentación visual del recorrido. Una cabeza lectora recorriendo
+> el tablero es lo que volvería *legible* a este modelo; hoy se oye pero no se lee. Es la limitación
+> consciente que cierra el [spec 010](../../specs/010-cabeza-lectora-por-celda/spec.md), que depende de
+> este.
+
+La misma frase está una segunda vez en `.claude/rules/domain.md:49`, y las dos se cierran con este spec.
 
 Con el modelo del 004 eso era incómodo: había un compás y las piezas caían en fracciones de él. Con el
 009 hay un recorrido de largo variable, orden no evidente y silencios de longitud geométrica. Los
@@ -72,6 +78,43 @@ Notar el último renglón: los extremos de la costura tienen **un solo** camino 
 así que ahí la cabeza salta directamente de una esquina a la otra. Es correcto y hay que verificar que
 no se lea como un error de dibujo.
 
+## 4bis. Medir de dónde sale la celda de cada nota destapó un bug del 009
+
+El paso de verificación de este spec —«confirmar que el 009 dejó lo necesario»— contestó que **no**: la
+secuencia trae la celda de cada *click* (`Click.cell`) pero no la de cada *nota*. Al derivarla se cayó
+algo más grande, y es el hallazgo más caro de este research.
+
+El 009 eligió **grado 0 = entrada** y **grado 4 = salida** para las puertas de cada pieza. Pero el
+retrógrado invierte el **orden de reproducción** sin mover qué nota le toca a qué celda —es la regla que
+`describe_piece` documenta como su trampa #3 y que `Board.tsx:49-52` explica—, así que con `mirror` la
+primera nota que suena es la del grado **4**. El 009 **nunca menciona la reflexión**: ni su `spec.md` ni
+su `research.md` la nombran una sola vez, y su test solo verifica que las dos puertas sean distintas
+(`sequence.test.ts:160`), que pasa igual con las dos invertidas.
+
+Medido con las tools, sobre `L` rotación 0 **reflejada** en `(1,1)`:
+
+```
+describe_piece → cellMap: [1,3] es grado 0 (D4)  ·  [0,0] es grado 4 (B4)
+                 notes (orden de reproducción):  B4, A4, F#4, E4, D4
+simulate_board → gates: entry [1,3], exit [0,0]
+                 timeline: at 0.05 → B4   (o sea: la celda [0,0], la SALIDA)
+                           at 0.60 → D4   (o sea: la celda [1,3], la ENTRADA)
+```
+
+Y el salto anterior llega caminando hasta `[1,2]`, pegado a la entrada, para que lo primero que suene
+esté en la punta opuesta de la pieza. **Entrada y salida están exactamente invertidas respecto de la
+melodía en toda pieza reflejada**, o sea la mitad del espacio de colocación.
+
+Es la misma incoherencia que el 009 sacó del caso de una pieza sola —«no se oye un recorrido sino dos
+golpes encima del arpegio»—, sobrevivida en el caso que no miró. Y se arregla solo al hacer
+`cellsByPlayOrder`, porque las puertas pasan a leerse del orden de reproducción en vez de derivarse por
+segunda vez.
+
+Lo que esto dice del spec, y es lo que hay que llevarse: **una cabeza lectora es un test de coherencia
+entre lo que suena y lo que se ve**. Ningún test de audio podía encontrar esto —el circuito era válido,
+las distancias correctas y los onsets los esperados—, porque el error no está en el tiempo sino en la
+correspondencia entre el tiempo y el espacio, que es justamente lo que hasta hoy no se dibujaba.
+
 ## 5. La latencia de salida no se puede medir desde acá
 
 Lo que el scheduler agenda en `ctx.currentTime` se escucha después: la diferencia es
@@ -81,22 +124,34 @@ el navegador y a oído**, no en un test. La cadena de fallback (`outputLatency` 
 tiene que estar escrita antes de probar, porque el síntoma de que falte es sutil: la cabeza no se ve
 "rota", se ve **adelantada de forma constante**.
 
+Y hay una trampa de tipos medida en el árbol de hoy: `node_modules/typescript/lib/lib.dom.d.ts:2933`
+declara `readonly outputLatency: number` —**no opcional**—, mientras que Firefox no lo implementa. O
+sea que TypeScript va a decir que la cadena de fallback sobra justo donde hace falta. El repo prohíbe
+`any` y `@ts-ignore`, así que la lectura tiene que tiparse como `number | undefined` de forma explícita
+en vez de taparse.
+
 ## 6. Lo que hace falta agregar
 
 | Qué | Dónde | Por qué |
 |---|---|---|
-| ~~`pathBetween`~~ y ~~las celdas de cada click~~ | ~~`domain/`~~ | **Ya lo trae el 009** (su D8): acá no se agrega nada al dominio |
-| `playheadOffset(t)` | `audio/engine.ts` (lectura) + puro donde corresponda | Función pura del tiempo (D3) |
+| ~~`pathBetween`~~ y ~~las celdas de cada click~~ | ~~`domain/`~~ | **Ya lo trae el 009** (su D8), verificado: `domain/board.ts:173` y `Click.cell` |
+| **`cellsByPlayOrder`** — la celda de cada NOTA | `domain/sequence.ts` | **NO lo trae el 009.** `Step` es `{ pieceId, offset, notes }`; la derivación grado→celda solo existe adentro de `gates()` para los grados 0 y 4 |
+| **`gates` leyendo de ella** — el arreglo de §4bis | `domain/sequence.ts` | Cambia el circuito de los tableros reflejados. Commit propio, atribuido al 009 |
+| `playheadOffset(t)` | `audio/playhead.ts` (pura) + `audio/engine.ts` (lectura del singleton) | Función pura del tiempo (D3). Módulo propio y no dentro de `engine.ts`, por el precedente de `spectrum.ts`: lo testeable va separado del nodo |
 | Si el motor ya hizo el swap de ciclo | `audio/engine.ts` | Es lo que apaga el estado "pendiente" (AC5) |
+| **La secuencia de dominio activa vs. la pendiente** | `components/route-source.ts`, fuera de React | El motor tiene el par pero sin celdas; la UI tiene las celdas pero solo del tablero actual (AC9) |
+| `pendingIds` por props | `components/Board.tsx` | AC5: cambia una vez por ciclo, no 10 veces por segundo — D1 mide frecuencia |
 | `Playhead.tsx` | `components/` | El loop de rAF, el elemento superpuesto |
+| Montar `Playhead` en el `relative` de la grilla | `components/Board.tsx` | `Board` no tiene `children` desde el review del 007 |
 | Orden del circuito en la lista | `components/PlacedList.tsx` | AC6; esto **sí** es estado de React, y cambia rara vez |
 
-**No se toca `collectHits`, ni `buildSequence`, ni el dominio.** Este spec es enteramente de lectura y
-de dibujo: todo lo que necesita ya está calculado.
+**No se toca `collectHits` ni el modelo de `buildSequence`.** El grueso de este spec es lectura y
+dibujo — pero *"todo lo que necesita ya está calculado"* resultó falso en un punto, y es el de la
+segunda fila.
 
 ## 7. Deuda adyacente detectada (fuera de alcance)
 
-- **`occupantAt` recorre todas las piezas para cada celda** (`domain/board.ts:60`) y el render del
+- **`occupantAt` recorre todas las piezas para cada celda** (`domain/board.ts:45`) y el render del
   tablero lo llama 60 veces por cuadro de React. Hoy no molesta porque el tablero re-renderiza poco;
   con la cabeza dibujándose aparte sigue sin molestar, **pero conviene no empeorarlo**: el loop de la
   cabeza no debe llamarlo.

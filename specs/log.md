@@ -17,7 +17,7 @@ spec posterior reemplazó lo que hacía; el spec queda como historia y no se ree
 | [006](./006-mcp-server-de-dominio-ejecutable/spec.md) | 2026-08-03 | Implementado | MCP server que **ejecuta** el dominio en vez de indexar el código: forma, notas, simulación del scheduler e invariantes, en una llamada. Las tools importan de `src/`, no reimplementan |
 | [007](./007-nota-por-celda-y-lenguaje-visual/spec.md) | 2026-08-16 | Implementado | Cada celda es dueña de un grado de la escala, y el tablero lo muestra: color por pieza y nota por celda. Absorbe al 001. **Sin cambio de audio** |
 | [008](./008-el-intervalo-como-unidad-musical/spec.md) | 2026-08-16 | Implementado | El espaciado del arpegio deja de ser 0,15 s fijos y pasa a ser la semicorchea del tempo; `Job` pierde `spread`; el checkbox de loop y el botón de reloj se funden en un play/pausa con estado |
-| [009](./009-el-tablero-como-recorrido/spec.md) | 2026-08-16 | Propuesto | El tablero deja de ser un compás y pasa a ser un circuito cerrado: el orden y los silencios salen de la geometría, `(0,0)` y `(9,5)` se repliegan, las celdas recorridas suenan. Muere `phaseFor` y **supera al 004** |
+| [009](./009-el-tablero-como-recorrido/spec.md) | 2026-08-16 | Implementado | El tablero deja de ser un compás y pasa a ser un circuito cerrado: el orden y los silencios salen de la geometría, `(0,0)` y `(9,5)` se repliegan, las celdas recorridas suenan. Muere `phaseFor` y **supera al 004** |
 | [010](./010-cabeza-lectora-por-celda/spec.md) | 2026-08-16 | Propuesto | Cabeza lectora celda por celda, fuera del estado de React: cierra la limitación que el 004 dejó anotada y da señal visual a la espera de un ciclo que introduce el 009 |
 
 ## Dependencias entre specs
@@ -343,3 +343,29 @@ tipo a todos los llamadores que solo quieren saber qué pieza ocupa una celda, p
   intervalos a 60 bpm y **1,28 a 160**, y es lo único del modelo temporal que no quedó en unidades
   musicales. Es lo que hace que el solape restante del arpegio crezca con el tempo en vez de quedarse
   quieto. Anotado en el Seguimiento del 008.
+
+- **2026-08-17 — El review del spec 010 encontró un bug del 009 que ningún test de audio podía
+  encontrar: con la pieza reflejada, el circuito la recorre al revés que la melodía.** El 009 eligió
+  grado 0 = entrada y grado 4 = salida para las puertas, y **nunca menciona la reflexión** —ni su
+  `spec.md` ni su `research.md` la nombran una sola vez—; su test solo pide que las dos puertas sean
+  distintas (`sequence.test.ts:160`), que pasa igual con las dos invertidas. Pero el retrógrado invierte
+  el **orden de reproducción** sin mover qué nota le toca a qué celda, así que con `mirror` la primera
+  nota que suena es la del grado 4. Medido sobre `L`/0/reflejada en `(1,1)`: `gates` entra por `[1,3]`
+  (grado 0, D4) mientras el timeline arranca en B4, que vive en `[0,0]` — la punta opuesta, y encima el
+  salto anterior venía caminando hasta `[1,2]`, pegado a la entrada. **Entrada y salida están
+  exactamente invertidas en toda pieza reflejada**, o sea la mitad del espacio de colocación. Es la
+  misma incoherencia que el 009 sacó del caso de una pieza sola —«no se oye un recorrido sino dos golpes
+  encima del arpegio»— sobrevivida en el caso que no miró.
+  Cómo apareció, que es lo que vale registrar: **no se buscó**. El paso de verificación del 010
+  —"confirmar que el 009 dejó lo necesario"— contestó que no (la secuencia trae la celda de cada *click*
+  pero no la de cada *nota*), y derivar la que faltaba dejó a la vista que la derivación que ya existía
+  estaba mal. Dos derivaciones del mismo hecho, y la vieja equivocada. El arreglo es unificarlas:
+  `cellsByPlayOrder` como única fuente y `gates` leyendo de ella, que es el mismo movimiento con el que
+  el 009 hizo que la cantidad de clicks se lea del largo del camino en vez de calcularse.
+  Y la lección de fondo: **una cabeza lectora es un test de coherencia entre lo que suena y lo que se
+  ve**. El circuito era válido, las distancias correctas y los onsets los esperados — el error no estaba
+  en el tiempo sino en la correspondencia entre el tiempo y el espacio, que es exactamente lo que hasta
+  hoy no se dibujaba. Es el mismo patrón que la nota del 007 («el ojo sobre la pantalla es un dato, no
+  una opinión»), un spec más tarde.
+  El arreglo va en la rama del 010, en su propio commit y atribuido al 009 (AC13 del 010) — el mismo
+  procedimiento con el que el 006 bajó `phaseFor` al dominio en un commit del 005.
