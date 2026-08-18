@@ -64,8 +64,13 @@
 - [ ] La derivación celda→nota va en una **pura del dominio**, no adentro de `buildSequence` (la razón
       es la misma por la que `cellsByPlayOrder` salió de adentro de `gates` en el 010)
 - [ ] Cuidado con las dos trampas de la cadena: `degreeByCellIndex` sobre la forma **canónica** (sobre
-      la transformada cambia en 75 de 96), y el arpegio de `notesForRotation` y **no** de `p.notes`, que
-      ya trae el retrógrado
+      la transformada cambia en **74** de 96 — el docblock de `cellsByPlayOrder` tiene el número; acá
+      decía 75), y el arpegio **ascendente** de `notesForRotation` y **nunca** el que ya trae el
+      retrógrado aplicado
+- [ ] **Ojo con el nombre:** el arpegio con retrógrado es hoy `PlacedPiece.notes`, y hay un cambio **sin
+      commitear** en el árbol que borra ese campo y lo reemplaza por `arpeggioFor(piece, rotation,
+      mirror)` en `domain/music.ts`. Si ese trabajo mergea primero, la trampa no cambia pero el nombre
+      sí — verificar cuál está en `main` antes de escribir el paso 2
 - [ ] `Click` puede llevar altura — `domain/types/sequence.types.ts`
 - [ ] **NO agregar** la garantía de que un cruce no coincida con una nota: ya vale por construcción y el
       test del 009 la cubre

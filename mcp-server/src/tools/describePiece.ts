@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineTool, json } from './types.ts';
-import { renderAscii, sizeOf } from '../render.ts';
+import { renderAscii, renderDegrees, sizeOf } from '../render.ts';
 import { PIECE_KEYS } from '../pieces.ts';
 import { rotateN, reflect } from '../../../src/domain/transform.ts';
 import { notesForRotation, midiName, degreeByCellIndex } from '../../../src/domain/music.ts';
@@ -59,7 +59,9 @@ export const describePiece = defineTool({
     'siempre invierte las notas, pero a veces no se ve: en I y X deja la forma idéntica en las ' +
     'cuatro rotaciones, y en T y U en las rotaciones 0 y 180°; (3) `cellMap` sale del arpegio ' +
     'ASCENDENTE, no de `notes` — el retrógrado es del ORDEN DE REPRODUCCIÓN, así que reflejar ' +
-    'mueve las celdas de lugar pero no cambia qué nota le toca a cada una.',
+    'mueve las celdas de lugar pero no cambia qué nota le toca a cada una.\n' +
+    'Hay DOS dibujos: `ascii` marca la celda de agarre (`@`) y `asciiDegrees` pone el grado de cada ' +
+    'celda, que es la forma de ver la melodía sobre la geometría sin cruzar `cellMap` a mano.',
   inputSchema,
   run: ({ piece, rotation, mirror, octave }) => {
     const rotated = rotateN(SHAPES[piece], rotation);
@@ -93,6 +95,10 @@ export const describePiece = defineTool({
       anchor: cells[anchorIndex],
       size: sizeOf(cells),
       ascii: renderAscii(cells, anchorIndex),
+      // El mismo dibujo con el grado en cada celda: es donde se ve que la rotacion
+      // mueve la forma sin reordenar el mapeo, y donde `X` e `I` muestran su celda
+      // central en grado 0. `ascii` no se toca — dicen cosas distintas.
+      asciiDegrees: renderDegrees(cells, degrees),
       notes: notes.map(m => ({ midi: m, name: midiName(m) })),
       retrograde: mirror,
     });

@@ -73,9 +73,14 @@ La nota del cruce es la que la celda ya muestra desde el spec 007, o sea la cade
 **Dos trampas medidas de esa cadena, las dos ya pisadas en este repo:**
 
 - `degreeByCellIndex` se llama sobre la forma **canónica** y el grado viaja por índice. Correrla sobre
-  la forma transformada compila igual y devuelve otro mapeo en 75 de las 96 orientaciones.
-- El arpegio sale de `notesForRotation` (ascendente) y **no** de `p.notes`, que ya trae el retrógrado
-  aplicado. Indexar `notes` con el grado lee la forma al derecho contra un arpegio al revés.
+  la forma transformada compila igual y devuelve otro mapeo en **74** de las 96 orientaciones — el
+  número está en el docblock de `cellsByPlayOrder`; este plan decía 75.
+- El arpegio se indexa **ascendente**, o sea `notesForRotation(...)`, y **nunca** el que ya trae el
+  retrógrado aplicado. Indexarlo con el grado lee la forma al derecho contra un arpegio al revés.
+  Enunciado sobre la derivación y no sobre un nombre a propósito: hoy el arpegio con retrógrado es
+  `PlacedPiece.notes`, y hay un cambio **sin commitear** en el árbol que lo borra y lo reemplaza por
+  `arpeggioFor(piece, rotation, mirror)`. La trampa es la misma con los dos nombres, y el docblock de
+  `arpeggioFor` ya la declara.
 
 La derivación va en una **pura del dominio**, no adentro de `buildSequence`, por lo mismo que
 `cellsByPlayOrder` salió de adentro de `gates` en el 010: una derivación escondida dentro de otra

@@ -27,7 +27,7 @@ Node 20 el server no arranca y **el repo sigue funcionando igual**.
 | Tool | Responde | En lugar de |
 |---|---|---|
 | `find_symbol` | dónde está definido un símbolo de `src/` (archivo, línea, firma, primera frase del doc) y qué archivos lo importan, `mcp-server/` incluido | `grep` + abrir el archivo para ver la firma |
-| `describe_piece` | forma transformada, ASCII con el ancla marcada, tónica, escala y las 5 notas con el retrógrado aplicado | componer cuatro puras a mano sobre cinco pares de coordenadas |
+| `describe_piece` | forma transformada, dos ASCII —uno con el ancla marcada, otro con el grado de cada celda—, tónica, escala, `cellMap` y las 5 notas con el retrógrado aplicado | componer cuatro puras a mano sobre cinco pares de coordenadas |
 | `simulate_board` | validez de cada colocación, el orden del circuito con sus saltos, y la línea de tiempo de notas y clicks que produce el recorrido | leer el scheduler y recorrer el lookahead a mano, o escuchar |
 | `check_invariants` | los cinco chequeos de `domain/invariants.ts`, con contraejemplos y el espacio del modelo (96 orientaciones) | correr los tests y leer la salida |
 | `spec_status` | por spec: estado, tareas hechas/total y la próxima sin marcar | leer `log.md` + todos los `tasks.md`, que crecen con cada spec |
