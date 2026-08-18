@@ -1,5 +1,10 @@
 # Tareas — Notas por celda en orden angular
 
+> **Spec `Descartado`: las casillas abiertas de acá abajo son historia, no deuda.** El [007](../007-nota-por-celda-y-lenguaje-visual/spec.md)
+> lo absorbió —conserva su mapeo (D1 y D3) y revisó su desempate (D2) con una medición— y las tareas
+> quedaron sin marcar porque este spec nunca se implementó, no porque falten. No se marcan `[x]`: eso
+> diría que se hicieron. `spec_status` ya no las ofrece como próxima tarea.
+
 ## Backlog
 - [x] Commitear el spec a `main` **antes** de crear la rama (convención de `specs/README.md`)
 - [ ] **Crear rama** `feature/001-notas-por-celda-en-orden-angular`

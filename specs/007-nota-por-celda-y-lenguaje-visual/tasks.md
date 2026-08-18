@@ -181,7 +181,7 @@
 ## PR
 - [x] **Aclarar que el audio no cambia**: un revisor va a esperar lo contrario (ver `plan.md` §final)
       — está en el cuerpo del PR, con la advertencia del caché de módulos del server MCP
-- [ ] Capturas antes/después del tablero — **no se hizo y ya no se puede**: el PR está mergeado. Queda
+- [ ] [M] Capturas antes/después del tablero — **no se hizo y ya no se puede**: el PR está mergeado. Queda
       como registro de lo que faltó, no como pendiente
 - [x] `/pr-review` antes de pedir revisión
 

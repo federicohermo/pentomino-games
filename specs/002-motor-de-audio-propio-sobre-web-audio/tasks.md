@@ -53,7 +53,7 @@
 - [x] `npm run build`: el chunk de 340 kB desaparece; `dist` quedó en 209.57 kB (AC8)
 - [x] AC7 en el navegador — los seis en verde: 1 pieza ON → 1 · apagar → 0 · encender → 1 ·
       Quitar → 0 · 2 piezas → 2 · Reset → 0. Además, 10 osciladores en 5.02 s a 110 bpm = 2 compases × 5 notas
-- [ ] **Escuchar y confirmar que el cambio de timbre es aceptable** (es esperado, D5). Sigue pendiente:
+- [ ] [M] **Escuchar y confirmar que el cambio de timbre es aceptable** (es esperado, D5). Sigue pendiente:
       es la única tarea del spec que no se puede automatizar, y el PR se mergeó sin ella. `Tone.Synth`
       tenía `release: 1` y la nueva ADSR tiene `0.12` — el sonido **es** distinto por diseño. Si el
       ataque suena duro o el sostenido largo, se ajusta en `DEFAULT_VOICE` y el test de envolvente avisa

@@ -108,35 +108,35 @@
 
 ## Verificación
 - [x] `pnpm verify` en verde (AC8)
-- [ ] AC1 — profiler de React: cero renders del árbol durante la reproducción
+- [ ] [M] AC1 — profiler de React: cero renders del árbol durante la reproducción
 - [x] AC4 — revisar el diff: no hay aritmética de caminos ni de distancias en `components/`
-- [ ] AC3 — **en el navegador y a oído**: la celda encendida coincide con lo que suena. Chrome y Firefox
+- [ ] [M] AC3 — **en el navegador y a oído**: la celda encendida coincide con lo que suena. Chrome y Firefox
 - [x] AC5 — colocar con el ciclo andando: atenuada, y cambia justo cuando suena
 - [x] AC6 — colocar en el medio del recorrido reordena la lista
 - [x] AC7 — en pausa no se dibuja cabeza y el loop no escribe ningún estilo
-- [ ] **AC9** — con el ciclo andando, colocar una pieza: la cabeza sigue el circuito **viejo** durante
+- [ ] [M] **AC9** — con el ciclo andando, colocar una pieza: la cabeza sigue el circuito **viejo** durante
       la espera y salta al nuevo en el mismo instante que el sonido
 - [x] **AC10** (no-regresión) — el fantasma sigue mostrando nota y grado por celda; "Quitar" y "Reset"
       siguen vaciando tablero y secuencia; el `overflow-x-auto` sigue conteniendo el scroll debajo de
       `md` con la cabeza montada encima; y **un tablero sin reflexión suena exactamente igual que hoy**
 - [x] **AC11 / AC12 / AC13** — los tests del paso 0 en verde y el arreglo de D9 en su propio commit
-- [ ] A oído, después del paso 0: un tablero con piezas reflejadas suena distinto (es el arreglo), y la
+- [ ] [M] A oído, después del paso 0: un tablero con piezas reflejadas suena distinto (es el arreglo), y la
       cabeza entra y sale de cada pieza por donde la melodía empieza y termina
 - [x] Degradados a mano: tablero vacío con play apretado, y una sola pieza (sin clicks, sin saltos)
-- [ ] A ojo: un salto por la costura (esquina a esquina, sin celda intermedia)
-- [ ] A ojo: dos piezas adyacentes (sin click, la cabeza pasa sin escala)
-- [ ] A ojo: 160 bpm, que es 10,7 celdas por segundo
+- [ ] [M] A ojo: un salto por la costura (esquina a esquina, sin celda intermedia)
+- [ ] [M] A ojo: dos piezas adyacentes (sin click, la cabeza pasa sin escala)
+- [ ] [M] A ojo: 160 bpm, que es 10,7 celdas por segundo
 
 ## PR
-- [ ] Un GIF: es un spec que no se puede revisar leyendo el diff
+- [ ] [M] Un GIF: es un spec que no se puede revisar leyendo el diff
 - [x] Aclarar por qué no hay estado de React, con el número (4 a 11 cambios por segundo × 60 celdas)
 - [x] Aclarar que el recorrido **no se calcula acá**: viene del 009 y este spec solo lo lee
 - [x] **Declarar el cambio de audio arriba de todo**: el paso 0b arregla las puertas con reflexión y
       eso cambia el circuito de los tableros reflejados. Es un arreglo del 009, va en su commit, y sin
       decirlo el PR parece que la cabeza lectora cambió cómo suena el instrumento
-- [ ] Si el PR queda grande, sacar el paso 0 como PR propio y primero — es independiente y mergeable
+- [ ] [M] Si el PR queda grande, sacar el paso 0 como PR propio y primero — es independiente y mergeable
       solo. **No se hizo**: el PR #9 fue uno solo. Registro, no pendiente
-- [ ] `/pr-review` antes de pedir revisión — **quedó sin correr y el PR ya está mergeado.** Registro,
+- [ ] [M] `/pr-review` antes de pedir revisión — **quedó sin correr y el PR ya está mergeado.** Registro,
       no pendiente
 
 ## Seguimiento (no bloquea)

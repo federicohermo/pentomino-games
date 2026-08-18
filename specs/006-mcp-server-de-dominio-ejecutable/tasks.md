@@ -158,7 +158,7 @@ type-stripping medido en el `research.md` (~50–70 ms) se paga una vez por sesi
 - [x] Incluir los números de AC11
 - [x] Nombrar el acoplamiento con el spec 004 (`collectHits` cambia de firma) y que la tool queda como
       su instrumento de verificación
-- [ ] `/pr-review` antes de pedir revisión — el skill del repo apunta a Bitbucket y este PR está
+- [ ] [M] `/pr-review` antes de pedir revisión — el skill del repo apunta a Bitbucket y este PR está
       en GitHub ([#5](https://github.com/federicohermo/pentomino-games/pull/5)), así que queda pendiente
       elegir con qué revisarlo
 

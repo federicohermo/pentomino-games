@@ -103,16 +103,16 @@
 - [x] AC12 — `pnpm lint`: `audio/` sigue sin importar nada de `domain/`, ni siquiera como `import type`
 - [x] AC4 — `simulate_board` con `cycles: 2`: el empalme tiene el mismo espaciado que el interior
 - [x] AC7 — un salto de `d` celdas produce `d − 1` clicks equiespaciados
-- [ ] A oído: 2 piezas adyacentes (contiguo), 2 piezas en esquinas opuestas (se oye el recorrido), 8 piezas
-- [ ] **A oído, lo que decide el spec**: colocar una pieza con 8 en el tablero y confirmar que esperar
+- [ ] [M] A oído: 2 piezas adyacentes (contiguo), 2 piezas en esquinas opuestas (se oye el recorrido), 8 piezas
+- [ ] [M] **A oído, lo que decide el spec**: colocar una pieza con 8 en el tablero y confirmar que esperar
       hasta 7,5 s es tolerable. Si no lo es, ver el riesgo de D5 antes de improvisar
-- [ ] Un tablero casi lleno (10 piezas): que los saltos de 1 no lo vuelvan un borrón
+- [ ] [M] Un tablero casi lleno (10 piezas): que los saltos de 1 no lo vuelvan un borrón
 
 ## PR
 - [x] Antes/después de `simulate_board`: el compás contra el recorrido
 - [x] Aclarar la latencia de D5: **es una decisión, no un bug**
 - [x] Aclarar que `firstOnsetAfter` no cambió: el reloj sigue siendo un origen, no un cursor
-- [ ] `/pr-review` antes de pedir revisión — **quedó sin correr y el PR ya está mergeado.** Registro,
+- [ ] [M] `/pr-review` antes de pedir revisión — **quedó sin correr y el PR ya está mergeado.** Registro,
       no pendiente
 
 ## Seguimiento (no bloquea)

@@ -57,10 +57,10 @@
 - [x] `specs/log.md` — estado de 003 a `Implementado`
 
 ## PR
-- [ ] Captura o GIF de la visualización andando
-- [ ] Explicar por qué el mapeo es una función pura separada del nodo: `AnalyserNode` no es testeable
+- [ ] [M] Captura o GIF de la visualización andando
+- [ ] [M] Explicar por qué el mapeo es una función pura separada del nodo: `AnalyserNode` no es testeable
       con `OfflineAudioContext`, y esa restricción es la que estructura el diseño
-- [ ] `/pr-review` antes de pedir revisión
+- [ ] [M] `/pr-review` antes de pedir revisión
 
 ## Seguimiento (no bloquea)
 - [ ] Osciloscopio con `getByteTimeDomainData` — otra vista sobre el mismo nodo

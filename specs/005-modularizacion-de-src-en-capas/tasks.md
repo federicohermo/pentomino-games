@@ -136,10 +136,10 @@
       funciones de `main` como oráculo —forma celda por celda, celda de agarre, notas con su retrógrado
       y sus nombres, y `cellsAt`/`isValid` sobre todo el tablero más un anillo de fuera de borde—.
       Idéntico en las 96. Mismo alcance que el recorrido a mano, sin margen de error de lectura
-- [ ] **Pendiente (requiere navegador):** colocar 3–4 piezas, prender el loop, cambiar el tempo y
+- [ ] [M] **Pendiente (requiere navegador):** colocar 3–4 piezas, prender el loop, cambiar el tempo y
       confirmar que suena igual. El audio no cambió de lógica —los 36 tests de audio siguen verdes y
       `DEFAULT_BPM` arranca en el mismo 110— pero escucharlo no lo reemplaza nada
-- [ ] **Pendiente (requiere navegador):** `pnpm dev` y editar un componente para confirmar Fast
+- [ ] [M] **Pendiente (requiere navegador):** `pnpm dev` y editar un componente para confirmar Fast
       Refresh sin recarga completa. Lo que sí está verificado es la precondición: `pnpm lint` pasa, o
       sea que ningún `.tsx` exporta algo que no sea su componente
 
@@ -149,7 +149,7 @@
       (`PieceKey` explícito → `BASE_MAP: Record<PieceKey, number>`)
 - [x] Nombrar las dos mediciones que decidieron la estructura: los dos errores de
       `react-refresh/only-export-components`
-- [ ] `/pr-review` antes de pedir revisión
+- [ ] [M] `/pr-review` antes de pedir revisión
 
 ## Seguimiento (no bloquea)
 - [ ] **Rotación como tipo cerrado.** Hoy es `rotation: number` comparada contra `0|1|2|3` en cuatro

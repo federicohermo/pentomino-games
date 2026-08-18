@@ -79,7 +79,7 @@
 - [x] `pnpm verify` en verde (AC1, AC8, AC9)
 - [x] A mano: el botón cambia de cara; colocar en pausa suena (5 osciladores en 0,1 ms), colocar
       andando no (0 al click; después solo el loop, cada 2,18 s) (AC6, AC7)
-- [ ] **Escuchar el extremo de 160 bpm** y decidir si `TEMPO_MAX` se queda — **sigue abierto y es lo
+- [ ] [M] **Escuchar el extremo de 160 bpm** y decidir si `TEMPO_MAX` se queda — **sigue abierto y es lo
       único de este spec que necesita oídos.** Dato nuevo del 2026-08-18: con el release ya en
       intervalos, a 160 bpm el arpegio dejó de espesarse (1,88 voces a cualquier tempo en vez de 2,28),
       así que la decisión hay que tomarla de nuevo sobre el instrumento de hoy

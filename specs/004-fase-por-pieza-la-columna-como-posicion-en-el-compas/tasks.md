@@ -1,5 +1,11 @@
 # Tareas — Fase por pieza: la columna como posición en el compás
 
+> **Spec `Superado`: las casillas abiertas de acá abajo son historia, no deuda.** Se implementó y se
+> mergeó; el [009](../009-el-tablero-como-recorrido/spec.md) reemplazó lo que hacía —la columna dejó de
+> ser la posición en el compás y el orden pasó a salir del recorrido—, y con él se fueron `phaseFor`,
+> sus tests y el campo `phase` de `Job`. Lo que quedó sin marcar son tareas del PR, que ya está
+> mergeado. `spec_status` ya no las ofrece como próxima tarea.
+
 ## Backlog
 - [x] **Esperar a que el [spec 002](../002-motor-de-audio-propio-sobre-web-audio/spec.md) esté
       mergeado.** Listo: PR #1 mergeado en `main` (`1f34eac`). Este spec reescribe `collectHits`, así
