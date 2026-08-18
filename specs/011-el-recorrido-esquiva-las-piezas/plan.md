@@ -28,6 +28,11 @@ export function routeBetween(a: Cell, b: Cell, placed: readonly PlacedPiece[]): 
 }
 ```
 
+**El peso lo pagan las celdas intermedias, no las dos puntas.** Las puertas están sobre una pieza por
+definición: cobrarlas sumaría el mismo `2·(P-1)` a las 144 entradas de la matriz sin mover ningún
+mínimo, y rompería la simetría que `board.test.ts` verifica sobre los 3.600 pares. Así `crossed` es
+exactamente el subconjunto ocupado de `path`.
+
 **Una sola llamada devuelve las tres cosas (D3).** Y ojo con la distinción que va a confundir a
 cualquiera que lo lea después: **el costo ordena los caminos, los pasos miden el tiempo.** Un cruce
 cuesta 2 pero sigue durando **un** intervalo. Si el costo se filtrara a los offsets, el ciclo se
@@ -35,15 +40,23 @@ estiraría donde no debe y el tablero sonaría distinto de lo que se ve.
 
 Dos cosas que hay que fijar explícitamente y que hoy salen gratis:
 
-- **El desempate (D7).** Entre caminos de igual costo gana el lexicográficamente menor. No alcanza con
-  fijar el orden de exploración de vecinos: eso deja el determinismo apoyado en un detalle de
-  implementación, y el 009 escribió medio docblock explicando por qué eso no se hace.
+- **El desempate (D7).** Entre caminos de igual costo gana el lexicográficamente menor, comparando las
+  secuencias de celdas intermedias posición por posición y cada celda como el par `(x, y)` —primero
+  `x`, después `y`—. No alcanza con fijar el orden de exploración de vecinos: eso deja el determinismo
+  apoyado en un detalle de implementación, y el 009 escribió medio docblock explicando por qué eso no
+  se hace. Ojo con el atajo que parece equivalente y no lo es: un Dijkstra que desempata mirando solo
+  el vecino que relaja **no** da el camino lexicográficamente menor en general — hay que comparar el
+  prefijo entero.
 - **`P` sale de `domain/constants/`**, no del módulo. Es un valor fijo y la regla del repo es que los
   `.ts` de capa no declaran constantes. Su comentario lleva la tabla de D1: qué se gana y qué se paga en
   cada valor, para que moverlo sea informado.
 
 `cellDistance` y `pathBetween` quedan como envoltorios finos o desaparecen, según los llamadores. Si se
-borran, va en **su propio commit** — la convención del repo para borrados.
+borran, va en **su propio commit** — la convención del repo para borrados. **Los llamadores son más de
+los que este plan decía**, y están enumerados en AC12: 13 tests en `board.test.ts`, cuatro usos en
+`sequence.test.ts`, y dos asserts en `mcp-server/src/__tests__/tools.test.ts` que **cruzan el borde de
+paquete**. Con el borrado se van también `ROUTE` y `RouteKind`, que se quedan sin consumidor cuando
+muere `bestRoute`.
 
 Tests: AC1 (caso testigo), AC2 (ningún cruce evitable, sobre prefijos del teselado y tableros con
 semilla), AC5 (**determinismo con un test que lo EJERZA**: un tablero donde haya empate real, igual que
@@ -83,18 +96,31 @@ La `Sequence` de `audio/` no puede ver `Cell` —lo verifica el linter— pero *
 MIDI**: ya los recibe en `Step.notes`. El cruce viaja como instante más altura opcional, y `App.tsx`
 sigue **proyectando y no traduciendo**.
 
-En `tick()`: cruce con altura → `scheduleVoice` con `GRACE_SECONDS` y `GRACE_VELOCITY`; cruce mudo →
-`scheduleClick`, como hoy. **No hace falta ninguna función nueva en `voice.ts`**: `scheduleVoice` ya
-recibe `dur` y `vel` como parámetros con default. Las dos constantes van a `voice.constants.ts`, al lado
-de `CLICK_VELOCITY` y `CLICK_SECONDS`, que son su precedente exacto.
+Para que `tick()` pueda distinguirlos hay que sumar la **tercera clase de evento** (AC13): `HIT`
+—hoy `{ note, click }` en `audio/constants/scheduler.constants.ts`— gana una clave, y el union `Hit`
+una rama que lleva su `hz`. **No** un `hz?: number` sobre la rama del click: el docblock de `Hit` lo
+rechaza por escrito, y sin la discriminación `setClicksAudible` no puede apagar solo los mudos (D6).
+
+En `tick()`: cruce con altura → `scheduleVoice` con `GRACE_INTERVALS * intervalDuration(bpm)` y
+`GRACE_VELOCITY`; cruce mudo → `scheduleClick`, como hoy. **No hace falta ninguna función nueva en
+`voice.ts`**: `scheduleVoice` ya recibe `dur` y `vel`. Pero `dur` **no tiene default y es a propósito**
+—su docblock explica que un default sería un número en segundos que miente sobre el bpm—, así que la
+constante de duración va en **intervalos** y su precedente es `NOTE_INTERVALS`, no `CLICK_SECONDS`: la
+excepción de `CLICK_SECONDS` está justificada en que el click no tiene altura, y el cruce sí la tiene.
+`vel` sí tiene default, y `GRACE_VELOCITY` va al lado de `CLICK_VELOCITY`.
 
 `setClicksAudible` sigue apagando solo los mudos (D6).
 
 ## 4. Que se vea distinto
 
-`components/route-source.ts` arma la tabla por offset y hoy distingue dos casos con un booleano; pasan a
-ser tres. El booleano se queda corto — va un const-object con su union derivada, que es lo que el repo
-usa para conjuntos cerrados (y `erasableSyntaxOnly` rechaza los `enum`).
+`components/route-source.ts` arma la tabla por offset y hoy distingue dos casos con el booleano
+`Marca.nota`, declarado en `components/types/route.types.ts`; pasan a ser tres. El booleano se queda
+corto — va un const-object con su union derivada, que es lo que el repo usa para conjuntos cerrados (y
+`erasableSyntaxOnly` rechaza los `enum`). **El const-object va a `components/constants/`** —los módulos
+de capa no declaran constantes— y la union derivada a `components/types/route.types.ts`, cuyo docblock
+argumenta hoy lo contrario («son exactamente dos casos y el tercero se expresa con la ausencia de la
+marca») y hay que reescribir. Su test `components/__tests__/route-source.test.ts:120-152` afirma
+`nota: true` / `nota: false` en cuatro lugares y se migra con él.
 
 `Playhead.tsx` los dibuja con el canal que ya usa —grosor del borde, tres escalones— **sin agregar
 color**: el color es identidad.

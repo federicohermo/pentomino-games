@@ -2,7 +2,7 @@ import type { Cell } from './types/transform.types.ts';
 import type { PlacedPiece } from './types/board.types.ts';
 import type { Step, Click, Sequence } from './types/sequence.types.ts';
 import { cellDistance, pathBetween } from './board.ts';
-import { degreeByCellIndex } from './music.ts';
+import { degreeByCellIndex, arpeggioFor } from './music.ts';
 import { SHAPES, CELLS_PER_PIECE } from './constants/pieces.constants.ts';
 
 /**
@@ -17,8 +17,8 @@ import { SHAPES, CELLS_PER_PIECE } from './constants/pieces.constants.ts';
  */
 
 /**
- * Las celdas de la pieza en ORDEN DE REPRODUCCION: `[j]` es la celda donde suena
- * `p.notes[j]`.
+ * Las celdas de la pieza en ORDEN DE REPRODUCCION: `[j]` es la celda donde suena la
+ * nota `j` de `arpeggioFor(p.piece, p.rotation, p.mirror)`.
  *
  * El grado sale de la forma CANONICA y se lee POR INDICE:
  * `degreeByCellIndex(SHAPES[p.piece])[k]` es el grado de `p.cells[k]`, porque rotar,
@@ -26,7 +26,7 @@ import { SHAPES, CELLS_PER_PIECE } from './constants/pieces.constants.ts';
  * sobre `p.cells` compila igual y devuelve otro mapeo en 74 de las 96 orientaciones,
  * porque rotar corre el origen del angulo — es la trampa mas cara de esta capa.
  *
- * El retrogrado YA VIENE APLICADO, con el mismo criterio que `PlacedPiece.notes`: la
+ * El retrogrado YA VIENE APLICADO, con el mismo criterio que `arpeggioFor`: la
  * reflexion invierte el orden EN EL TIEMPO sin mover que nota le toca a que celda,
  * asi que con `mirror` la primera nota que suena es la del grado 4. Que la inversion
  * viva aca y no en el consumidor es lo que hace que `[j]` case con `notes[j]` sin que
@@ -210,7 +210,7 @@ export function buildSequence(placed: readonly PlacedPiece[]): Sequence {
   // misma regla que AC3 le da a dos piezas adyacentes.
   if (n === 1) {
     return {
-      steps: [{ pieceId: placed[0].id, offset: 0, notes: [...placed[0].notes] }],
+      steps: [{ pieceId: placed[0].id, offset: 0, notes: arpeggioFor(placed[0].piece, placed[0].rotation, placed[0].mirror) }],
       clicks: [],
       length: CELLS_PER_PIECE,
     };
@@ -226,9 +226,10 @@ export function buildSequence(placed: readonly PlacedPiece[]): Sequence {
 
   for (let t = 0; t < n; t++) {
     const p = placed[order[t]];
-    // Copia y no la referencia: `Step.notes` es mutable por contrato, y aliasar el
-    // array de la pieza haria que tocar la secuencia tocara el tablero.
-    steps.push({ pieceId: p.id, offset, notes: [...p.notes] });
+    // `arpeggioFor` devuelve un array nuevo en cada llamada, asi que no hay copia
+    // defensiva que hacer: `Step.notes` es mutable por contrato y no aliasa nada. La
+    // copia que habia aca protegia de mutar `PlacedPiece.notes`, que ya no existe.
+    steps.push({ pieceId: p.id, offset, notes: arpeggioFor(p.piece, p.rotation, p.mirror) });
 
     const ultima = offset + (CELLS_PER_PIECE - 1);
     const camino = pathBetween(puertas[order[t]].salida, puertas[order[(t + 1) % n]].entrada);

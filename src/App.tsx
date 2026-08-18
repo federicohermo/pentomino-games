@@ -5,11 +5,10 @@ import {
 } from "./audio/engine.ts";
 import { DEFAULT_BPM } from "./audio/constants/engine.constants.ts";
 import { rotateN, reflect } from "./domain/transform.ts";
-import { notesForRotation } from "./domain/music.ts";
+import { arpeggioFor } from "./domain/music.ts";
 import { cellsAt, isValid } from "./domain/board.ts";
 import { buildSequence } from "./domain/sequence.ts";
 import { SHAPES, ANCHOR_INDEX } from "./domain/constants/pieces.constants.ts";
-import { BASE_MAP, DEFAULT_OCTAVE } from "./domain/constants/music.constants.ts";
 import type { Cell } from "./domain/types/transform.types.ts";
 import type { PieceKey } from "./domain/types/pieces.types.ts";
 import type { PlacedPiece } from "./domain/types/board.types.ts";
@@ -72,19 +71,19 @@ export default function App(){
   // existe para cerrar.
   const secuencia = useMemo(()=> buildSequence(placed), [placed]);
 
-  const noteSet = useMemo(()=>{
-    const basePc = BASE_MAP[selected];
-    let ns = notesForRotation(basePc, DEFAULT_OCTAVE, rotation);
-    if (mirror) ns = [...ns].reverse();
-    return ns;
-  }, [selected, rotation, mirror]);
+  // El arpegio de la pieza SELECCIONADA, para el panel y para el click de colocacion.
+  // La derivacion vive en `domain/music.ts` y no aca: las piezas ya colocadas la piden
+  // por su cuenta —`buildSequence` para el motor, `PlacedList` para el panel— y tener
+  // dos copias de la regla era justo lo que hacia falta cuando `PlacedPiece` guardaba
+  // sus notas.
+  const noteSet = useMemo(()=> arpeggioFor(selected, rotation, mirror), [selected, rotation, mirror]);
 
   function handleCellClick(x: number, y: number){
     const cells = cellsAt(transformedShape, ANCHOR_INDEX[selected], x, y);
     if (!isValid(cells, placed)) return;
     const newPiece: PlacedPiece = {
       id: String(++idRef.current),
-      piece: selected, rotation, mirror, cells, notes: noteSet,
+      piece: selected, rotation, mirror, cells,
     };
     setPlaced(prev => [...prev, newPiece]);
     // Con el transporte corriendo, disparar acá duplicaría el arpegio: con D5

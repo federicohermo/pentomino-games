@@ -59,7 +59,7 @@ src/
 │   │                             #   angleFromCentroid
 │   ├── board.ts                  # cellsAt · isValid · cellDistance · pathBetween · occupantAt ·
 │   │                             #   occupantCellIndex
-│   ├── music.ts                  # midiFor · midiName · notesForRotation · degreeByCellIndex
+│   ├── music.ts                  # midiFor · midiName · notesForRotation · arpeggioFor · degreeByCellIndex
 │   ├── sequence.ts               # buildSequence — el circuito (Held-Karp) y los offsets del ciclo —
 │   │                             #   y gates, las dos puertas de una pieza (la usa simulate_board)
 │   ├── invariants.ts             # los cinco chequeos del modelo + checkAll

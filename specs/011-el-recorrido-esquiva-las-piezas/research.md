@@ -112,10 +112,13 @@ se vuelva a proponer como atajo.
 | | |
 |---|---|
 | Matriz 12×12 con BFS (media de 20 corridas) | **0,31 ms** |
-| Held-Karp sobre esa matriz, ya medido por el 009 | 0,62 ms |
+| Held-Karp sobre esa matriz, ya medido por el 009 | **1,87 ms** |
 | Tope que afirma el test de AC10 del 009 | 5 ms |
 
-El costo del recorrido **se duplica y sigue siendo despreciable**. El argumento del 009 —`n` está
+El costo del recorrido **crece un 17 % y sigue siendo despreciable**. (La primera versión de este
+research citaba 0,62 ms para Held-Karp; el número que el 009 midió y escribió en su `research.md` §5 y
+en el docblock de `shortestCircuit` es **1,87 ms**. El cambio hace la conclusión más fuerte, no más
+débil.) El argumento del 009 —`n` está
 acotado por las reglas del juego, hay 12 pentominós libres y no se repiten— vale igual acá: 144 BFS
 sobre un grafo de 60 nodos es aritmética de juguete.
 
@@ -188,6 +191,13 @@ alimenta la matriz de costos de Held-Karp, así que cambiarla cambia el circuito
 | `tick()` cablea el cruce con altura a `scheduleVoice` en vez de `scheduleClick` | `audio/engine.ts` | — |
 | La tabla por offset marca el cruce con nota | `components/route-source.ts` | Para que la cabeza lo dibuje distinto de un click mudo |
 | `simulate_board` reporta el camino y si cruza ocupadas | `mcp-server/` | Es lo que permite verificar el recorrido sin oírlo, y hoy ya reporta el camino |
+| **La tercera clase de evento del motor** — `HIT` pasa de `{ note, click }` a tres claves y el union `Hit` a tres ramas | `audio/constants/scheduler.constants.ts` + `audio/types/scheduler.types.ts` | El docblock de `Hit` prohíbe por escrito la salida fácil (`hz?: number` en la rama del click), y `setClicksAudible` necesita distinguir el mudo del que suena (D6, AC13) |
+| **Los 13 tests de `cellDistance` y `pathBetween`**, cinco de ellos sobre propiedades que el modelo nuevo cambia | `domain/__tests__/board.test.ts:186-306` | Son los consumidores directos de las dos funciones que este spec reescribe (AC12) |
+| Los usos indirectos en los tests de la secuencia | `domain/__tests__/sequence.test.ts:57`, `:141-142`, `:430-431` | Ídem, vía `buildSequence` |
+| El contraste hop-por-hop de la tool contra el dominio | `mcp-server/src/__tests__/tools.test.ts:8`, `:298-299` | **Cruza el borde de paquete**: importa `cellDistance` y `pathBetween` de `src/`. Si se borran, `pnpm verify` no compila |
+| `ROUTE` y `RouteKind` se quedan **sin consumidor** al morir `bestRoute` | `domain/constants/route.constants.ts` + `domain/types/sequence.types.ts` | Borrado en su propio commit, por la convención del repo |
+| La descripción de la tool **afirma lo contrario** de lo que va a pasar: «el camino ignora lo que haya en el medio … los 21 clicks caen sobre celdas con pieza» | `mcp-server/src/tools/simulateBoard.ts:180-184` y el comentario de `tools.test.ts:321-325` | Es contrato de la tool, no prosa: un agente la lee antes de llamarla |
+| Las dos tablas de símbolos que nombran `cellDistance` y `pathBetween` | `docs/architecture/overview.md:42-43`, `:79`, `:81` y `docs/architecture/directory-structure.md:60`, `:70`, `:75` | Quedan mintiendo sobre la firma; `directory-structure.md` además lista `RouteKind` y `ROUTE` |
 
 ## 11. Deuda adyacente detectada (fuera de alcance)
 
