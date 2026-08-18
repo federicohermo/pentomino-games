@@ -55,8 +55,27 @@ export function audio(): AudioContext | null {
   return ctx;
 }
 
-/** Buffer de lectura del espectro. Ver la advertencia en readSpectrum(). */
-let freqBuf: Uint8Array | null = null;
+/**
+ * Buffer de lectura del espectro. Ver la advertencia en readSpectrum().
+ *
+ * El `<ArrayBuffer>` va escrito y NO se puede simplificar a `Uint8Array` pelado, aunque
+ * el `pnpm typecheck` de hoy lo acepte. Desde TypeScript 5.7 los arrays tipados son
+ * genericos en su buffer, y `Uint8Array` a secas significa `Uint8Array<ArrayBufferLike>`,
+ * que incluye `SharedArrayBuffer`. El `lib.dom.d.ts` de la 5.8.3 —la version fijada en el
+ * repo— todavia declara `getByteFrequencyData(array: Uint8Array)`, asi que compila; las
+ * versiones siguientes lo estrecharon a `Uint8Array<ArrayBuffer>` y ahi el pelado pasa a
+ * ser un TS2345. Medido: con la 5.8.3 verde y con la 7.0.2 error en esta misma linea, o
+ * sea que el editor ya lo marca hoy con el repo en verde.
+ *
+ * Escribirlo no es defensivo: `new Uint8Array(n)` SIEMPRE aloca un `ArrayBuffer`, asi que
+ * este es el tipo real del valor y el pelado era el que decia de mas. Es tambien la unica
+ * salida que respeta el "cero `any`, cero `@ts-ignore`" del repo.
+ *
+ * `binsToBars` sigue recibiendo el `Uint8Array` ancho a proposito: solo lee, asi que no
+ * tiene por que rechazar un buffer compartido. El estrechamiento es del que llama a la
+ * API del navegador, no del que consume los numeros.
+ */
+let freqBuf: Uint8Array<ArrayBuffer> | null = null;
 
 /**
  * Magnitudes de frecuencia del ultimo bloque procesado, 0-255 por bin.
@@ -71,7 +90,7 @@ let freqBuf: Uint8Array | null = null;
  * previsto es un loop de dibujo, que lo lee y lo descarta en el mismo cuadro; si
  * hace falta conservarlo, copiarlo con slice().
  */
-export function readSpectrum(): Uint8Array | null {
+export function readSpectrum(): Uint8Array<ArrayBuffer> | null {
   if (!analyser || !ctx || ctx.state !== 'running') return null;
   if (!freqBuf || freqBuf.length !== analyser.frequencyBinCount) {
     freqBuf = new Uint8Array(analyser.frequencyBinCount);
