@@ -99,6 +99,13 @@ Lo que está registrado y todavía no tiene spec. Vivía en `CLAUDE.md`, que dec
   identidad visual y no un arreglo. Están en `LC_EXCEPCIONES` de `palette.constants.ts`, y
   `palette.test.ts` verifica que la excepción **siga haciendo falta**: si alguien retoca esos dos
   fondos, el test falla y obliga a sacarlas de la lista.
+- **El tablero no se puede tocar con el teclado.** Cada celda es un `div` con `onClick`, sin `role`,
+  sin `tabIndex` y sin nombre accesible, así que no recibe foco y ningún lector de pantalla la anuncia.
+  El `title` que el 007 le agregó —`(x,y) · D#5 · grado 3`— es un tooltip de mouse y **no** cubre esto:
+  sobre un elemento genérico que no recibe foco, `title` no se anuncia. Quedó anotado como si lo
+  cubriera, que es peor que no anotarlo — hacía ver el hueco como resuelto. Arreglarlo es decidir el
+  modelo de foco de una grilla de 60 celdas (¿una tab stop y flechas, o 60 tab stops?), y toca
+  `Board.tsx` entero, así que necesita spec propio.
 - **`postcss` y `autoprefixer`** están en `devDependencies` sin ningún config que los use — Tailwind 4
   va por el plugin de Vite. Candidatos a borrar.
 - **`@types/jest`** sigue en el árbol y es lo que impide usar `globals: true` en Vitest.

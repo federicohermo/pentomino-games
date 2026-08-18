@@ -199,5 +199,7 @@
       grado en cada celda. Va en un campo aparte porque `ascii` marca la celda de agarre y los dos
       dicen cosas distintas
 - [x] El `title` de la celda podría decir `(x,y) · D#5 · grado 3` — es diseño del 010. **Hecho**, con
-      ese formato exacto y del mismo dato que se pinta. Es además lo único que un lector de pantalla
-      puede leer de una celda
+      ese formato exacto y del mismo dato que se pinta. Sirve al usuario de mouse y **no** es
+      accesibilidad: un `title` sobre un `div` sin `role`, sin `tabIndex` ni nombre accesible no lo
+      anuncia ningún lector de pantalla. La celda sigue sin alcanzarse con el teclado, y eso pasó a
+      Deuda conocida de [`log.md`](../log.md), que es donde vive lo que queda abierto
