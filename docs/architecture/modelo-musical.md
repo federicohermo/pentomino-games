@@ -210,19 +210,22 @@ y congelado en un test, con las notas escritas a mano. Los colores con que el ta
 
 ```ts
 const iv = intervalDuration(bpm);
-notes.forEach((m, i) => scheduleVoice(c, master, midiToHz(m), start + i * iv, NOTE_INTERVALS * iv));
+notes.forEach((m, i) =>
+  scheduleVoice(c, master, midiToHz(m), start + i * iv, NOTE_INTERVALS * iv, RELEASE_INTERVALS * iv));
 ```
 
 - **Un intervalo entre notas** (`intervalDuration(bpm)`, la semicorchea del compás), así que el slider
   de BPM sí afecta al arpegio de colocación: a 100 bpm el intervalo da 0,15 s, y el arpegio completo
   (`4 × intervalo`) mide 0,375 s a 160 bpm contra 1,000 s a 60 bpm.
 - **Duración de nota en intervalos** (`NOTE_INTERVALS = 1`, o sea exactamente un intervalo; 0,150 s a
-  100 bpm), `0.8` de velocity, más 0.12 s de release. Un intervalo y no dos: la nota termina justo
+  100 bpm), `0.8` de velocity, más el release. Un intervalo y no dos: la nota termina justo
   cuando entra la siguiente, así que lo único que se solapa es la cola del release y el arpegio se oye
   como cinco notas en vez de como un acorde desplegado. Medido a 110 bpm: con dos son 2,88 voces
-  simultáneas, con una son 1,88, y antes del spec eran 3,13. El release **no** está en intervalos —son
-  0,12 s absolutos, o sea 0,48 intervalos a 60 bpm y 1,28 a 160—, así que el solape que queda crece con
-  el tempo.
+  simultáneas, con una son 1,88, y antes del spec eran 3,13. **El release también está en intervalos**
+  (`RELEASE_INTERVALS = 0,88`), así que las voces simultáneas son `1 + RELEASE_INTERVALS` a cualquier
+  tempo: 1,88 a 60 y a 160 igual que a 110. Eran 0,12 s absolutos —0,48 intervalos a 60 bpm y 1,28 a
+  160—, o sea que el instrumento se espesaba al acelerar; 0,88 es exactamente ese valor expresado en la
+  unidad correcta, medido al tempo por defecto, así que a 110 bpm no cambió nada.
 - **`i` es la posición en el array**, o sea el grado de la escala. Desde el spec 007 ese orden es una
   decisión explícita —el orden angular alrededor del centroide— y no una coincidencia del orden en que
   alguien tipeó las coordenadas de `SHAPES`. Qué suena y cuándo no cambió; cambió de dónde sale.

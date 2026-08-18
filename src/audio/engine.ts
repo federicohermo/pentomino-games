@@ -2,7 +2,7 @@ import type { Sequence, ClockState } from './types/scheduler.types.ts';
 import { midiToHz, scheduleVoice, scheduleClick } from './voice.ts';
 import { collectWindow, intervalDuration } from './scheduler.ts';
 import { offsetAt } from './playhead.ts';
-import { NOTE_INTERVALS } from './constants/voice.constants.ts';
+import { NOTE_INTERVALS, RELEASE_INTERVALS } from './constants/voice.constants.ts';
 import { LOOKAHEAD, TICK_MS, HIT } from './constants/scheduler.constants.ts';
 import {
   MASTER_GAIN, DEFAULT_BPM, PLAY_DELAY, CLOCK_START_DELAY,
@@ -107,8 +107,8 @@ export function readSpectrum(): Uint8Array<ArrayBuffer> | null {
  * significaria recalcular el espaciado que el scheduler ya aplico.
  *
  * Siguen siendo dos caminos, pero ahora comparten tambien el RITMO, no solo el
- * timbre: el paso del arpegio y la duracion de la nota salen de intervalDuration
- * con el bpm de este modulo, aca y en tick(). Antes tambien coincidian, pero por
+ * timbre: el paso del arpegio, la duracion de la nota y su release salen de
+ * intervalDuration con el bpm de este modulo, aca y en tick(). Antes tambien coincidian, pero por
  * copiar el mismo numero fijo en segundos —uno leia la constante y el otro la
  * recibia dentro del Job—, y ese numero ignoraba el tempo: eran dos lugares que
  * alguien tenia que mantener iguales. Hoy es una regla sola y sigue al bpm.
@@ -123,7 +123,8 @@ export function playNotes(notes: number[]): void {
   const start = c.currentTime + PLAY_DELAY;
   const interval = intervalDuration(bpm);
   const dur = NOTE_INTERVALS * interval;
-  notes.forEach((m, i) => scheduleVoice(c, master!, midiToHz(m), start + i * interval, dur));
+  const rel = RELEASE_INTERVALS * interval;
+  notes.forEach((m, i) => scheduleVoice(c, master!, midiToHz(m), start + i * interval, dur, rel));
 }
 
 /** Dispara ya, reanudando el contexto. Debe llamarse desde un gesto del usuario. */
@@ -276,9 +277,11 @@ function outputLatency(c: AudioContext): number {
 function tick(): void {
   const c = audio();
   if (!c || !master) return;
-  // El bpm no cambia dentro de la vuelta, asi que la duracion sale una sola vez
-  // y todas las notas de esta ventana quedan medidas contra el mismo tempo.
-  const dur = NOTE_INTERVALS * intervalDuration(bpm);
+  // El bpm no cambia dentro de la vuelta, asi que la duracion y el release salen una
+  // sola vez y todas las notas de esta ventana quedan medidas contra el mismo tempo.
+  const interval = intervalDuration(bpm);
+  const dur = NOTE_INTERVALS * interval;
+  const rel = RELEASE_INTERVALS * interval;
   // Toda la decision —incluido el swap al cierre del ciclo— vive en el scheduler,
   // que es testeable; aca queda el cableado a sonido, que sin AudioContext no se
   // puede correr. Ver el docblock de collectWindow.
@@ -296,7 +299,7 @@ function tick(): void {
   active = w.active;
   pending = w.pending;
   for (const hit of w.hits) {
-    if (hit.kind === HIT.note) scheduleVoice(c, master, hit.hz, hit.at, dur);
+    if (hit.kind === HIT.note) scheduleVoice(c, master, hit.hz, hit.at, dur, rel);
     else if (clicksAudible) scheduleClick(c, master, hit.at);
   }
 }

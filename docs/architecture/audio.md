@@ -44,10 +44,12 @@ Efecto lateral: se puede importar `scheduler.ts` **sin** arrastrar el módulo de
 proceso de node.
 
 Los valores fijos de cada capa viven en `audio/constants/` y los tipos en `audio/types/`, con el nombre
-de su módulo. Ahí está, por ejemplo, la duración de la nota: `NOTE_INTERVALS` la fija en intervalos, no
-en segundos, y `scheduleVoice` no tiene default para `dur` —un default fijo sería una constante que ya
-no puede ser constante, porque la duración depende del tempo—, así que los dos llamadores (`tick` y
-`playNotes`) calculan `NOTE_INTERVALS * intervalDuration(bpm)` en cada llamada.
+de su módulo. Ahí están, por ejemplo, la duración de la nota y su release: `NOTE_INTERVALS` y
+`RELEASE_INTERVALS` los fijan en intervalos, no en segundos, y `scheduleVoice` no tiene default para
+`dur` ni para `rel` —un default fijo sería una constante que ya no puede ser constante, porque las dos
+medidas dependen del tempo—, así que los dos llamadores (`tick` y `playNotes`) los calculan contra
+`intervalDuration(bpm)` en cada llamada. `DEFAULT_VOICE` se queda con lo que **no** depende del tempo:
+attack y decay, que son el transitorio del instrumento, y sustain, que es un nivel.
 
 ## Síntesis
 
@@ -56,7 +58,7 @@ env.gain.setValueAtTime(0, at);                              // ancla
 env.gain.linearRampToValueAtTime(vel, at + attack);
 env.gain.linearRampToValueAtTime(vel * sustain, at + attack + decay);
 env.gain.setValueAtTime(vel * sustain, at + dur);
-env.gain.linearRampToValueAtTime(0, at + dur + release);
+env.gain.linearRampToValueAtTime(0, at + dur + rel);
 ```
 
 Dos detalles que parecen redundantes y no lo son:
@@ -124,8 +126,8 @@ Tres propiedades que salen de esa forma, y que hay que preservar:
   hace que quitar una pieza la calle rápido; emitir un ciclo entero de una lo dejaría sonando hasta
   8,98 s con 10 piezas a 110 bpm (`research.md` del spec 009, §4). El límite es sobre el **onset**, no
   sobre la última nota: el arpegio se expande después del onset y esa cola siempre estuvo fuera del
-  horizonte. Desde el spec 008 la cola mide `compás / 4` más la nota y su release, o sea 1.37 s a 60 bpm
-  y 0.59 s a 160.
+  horizonte. Desde el spec 008 la cola mide `compás / 4` más la nota y su release, y desde que el
+  release también está en intervalos escala entera con el tempo: 1.47 s a 60 bpm y 0.55 s a 160.
 
   **Ojo con leer esto como "quitar una pieza la calla en 100 ms": desde el spec 009 ya no es cierto.**
   El horizonte acota lo que está *comprometido*, no cuándo entra en vigencia el cambio: quitar una pieza
@@ -303,7 +305,9 @@ Lo que **sí** está unificado es lo que importa para cambiar el sonido:
 - `DEFAULT_VOICE` — el timbre y la ADSR.
 - `intervalDuration(bpm)` — el espaciado, definida sobre `barDuration` para que exista un solo lugar
   donde el compás se convierte en segundos.
-- `NOTE_INTERVALS` — la duración de la nota, medida en intervalos y no en segundos absolutos.
+- `NOTE_INTERVALS` y `RELEASE_INTERVALS` — la duración de la nota y su cola, medidas en intervalos y no
+  en segundos absolutos, así que el solape del arpegio (`1 + RELEASE_INTERVALS` voces) es el mismo a
+  cualquier tempo.
 
 **La consecuencia práctica:** tocar el timbre en `DEFAULT_VOICE` alcanza para los dos caminos, y
 también alcanza tocar `intervalDuration` para cambiar el ritmo: las dos expansiones —la de `playNotes`

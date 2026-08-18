@@ -26,12 +26,17 @@ export const midiToHz = (m: number): number => 440 * Math.pow(2, (m - 69) / 12);
  * Las rampas son lineales y no exponenciales porque exponentialRampToValueAtTime
  * no admite llegar a 0 — habria que rampar a un epsilon y cortar.
  *
- * `dur` es obligatorio y sin default a proposito, igual que `phase` en `Job`:
- * desde que la duracion de la nota se cuenta en intervalos, depende del tempo y
- * ya no puede ser una constante. Un default seria un numero fijo en segundos que
- * miente sobre el bpm vigente, y el llamador que se olvidara el parametro no se
- * enteraria. El calculo —`NOTE_INTERVALS * intervalDuration(bpm)`— vive donde
- * esta el bpm, que es `engine.ts`, y este modulo sigue sin saber de tempo.
+ * `dur` y `rel` son obligatorios y sin default a proposito, igual que `phase` en
+ * `Job`: los dos se cuentan en intervalos, o sea que dependen del tempo y ya no
+ * pueden ser constantes. Un default seria un numero fijo en segundos que miente
+ * sobre el bpm vigente, y el llamador que se olvidara el parametro no se
+ * enteraria. Los calculos —`NOTE_INTERVALS * intervalDuration(bpm)` y
+ * `RELEASE_INTERVALS * intervalDuration(bpm)`— viven donde esta el bpm, que es
+ * `engine.ts`, y este modulo sigue sin saber de tempo.
+ *
+ * `rel` entra como parametro y no dentro de `opts` por eso mismo: `opts` es el
+ * TIMBRE —lo que se puede dejar en su default sin mentir— y el release no es una
+ * preferencia sino una medida de tiempo, como `dur`.
  */
 export function scheduleVoice(
   ctx: BaseAudioContext,
@@ -39,10 +44,11 @@ export function scheduleVoice(
   freq: number,
   at: number,
   dur: number,
+  rel: number,
   vel = DEFAULT_VELOCITY,
   opts: VoiceOpts = {},
 ): void {
-  const { attack, decay, sustain, release, type } = { ...DEFAULT_VOICE, ...opts };
+  const { attack, decay, sustain, type } = { ...DEFAULT_VOICE, ...opts };
   const osc = ctx.createOscillator();
   const env = ctx.createGain();
 
@@ -53,12 +59,12 @@ export function scheduleVoice(
   env.gain.linearRampToValueAtTime(vel, at + attack);
   env.gain.linearRampToValueAtTime(vel * sustain, at + attack + decay);
   env.gain.setValueAtTime(vel * sustain, at + dur);
-  env.gain.linearRampToValueAtTime(0, at + dur + release);
+  env.gain.linearRampToValueAtTime(0, at + dur + rel);
 
   osc.connect(env);
   env.connect(dest);
   osc.start(at);
-  osc.stop(at + dur + release + RELEASE_TAIL);
+  osc.stop(at + dur + rel + RELEASE_TAIL);
   osc.onended = () => { osc.disconnect(); env.disconnect(); };
 }
 

@@ -36,7 +36,7 @@ El porqué de cada decisión, con las mediciones que la respaldan, está en
   veces; los ciclos perdidos por la pestaña oculta **se saltean, no se recuperan**; y nunca hay más de
   `LOOKAHEAD` de **onsets** comprometidos, con cualquier tamaño de ciclo — es lo que hace que **pausar**
   corte en 100 ms **más lo que le quede de arpegio ya agendado**, que desde el spec 008 depende del tempo
-  (`compás / 4` más la nota y su release: 1.37 s a 60 bpm, 0.59 s a 160). Ojo: eso vale para pausar, no
+  (`compás / 4` más la nota y su release, todo en intervalos: 1.47 s a 60 bpm, 0.55 s a 160). Ojo: eso vale para pausar, no
   para **quitar una pieza** — desde el spec 009 eso reemplaza la secuencia pendiente y entra recién al
   cerrar el ciclo (D5), o sea hasta 7,5 s con 8 piezas a 110 bpm. `firstOnsetAfter`
   usa `floor(x) + 1` y no `ceil(x)`: con `ceil`, un onset en el borde de la ventana sale dos veces. Y

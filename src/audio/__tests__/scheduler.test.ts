@@ -4,6 +4,7 @@ import { offsetAt } from '../playhead.ts';
 import { midiToHz, scheduleVoice } from '../voice.ts';
 import { LOOKAHEAD, TICK_MS, HIT } from '../constants/scheduler.constants.ts';
 import { CLOCK_START_DELAY } from '../constants/engine.constants.ts';
+import { RELEASE_INTERVALS } from '../constants/voice.constants.ts';
 import type { Sequence, ClockState, Hit } from '../types/scheduler.types.ts';
 import { offline, detectOnsets } from './test-context.ts';
 
@@ -435,7 +436,9 @@ describe('el offset dentro del ciclo (spec 009)', () => {
     // 0.35 s es una duracion de render arbitraria, no la duracion de nota del
     // spec 008 (esa es NOTE_INTERVALS * intervalDuration(bpm)): este test mide
     // pico y cantidad de onsets, no cuanto dura cada nota.
-    for (const h of hits) if (h.kind === HIT.note) scheduleVoice(ctx, g, h.hz, h.at, 0.35, VEL);
+    // El release SI sale del tempo: es lo unico de la envolvente que depende de el.
+    const rel = RELEASE_INTERVALS * intervalDuration(BPM);
+    for (const h of hits) if (h.kind === HIT.note) scheduleVoice(ctx, g, h.hz, h.at, 0.35, rel, VEL);
     return (await ctx.startRendering()).getChannelData(0);
   }
 
