@@ -9,6 +9,7 @@ import type { PieceKey } from '../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../domain/types/board.types.ts';
 import { CELL_PX } from './constants/layout.constants.ts';
 import { PIECE_COLOR } from './constants/palette.constants.ts';
+import Playhead from './Playhead.tsx';
 
 /**
  * Panel central: la grilla del tablero con el fantasma de previsualizacion.
@@ -61,6 +62,18 @@ import { PIECE_COLOR } from './constants/palette.constants.ts';
  * la pieza que todavia no colocaste— y el color es identidad. El rosa del caso
  * invalido se queda, porque es el unico canal que distingue una jugada imposible
  * ademas del cursor.
+ *
+ * ## La celda que todavia no se estreno la tapa `Playhead`, no este archivo
+ *
+ * Desde el spec 009 una pieza recien colocada no entra al recorrido hasta que el ciclo
+ * cierra, y despues todavia tiene que llegarle su turno. Esa espera se dibuja atenuando
+ * la celda, pero NO desde aca: el velo son nodos propios que `Playhead.tsx` crea encima
+ * de la grilla, porque el estreno es celda por celda —cinco cambios al ritmo del
+ * intervalo— y eso es exactamente lo que D1 prohibe llevar a `useState`.
+ *
+ * Las celdas de la pieza las renderiza este archivo con `key={i}` y sin refs ni
+ * `data-*`, y asi tiene que seguir: darle un handle al loop significaria partir el
+ * estilo de una celda entre React y el bucle, que es lo que el review del 007 pago caro.
  *
  * ## La celda es una baldosa, no un casillero
  *
@@ -124,7 +137,14 @@ export default function Board({
           cadena de ancestros es `overflow-x: visible`— empuja scroll horizontal a
           la PAGINA entera. Scrollea el tablero, que es lo que sobra, en vez de
           achicar la celda: la nota es lo que hay que poder leer. */}
+      {/* La cabeza lectora se monta ACA, dentro del contenedor que scrollea: un
+          absoluto se posiciona contra la caja de padding de su contenedor posicionado,
+          asi que scrollea con la grilla y sigue alineada debajo de `md`. Se importa
+          directo y no llega por una ranura de `children`: `Playhead` no recibe props, o
+          sea que no le pide nada a `App`, y una ranura generica reabriria la puerta que
+          el review del 007 cerro midiendo. */}
       <div className="relative overflow-x-auto">
+        <Playhead />
         <div
           className="grid w-max"
           style={{gridTemplateColumns:`repeat(${GRID_W}, ${CELL_PX}px)`}}

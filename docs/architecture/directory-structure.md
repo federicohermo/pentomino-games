@@ -81,6 +81,7 @@ src/
 │   │                             #   barDuration · intervalDuration
 │   ├── engine.ts                 # singletons y la API que consume la UI
 │   ├── spectrum.ts               # mapeo puro de bins de la FFT a alturas de barra
+│   ├── playhead.ts               # offsetAt — aritmética del offset de la cabeza lectora (spec 010)
 │   ├── types/                    #   voice.types.ts · scheduler.types.ts
 │   ├── constants/                #   voice · scheduler · engine
 │   └── __tests__/
@@ -88,6 +89,7 @@ src/
 │       ├── scheduler.test.ts     #   lookahead, reloj por origen, offsets del ciclo y el swap (D5)
 │       ├── integration.test.ts   #   el analyser es transparente, muestra por muestra
 │       ├── spectrum.test.ts      #   binsToBars, sin AudioContext (ver audio.md)
+│       ├── playhead.test.ts      #   offsetAt: borde de ciclo, t < origin y los degradados (AC2)
 │       └── test-context.ts       #   helpers de render y medición (no es un test)
 └── components/                   # un componente por archivo, presentacionales
     ├── PiecePalette.tsx          # paleta, rotación, reflexión, tempo, transporte, clicks
@@ -95,11 +97,15 @@ src/
     │                             #   diciendo lo mismo antes de colocar
     ├── PlacedList.tsx            # lista de piezas colocadas
     ├── Spectrum.tsx              # canvas del espectro: rAF + HiDPI, sin props
+    ├── Playhead.tsx              # cabeza lectora: rAF + estilo imperativo, sin props (spec 010)
+    ├── route-source.ts           # singleton fuera de React (no un componente): espeja active/
+    │                             #   pending del motor con la Sequence del dominio, con celdas
     ├── constants/
     │   ├── layout.constants.ts   # CELL_PX · TEMPO_MIN · TEMPO_MAX
     │   └── palette.constants.ts  # los 12 colores y su color de texto (ver DESIGN.md)
     └── __tests__/
-        └── palette.test.ts       # contraste WCAG recalculado desde el fondo; puro, sin jsdom
+        ├── palette.test.ts       # contraste WCAG recalculado desde el fondo; puro, sin jsdom
+        └── route-source.test.ts  # el par activa/pendiente y el velo, con el motor mockeado
 ```
 
 ## La dirección de dependencia
@@ -146,6 +152,13 @@ constantes, corre en `environment: 'node'` y no monta nada. La otra mitad de la 
 lógica no vive en los componentes — la derivación de `(x, y)` al nombre de nota que muestra `Board` está
 en `domain/` (`occupantCellIndex` · `degreeByCellIndex` · `notesForRotation` · `midiName`), y el
 componente solo las encadena.
+
+`route-source.test.ts` (spec 010) es el segundo, y es el que muestra dónde queda la costura: **no** es un
+componente, es el singleton de módulo que espeja el par activa/pendiente del motor, así que tiene lógica
+propia y se testea sin montar nada. Mockea `audio/engine.ts` con `vi.mock` porque lo único que le usa es
+`cycleGeneration()`, un número — importar el motor real arrastraría el singleton del `AudioContext` para
+leer un contador. El estado es de módulo, así que cada caso lo reimporta con `vi.resetModules()`: sin
+eso, el orden de los tests sería parte del oráculo.
 
 ## `public/`
 

@@ -18,7 +18,7 @@ spec posterior reemplazó lo que hacía; el spec queda como historia y no se ree
 | [007](./007-nota-por-celda-y-lenguaje-visual/spec.md) | 2026-08-16 | Implementado | Cada celda es dueña de un grado de la escala, y el tablero lo muestra: color por pieza y nota por celda. Absorbe al 001. **Sin cambio de audio** |
 | [008](./008-el-intervalo-como-unidad-musical/spec.md) | 2026-08-16 | Implementado | El espaciado del arpegio deja de ser 0,15 s fijos y pasa a ser la semicorchea del tempo; `Job` pierde `spread`; el checkbox de loop y el botón de reloj se funden en un play/pausa con estado |
 | [009](./009-el-tablero-como-recorrido/spec.md) | 2026-08-16 | Implementado | El tablero deja de ser un compás y pasa a ser un circuito cerrado: el orden y los silencios salen de la geometría, `(0,0)` y `(9,5)` se repliegan, las celdas recorridas suenan. Muere `phaseFor` y **supera al 004** |
-| [010](./010-cabeza-lectora-por-celda/spec.md) | 2026-08-16 | Propuesto | Cabeza lectora celda por celda, fuera del estado de React: cierra la limitación que el 004 dejó anotada y da señal visual a la espera de un ciclo que introduce el 009 |
+| [010](./010-cabeza-lectora-por-celda/spec.md) | 2026-08-16 | En curso | Cabeza lectora celda por celda, fuera del estado de React: cierra la limitación que el 004 dejó anotada y da señal visual a la espera de un ciclo que introduce el 009 |
 | [011](./011-el-recorrido-esquiva-las-piezas/spec.md) | 2026-08-17 | Propuesto | Pisar una celda ocupada deja de ser gratis y pasa a **costar**: el recorrido rodea las piezas cuando le conviene y las cruza cuando rodear sale caro, y el cruce **suena la nota de esa celda** como floritura en vez de un golpe sordo. Medido: hoy pisan entre el 71 % y el 88 % de los tramos. **Cambia la matriz de costos y con ella el orden de visita en el 30-48 % de los tableros**; revisa el modelo del 009 |
 
 ## Dependencias entre specs
@@ -356,7 +356,9 @@ tipo a todos los llamadores que solo quieren saber qué pieza ocupa una celda, p
   salto anterior venía caminando hasta `[1,2]`, pegado a la entrada. **Entrada y salida están
   exactamente invertidas en toda pieza reflejada**, o sea la mitad del espacio de colocación. Es la
   misma incoherencia que el 009 sacó del caso de una pieza sola —«no se oye un recorrido sino dos golpes
-  encima del arpegio»— sobrevivida en el caso que no miró.
+  encima del arpegio»— sobrevivida en el caso que no miró. **Y cambia lo que suena, no solo lo que se
+  dibuja**: con esa `L` reflejada más una `P` rotación 0 en `(7,1)`, el ciclo pasa de 23 a 21 intervalos;
+  todo tablero **sin** reflexión suena exactamente igual que antes de este arreglo.
   Cómo apareció, que es lo que vale registrar: **no se buscó**. El paso de verificación del 010
   —"confirmar que el 009 dejó lo necesario"— contestó que no (la secuencia trae la celda de cada *click*
   pero no la de cada *nota*), y derivar la que faltaba dejó a la vista que la derivación que ya existía

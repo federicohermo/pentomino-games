@@ -2,6 +2,7 @@
 paths:
   - "src/audio/**/*.ts"
   - "src/components/Spectrum.tsx"
+  - "src/components/Playhead.tsx"
 ---
 
 # Capa de audio
@@ -59,6 +60,20 @@ El porqué de cada decisión, con las mediciones que la respaldan, está en
   llamadas: quien lo guarde va a verlo cambiar por debajo. El mapeo bins→barras vive aparte, en
   `spectrum.ts`, porque **`AnalyserNode` no rinde nada útil en `OfflineAudioContext`**: es lo testeable,
   y por eso está separado del nodo.
+- **La cabeza lectora (spec 010) es el segundo consumidor del motor por fuera de React.** Su superficie
+  son dos exports de `engine.ts`: `playheadOffset(): number | null` (lee del singleton y de la secuencia
+  **activa**; `null` en pausa, sin contexto, con la secuencia vacía y mientras `now < clock.origin`,
+  igual que `readSpectrum()` en reposo) y
+  `cycleGeneration(): number`, un contador de swaps de ciclo. **La guarda `now < origin` no es
+  defensiva:** el swap se decide dentro del lookahead y deja `origin` en el borde, que todavía es futuro,
+  así que sin ella la cabeza contesta la cola del ciclo nuevo —el offset MÁXIMO— mientras suena la vieja.
+  La aritmética vive aparte, en
+  `audio/playhead.ts` (`offsetAt`, módulo euclídeo, `null` y nunca `NaN` en los tres degradados), por el
+  mismo motivo que `spectrum.ts`. Lo que no hay que romper: la posición está **compensada por la
+  latencia de salida** (`outputLatency` → `baseLatency` → `0`) o la cabeza queda sistemáticamente
+  adelantada, y `outputLatency` no es opcional en `lib.dom.d.ts` pese a que Firefox no lo implementa —la
+  lectura se tipa `number | undefined` a mano porque el repo prohíbe `any` y `@ts-ignore`. Detalle en
+  [docs/architecture/audio.md](../../docs/architecture/audio.md#la-cabeza-lectora).
 
 **Verificar audio sin oírlo:** en tests con `OfflineAudioContext`; en el navegador con `sequenceInfo()`
 —pasos, clicks y largo del ciclo de la secuencia activa— y contando osciladores. Recetas en

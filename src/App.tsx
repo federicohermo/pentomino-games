@@ -17,6 +17,7 @@ import PiecePalette from "./components/PiecePalette.tsx";
 import Board from "./components/Board.tsx";
 import PlacedList from "./components/PlacedList.tsx";
 import Spectrum from "./components/Spectrum.tsx";
+import { encolar } from "./components/route-source.ts";
 
 /**
  * Pentomino Music — prototipo de instrumento, no un juego con reglas de resolucion.
@@ -64,6 +65,13 @@ export default function App(){
     return c; // normalized
   }, [selected, rotation, mirror]);
 
+  // El recorrido, calculado UNA vez por tablero y consumido por tres: el motor (por la
+  // proyeccion sin celdas), la cabeza lectora (por `encolar`) y la lista lateral (por el
+  // orden del circuito). Recalcularlo en cada consumidor abriria la puerta a que dos de
+  // ellos miren circuitos distintos, que es la clase de discrepancia que D5 del 009
+  // existe para cerrar.
+  const secuencia = useMemo(()=> buildSequence(placed), [placed]);
+
   const noteSet = useMemo(()=>{
     const basePc = BASE_MAP[selected];
     let ns = notesForRotation(basePc, DEFAULT_OCTAVE, rotation);
@@ -89,7 +97,16 @@ export default function App(){
     if (!playing) playNow(noteSet);
   }
 
+  // Reset frena el transporte ADEMÁS de vaciar el tablero, y esa segunda mitad no es
+  // cosmética. Vaciar solo `placed` deja al motor terminando su ciclo activo —D5 del
+  // spec 009: la secuencia nueva, vacía, entra recién al cerrar—, o sea hasta 7,5 s
+  // sonando sobre un tablero que ya está vacío. Reset es una orden explícita de volver
+  // a cero, no una edición del tablero, así que es el único lugar donde saltearse D5 es
+  // lo correcto. Lo que queda es la latencia de pausar, que el motor ya documenta: los
+  // 100 ms del lookahead más la cola del arpegio ya agendado.
   function resetBoard(){
+    stopClock();
+    setPlaying(false);
     setPlaced([]); // el efecto de reconciliación se encarga de vaciar la secuencia
   }
 
@@ -113,16 +130,28 @@ export default function App(){
   // en los clicks: el motor no puede ver `Cell`, que vive en `domain/` y el
   // override de eslint sobre `audio/**` lo prohíbe importar incluso como `import
   // type`. Un click tampoco tiene altura (D4): para sonar alcanza con contarlo.
-  // Las celdas no se pierden, siguen en `placed` — el spec 010 las va a leer de
-  // ahí para dibujar el recorrido.
+  // Las celdas no se pierden: siguen en la secuencia del dominio, y por eso este efecto
+  // encola en DOS colas con la misma `secuencia`. Leerlas de `placed` —que es lo que
+  // decía este comentario antes del spec 010— no alcanza, y ese es justo el punto de
+  // AC9: `placed` es el tablero de AHORA, o sea la ruta PENDIENTE, mientras que la
+  // cabeza tiene que dibujar la que está sonando. Quien guarda el par es
+  // `components/route-source.ts`, y hace su swap cuando el motor reporta el suyo.
+  //
+  // Las dos colas se encolan desde acá y con la MISMA instancia a propósito: si cada una
+  // llamara a su propio `buildSequence`, el dibujo y el sonido podrían quedar mirando
+  // circuitos distintos sin que nada falle.
   useEffect(()=>{
-    const s = buildSequence(placed);
+    encolar(secuencia, placed);
     setSequence({
-      steps: s.steps.map(({ offset, notes }) => ({ offset, notes })),
-      clicks: s.clicks.map(({ offset }) => ({ offset })),
-      length: s.length,
+      steps: secuencia.steps.map(({ offset, notes }) => ({ offset, notes })),
+      clicks: secuencia.clicks.map(({ offset }) => ({ offset })),
+      length: secuencia.length,
     });
-  }, [placed]);
+    // `placed` esta en las dependencias aunque `secuencia` ya se derive de el: no agrega
+    // ni una corrida —`secuencia` es un `useMemo` sobre `[placed]`, asi que cambian
+    // juntos— y evita callar la regla de exhaustividad con un disable, que taparia el
+    // dia en que alguien desacople las dos.
+  }, [secuencia, placed]);
 
   // Al desmontar, frenar el reloj y vaciar la secuencia del motor. La limpieza
   // sigue siendo sincrónica: si fuera asincrónica, en StrictMode podría
@@ -188,8 +217,11 @@ export default function App(){
           onMouseLeave={()=> setHover(null)}
         />
 
+        {/* El orden sale de la misma `secuencia` que alimenta al motor y no de un
+            `buildSequence` propio: la lista dice el orden que se escucha, no otro. */}
         <PlacedList
           placed={placed}
+          orden={secuencia.steps.map(s=> s.pieceId)}
           onRemove={id=> setPlaced(arr=> arr.filter(q=> q.id!==id))}
         />
 

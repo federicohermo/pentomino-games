@@ -1,6 +1,7 @@
 import type { Sequence, ClockState } from './types/scheduler.types.ts';
 import { midiToHz, scheduleVoice, scheduleClick } from './voice.ts';
 import { collectWindow, intervalDuration } from './scheduler.ts';
+import { offsetAt } from './playhead.ts';
 import { NOTE_INTERVALS } from './constants/voice.constants.ts';
 import { LOOKAHEAD, TICK_MS, HIT } from './constants/scheduler.constants.ts';
 import {
@@ -54,8 +55,27 @@ export function audio(): AudioContext | null {
   return ctx;
 }
 
-/** Buffer de lectura del espectro. Ver la advertencia en readSpectrum(). */
-let freqBuf: Uint8Array | null = null;
+/**
+ * Buffer de lectura del espectro. Ver la advertencia en readSpectrum().
+ *
+ * El `<ArrayBuffer>` va escrito y NO se puede simplificar a `Uint8Array` pelado, aunque
+ * el `pnpm typecheck` de hoy lo acepte. Desde TypeScript 5.7 los arrays tipados son
+ * genericos en su buffer, y `Uint8Array` a secas significa `Uint8Array<ArrayBufferLike>`,
+ * que incluye `SharedArrayBuffer`. El `lib.dom.d.ts` de la 5.8.3 —la version fijada en el
+ * repo— todavia declara `getByteFrequencyData(array: Uint8Array)`, asi que compila; las
+ * versiones siguientes lo estrecharon a `Uint8Array<ArrayBuffer>` y ahi el pelado pasa a
+ * ser un TS2345. Medido: con la 5.8.3 verde y con la 7.0.2 error en esta misma linea, o
+ * sea que el editor ya lo marca hoy con el repo en verde.
+ *
+ * Escribirlo no es defensivo: `new Uint8Array(n)` SIEMPRE aloca un `ArrayBuffer`, asi que
+ * este es el tipo real del valor y el pelado era el que decia de mas. Es tambien la unica
+ * salida que respeta el "cero `any`, cero `@ts-ignore`" del repo.
+ *
+ * `binsToBars` sigue recibiendo el `Uint8Array` ancho a proposito: solo lee, asi que no
+ * tiene por que rechazar un buffer compartido. El estrechamiento es del que llama a la
+ * API del navegador, no del que consume los numeros.
+ */
+let freqBuf: Uint8Array<ArrayBuffer> | null = null;
 
 /**
  * Magnitudes de frecuencia del ultimo bloque procesado, 0-255 por bin.
@@ -70,7 +90,7 @@ let freqBuf: Uint8Array | null = null;
  * previsto es un loop de dibujo, que lo lee y lo descarta en el mismo cuadro; si
  * hace falta conservarlo, copiarlo con slice().
  */
-export function readSpectrum(): Uint8Array | null {
+export function readSpectrum(): Uint8Array<ArrayBuffer> | null {
   if (!analyser || !ctx || ctx.state !== 'running') return null;
   if (!freqBuf || freqBuf.length !== analyser.frequencyBinCount) {
     freqBuf = new Uint8Array(analyser.frequencyBinCount);
@@ -177,6 +197,82 @@ export const sequenceInfo = (): { steps: number; clicks: number; length: number 
 
 export const clockRunning = (): boolean => timer !== null;
 
+/**
+ * Cuantas veces el motor puso en vigencia una secuencia nueva desde que carga el modulo.
+ *
+ * Es lo unico que sabe el INSTANTE exacto en que el ciclo nuevo empezo a sonar. La UI
+ * tiene el par activa/pendiente del dominio (`components/route-source.ts`) pero no puede
+ * derivar el borde: el swap lo decide `collectWindow` dentro del lookahead, medio
+ * intervalo antes del cierre, y ninguna cuenta sobre `placed` lo ve venir.
+ *
+ * Arranca en 0 y NO se resetea en stopClock/startClock: pausar no cambia que ciclo esta
+ * en vigencia, asi que resetear haria creer a la UI que hubo un swap que no hubo.
+ */
+let cycleGen = 0;
+export const cycleGeneration = (): number => cycleGen;
+
+/**
+ * En que intervalo del ciclo esta la cabeza lectora, o null si no hay nada que marcar.
+ *
+ * Devuelve null en pausa, sin contexto, con el contexto que no esta corriendo, con la
+ * secuencia activa vacia y ANTES de que la activa empiece a sonar (ver abajo). Es
+ * informacion y no una falla, igual que `readSpectrum()` en reposo: "no hay cabeza" y
+ * "la cabeza esta en 0" se dibujan distinto.
+ *
+ * Lee `ctx` y no `audio()` por el mismo motivo que readSpectrum: el llamador previsto es
+ * un loop de dibujo y crear el AudioContext desde ahi seria hacerlo sin gesto del usuario.
+ *
+ * Mira la secuencia ACTIVA, no la pendiente: la cabeza tiene que recorrer lo que suena.
+ * Que la UI dibuje el circuito correcto abajo es problema de `components/route-source.ts`.
+ *
+ * ## `now < origin` es "todavia no empezo", y ahi no hay nada que dibujar
+ *
+ * `collectWindow` pone la pendiente en vigencia DENTRO del lookahead y deja `origin` en
+ * el borde, que en ese momento es futuro: medido, hasta 82 ms a 110 bpm, mas la latencia
+ * de salida. Durante esa ventana la secuencia activa ya es la nueva pero lo que se
+ * escucha sigue siendo la cola de la vieja, que quedo agendada hasta medio intervalo
+ * antes del borde. Lo mismo pasa en el primer arranque, con los 50 ms de
+ * `CLOCK_START_DELAY`.
+ *
+ * Sin este corte, `offsetAt` contesta —correctamente, como funcion total— la COLA del
+ * ciclo nuevo, o sea `ciclo - 1`. Y ese numero, que es el MAXIMO posible, destapaba de
+ * un saque las cinco celdas del velo de `Playhead.tsx`: el estreno celda por celda no se
+ * veia nunca, ni al colocar con el ciclo andando ni al apretar play. Es el bug que el
+ * test «el swap deja `origin` en el FUTURO» de `scheduler.test.ts` deja clavado.
+ *
+ * El precio es que la cabeza se apaga esa ventana en cada swap. Es lo correcto: la ruta
+ * vieja ya no esta y la nueva todavia no empezo, asi que cualquier celda que se dibujara
+ * ahi seria mentira.
+ */
+export function playheadOffset(): number | null {
+  if (timer === null || !ctx || ctx.state !== 'running') return null;
+  if (active.length <= 0) return null;
+  const now = ctx.currentTime - outputLatency(ctx);
+  if (now < clock.origin) return null;
+  return offsetAt(now, clock.origin, intervalDuration(bpm), active.length);
+}
+
+/**
+ * Cuanto tarda en oirse lo que se agenda en `currentTime`. Sin restarlo, la cabeza va
+ * sistematicamente adelantada y en un instrumento eso se percibe como que la imagen miente.
+ *
+ * La cadena `outputLatency` → `baseLatency` → 0 NO es redundante aunque el tipo diga que
+ * si: `lib.dom.d.ts` declara `outputLatency` como `number` no opcional, pero Firefox no lo
+ * implementa y ahi la propiedad llega `undefined`. Por eso las dos lecturas se tipan a mano
+ * como `number | undefined` en vez de taparse con un `any` o un `@ts-ignore`, que ademas el
+ * repo prohibe: el fallback tiene que sobrevivir a que TypeScript lo crea innecesario.
+ *
+ * No tiene test: los tests corren contra node-web-audio-api, donde estos numeros no
+ * describen ninguna salida real. Se verifica en el navegador y a oido.
+ */
+function outputLatency(c: AudioContext): number {
+  const out: number | undefined = c.outputLatency;
+  if (typeof out === 'number' && Number.isFinite(out)) return out;
+  const base: number | undefined = c.baseLatency;
+  if (typeof base === 'number' && Number.isFinite(base)) return base;
+  return 0;
+}
+
 function tick(): void {
   const c = audio();
   if (!c || !master) return;
@@ -187,6 +283,16 @@ function tick(): void {
   // que es testeable; aca queda el cableado a sonido, que sin AudioContext no se
   // puede correr. Ver el docblock de collectWindow.
   const w = collectWindow(c.currentTime, LOOKAHEAD, bpm, active, pending, clock);
+  // Identidad de referencia y no comparacion de contenido: `collectWindow` devuelve la
+  // MISMA referencia cuando no hubo swap y la de la pendiente cuando si, asi que un
+  // `!==` cubre sus DOS ramas —la del borde de ciclo y la de `vigente.length <= 0`— sin
+  // que el scheduler tenga que enterarse de que alguien cuenta.
+  //
+  // Que cuente tambien la segunda importa mas de lo que parece: el primer arranque pasa
+  // siempre por ahi —active vacia, reloj recien largado—, y si no subiera, la cabeza no
+  // apareceria en el primer ciclo y si en todos los siguientes. Es un sintoma raro de
+  // diagnosticar despues.
+  if (w.active !== active) cycleGen++;
   active = w.active;
   pending = w.pending;
   for (const hit of w.hits) {

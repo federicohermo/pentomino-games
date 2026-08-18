@@ -17,14 +17,52 @@ import { SHAPES, CELLS_PER_PIECE } from './constants/pieces.constants.ts';
  */
 
 /**
+ * Las celdas de la pieza en ORDEN DE REPRODUCCION: `[j]` es la celda donde suena
+ * `p.notes[j]`.
+ *
+ * El grado sale de la forma CANONICA y se lee POR INDICE:
+ * `degreeByCellIndex(SHAPES[p.piece])[k]` es el grado de `p.cells[k]`, porque rotar,
+ * reflejar y trasladar son `map` y la celda `k` sigue siendo la celda `k`. Correrla
+ * sobre `p.cells` compila igual y devuelve otro mapeo en 74 de las 96 orientaciones,
+ * porque rotar corre el origen del angulo — es la trampa mas cara de esta capa.
+ *
+ * El retrogrado YA VIENE APLICADO, con el mismo criterio que `PlacedPiece.notes`: la
+ * reflexion invierte el orden EN EL TIEMPO sin mover que nota le toca a que celda,
+ * asi que con `mirror` la primera nota que suena es la del grado 4. Que la inversion
+ * viva aca y no en el consumidor es lo que hace que `[j]` case con `notes[j]` sin que
+ * nadie vuelva a invertir — es la regla que `sequence.types.ts` ya declara para
+ * `Step.notes`, ahora sostenida por las dos puntas.
+ *
+ * Existe porque `Step` no lleva celdas: ir de la nota `j` a la celda donde se ve era
+ * una derivacion que solo estaba adentro de `gates`, y para los grados 0 y 4 nada
+ * mas. Es lo unico que el spec 010 le agrega al dominio, y no reabre D5 del 009: un
+ * mapeo grado->celda no es un camino ni una distancia.
+ */
+export function cellsByPlayOrder(p: PlacedPiece): Cell[] {
+  const grados = degreeByCellIndex(SHAPES[p.piece]);
+  // Por GRADO y no por indice del array: `grados[k]` es el grado de `p.cells[k]`,
+  // asi que el inverso —la celda del grado g— es `p.cells[grados.indexOf(g)]`.
+  const porGrado = grados.map((_, g) => p.cells[grados.indexOf(g)]);
+  return p.mirror ? porGrado.reverse() : porGrado;
+}
+
+/**
  * Las dos puertas de una pieza: por donde entra el recorrido y por donde sale.
  *
- * Entrada = grado 0, salida = grado 4 (spec 009, D8). El grado sale de la forma
- * CANONICA y se lee POR INDICE: `degreeByCellIndex(SHAPES[p.piece])[k]` es el grado
- * de `p.cells[k]`, porque rotar, reflejar y trasladar son `map` y la celda `k` sigue
- * siendo la celda `k`. Correrla sobre `p.cells` compila igual y devuelve otro mapeo
- * en 75 de las 96 orientaciones, porque rotar corre el origen del angulo — es la
- * trampa mas cara de esta capa.
+ * Se leen del ORDEN DE REPRODUCCION, no de los grados 0 y 4 (spec 010, D8). El 009
+ * los derivaba por su cuenta y nunca miro la reflexion: con `mirror` la primera nota
+ * que suena es la del grado 4, asi que entrada y salida quedaban EXACTAMENTE
+ * invertidas respecto de la melodia en la mitad del espacio de colocacion. Medido
+ * sobre `L`/0/reflejada en (1,1): el circuito entraba por [1,3] —el grado 0, que es
+ * la ULTIMA nota— y salia por [0,0], que es la PRIMERA. El hop anterior caminaba
+ * hasta pegarse a la entrada para que lo primero que sonara estuviera en la punta
+ * opuesta de la pieza.
+ *
+ * Con UNA sola derivacion las dos no pueden discrepar, que es el mismo argumento con
+ * el que el 009 hizo que la cantidad de clicks se lea del largo del camino en vez de
+ * calcularse. **Cambia las distancias y por lo tanto el circuito**: todo tablero con
+ * piezas reflejadas suena distinto desde este commit. Es un arreglo del 009 y no una
+ * decision del 010.
  *
  * Las dos nunca son la misma celda: son dos grados distintos de la misma pieza. Hoy
  * no es lo que protege a `pathBetween` de recibir `a === b` —de eso se encargan que
@@ -33,21 +71,16 @@ import { SHAPES, CELLS_PER_PIECE } from './constants/pieces.constants.ts';
  * tramo que trazar—, pero es la propiedad que dejaria seguro cualquier tramo futuro
  * que saliera y entrara por la misma pieza.
  *
- * El grado de salida se deriva de `CELLS_PER_PIECE` y no se escribe `4`: es el
- * ultimo grado del arpegio, y el 4 y el 5 de "cinco notas" son el mismo numero
- * dicho dos veces. Escribirlos por separado los deja libres de desincronizarse.
- *
  * Exportada aunque `buildSequence` sea el unico consumidor de `src/`: `simulate_board`
  * necesita reportar las puertas de cada pieza —son lo que reemplaza a la fase en la
  * respuesta de la tool— y las tools son una fachada sobre el dominio, no una copia.
  * Sin este export, esas tres lineas quedaban escritas dos veces y podian discrepar.
  */
 export function gates(p: PlacedPiece): { entrada: Cell; salida: Cell } {
-  const grados = degreeByCellIndex(SHAPES[p.piece]);
-  return {
-    entrada: p.cells[grados.indexOf(0)],
-    salida: p.cells[grados.indexOf(CELLS_PER_PIECE - 1)],
-  };
+  const orden = cellsByPlayOrder(p);
+  // `orden[orden.length - 1]` y no `orden.at(-1)`: `at` devuelve `Cell | undefined` y
+  // el tipo de retorno no admite el undefined que nunca puede pasar.
+  return { entrada: orden[0], salida: orden[orden.length - 1] };
 }
 
 /**

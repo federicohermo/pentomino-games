@@ -16,9 +16,10 @@ lógica después de transformar.**
 
 De eso depende `ANCHOR_INDEX` —guarda la celda de agarre como índice, no como coordenada—, y de eso
 depende el mapeo celda↔nota que `degreeByCellIndex` calcula sobre la forma canónica y arrastra por
-índice (spec 007): las puertas de entrada y salida que usa `sequence.ts` para armar el circuito (grado
-0 y grado 4, spec 009) también se leen por índice, así que romper el orden del array rompe a las tres a
-la vez. Filtrar, ordenar o reagrupar celdas dentro de esas funciones rompe la colocación de piezas
+índice (spec 007): las puertas de entrada y salida que usa `sequence.ts` para armar el circuito
+—`cellsByPlayOrder(p)[0]` y `cellsByPlayOrder(p)[largo - 1]`, spec 010— también se leen por índice, así
+que romper el orden del array rompe a las tres a la vez. Filtrar, ordenar o reagrupar celdas dentro de
+esas funciones rompe la colocación de piezas
 **sin ningún error visible**. `checkArrayOrder()` de `invariants.ts` es la red; si hace falta
 transformar celdas de otra forma, va una función nueva en vez de modificar estas.
 
@@ -33,7 +34,7 @@ en pantalla. No está mal — es la clase de cosa que alguien "arregla" por erro
 |---|---|
 | Qué pieza | La tónica (`BASE_MAP`: F→C, I→C#, … Z→B) |
 | Rotación | La fórmula de escala (mayor → menor → blues → mayor +7) |
-| Reflexión | El orden de las notas (retrógrado) |
+| Reflexión | El orden de las notas (retrógrado) y, con él, la puerta de entrada/salida del recorrido (`gates`, spec 010) |
 | La posición en el tablero | El orden de reproducción y el silencio entre piezas (`buildSequence`, spec 009) |
 | **La forma** | **Qué celda tiene qué nota** (`degreeByCellIndex`, spec 007) |
 
@@ -45,8 +46,10 @@ orientaciones, porque rotar corre el origen del ángulo. La rotación elige *qu�
 **El tablero se repliega sobre sí mismo**: `(0,0)` y `(9,5)` son adyacentes (una costura extra sobre la
 grilla, spec 009), y el orden de reproducción sale de un circuito exacto (Held-Karp) sobre esas
 distancias, no de la columna ni del orden de colocación. Es geometría y no reloj de pared: el mismo
-tablero suena siempre igual, porque `buildSequence` es aritmética pura sobre enteros. Hoy se oye pero
-no se lee — no hay cabeza lectora; es la limitación consciente que cierra el spec 010.
+tablero suena siempre igual, porque `buildSequence` es aritmética pura sobre enteros. Hoy se lee
+también: el spec 010 agrega una cabeza lectora (`components/Playhead.tsx`) que recorre el tablero celda
+por celda leyendo `playheadOffset()` del motor — detalle en
+[docs/architecture/audio.md](../../docs/architecture/audio.md#la-cabeza-lectora).
 
 Cuidado con la colisión de nombres: la **pieza `F`** suena con tónica **C**; la nota F le corresponde a
 la pieza `T`. La letra describe la forma, no el sonido.
