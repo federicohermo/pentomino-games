@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildSequence, cellsByPlayOrder } from '../sequence.ts';
+import { buildSequence, cellsByPlayOrder, gates } from '../sequence.ts';
 import { cellsAt, isValid, cellDistance, pathBetween } from '../board.ts';
 import { degreeByCellIndex, notesForRotation } from '../music.ts';
 import { rotateN, reflect } from '../transform.ts';
@@ -34,10 +34,24 @@ const colocar = (piece: PieceKey, rot: number, mirror: boolean, x: number, y: nu
   };
 };
 
-/** Las dos puertas, derivadas afuera de `sequence.ts` para poder contrastarlas. */
-const puertas = (p: PlacedPiece): { entrada: Cell; salida: Cell } => {
+/**
+ * Las celdas en ORDEN DE REPRODUCCION, derivadas afuera de `sequence.ts` para poder
+ * contrastarlas. El retrogrado va aplicado aca por la misma razon que en `notes`.
+ */
+const celdasEnOrden = (p: PlacedPiece): Cell[] => {
   const g = degreeByCellIndex(SHAPES[p.piece]);
-  return { entrada: p.cells[g.indexOf(0)], salida: p.cells[g.indexOf(CELLS_PER_PIECE - 1)] };
+  const porGrado = g.map((_, d) => p.cells[g.indexOf(d)]);
+  return p.mirror ? porGrado.reverse() : porGrado;
+};
+
+/**
+ * Las dos puertas, derivadas afuera de `sequence.ts`. Se leen del orden de
+ * reproduccion y NO de los grados 0 y 4: esa era la derivacion del 009, y con
+ * reflexion daba las dos invertidas (spec 010, D9).
+ */
+const puertas = (p: PlacedPiece): { entrada: Cell; salida: Cell } => {
+  const orden = celdasEnOrden(p);
+  return { entrada: orden[0], salida: orden[CELLS_PER_PIECE - 1] };
 };
 
 const saltoEntre = (a: PlacedPiece, b: PlacedPiece): number => cellDistance(puertas(a).salida, puertas(b).entrada);
@@ -104,7 +118,7 @@ describe('bordes', () => {
 });
 
 describe('las puertas de una pieza', () => {
-  it('la entrada es la celda del grado 0 y la salida la del grado 4', () => {
+  it('SIN reflexion la entrada es la celda del grado 0 y la salida la del grado 4', () => {
     // `F` canonica da los grados [2,3,4,1,0]: el grado 0 esta en el indice 4 y el
     // grado 4 en el indice 2. Los numeros van escritos a mano contra el mapeo del
     // spec 007 — derivarlos aca dejaria el test sin oraculo.
@@ -113,6 +127,9 @@ describe('las puertas de una pieza', () => {
     expect(f.cells).toEqual([[0, 1], [1, 0], [1, 1], [1, 2], [2, 2]]);
     expect(puertas(f).entrada).toEqual([2, 2]);
     expect(puertas(f).salida).toEqual([1, 1]);
+    // Y es lo que devuelve la funcion real: sin reflexion el orden de reproduccion
+    // ES el orden de grado, asi que el arreglo de D9 no mueve este caso.
+    expect(gates(f)).toEqual({ entrada: [2, 2], salida: [1, 1] });
 
     // Y es lo que el circuito usa: el tramo que sale de `F` arranca en SU SALIDA,
     // no en su entrada ni en su ancla. Con una pieza sola no hay tramo —el
@@ -137,10 +154,15 @@ describe('las puertas de una pieza', () => {
           const base = rotateN(SHAPES[k], rot);
           const shape = mirror ? reflect(base) : base;
           const p = colocar(k, rot, mirror, 5, 3);
+          // Los dos lados se derivan POR GRADO y sin retrogrado, a proposito: lo que
+          // este test mide es `degreeByCellIndex` sobre la forma canonica contra la
+          // transformada, no las puertas. Pasarlo por `puertas` mezclaria la
+          // reflexion del spec 010 y el 74 dejaria de decir lo que dice.
           const naive = degreeByCellIndex(shape);
-          const canonico = puertas(p);
+          const canonicos = degreeByCellIndex(SHAPES[k]);
+          const canonico = [p.cells[canonicos.indexOf(0)], p.cells[canonicos.indexOf(CELLS_PER_PIECE - 1)]];
           const recalculado = [p.cells[naive.indexOf(0)], p.cells[naive.indexOf(CELLS_PER_PIECE - 1)]];
-          if (JSON.stringify([canonico.entrada, canonico.salida]) !== JSON.stringify(recalculado)) distintas++;
+          if (JSON.stringify(canonico) !== JSON.stringify(recalculado)) distintas++;
         }
       }
     }
@@ -227,6 +249,62 @@ describe('AC11 — `cellsByPlayOrder`: la celda de cada nota', () => {
     const antes = JSON.stringify(l.cells);
     cellsByPlayOrder(l).reverse();
     expect(JSON.stringify(l.cells)).toBe(antes);
+  });
+});
+
+describe('AC12 — las puertas siguen la melodia, tambien con reflexion (D9)', () => {
+  it('el caso testigo `L`/0/reflejada: entrada [0,0] y salida [1,3] — el 009 daba al reves', () => {
+    // Medido con `describe_piece` y `simulate_board` antes de escribir el arreglo:
+    // [1,3] es el grado 0 (D4) y [0,0] el grado 4 (B4); con retrogrado la primera
+    // nota que suena es B4. El 009 entraba por [1,3], o sea por la ULTIMA nota, y el
+    // hop anterior caminaba hasta pegarse ahi.
+    const l = colocar('L', 0, true, 1, 1);
+    expect(degreeByCellIndex(SHAPES.L)).toEqual([3, 2, 1, 0, 4]);
+    expect(l.cells).toEqual([[1, 0], [1, 1], [1, 2], [1, 3], [0, 0]]);
+    expect(gates(l)).toEqual({ entrada: [0, 0], salida: [1, 3] });
+    expect(notaPintadaEn(l, gates(l).entrada)).toBe(l.notes[0]);
+  });
+
+  it('en las 96 orientaciones la entrada es la celda de la primera nota y la salida la de la ultima', () => {
+    for (const k of PIECES) {
+      for (let rot = 0; rot < 4; rot++) {
+        for (const mirror of [false, true]) {
+          const p = colocar(k, rot, mirror, 5, 3);
+          const { entrada, salida } = gates(p);
+          expect(notaPintadaEn(p, entrada), `${k}/${rot}/${mirror} entrada`).toBe(p.notes[0]);
+          expect(notaPintadaEn(p, salida), `${k}/${rot}/${mirror} salida`).toBe(p.notes[CELLS_PER_PIECE - 1]);
+        }
+      }
+    }
+  });
+
+  it('con reflexion son EXACTAMENTE las del 009 invertidas, en las 48 orientaciones reflejadas', () => {
+    // El test que ya habia —`entrada !== salida`, mas arriba— pasa con las dos
+    // invertidas: por eso no alcanzaba. Este dice cuanto cambia el circuito con este
+    // commit, y es lo que hace falsable "todo tablero reflejado suena distinto".
+    for (const k of PIECES) {
+      for (let rot = 0; rot < 4; rot++) {
+        const p = colocar(k, rot, true, 5, 3);
+        const g = degreeByCellIndex(SHAPES[k]);
+        const viejo = { entrada: p.cells[g.indexOf(0)], salida: p.cells[g.indexOf(CELLS_PER_PIECE - 1)] };
+        expect(gates(p), `${k}/${rot}`).toEqual({ entrada: viejo.salida, salida: viejo.entrada });
+      }
+    }
+  });
+
+  it('sin reflexion no se mueve nada: las 48 orientaciones al derecho dan lo mismo que el 009', () => {
+    // La otra mitad de la afirmacion del PR: un tablero sin piezas reflejadas suena
+    // exactamente igual que antes de este commit.
+    for (const k of PIECES) {
+      for (let rot = 0; rot < 4; rot++) {
+        const p = colocar(k, rot, false, 5, 3);
+        const g = degreeByCellIndex(SHAPES[k]);
+        expect(gates(p), `${k}/${rot}`).toEqual({
+          entrada: p.cells[g.indexOf(0)],
+          salida: p.cells[g.indexOf(CELLS_PER_PIECE - 1)],
+        });
+      }
+    }
   });
 });
 
