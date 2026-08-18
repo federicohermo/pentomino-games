@@ -1,4 +1,4 @@
-# Research — El recorrido esquiva las piezas
+# Research — Pisar una pieza cuesta
 
 Todo lo de acá está **medido corriendo el dominio real**, no estimado. Los scripts se corrieron con
 `node` cargando `src/domain/` sin compilar, que es lo mismo que hace el MCP server.
@@ -73,7 +73,7 @@ Dos conclusiones, y ninguna es la que el spec suponía antes de medir:
 - **El caso "no se puede esquivar" no es un borde.** Ya con 4 piezas es más de uno de cada cuatro
   tramos. El camino degradado (D4) es tan principal como el otro.
 - **El rodeo puede ser enorme.** El máximo medido es **+20 intervalos**, que a 110 bpm son 2,7 s de
-  recorrido para saltar entre dos piezas. De ahí sale D5: hay que ponerle tope.
+  recorrido para saltar entre dos piezas. De ahí salía el tope de la primera versión del spec — que §8 vuelve innecesario, porque un peso ya es un tope expresado como preferencia continua.
 
 ## 4. Por qué a veces es imposible, y no es congestión
 
@@ -119,7 +119,64 @@ El costo del recorrido **se duplica y sigue siendo despreciable**. El argumento 
 acotado por las reglas del juego, hay 12 pentominós libres y no se repiten— vale igual acá: 144 BFS
 sobre un grafo de 60 nodos es aritmética de juguete.
 
-## 7. Qué hay que tocar
+## 7. Elegir mejor entre los caminos MÍNIMOS, sin pagar nada
+
+Antes de aceptar que esquivar cueste, se midió la opción gratis: quedarse en la distancia de hoy y,
+entre los caminos de esa misma longitud, preferir uno que no pise nada. Sobre 400 tableros aleatorios
+por tamaño:
+
+| piezas | tramos | hoy pisan | existe un mínimo libre | pisadas que se evitan **sin costo** |
+|---|---|---|---|---|
+| 2 | 800 | 565 (71 %) | 50 % | 30 % |
+| 3 | 2.400 | 1.874 (78 %) | 41 % | 24 % |
+| 4 | 4.800 | 3.904 (81 %) | 34 % | 19 % |
+| 5 | 8.000 | 6.788 (85 %) | 26 % | 13 % |
+| 6 | 11.880 | 10.447 (88 %) | 22 % | 11 % |
+
+**No alcanza.** Evita entre el 11 % y el 30 % de las pisadas. Vale como propiedad deseable —si hay un
+camino libre de la misma longitud, tomarlo es gratis— pero no como solución, y el peso de §9 ya la
+incluye: con `P > 1`, entre dos caminos de igual largo gana el que pisa menos.
+
+## 8. La curva de P, que es la medición que define el spec
+
+Peso 1 en la celda vacía, `P` en la ocupada, camino de costo mínimo. Media sobre 250 tableros aleatorios
+válidos por tamaño, semilla fija.
+
+| P | cruces por ciclo (3 piezas) | (5 piezas) | ciclo vs hoy |
+|---|---|---|---|
+| **1** — es exactamente lo de hoy | 4,39 | 10,12 | — |
+| **2** | 1,92 | 5,42 | **+2 %** |
+| 3 | 1,63 | 4,51 | +7 % |
+| 5 | 1,08 | 3,58 | +16 % |
+| **∞** — prohibir pisar | 0,39 | 2,80 | **+40 %** |
+
+Lo que la curva dice, y que la primera versión de este spec no vio por haber medido solo sus dos
+extremos: **la mayor parte del beneficio está al principio y es casi gratis**. P = 2 se lleva más de la
+mitad de las pisadas por un 2 % de ciclo; el último tramo hasta prohibir cuesta un 40 % de ciclo para
+llevarse el resto.
+
+Prohibir además obliga a inventar dos cosas —un tope al rodeo, porque el máximo medido es de +20
+intervalos (2,7 s a 110 bpm), y un tratamiento propio para el caso "no existe camino libre"—. **Las dos
+desaparecen con un peso**, que es una preferencia continua en vez de un corte.
+
+## 9. Lo que cambia en la música, con cualquier P > 1
+
+Circuito óptimo con la matriz nueva contra la vieja, sobre 300 tableros aleatorios por tamaño:
+
+| piezas | tableros | el orden de visita cambia | ciclo hoy | ciclo esquivando | crecimiento |
+|---|---|---|---|---|---|
+| 3 | 300 | **30 %** | 25,6 | 30,0 | +17 % |
+| 4 | 300 | **44 %** | 32,0 | 37,1 | +16 % |
+| 5 | 300 | **48 %** | 38,0 | 40,9 | +8 % |
+
+(Medido con prohibición y con recaída al camino directo cuando no hay libre, o sea el escenario más
+agresivo; con `P = 2` el crecimiento del ciclo baja al 2 %.)
+
+**El orden de visita cambia en casi la mitad de los tableros.** No es efecto secundario: la distancia
+alimenta la matriz de costos de Held-Karp, así que cambiarla cambia el circuito. Es coherente con el 009
+—la geometría decide el orden y los obstáculos son geometría— pero es un cambio de audio y va declarado.
+
+## 10. Qué hay que tocar
 
 | Qué | Dónde | Por qué |
 |---|---|---|
@@ -132,7 +189,7 @@ sobre un grafo de 60 nodos es aritmética de juguete.
 | La tabla por offset marca el cruce con nota | `components/route-source.ts` | Para que la cabeza lo dibuje distinto de un click mudo |
 | `simulate_board` reporta el camino y si cruza ocupadas | `mcp-server/` | Es lo que permite verificar el recorrido sin oírlo, y hoy ya reporta el camino |
 
-## 8. Deuda adyacente detectada (fuera de alcance)
+## 11. Deuda adyacente detectada (fuera de alcance)
 
 - **Los tramos de ida y vuelta se pisan** (§1). Con obstáculos va a pasar menos, pero no desaparece.
   Si molesta al escucharlo, es una preferencia en el desempate de caminos, no un cambio de modelo.

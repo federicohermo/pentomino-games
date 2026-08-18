@@ -1,4 +1,4 @@
-# Spec 011 — El recorrido esquiva las piezas
+# Spec 011 — Pisar una pieza cuesta
 
 > Sin ticket: este repo no tiene tablero. Ver `specs/README.md`.
 >
@@ -11,22 +11,16 @@
 El recorrido del 009 va de la salida de una pieza a la entrada de la siguiente por el camino más corto,
 y **`pathBetween` ignora lo que haya en el medio**. Está escrito como consecuencia conocida en
 `.claude/rules/audio.md` —«un click puede caer sobre una pieza»— y se dio por aceptable porque el click
-es solo un golpe sin altura. Medido, no es una excepción: es **la regla**.
-
-Clicks que caen sobre una celda ocupada, sobre los prefijos del teselado de 12 piezas:
-
-| piezas | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| clicks | 3 | 6 | 8 | 6 | 13 | 14 | 14 | 15 | 15 | 14 | 14 |
-| **sobre pieza** | **3** | **6** | 3 | 4 | 10 | 10 | 13 | **15** | 13 | **14** | **14** |
-| | 100 % | 100 % | 38 % | 67 % | 77 % | 71 % | 93 % | 100 % | 87 % | 100 % | 100 % |
+es un golpe sin altura. Medido, no es una excepción: es **la regla**. Sobre tableros aleatorios válidos,
+entre el **71 % y el 88 %** de los tramos pisan al menos una celda ocupada, y en los prefijos del
+teselado los clicks caen sobre pieza entre el 38 % y el 100 %.
 
 Lo que eso significa musicalmente: **el click dejó de decir lo que dice**. Su razón de ser (D4 del 009)
-es que un salto largo sin sonido es un silencio mudo y el recorrido se vuelve inaudible; los clicks son
-las **celdas vacías** que se cruzan. Cuando el 87 % cae encima de una pieza, lo que se escucha son
-golpes sordos sobre celdas que tienen una nota y no la tocan.
+es que un salto largo sin sonido es un silencio mudo; los clicks son las **celdas vacías** que se
+cruzan. Cuando casi todos caen encima de una pieza, lo que se escucha son golpes sordos sobre celdas
+que tienen una nota escrita y no la tocan.
 
-Y ahora **se ve**. El caso que originó este spec, medido con el dominio real:
+Y ahora **se ve**, que es lo que hizo que apareciera. El caso que originó este spec:
 
 ```
 P rot 90 en (3,2) → celdas (3,3) (4,3) (3,2) (4,2) (3,1),  puertas: entrada (4,2), salida (3,1)
@@ -37,104 +31,132 @@ salto P→Y: d = 6, camino [4,1] [5,1] [6,1] [7,1] [8,1]
 ```
 
 El recorrido entra a la `Y` **por el costado**, pisando una de sus notas sin tocarla, en vez de llegar
-por su puerta. Eso no se podía diagnosticar antes del 010: con un click de por medio, el error es un
-golpe más entre catorce.
+por su puerta. No se podía diagnosticar antes del 010: con un click de por medio, el error es un golpe
+más entre catorce.
 
 ## Solución Propuesta
 
-1. **La distancia entre dos puertas pasa a ser el camino más corto que NO cruza celdas ocupadas**, en
-   vez de la distancia Manhattan replegada. Cambia la matriz de costos y por lo tanto el circuito.
-2. **Cuando no existe ningún camino libre, el recorrido cruza igual** —no hay alternativa— y cada celda
-   ocupada que pisa **suena su nota** en vez de un click. La celda ya tiene una nota asignada desde el
-   spec 007; lo que hoy falta es que el cruce la use.
+**Pisar una celda ocupada deja de ser gratis y pasa a costar.** La distancia entre dos puertas es el
+camino de menor costo sobre las 60 celdas, con peso 1 en la celda vacía y **peso P en la ocupada**.
+
+Y **cuando el recorrido igual pisa una celda ocupada, suena su nota como floritura**: la misma altura
+que la celda muestra desde el spec 007, más corta y más suave que una nota de pieza.
 
 ### Decisiones de diseño
 
-**D1 — Esquivar cuesta, y ese costo es el que reordena el circuito.**
-No se trata de elegir mejor entre caminos igual de cortos. Medido sobre 400 tableros aleatorios válidos,
-el rodeo medio es de **+1,6 a +2,5 intervalos** y el máximo llega a **+20**. En el caso testigo, el
-camino libre mide **8 contra los 6** del actual. Como la distancia alimenta la matriz de costos de
-Held-Karp, **el orden de visita de las piezas puede cambiar entero**. Es la misma clase de cambio que
-D9 del 010, y por lo tanto va con la misma disciplina: commit propio y declarado.
+**D1 — Es un costo, no una prohibición, y el número que lo justifica es la curva entera.**
 
-**D2 — La distancia se calcula con BFS sobre las 60 celdas, no con una fórmula.**
-Con obstáculos ya no hay forma cerrada. El grafo son 60 nodos con adyacencia de 4 vecinos más la arista
-de la costura (`(0,0)`–`(9,5)`, D2 del 009). Medido: la matriz completa de 12×12 cuesta **0,31 ms**,
-contra los **0,62 ms** que Held-Karp ya paga en el mismo tablero. **El costo se duplica y sigue siendo
-despreciable** — el argumento del 009 («`n` está acotado por las reglas del juego») vale igual acá.
+La primera versión de este spec decía «esquivá siempre; si no podés, cruzá», más un tope al rodeo para
+que un desvío enorme no se leyera como un cuelgue. Al medirla, **esa es la peor esquina de la curva**:
 
-**D3 — Un camino y una distancia salen de la MISMA llamada.**
-Es la lección de D8 del 009: la cantidad de clicks no se calcula, se lee del largo del camino. Con
-obstáculos la tentación es peor —una función que da la distancia y otra que da el camino— y el riesgo es
-el mismo elevado al cuadrado, porque ya no hay una fórmula que las obligue a coincidir. `bestRoute` pasa
-a devolver el camino, y la distancia es su largo.
+| P | cruces por ciclo (3 piezas) | (5 piezas) | ciclo vs hoy |
+|---|---|---|---|
+| **1** — hoy | 4,39 | 10,12 | — |
+| **2** | 1,92 | 5,42 | **+2 %** |
+| 3 | 1,63 | 4,51 | +7 % |
+| 5 | 1,08 | 3,58 | +16 % |
+| **∞** — prohibir | 0,39 | 2,80 | **+40 %** |
 
-**D4 — Cuando no hay camino libre, el cruce suena la nota de la celda.**
-No es un caso raro y el spec no puede tratarlo como tal. Medido sobre 400 tableros aleatorios válidos:
+**Con P = 2 se van más de la mitad de las pisadas por un 2 % de ciclo.** Prohibir se lleva el 91 % pero
+alarga el ciclo un 40 %, y encima necesita el tope inventado.
 
-| piezas | 2 | 3 | 4 | 5 | 6 | 8 |
-|---|---|---|---|---|---|---|
-| pares sin camino libre | 9 % | 15 % | 27 % | 50 % | 65 % | 88 % |
+El peso además **hace desaparecer tres cosas** que la versión anterior tenía que resolver a mano: el
+caso "no existe camino libre" (ya no existe: siempre hay un camino, más caro), el tope al rodeo (P ya
+es el tope, expresado como preferencia continua en vez de un corte), y el trato especial de la `X`.
 
-Y hay una causa **estructural**, no de congestión: **la celda central de la `X` es siempre una de sus
-dos puertas y está rodeada por sus propios cuatro brazos**. Con una `X` en el tablero, el tramo que
-entra o sale de ella no puede evitar cruzar celdas ocupadas **nunca**, con el tablero vacío o lleno. Es
-la única de las 12 piezas con esa propiedad, y sola alcanza para que el caso degradado no sea opcional.
+`P = 2` es el punto de partida; **el valor final sale de escuchar**. Cambiarlo es cambiar un número.
 
-Cruzar sonando la nota de la celda es mejor que cruzar en silencio o que cruzar con un click: la celda
-**tiene** una nota desde el spec 007, se la ve escrita en el tablero, y tocarla al pasar es coherente
-con que el recorrido es lo que hace sonar al instrumento.
+**D2 — La distancia se calcula, no se deriva de una fórmula.**
+Con pesos ya no hay forma cerrada. El grafo son 60 nodos, adyacencia de 4 vecinos más la arista de la
+costura (`(0,0)`–`(9,5)`, D2 del 009). Medido: la matriz completa de 12×12 cuesta **0,31 ms** contra los
+**0,62 ms** que Held-Karp ya paga en el mismo tablero. **El costo del recorrido se duplica y sigue
+siendo despreciable** — el argumento del 009 («`n` está acotado por las reglas del juego») vale igual.
 
-**D5 — El rodeo tiene tope, y pasado el tope se cruza.**
-Un rodeo de +20 intervalos son 2,7 s de recorrido a 110 bpm para saltar entre dos piezas vecinas: deja
-de leerse como "esquivar" y pasa a leerse como que el instrumento se colgó. Si el camino libre mide más
-que el directo por más de un tope a fijar, gana el directo con sus cruces sonando. El tope sale de
-escuchar, no de elegirlo en el papel — el 009 ya cambió una decisión de recorrido después de oírla.
+**D3 — Un camino, su costo y sus cruces salen de la MISMA llamada.**
+Es la lección de D8 del 009 —la cantidad de clicks se lee del largo del camino, no se calcula— elevada
+al cuadrado: sin fórmula cerrada, dos funciones separadas no tienen nada que las obligue a coincidir.
 
-**D6 — `Click` deja de ser solo un instante.**
-Hoy un cruce es `{ offset, cell }` en el dominio y `{ offset }` en el motor, y el motor lo suena con
-`scheduleClick`, sin altura. Con D4 un cruce puede llevar nota, así que el tipo tiene que poder decirlo
-y la proyección de `App.tsx` tiene que llevarla al motor. **Esto toca la frontera dominio↔audio**, que
-es la parte más protegida del repo: el motor no puede ver `Cell`, pero sí puede ver un número MIDI —ya
-los ve en `Step.notes`—, así que la proyección sigue siendo una proyección y no una traducción.
+**D4 — Un solo P para toda celda ocupada.**
+Se consideró cobrar menos por la pieza de origen y destino que por un tercero. Se descarta: la `X` —cuya
+celda central está rodeada por sus propios brazos y es siempre una de sus dos puertas— ya queda resuelta
+con un solo peso, salir de su centro cuesta 2 y listo. Dos pesos agregan un segundo número que ajustar
+de oído y una regla que explicar, para el único caso que el primero ya cubre.
+
+**D5 — El cruce suena la nota de la celda, como floritura.**
+Misma altura que la celda muestra, **más corta y más suave** que una nota de pieza. Sonarla plena
+tendría un costo que este spec no quiere pagar: con P = 2 son entre 2 y 5 cruces por ciclo, y si suenan
+igual que una nota de pieza el tablero toca notas fuera del turno de su pieza — que es justo la
+legibilidad que el 010 acaba de construir. La floritura conserva la información (**se oye qué celda se
+pisó**) sin disputarle el turno a nadie.
+
+No cuesta código nuevo: `scheduleVoice` ya recibe `dur` y `vel` como parámetros con default, así que la
+floritura es la misma llamada con dos constantes distintas.
+
+**D6 — El cruce con altura es MODELO, no mezcla.**
+`setClicksAudible(false)` sigue apagando solo los clicks mudos sobre celda vacía. El cruce con altura no
+se apaga: es una nota del recorrido, no un adorno de mezcla.
+
+Vale registrar de dónde viene ese botón: existe porque `pathBetween` cruza piezas y esos golpes
+molestan, o sea que **es el parche del problema que este spec arregla**. Si con P = 2 y floritura el
+recorrido deja de molestar, el botón se queda sin razón de ser — pero eso se decide escuchando, y
+borrarlo va en su propio commit. Queda en Seguimiento.
+
+**D7 — El desempate del camino es explícito, no un efecto del `for`.**
+Hoy el camino es único porque es "primero en X, después en Y". Con pesos hay empates —entre las dos
+celdas más lejanas hay 792 caminos mínimos— y sin desempate declarado gana el que salga del orden en que
+se recorren los vecinos. Entre caminos de igual costo gana el **lexicográficamente menor**, exactamente
+como el 009 hizo con el circuito y por su mismo argumento: sin él, dos tableros idénticos podrían sonar
+distinto según cómo el motor de JS recorrió el bucle.
+
+**D8 — La cabeza distingue los tres casos.**
+Nota de pieza, cruce con floritura y click mudo son tres cosas distintas y se ven distinto: tres
+escalones de grosor de borde, sin agregar color. Es D7 del 010 —si dos cosas distintas se ven igual, el
+tablero miente sobre el modelo— y acá importa más, porque la diferencia entre «esta pieza está tocando»
+y «la cabeza pasó por encima» es justo lo que el 010 hizo legible.
+
+**D9 — El orden de visita de las piezas cambia, y está bien.**
+Medido: en el **30 % a 48 %** de los tableros el circuito óptimo con la matriz nueva no es el mismo que
+con la vieja. No es daño colateral: el 009 dice que la geometría decide el orden, y los obstáculos son
+geometría. Pero **cambia lo que suena**, así que va en su propio commit y lo declara el PR.
 
 ## Criterios de Aceptación
 
-- **AC1** — El caso testigo queda cerrado, con test: con la `P` rot 90 en `(3,2)` y la `Y` rot 90 en
-  `(7,2)`, el tramo `P→Y` **no pisa `(7,1)`**. El camino libre mide 8 contra los 6 del directo.
-- **AC2** — Ningún tramo cruza una celda ocupada **cuando existe un camino libre dentro del tope** (D5).
-  Verificable sobre los prefijos del teselado y sobre tableros aleatorios.
-- **AC3** — Cuando no hay camino libre, cada celda ocupada que el tramo cruza **suena la nota de esa
-  celda**, la misma que el tablero muestra. Con test sobre la `X`, que es el caso estructural.
-- **AC4** — La distancia y el camino salen de la misma llamada (D3): no hay dos funciones que puedan
-  discrepar, y el invariante `camino.length === distancia - 1` se mantiene.
-- **AC5** — El circuito sigue siendo **determinista y exacto**: mismo tablero, misma música, y
-  Held-Karp sigue dando el óptimo sobre la matriz nueva. El desempate lexicográfico del 009 no cambia.
-- **AC6** — **El cambio de audio va en su propio commit y declarado.** Todo tablero con dos piezas cuyo
-  tramo cruzaba una pieza suena distinto: es un arreglo, no un cambio de gusto, pero hay que poder
-  revertirlo solo.
-- **AC7** — Rendimiento: la matriz de 12×12 con BFS no supera los **2 ms** (medido hoy: 0,31 ms), y el
-  total de `buildSequence` con 12 piezas sigue bajo los 5 ms que ya afirma el test del 009.
-- **AC8** — `pnpm verify` en verde, y `check_invariants` antes y después.
-- **AC9** — **A ojo con la cabeza lectora del 010**: el recorrido rodea las piezas, y donde no puede,
-  la celda que cruza se enciende y suena su nota. Es la verificación que este spec no habría podido
-  hacer antes.
+- **AC1** — El caso testigo, con test: con la `P` rot 90 en `(3,2)` y la `Y` rot 90 en `(7,2)`, el tramo
+  `P→Y` **no pisa `(7,1)`**.
+- **AC2** — Ningún tramo pisa una celda ocupada cuando existe un camino libre que no cueste más que P por
+  celda evitada. Falsable sobre los prefijos del teselado y sobre tableros aleatorios con semilla fija.
+- **AC3** — Cada celda ocupada que el recorrido igual pisa **suena su nota**, la misma que el tablero
+  muestra, con la duración y el volumen de floritura. Con test sobre la `X`, que es el caso estructural.
+- **AC4** — Camino, costo y cruces salen de la misma llamada (D3), y el invariante
+  `camino.length === pasos - 1` del 009 sigue valiendo.
+- **AC5** — **Determinismo declarado** (D7): mismo tablero, misma secuencia, y entre caminos de igual
+  costo gana el lexicográficamente menor. Con test que lo ejerza, no solo que lo afirme.
+- **AC6** — Held-Karp sigue dando el óptimo exacto sobre la matriz nueva, verificado por fuerza bruta
+  hasta 7 piezas igual que hoy.
+- **AC7** — **El cambio de audio va en su propio commit y declarado** (D9).
+- **AC8** — Rendimiento: la matriz de 12×12 no supera los **2 ms** (medido: 0,31 ms), y `buildSequence`
+  con 12 piezas sigue bajo los 5 ms que ya afirma el test del 009.
+- **AC9** — `pnpm verify` en verde, y `check_invariants` **en proceso fresco** antes y después.
+- **AC10** — **A ojo con la cabeza lectora del 010**: el recorrido rodea las piezas cuando le conviene, y
+  donde no, la celda que pisa se enciende con su escalón propio y suena su nota. Es la verificación que
+  este spec no habría podido hacer antes de existir el 010.
+- **AC11** — A oído: **`P = 2` se confirma o se cambia escuchando**. El AC no es "P vale 2", es "el valor
+  quedó elegido con el tablero andando y el número quedó escrito con su motivo".
 
 ## Fuera de Alcance
 
-- **Cambiar las puertas.** Entrada y salida siguen siendo la primera y la última nota del arpegio
-  (D8/D9 del spec 010). Este spec cambia cómo se va de una a otra, no cuáles son.
-- **Cambiar el desempate del circuito.** Held-Karp y el lexicográficamente menor se quedan como están.
-- **Rediseñar el click.** Sigue existiendo para las celdas vacías que el recorrido cruza; lo que se
-  agrega es qué pasa cuando la celda no está vacía.
-- **Hacer que el usuario elija el camino.** El recorrido lo sigue decidiendo la geometría.
+- **Cambiar las puertas.** Entrada y salida siguen siendo la celda de la primera y la última nota del
+  arpegio (D8/D9 del spec 010). Este spec cambia cómo se va de una a otra, no cuáles son.
+- **Cambiar el desempate del circuito.** Held-Karp y el lexicográficamente menor se quedan.
+- **Borrar el botón de Clicks.** Queda en Seguimiento (D6).
+- **Que el usuario elija el camino o ajuste P.** El recorrido lo sigue decidiendo la geometría.
 
 ## Riesgos
 
 | Riesgo | Mitigación |
 |---|---|
-| **Cambia lo que suena** en cualquier tablero donde un tramo cruzaba una pieza, que es la mayoría. | Commit propio y declarado (AC6). Es un arreglo: hoy el recorrido entra a las piezas por el costado, y eso no lo eligió nadie. |
-| El rodeo puede ser enorme (+20 medido) y volver el ciclo interminable. | D5: tope al rodeo, y pasado el tope se cruza sonando. El número sale de escuchar. |
-| Con el tablero lleno **no hay ninguna celda libre**, así que "esquivar" no significa nada y todo pasa por el caso degradado. | Es correcto y esperable: con 60 celdas ocupadas el recorrido es todo cruces. Lo que cambia es que suenan las notas de las celdas en vez de golpes sordos — que es mejor, no peor. |
-| Un cruce que suena la nota puede coincidir en el mismo intervalo con la nota que la pieza toca por derecho propio, y sumarse. | Es la misma garantía que el 009 ya verifica para los clicks («dos clicks no caen nunca en el mismo instante»), extendida al caso nuevo. Va como invariante con test. |
-| `Click` con altura afloja la frontera dominio↔audio. | No: el motor ya recibe números MIDI en `Step.notes`. Lo que sigue prohibido —y lo verifica el linter— es que vea `Cell`. |
+| **Cambia lo que suena** en cualquier tablero donde un tramo pisaba una pieza, que es la mayoría, y cambia el orden de visita en el 30-48 %. | Commit propio y declarado (AC7). Es un arreglo: hoy el recorrido entra a las piezas por el costado y eso no lo eligió nadie. |
+| `P = 2` es un número elegido con una tabla, no con los oídos. | AC11 lo vuelve parte de la definición de terminado. La tabla de D1 dice exactamente qué se gana y qué se paga en cada valor, así que moverlo es informado y barato. |
+| Con el tablero lleno no hay ninguna celda libre: todo el recorrido son cruces. | Es correcto y esperable. Lo que cambia es que suenan las notas de las celdas en vez de golpes sordos — mejor, no peor. |
+| Con pesos el camino deja de ser único y el determinismo pasa a depender de la implementación. | D7: desempate lexicográfico explícito, con test que lo ejerza. |
+| El cruce con altura afloja la frontera dominio↔audio. | No: el motor ya recibe números MIDI en `Step.notes`. Lo que sigue prohibido —y lo verifica el linter— es que vea `Cell`. |
