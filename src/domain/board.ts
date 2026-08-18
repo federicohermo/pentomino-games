@@ -41,7 +41,23 @@ export function isValid(cells: Cell[], placed: readonly PlacedPiece[]): boolean 
   return true;
 }
 
-/** La pieza que ocupa `(x, y)`, o null. */
+/**
+ * La pieza que ocupa `(x, y)`, o null.
+ *
+ * Recorre todas las piezas y todas sus celdas, y eso esta MEDIDO desde el cierre de
+ * los seguimientos del 009 y el 010, que pedian saber si aguantaba que el tablero se
+ * dibujara al ritmo del intervalo: con las 12 piezas colocadas —el maximo, y el peor
+ * caso porque no queda ninguna celda vacia que corte antes— un render entero del
+ * tablero son 60 llamadas y **4,1 us** en total (p95 7,4 us), o sea 0,07 us por celda
+ * y el 0,02 % de un cuadro de 16,7 ms. A 160 bpm el intervalo mide 93,75 ms: aunque se
+ * la llamara una vez por celda y por intervalo, sobraria por cuatro ordenes de
+ * magnitud.
+ *
+ * O sea que el indice por celda que la tarea preveia no hace falta, y el que dibuja a
+ * ritmo de intervalo —la cabeza lectora del 010— igual no la usa: lee la tabla por
+ * offset de `components/route-source.ts`, y no por costo sino porque tiene que dibujar
+ * la ruta que suena y no la del tablero de ahora.
+ */
 export function occupantAt(placed: readonly PlacedPiece[], x: number, y: number): PlacedPiece | null {
   for (const p of placed) {
     if (p.cells.some(([cx, cy]) => cx === x && cy === y)) return p;

@@ -1,10 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { buildSequence, cellsByPlayOrder } from '../../domain/sequence.ts';
 import { cellsAt } from '../../domain/board.ts';
-import { notesForRotation } from '../../domain/music.ts';
 import { rotateN, reflect } from '../../domain/transform.ts';
 import { SHAPES, ANCHOR_INDEX } from '../../domain/constants/pieces.constants.ts';
-import { BASE_MAP, DEFAULT_OCTAVE } from '../../domain/constants/music.constants.ts';
 import type { PieceKey } from '../../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../../domain/types/board.types.ts';
 
@@ -38,14 +36,12 @@ beforeEach(async () => {
 const colocar = (piece: PieceKey, rot: number, mirror: boolean, x: number, y: number): PlacedPiece => {
   const base = rotateN(SHAPES[piece], rot);
   const shape = mirror ? reflect(base) : base;
-  const asc = notesForRotation(BASE_MAP[piece], DEFAULT_OCTAVE, rot);
   return {
     id: piece,
     piece,
     rotation: rot,
     mirror,
     cells: cellsAt(shape, ANCHOR_INDEX[piece], x, y),
-    notes: mirror ? [...asc].reverse() : asc,
   };
 };
 

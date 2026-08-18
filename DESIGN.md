@@ -140,4 +140,64 @@ por la misma cadena de puras— porque para eso está: para ver la jugada antes 
 queda al color ahí es el par gris/rosa, que es la señal de *entra* / *no entra*.
 
 Los tres **ganan** sobre el color de pieza cuando conviven en la misma celda. Si alguna vez hace falta un
-estado nuevo, el canal disponible es el borde, la opacidad o la superposición — no el fondo.
+estado nuevo, el canal disponible es el borde, la opacidad o la superposición — no el fondo. La cabeza
+lectora del spec 010 es ese caso ya cobrado, y usó los tres: borde para el resalte, opacidad y
+superposición para el velo.
+
+## La cabeza lectora: el estado va al borde
+
+Es el canal que la sección anterior dejaba reservado, cobrado por el spec 010. La cabeza marca **qué
+celda suena en este intervalo** y lo hace **engrosando el borde de la baldosa**: sin relleno, sin cambio
+de color y sin `scale`. Vive en `src/components/Playhead.tsx`, en una capa encima de la grilla.
+
+**Por qué el borde y no un relleno.** En un secuenciador de fondo oscuro el estándar es *encender* el
+step activo, porque la metáfora es un LED. Este tablero es tema claro —panel blanco, celdas vacías
+blancas— y ahí subir luminancia hace **desaparecer** la celda: el amarillo de `V` se va a blanco. Un
+relleno oscuro sí funciona (medido: al 30 % el peor caso de las 12, la `W`, da un delta de L\* de 8,8
+sobre un umbral de ~3) pero **tapa la nota** que la celda muestra desde el spec 007, que es justo lo que
+hay que poder leer. El borde marca el límite sin pisar el contenido.
+
+**Por qué engorda para los dos lados.** Las 60 celdas ya tienen `border-slate-900`, ocupadas o vacías,
+así que engrosar hacia adentro es un cambio de grado contra un campo lleno de bordes negros. El anillo
+exterior es lo que agrega el salto de tamaño: la celda se lee más grande sin que crezca su caja.
+
+**Por qué no `transform: scale`, que es lo obvio.** Porque `scale` cuenta para el overflow
+**scrolleable** del contenedor. Medido en el DOM: con la cabeza en `(9,5)` y `scale(1.10)`, el
+`scrollHeight` del `overflow-x-auto` de `Board` pasa de 378 a 381 y aparecen las barras de
+desplazamiento —las dos, porque Tailwind fija solo `overflow-x` y entonces el eje Y computa a `auto`—.
+`box-shadow` es *ink overflow*: pinta afuera de la caja sin agrandar la región scrolleable.
+
+**El color del resalte es gris pizarra (`#0f172a`) y no un color de pieza.** Es la regla de arriba sin
+excepción: el hue dice *qué pieza es*, nunca *qué está pasando*. Misma razón por la que el fantasma es
+gris y no verde.
+
+### Los escalones de grosor
+
+El grosor es el único canal, así que las clases de evento se distinguen **por cantidad de borde** y por
+nada más. Los valores viven en `Playhead.tsx`:
+
+| Qué suena | Hacia adentro | Hacia afuera | Se lee como |
+|---|---|---|---|
+| **Nota** de una pieza | 3 px | 2 px | la celda tiene su turno |
+| **Click** sobre celda vacía | 2 px | — | un roce: la cabeza pasó por acá |
+
+Nota fuerte, click tenue: si se vieran igual, el recorrido parecería tener piezas donde no hay.
+
+> **Pendiente del spec 011 — todavía no está en el árbol.** El recorrido va a pisar celdas **ocupadas**
+> y a sonar su nota como floritura, y eso es un tercer caso: ni el turno de la pieza ni un roce sobre el
+> vacío. Le toca un tercer escalón entre los dos de arriba, **también sin agregar color**. Mientras no
+> se implemente, esta tabla tiene dos filas y el 011 agrega la tercera.
+
+**La cabeza salta, no se desliza.** El instrumento está cuantizado a la grilla de intervalos, y un
+movimiento continuo sugeriría una continuidad que no existe.
+
+### El velo de lo que todavía no sonó
+
+Una celda **colocada pero que aún no se estrenó** dentro del ciclo se dibuja tapada, no atenuada: un
+nodo propio con `bg-white/60` y borde punteado `slate-900/50` sobre la baldosa. Se enciende cuando la
+cabeza la pisa por primera vez, **celda por celda** y no de a pieza entera — que es lo único que hace
+visible que el orden de reproducción no es el de colocación.
+
+Que sea un nodo que **tapa** y no una clase que atenúa es la lección cara del review del 007: React es
+dueño de las baldosas de `Board`, el loop de dibujo es dueño de la capa de la cabeza, y el estilo de un
+mismo nodo **no se parte entre los dos**.

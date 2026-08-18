@@ -3,12 +3,20 @@ import { midiToHz, scheduleVoice, scheduleClick } from '../voice.ts';
 import { collectHits, intervalDuration } from '../scheduler.ts';
 import { FFT_SIZE, SMOOTHING } from '../constants/engine.constants.ts';
 import { HIT } from '../constants/scheduler.constants.ts';
-import { CLICK_SECONDS } from '../constants/voice.constants.ts';
+import { CLICK_SECONDS, RELEASE_INTERVALS } from '../constants/voice.constants.ts';
 import type { ClockState } from '../types/scheduler.types.ts';
 import { offline, peakNear, detectOnsets, SR } from './test-context.ts';
 
 const A4 = 69;
 const VEL = 0.8;
+
+/**
+ * El release al tempo por defecto (0,12 s). Estos tests miden onsets y picos, no la
+ * cola de la envolvente, asi que les alcanza con un valor fijo — el mismo que el
+ * instrumento usa a 110 bpm. Quien verifica que el release siga al tempo es
+ * `voice.test.ts`.
+ */
+const REL = RELEASE_INTERVALS * intervalDuration(110);
 
 describe('scheduler + sintesis integrados', () => {
   it('AC5 — los disparos se oyen donde el scheduler dijo (+-6 ms)', async () => {
@@ -23,7 +31,7 @@ describe('scheduler + sintesis integrados', () => {
     const g = ctx.createGain();
     g.gain.value = 1;
     g.connect(ctx.destination);
-    for (const h of hits) if (h.kind === HIT.note) scheduleVoice(ctx, g, h.hz, h.at, 0.2, VEL);
+    for (const h of hits) if (h.kind === HIT.note) scheduleVoice(ctx, g, h.hz, h.at, 0.2, REL, VEL);
     const d = (await ctx.startRendering()).getChannelData(0);
 
     const onsets = detectOnsets(d);
@@ -49,7 +57,7 @@ describe('scheduler + sintesis integrados', () => {
     g.gain.value = 1;
     g.connect(ctx.destination);
     for (const h of hits) {
-      if (h.kind === HIT.note) scheduleVoice(ctx, g, h.hz, h.at, interval, VEL);
+      if (h.kind === HIT.note) scheduleVoice(ctx, g, h.hz, h.at, interval, RELEASE_INTERVALS * interval, VEL);
       else scheduleClick(ctx, g, h.at);
     }
     const d = (await ctx.startRendering()).getChannelData(0);
@@ -71,7 +79,7 @@ describe('scheduler + sintesis integrados', () => {
       const g = ctx.createGain();
       g.gain.value = 1;
       g.connect(ctx.destination);
-      freqs.forEach(f => scheduleVoice(ctx, g, f, 0.1, 0.3, 0.4));
+      freqs.forEach(f => scheduleVoice(ctx, g, f, 0.1, 0.3, REL, 0.4));
       return (await ctx.startRendering()).getChannelData(0);
     };
     const solo = peakNear(await render([midiToHz(60)]), 0.2);
@@ -107,7 +115,7 @@ describe('analizador', () => {
       // transparencia del analizador, no sobre cuanto dura la nota (esa cuenta
       // es NOTE_INTERVALS * intervalDuration(bpm) desde el spec 008, y no hay
       // bpm en juego aca).
-      scheduleVoice(ctx, g, midiToHz(60), 0.1, 0.35, VEL);
+      scheduleVoice(ctx, g, midiToHz(60), 0.1, 0.35, REL, VEL);
       return (await ctx.startRendering()).getChannelData(0);
     };
 

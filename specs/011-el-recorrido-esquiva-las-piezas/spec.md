@@ -39,6 +39,13 @@ más entre catorce.
 **Pisar una celda ocupada deja de ser gratis y pasa a costar.** La distancia entre dos puertas es el
 camino de menor costo sobre las 60 celdas, con peso 1 en la celda vacía y **peso P en la ocupada**.
 
+El peso lo pagan las celdas **intermedias** del camino —las que hoy son clicks—, **no sus dos puntas**.
+Las dos puertas están sobre una pieza por definición, así que cobrarlas sumaría un `2·(P−1)` idéntico a
+las 144 entradas de la matriz: no movería ningún `argmin` —todo circuito hamiltoniano tiene `n` aristas—
+pero rompería la simetría que `board.test.ts` verifica hoy sobre los 3.600 pares, porque el camino de
+ida y el de vuelta no tienen las mismas puntas. Con el peso sobre las intermedias, `crossed` es
+exactamente el subconjunto ocupado de `path` y `d(a,b) === d(b,a)` sigue valiendo.
+
 Y **cuando el recorrido igual pisa una celda ocupada, suena su nota como floritura**: la misma altura
 que la celda muestra desde el spec 007, más corta y más suave que una nota de pieza.
 
@@ -69,7 +76,8 @@ es el tope, expresado como preferencia continua en vez de un corte), y el trato 
 **D2 — La distancia se calcula, no se deriva de una fórmula.**
 Con pesos ya no hay forma cerrada. El grafo son 60 nodos, adyacencia de 4 vecinos más la arista de la
 costura (`(0,0)`–`(9,5)`, D2 del 009). Medido: la matriz completa de 12×12 cuesta **0,31 ms** contra los
-**0,62 ms** que Held-Karp ya paga en el mismo tablero. **El costo del recorrido se duplica y sigue
+**1,87 ms** que Held-Karp ya paga en el mismo tablero —el número del 009, que está en su `research.md`
+§5 y repetido en el docblock de `shortestCircuit`—. **El recorrido pasa a costar un 17 % más y sigue
 siendo despreciable** — el argumento del 009 («`n` está acotado por las reglas del juego») vale igual.
 
 **D3 — Un camino, su costo y sus cruces salen de la MISMA llamada.**
@@ -89,8 +97,16 @@ igual que una nota de pieza el tablero toca notas fuera del turno de su pieza �
 legibilidad que el 010 acaba de construir. La floritura conserva la información (**se oye qué celda se
 pisó**) sin disputarle el turno a nadie.
 
-No cuesta código nuevo: `scheduleVoice` ya recibe `dur` y `vel` como parámetros con default, así que la
-floritura es la misma llamada con dos constantes distintas.
+No cuesta **función nueva** en `voice.ts`: `scheduleVoice` ya recibe `dur` y `vel`, así que la floritura
+es la misma llamada con dos valores distintos.
+
+Pero **`dur` no tiene default, y eso es deliberado**: su docblock dice por qué —«un default sería un
+número fijo en segundos que miente sobre el bpm vigente»—. `vel` sí lo tiene. Y el mismo argumento cae
+sobre la constante de duración de la floritura: **va en INTERVALOS, no en segundos.** La excepción de
+`CLICK_SECONDS` está justificada por escrito en que el click **no tiene altura** y su identidad
+perceptual es la brevedad absoluta; el cruce sí tiene altura, así que la excepción no lo alcanza y el
+precedente correcto es `NOTE_INTERVALS`. Quien multiplica por `intervalDuration(bpm)` es `engine.ts`,
+que es donde vive el bpm.
 
 **D6 — El cruce con altura es MODELO, no mezcla.**
 `setClicksAudible(false)` sigue apagando solo los clicks mudos sobre celda vacía. El cruce con altura no
@@ -123,14 +139,22 @@ geometría. Pero **cambia lo que suena**, así que va en su propio commit y lo d
 
 - **AC1** — El caso testigo, con test: con la `P` rot 90 en `(3,2)` y la `Y` rot 90 en `(7,2)`, el tramo
   `P→Y` **no pisa `(7,1)`**.
-- **AC2** — Ningún tramo pisa una celda ocupada cuando existe un camino libre que no cueste más que P por
-  celda evitada. Falsable sobre los prefijos del teselado y sobre tableros aleatorios con semilla fija.
+- **AC2** — El camino devuelto es de **costo mínimo**, contrastado contra un Dijkstra de referencia
+  escrito en el propio test —no contra la implementación—, sobre los prefijos del teselado y sobre
+  tableros aleatorios con semilla fija. El corolario, que es el que se lee: si existe un camino libre
+  con a lo sumo **`P − 1` pasos extra por celda ocupada evitada**, el devuelto no pisa ninguna. El
+  coeficiente es `P − 1` y no `P`, porque pisar una celda no cuesta `P` pasos: cuesta `P` **en vez de**
+  1. Con `P = 2` es un paso extra por celda evitada, y la versión anterior de este AC decía dos —o sea
+  que habría dado en rojo sobre una implementación correcta.
 - **AC3** — Cada celda ocupada que el recorrido igual pisa **suena su nota**, la misma que el tablero
   muestra, con la duración y el volumen de floritura. Con test sobre la `X`, que es el caso estructural.
 - **AC4** — Camino, costo y cruces salen de la misma llamada (D3), y el invariante
   `camino.length === pasos - 1` del 009 sigue valiendo.
 - **AC5** — **Determinismo declarado** (D7): mismo tablero, misma secuencia, y entre caminos de igual
-  costo gana el lexicográficamente menor. Con test que lo ejerza, no solo que lo afirme.
+  costo gana el lexicográficamente menor. **El orden va escrito, no sobreentendido**: se comparan las
+  secuencias de celdas intermedias posición por posición, y cada celda como el par `(x, y)` —primero
+  `x`, después `y`—; el primer par que difiere decide. Con test que lo ejerza sobre un tablero donde el
+  empate exista de verdad, no solo que lo afirme.
 - **AC6** — Held-Karp sigue dando el óptimo exacto sobre la matriz nueva, verificado por fuerza bruta
   hasta 7 piezas igual que hoy.
 - **AC7** — **El cambio de audio va en su propio commit y declarado** (D9).
@@ -142,6 +166,25 @@ geometría. Pero **cambia lo que suena**, así que va en su propio commit y lo d
   este spec no habría podido hacer antes de existir el 010.
 - **AC11** — A oído: **`P = 2` se confirma o se cambia escuchando**. El AC no es "P vale 2", es "el valor
   quedó elegido con el tablero andando y el número quedó escrito con su motivo".
+- **AC12** — **No-regresión sobre los consumidores de `cellDistance` y `pathBetween`**, que son código
+  compartido y hoy tienen 13 tests que este spec no nombraba. Ninguno queda rojo ni borrado en
+  silencio: cada uno se migra a `routeBetween` o se declara superado con su motivo escrito.
+  - `domain/__tests__/board.test.ts:186-306` — los `describe` de `cellDistance` y `pathBetween`. Cinco
+    afirman propiedades que el modelo nuevo **cambia**: "coincide con Manhattan", la simetría y la
+    desigualdad triangular sobre los 3.600 pares (ahora solo valen con el tablero vacío) y "traza
+    primero en X y después en Y" (ahora lo decide el desempate de AC5).
+  - `domain/__tests__/sequence.test.ts:57`, `:141-142`, `:430-431`.
+  - `mcp-server/src/__tests__/tools.test.ts:8`, `:298-299` — **cruza el borde de paquete**: contrasta cada
+    hop de `simulate_board` contra `cellDistance`/`pathBetween`. Si desaparecen, o se reescribe contra
+    `routeBetween` o `pnpm verify` no compila. Es la arista que el `CLAUDE.md` avisa que existe.
+  - `ROUTE` (`domain/constants/route.constants.ts`) y `RouteKind` (`domain/types/sequence.types.ts`)
+    quedan **sin ningún consumidor** cuando muere `bestRoute`. Borrarlos va en su propio commit.
+- **AC13** — El motor distingue **tres** clases de evento, y no dos con un campo opcional. `HIT`
+  (`audio/constants/scheduler.constants.ts`, hoy `{ note, click }` y con un docblock que dice "las dos
+  clases") suma una tercera clave, y el union `Hit` una tercera rama que lleva su `hz`. **No** se
+  agrega `hz?: number` a la rama del click: el docblock de `Hit` rechaza esa forma por escrito —"el
+  campo opcional dejaría pasar en silencio un click con altura"— y `setClicksAudible` necesita
+  justamente poder distinguir el mudo del que tiene altura (D6).
 
 ## Fuera de Alcance
 

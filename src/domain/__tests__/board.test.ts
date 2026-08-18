@@ -11,7 +11,7 @@ const PIECES = Object.keys(SHAPES) as PieceKey[];
 
 /** Una pieza colocada con las celdas dadas. El resto de los campos no lo mira el tablero. */
 const piezaEn = (id: string, cells: Cell[]): PlacedPiece =>
-  ({ id, piece: 'I', rotation: 0, mirror: false, cells, notes: [] });
+  ({ id, piece: 'I', rotation: 0, mirror: false, cells });
 
 describe('cellsAt', () => {
   it('AC8 — la celda de agarre cae exactamente donde se clickeo', () => {

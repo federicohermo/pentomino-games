@@ -159,9 +159,10 @@ function recomputarVelo(): void {
  * tablero hay 792 caminos minimos, o sea 792 formas de dibujar un recorrido que no es el
  * que suena, y por eso D5 le prohibe a la vista elegir el suyo.
  *
- * `occupantAt` queda deliberadamente afuera aunque parezca el camino corto: recorre
- * todas las piezas por celda, y el loop de dibujo la llamaria 60 veces por segundo para
- * un dato que ya esta en la secuencia.
+ * `occupantAt` queda deliberadamente afuera aunque parezca el camino corto, y NO por
+ * costo —medido: 4,1 us un tablero entero con 12 piezas, ver su docblock—, sino porque
+ * contesta sobre `placed`, que es el tablero de AHORA. El dato que el loop necesita es
+ * el de la ruta que esta sonando, y ese ya esta en la secuencia congelada.
  */
 function construir(s: Sequence, placed: readonly PlacedPiece[]): Ruta {
   const marcas: (Marca | null)[] = new Array<Marca | null>(Math.max(0, s.length)).fill(null);

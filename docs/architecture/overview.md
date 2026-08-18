@@ -77,7 +77,7 @@ Sin React, sin audio, sin DOM. Determinísticas y testeables en aislamiento.
 |---|---|---|
 | `transform.ts` | `rotate90`, `normalize`, `rotateN`, `reflect`, `centroid`, `angleFromCentroid` | Transformaciones de un `Cell[]`, y el centroide con el ángulo de cada celda a su alrededor |
 | `board.ts` | `cellsAt`, `isValid`, `cellDistance`, `pathBetween`, `occupantAt`, `occupantCellIndex` | Las reglas del tablero, la distancia entre celdas replegando la costura `(0,0)↔(9,5)`, y qué celda de la pieza cae en `(x, y)` |
-| `music.ts` | `midiFor`, `midiName`, `notesForRotation`, `degreeByCellIndex` | De pieza + rotación a cinco notas MIDI, y de la forma a qué celda lleva cuál |
+| `music.ts` | `midiFor`, `midiName`, `notesForRotation`, `arpeggioFor`, `degreeByCellIndex` | De pieza + rotación a cinco notas MIDI, y de la forma a qué celda lleva cuál. `arpeggioFor` es la derivación completa —tónica, escala y retrógrado—, y la única fuente del arpegio de una pieza colocada |
 | `sequence.ts` | `buildSequence` | El circuito que visita las piezas colocadas (Held-Karp sobre `cellDistance`) y los offsets del ciclo — orden, silencios y clicks |
 | `invariants.ts` | `checkArrayOrder`, `checkAnchors`, `checkShapes`, `checkBaseMap`, `checkNotes`, `checkAll` | Los cinco chequeos del modelo. Los dos geométricos recorren las 96 orientaciones; los otros tres, lo que les corresponde |
 

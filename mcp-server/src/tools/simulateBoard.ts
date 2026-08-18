@@ -3,11 +3,10 @@ import { defineTool, json } from './types.ts';
 import { PIECE_KEYS } from '../pieces.ts';
 import { rotateN, reflect } from '../../../src/domain/transform.ts';
 import { cellsAt, isValid, occupantAt } from '../../../src/domain/board.ts';
-import { notesForRotation, midiName } from '../../../src/domain/music.ts';
+import { midiName } from '../../../src/domain/music.ts';
 import { buildSequence, gates } from '../../../src/domain/sequence.ts';
 import { SHAPES, ANCHOR_INDEX, CELLS_PER_PIECE } from '../../../src/domain/constants/pieces.constants.ts';
 import { GRID_W, GRID_H } from '../../../src/domain/constants/board.constants.ts';
-import { BASE_MAP, DEFAULT_OCTAVE } from '../../../src/domain/constants/music.constants.ts';
 import type { Cell } from '../../../src/domain/types/transform.types.ts';
 import type { PlacedPiece } from '../../../src/domain/types/board.types.ts';
 import { collectHits, barDuration, intervalDuration } from '../../../src/audio/scheduler.ts';
@@ -102,9 +101,6 @@ function resolve(entries: z.output<typeof inputSchema>['pieces']): { resolved: R
     const shape = e.mirror ? reflect(rotated) : rotated;
     const cells = cellsAt(shape, ANCHOR_INDEX[e.piece], e.at[0], e.at[1]);
 
-    const ascending = notesForRotation(BASE_MAP[e.piece], DEFAULT_OCTAVE, e.rotation);
-    const notes = e.mirror ? [...ascending].reverse() : ascending;
-
     const id = String(i + 1);
     const valid = isValid(cells, placed);
     let reason: string | null = null;
@@ -121,7 +117,10 @@ function resolve(entries: z.output<typeof inputSchema>['pieces']): { resolved: R
     // rechazada no deja nada en el tablero.
     let gates: Gates | null = null;
     if (valid) {
-      const p: PlacedPiece = { id, piece: e.piece, rotation: e.rotation, mirror: e.mirror, cells, notes };
+      // Sin `notes`: el arpegio ya no se guarda en la pieza, lo deriva `buildSequence`
+      // con la misma `arpeggioFor` que usa la app. Antes se componia aca a mano, que era
+      // una de las cuatro copias de esa derivacion.
+      const p: PlacedPiece = { id, piece: e.piece, rotation: e.rotation, mirror: e.mirror, cells };
       placed.push(p);
       gates = gatesOf(p);
     }

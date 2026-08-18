@@ -1,6 +1,10 @@
 import type { Cell } from './types/transform.types.ts';
+import type { PieceKey } from './types/pieces.types.ts';
 import { centroid, angleFromCentroid } from './transform.ts';
-import { CHROMATIC, PENT_MAJOR, PENT_MINOR, PENT_BLUES5, DEGREE_EPSILON } from './constants/music.constants.ts';
+import {
+  CHROMATIC, PENT_MAJOR, PENT_MINOR, PENT_BLUES5, DEGREE_EPSILON,
+  BASE_MAP, DEFAULT_OCTAVE,
+} from './constants/music.constants.ts';
 
 /**
  * El modelo musical: de una clase de altura y una rotacion, a cinco notas MIDI.
@@ -36,6 +40,34 @@ export function notesForRotation(basePc: number, octave: number, rot: number): n
     const octShift = Math.floor((basePc + iv + transpose)/12);
     return midiFor(pc, octave + octShift);
   });
+}
+
+/**
+ * El arpegio de una pieza colocada, EN ORDEN DE REPRODUCCION: las cinco notas MIDI
+ * que dispara, con el retrogrado ya aplicado si esta reflejada.
+ *
+ * Es la derivacion completa `(pieza, rotacion, reflexion) -> notas`, y existe porque
+ * hasta el cierre de los seguimientos del 007/009/010 estaba escrita CUATRO veces —en
+ * `App.tsx`, en `PlacedList.tsx`, en `resolve()` del `simulate_board` y en los helpers
+ * de dos tests—, cada una componiendo a mano `BASE_MAP` + `notesForRotation` + el
+ * `reverse`. `PlacedPiece.notes` existia para no repetirla, pero guardarla en el estado
+ * la volvia un dato que podia contradecir a la pieza: nada impedia construir una
+ * `PlacedPiece` con `rotation: 1` y las notas de la rotacion 0, y el tablero —que ya
+ * derivaba— y el motor —que leia el campo— habrian dicho cosas distintas.
+ *
+ * La reflexion invierte el ORDEN EN EL TIEMPO y no que nota le toca a que celda: por eso
+ * el `reverse` va sobre el resultado y `notesForRotation` no recibe `mirror`. Quien
+ * necesita la nota de UNA celda tiene que indexar el arpegio ASCENDENTE con el grado
+ * —`notesForRotation(...)[degreeByCellIndex(...)[k]]`, que es lo que hace `Board.tsx`—
+ * y no esta funcion.
+ *
+ * La octava es `DEFAULT_OCTAVE` y no un parametro: la app entera toca en una sola
+ * octava. Quien necesite otra —hoy solo `describe_piece`, que la expone como argumento—
+ * usa `notesForRotation` directo.
+ */
+export function arpeggioFor(piece: PieceKey, rotation: number, mirror: boolean): number[] {
+  const asc = notesForRotation(BASE_MAP[piece], DEFAULT_OCTAVE, rotation);
+  return mirror ? asc.reverse() : asc;
 }
 
 /**

@@ -67,8 +67,8 @@
 - [x] `docs/guides/quickstart.md:76-78`: el espaciado deja de ser "dos lugares" y pasa a ser una
       definición usada en dos lugares
 - [x] `specs/004-…/tasks.md:135`: marcar la tarea de seguimiento que este spec **salda**
-- [ ] `specs/log.md`: estado del 008 — **la nota de que la deuda del 004 queda cerrada ya está**; mover
-      el estado de `Propuesto` es del merge, no de la rama
+- [x] `specs/log.md`: estado del 008 — **la nota de que la deuda del 004 queda cerrada ya está**; mover
+      el estado de `Propuesto` es del merge, no de la rama. Hecho: la fila dice `Implementado`
 
 ## Verificación
 - [x] **AC3** — `simulate_board` a 100 bpm: `timeline` idéntica a la línea base (30 onsets en 30
@@ -79,7 +79,10 @@
 - [x] `pnpm verify` en verde (AC1, AC8, AC9)
 - [x] A mano: el botón cambia de cara; colocar en pausa suena (5 osciladores en 0,1 ms), colocar
       andando no (0 al click; después solo el loop, cada 2,18 s) (AC6, AC7)
-- [ ] **Escuchar el extremo de 160 bpm** y decidir si `TEMPO_MAX` se queda
+- [ ] **Escuchar el extremo de 160 bpm** y decidir si `TEMPO_MAX` se queda — **sigue abierto y es lo
+      único de este spec que necesita oídos.** Dato nuevo del 2026-08-18: con el release ya en
+      intervalos, a 160 bpm el arpegio dejó de espesarse (1,88 voces a cualquier tempo en vez de 2,28),
+      así que la decisión hay que tomarla de nuevo sobre el instrumento de hoy
 
 ## PR
 - [x] Aclarar que **a 100 bpm no cambia nada**, y por qué: 0,15 s era la semicorchea de 100 bpm
@@ -90,18 +93,33 @@
       `jobTimeline` seguía nombrando `job.spread`, y la desviación de D3 no estaba en `log.md`
 
 ## Seguimiento (no bloquea)
+
+> **Cierre del seguimiento — 2026-08-18.** Todo lo de esta sección se resolvió o se movió a su
+> lugar definitivo en la rama `chore/cierre-seguimientos-007-010`. Lo que quedó abierto dice dónde vive.
+
 - [ ] `TEMPO_MAX` puede necesitar bajar de 160 — constante, commit aparte. **Dato nuevo para esa
       decisión:** con `NOTE_INTERVALS = 1` la nota mide `15 / bpm` s, o sea 93,75 ms a 160 bpm contra
       los **65 ms de `attack + decay`**: el 69 % de la nota es transitorio y casi no queda sustain. A
       partir de ~231 bpm `dur < attack + decay` y el `setValueAtTime(sustain, at + dur)` caería antes
       del final de la rampa de decay. No es alcanzable —`TEMPO_MAX` es 160 y `simulate_board` no
-      produce audio— pero es el techo real del modelo de envolvente actual
+      produce audio— pero es el techo real del modelo de envolvente actual. **Sigue abierto**: es una
+      decisión musical, no un arreglo, y se toma escuchando (ver Verificación)
 - [ ] **AC10 quedó verificado por lectura, no por test**, aunque el spec lo daba por falsable sin
       navegador. `togglePlay` vive dentro de `App.tsx` y el repo no tiene infra de tests de UI:
       testearlo pide extraer el handler o agregar testing-library, y ninguna de las dos es parte de
-      este spec. Si el 010 trae tests de UI, este es el primer caso a cubrir
-- [ ] `CLOCK_START_DELAY` y `PLAY_DELAY` se quedan en segundos a propósito: son latencias de agenda
-- [ ] El slider de tempo no muestra la unidad ("110" a secas) — cosmético, va con el 010
-- [ ] **`DEFAULT_VOICE.release` sigue en segundos absolutos** (0,12 s), o sea 0,48 intervalos a 60 bpm
+      este spec. **Sigue abierto, pero deja de vivir acá**: el 010 no trajo tests de UI, así que la
+      tarea es la deuda «No hay tests de UI» de `specs/log.md`, que ahora nombra a AC10 como el primer
+      caso a cubrir. Este spec ya no es su dueño
+- [x] `CLOCK_START_DELAY` y `PLAY_DELAY` se quedan en segundos a propósito: son latencias de agenda.
+      **Cerrado escribiendo el porqué donde viven** (`engine.constants.ts`) en vez de en un
+      seguimiento: una decisión anotada acá es una nota; anotada en la constante es la respuesta a la
+      próxima persona que quiera pasarlos a intervalos
+- [x] El slider de tempo no muestra la unidad ("110" a secas) — cosmético, va con el 010. **Hecho**:
+      dice `110 bpm`, con el ancho corregido a `w-16`
+- [x] **`DEFAULT_VOICE.release` sigue en segundos absolutos** (0,12 s), o sea 0,48 intervalos a 60 bpm
       y 1,28 a 160: es lo único del modelo temporal que no quedó en unidades musicales, y es lo que
-      hace que el solape restante del arpegio crezca con el tempo. Descubierto midiendo el solape
+      hace que el solape restante del arpegio crezca con el tempo. Descubierto midiendo el solape.
+      **Hecho:** `RELEASE_INTERVALS = 0,88`, que es exactamente `0,12 / intervalDuration(110)`, así que
+      a 110 bpm la envolvente no cambió y a cualquier otro tempo el solape se queda en 1,88 voces.
+      `scheduleVoice` lo recibe como parámetro obligatorio al lado de `dur`, por la misma razón por la
+      que `dur` no tiene default. **Cambia cómo suena el instrumento a 60 y a 160 bpm**

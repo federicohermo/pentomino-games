@@ -23,8 +23,8 @@ export type RouteKind = typeof ROUTE[keyof typeof ROUTE];
  * audio necesita, y llevarse el resto la ataria al dominio.
  *
  * `notes` ya viene en ORDEN DE REPRODUCCION: si la pieza se coloco reflejada, el
- * retrogrado ya esta aplicado en `PlacedPiece.notes`, asi que `buildSequence` lo
- * copia tal cual y no vuelve a invertir nada.
+ * retrogrado ya lo aplico `arpeggioFor` —la unica derivacion de pieza a arpegio del
+ * dominio—, asi que `buildSequence` lo toma tal cual y no vuelve a invertir nada.
  */
 export interface Step {
   pieceId: string;

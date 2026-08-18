@@ -1,4 +1,4 @@
-import { midiName } from '../domain/music.ts';
+import { midiName, arpeggioFor } from '../domain/music.ts';
 import type { PlacedPiece } from '../domain/types/board.types.ts';
 import { PIECE_COLOR } from './constants/palette.constants.ts';
 
@@ -78,7 +78,11 @@ export default function PlacedList({ placed, orden, onRemove }: Props) {
               <button onClick={()=> onRemove(p.id)}
                       className="text-xs px-2 py-0.5 rounded bg-rose-600 text-white">Quitar</button>
             </div>
-            <div className="text-xs text-slate-600">Notas: {p.notes.map(m=>midiName(m)).join(' · ')}</div>
+            {/* Las notas se DERIVAN de la pieza, no salen de un campo guardado: es la
+                misma `arpeggioFor` que alimenta al motor a traves de `buildSequence`, asi
+                que la lista no puede decir un arpegio distinto del que suena. Van en
+                orden de reproduccion, con el retrogrado ya aplicado si hay reflexion. */}
+            <div className="text-xs text-slate-600">Notas: {arpeggioFor(p.piece, p.rotation, p.mirror).map(m=>midiName(m)).join(' · ')}</div>
             <div className="text-[10px] text-slate-500 mt-1">Celdas: {p.cells.map(([x,y])=>`(${x},${y})`).join(' ')}</div>
           </div>
           );

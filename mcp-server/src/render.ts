@@ -17,15 +17,20 @@ const ANCHOR = '@';
 const EMPTY = '.';
 
 /**
- * Dibuja `cells` en su bounding box, marcando la celda `anchorIndex`.
+ * Dibuja `cells` en su bounding box poniendo en cada una el caracter que `charAt`
+ * elige por INDICE. Los huecos del bounding box quedan en `EMPTY`.
  *
  * Traslada por el minimo en vez de asumir que la forma esta normalizada: asi
  * sirve igual para una forma canonica y para celdas ya en coordenadas de tablero.
  *
  * `y` crece hacia ABAJO —son coordenadas de grilla—, asi que la fila 0 del string
  * es la de arriba y el dibujo coincide con lo que se ve en pantalla.
+ *
+ * El INDICE es lo unico que las dos vistas necesitan del dominio, y por eso alcanza
+ * con parametrizar el caracter: el ancla sale por indice y el grado tambien, gracias
+ * al invariante del orden del array.
  */
-export function renderAscii(cells: readonly Cell[], anchorIndex: number): string {
+function draw(cells: readonly Cell[], charAt: (k: number) => string): string {
   if (cells.length === 0) return '';
 
   const minx = Math.min(...cells.map(c => c[0]));
@@ -35,10 +40,39 @@ export function renderAscii(cells: readonly Cell[], anchorIndex: number): string
 
   const grid: string[][] = Array.from({ length: height }, () => Array<string>(width).fill(EMPTY));
   cells.forEach(([x, y], k) => {
-    grid[y - miny][x - minx] = k === anchorIndex ? ANCHOR : CELL;
+    grid[y - miny][x - minx] = charAt(k);
   });
 
   return grid.map(row => row.join('')).join('\n');
+}
+
+/** Dibuja `cells` en su bounding box, marcando la celda `anchorIndex`. */
+export function renderAscii(cells: readonly Cell[], anchorIndex: number): string {
+  return draw(cells, k => (k === anchorIndex ? ANCHOR : CELL));
+}
+
+/**
+ * El mismo dibujo, pero con el GRADO de cada celda en vez de `#`.
+ *
+ * Existe porque el ASCII era la unica parte de la respuesta que no habia aprendido el
+ * lenguaje del spec 007: desde que cada celda es duena de un grado, `#####` dice menos
+ * que el `cellMap` que viaja al lado, y leer el mapeo obligaba a cruzar a mano cinco
+ * pares de coordenadas contra el dibujo. Era el seguimiento que el 007 dejo anotado.
+ *
+ * Va en un campo APARTE y no reemplazando a `ascii`: los dos dibujos dicen cosas
+ * distintas —uno la celda de agarre, el otro la melodia sobre la geometria— y pisar el
+ * primero cambiaria en silencio el contrato de la tool.
+ *
+ * `degrees` viene POR INDICE, igual que lo devuelve `degreeByCellIndex`: el elemento
+ * `k` es el grado de `cells[k]`. Un grado de dos digitos desalinearia la grilla, asi
+ * que cae a `CELL`: con formas de hasta 10 celdas no puede pasar, y si alguna vez pasa
+ * es mejor que se vea como un `#` fuera de lugar que como un dibujo torcido.
+ */
+export function renderDegrees(cells: readonly Cell[], degrees: readonly number[]): string {
+  return draw(cells, k => {
+    const d = degrees[k];
+    return Number.isInteger(d) && d >= 0 && d <= 9 ? String(d) : CELL;
+  });
 }
 
 /** Ancho y alto del bounding box de una forma. */

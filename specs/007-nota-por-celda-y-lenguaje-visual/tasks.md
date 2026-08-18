@@ -181,12 +181,25 @@
 ## PR
 - [x] **Aclarar que el audio no cambia**: un revisor va a esperar lo contrario (ver `plan.md` §final)
       — está en el cuerpo del PR, con la advertencia del caché de módulos del server MCP
-- [ ] Capturas antes/después del tablero
+- [ ] Capturas antes/después del tablero — **no se hizo y ya no se puede**: el PR está mergeado. Queda
+      como registro de lo que faltó, no como pendiente
 - [x] `/pr-review` antes de pedir revisión
 
 ## Seguimiento (no bloquea)
-- [ ] Retirar `PlacedPiece.notes`, redundante una vez que el grado vive por celda — después del 009.
-      Este spec le resta un consumidor: `Board` deriva de `notesForRotation` y no del campo
-- [ ] `renderAscii` del MCP server sigue dibujando la letra de la pieza; el grado por celda solo está
-      en el JSON
-- [ ] El `title` de la celda podría decir `(x,y) · D#5 · grado 3` — es diseño del 010
+
+> **Cierre del seguimiento — 2026-08-18.** Todo lo de esta sección se resolvió o se movió a su
+> lugar definitivo en la rama `chore/cierre-seguimientos-007-010`. Lo que quedó abierto dice dónde vive.
+
+- [x] Retirar `PlacedPiece.notes`, redundante una vez que el grado vive por celda — después del 009.
+      **Hecho.** El campo era un derivado guardado en el estado y la derivación estaba escrita cuatro
+      veces; hoy es `arpeggioFor(piece, rotation, mirror)` en `domain/music.ts`, una sola vez. Sin
+      cambio de audio
+- [x] `renderAscii` del MCP server sigue dibujando la letra de la pieza; el grado por celda solo está
+      en el JSON. **Hecho:** `describe_piece` devuelve además `asciiDegrees`, el mismo dibujo con el
+      grado en cada celda. Va en un campo aparte porque `ascii` marca la celda de agarre y los dos
+      dicen cosas distintas
+- [x] El `title` de la celda podría decir `(x,y) · D#5 · grado 3` — es diseño del 010. **Hecho**, con
+      ese formato exacto y del mismo dato que se pinta. Sirve al usuario de mouse y **no** es
+      accesibilidad: un `title` sobre un `div` sin `role`, sin `tabIndex` ni nombre accesible no lo
+      anuncia ningún lector de pantalla. La celda sigue sin alcanzarse con el teclado, y eso pasó a
+      Deuda conocida de [`log.md`](../log.md), que es donde vive lo que queda abierto

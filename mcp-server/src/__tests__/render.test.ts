@@ -1,7 +1,8 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { renderAscii, sizeOf } from '../render.ts';
+import { renderAscii, renderDegrees, sizeOf } from '../render.ts';
 import { rotateN, reflect } from '../../../src/domain/transform.ts';
+import { degreeByCellIndex } from '../../../src/domain/music.ts';
 import { SHAPES, ANCHOR_INDEX, CELLS_PER_PIECE } from '../../../src/domain/constants/pieces.constants.ts';
 import { PIECE_KEYS } from '../pieces.ts';
 import type { Cell } from '../../../src/domain/types/transform.types.ts';
@@ -58,5 +59,44 @@ describe('renderAscii', () => {
         }
       }
     }
+  });
+});
+
+describe('renderDegrees', () => {
+  test('pone el grado de cada celda, en el mismo bounding box que renderAscii', () => {
+    // La X: su celda central es la del centroide, o sea el grado 0, y las otras cuatro
+    // se reparten 1..4 por angulo horario empezando por el este, que con `y` hacia abajo
+    // es derecha, abajo, izquierda, arriba. Es la forma donde el mapeo se lee de un
+    // vistazo, y el dibujo lo muestra sin que haya que cruzar `cellMap` a mano.
+    const grados = degreeByCellIndex(SHAPES.X);
+    assert.equal(renderDegrees(SHAPES.X, grados), '.4.\n301\n.2.');
+    // Mismo dibujo, distinto contenido: las dos vistas tienen que alinear.
+    const conAncla = renderAscii(SHAPES.X, ANCHOR_INDEX.X);
+    assert.deepEqual(
+      renderDegrees(SHAPES.X, grados).split('\n').map(f => f.length),
+      conAncla.split('\n').map(f => f.length),
+    );
+  });
+
+  test('las 96 combinaciones dibujan los cinco grados, sin repetir ninguno', () => {
+    // El grado viaja por INDICE sobre la forma canonica: rotar y reflejar son `map`,
+    // asi que la celda k sigue siendo la celda k. Si alguna vez dejara de serlo, este
+    // test veria un grado repetido o faltante.
+    for (const p of PIECE_KEYS) {
+      const grados = degreeByCellIndex(SHAPES[p]);
+      for (let rot = 0; rot < 4; rot++) {
+        for (const mirror of [false, true]) {
+          const base = rotateN(SHAPES[p], rot);
+          const cells = mirror ? reflect(base) : base;
+          const dibujo = renderDegrees(cells, grados);
+          const digitos = [...dibujo].filter(c => c >= '0' && c <= '9').sort().join('');
+          assert.equal(digitos, '01234', `${p} rot${rot}${mirror ? ' mirror' : ''}`);
+        }
+      }
+    }
+  });
+
+  test('sin celdas devuelve el string vacio', () => {
+    assert.equal(renderDegrees([], []), '');
   });
 });

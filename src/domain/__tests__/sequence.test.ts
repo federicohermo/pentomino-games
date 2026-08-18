@@ -17,21 +17,30 @@ const PIECES = Object.keys(SHAPES) as PieceKey[];
  * las puertas se leen por indice sobre `p.cells`, y una forma armada de otra manera
  * verificaria un mapeo que la app nunca produce.
  *
- * `notes` sale del arpegio ASCENDENTE y se invierte si la pieza esta reflejada: eso
- * es lo que hace `App.tsx` al colocar, y `buildSequence` lo copia sin volver a tocarlo.
+ * La pieza NO lleva sus notas: las deriva `buildSequence` con `arpeggioFor`. El oraculo
+ * de este archivo las compone a mano (`notaEsperada`) para no verificar una funcion
+ * contra si misma.
  */
 const colocar = (piece: PieceKey, rot: number, mirror: boolean, x: number, y: number): PlacedPiece => {
   const base = rotateN(SHAPES[piece], rot);
   const shape = mirror ? reflect(base) : base;
-  const asc = notesForRotation(BASE_MAP[piece], DEFAULT_OCTAVE, rot);
   return {
     id: piece,
     piece,
     rotation: rot,
     mirror,
     cells: cellsAt(shape, ANCHOR_INDEX[piece], x, y),
-    notes: mirror ? [...asc].reverse() : asc,
   };
+};
+
+/**
+ * El arpegio que le corresponde a una pieza colocada, compuesto a mano: `BASE_MAP` +
+ * `notesForRotation` + el retrogrado. Es el oraculo de `arpeggioFor`, y por eso no la
+ * llama — si la llamara, los tests de las notas de cada paso serian tautologias.
+ */
+const notasDe = (p: PlacedPiece): number[] => {
+  const asc = notesForRotation(BASE_MAP[p.piece], DEFAULT_OCTAVE, p.rotation);
+  return p.mirror ? [...asc].reverse() : asc;
 };
 
 /**
@@ -101,7 +110,7 @@ describe('bordes', () => {
       const sola = colocar(pieza, rot, false, 4, 2);
       const seq = buildSequence([sola]);
       expect(seq.clicks).toEqual([]);
-      expect(seq.steps).toEqual([{ pieceId: pieza, offset: 0, notes: sola.notes }]);
+      expect(seq.steps).toEqual([{ pieceId: pieza, offset: 0, notes: notasDe(sola) }]);
       expect(seq.length).toBe(CELLS_PER_PIECE);
     }
   });
@@ -216,7 +225,7 @@ describe('AC11 — `cellsByPlayOrder`: la celda de cada nota', () => {
           const orden = cellsByPlayOrder(p);
           expect(orden, `${k}/${rot}/${mirror}`).toHaveLength(CELLS_PER_PIECE);
           for (let j = 0; j < CELLS_PER_PIECE; j++) {
-            expect(notaPintadaEn(p, orden[j]), `${k}/${rot}/${mirror} nota ${j}`).toBe(p.notes[j]);
+            expect(notaPintadaEn(p, orden[j]), `${k}/${rot}/${mirror} nota ${j}`).toBe(notasDe(p)[j]);
           }
           // Y son las cinco celdas de la pieza, sin repetir ni inventar ninguna.
           expect(new Set(orden.map((c) => c.join(','))).size).toBe(CELLS_PER_PIECE);
@@ -262,7 +271,7 @@ describe('AC12 — las puertas siguen la melodia, tambien con reflexion (D9)', (
     expect(degreeByCellIndex(SHAPES.L)).toEqual([3, 2, 1, 0, 4]);
     expect(l.cells).toEqual([[1, 0], [1, 1], [1, 2], [1, 3], [0, 0]]);
     expect(gates(l)).toEqual({ entrada: [0, 0], salida: [1, 3] });
-    expect(notaPintadaEn(l, gates(l).entrada)).toBe(l.notes[0]);
+    expect(notaPintadaEn(l, gates(l).entrada)).toBe(notasDe(l)[0]);
   });
 
   it('en las 96 orientaciones la entrada es la celda de la primera nota y la salida la de la ultima', () => {
@@ -271,8 +280,8 @@ describe('AC12 — las puertas siguen la melodia, tambien con reflexion (D9)', (
         for (const mirror of [false, true]) {
           const p = colocar(k, rot, mirror, 5, 3);
           const { entrada, salida } = gates(p);
-          expect(notaPintadaEn(p, entrada), `${k}/${rot}/${mirror} entrada`).toBe(p.notes[0]);
-          expect(notaPintadaEn(p, salida), `${k}/${rot}/${mirror} salida`).toBe(p.notes[CELLS_PER_PIECE - 1]);
+          expect(notaPintadaEn(p, entrada), `${k}/${rot}/${mirror} entrada`).toBe(notasDe(p)[0]);
+          expect(notaPintadaEn(p, salida), `${k}/${rot}/${mirror} salida`).toBe(notasDe(p)[CELLS_PER_PIECE - 1]);
         }
       }
     }
@@ -459,19 +468,22 @@ describe('los offsets y los clicks', () => {
 });
 
 describe('las notas de cada paso', () => {
-  it('van tal cual las trae la pieza: el retrogrado ya viene aplicado', () => {
-    // Reflejar invierte el ORDEN EN QUE SUENAN las notas, y eso ya esta en
-    // `PlacedPiece.notes`. Volver a invertir aca desharia la reflexion.
+  it('salen de la pieza con el retrogrado ya aplicado', () => {
+    // Reflejar invierte el ORDEN EN QUE SUENAN las notas, y eso lo aplica `arpeggioFor`.
+    // Volver a invertir aca desharia la reflexion.
     const v = colocar('V', 0, true, 2, 2);
     const ascendente = notesForRotation(BASE_MAP.V, DEFAULT_OCTAVE, 0);
     expect(buildSequence([v]).steps[0].notes).toEqual([...ascendente].reverse());
   });
 
-  it('no aliasa el array de la pieza', () => {
+  it('cada llamada devuelve arrays propios: mutar una secuencia no toca la siguiente', () => {
+    // `Step.notes` es mutable por contrato. Cuando la pieza guardaba sus notas, lo que
+    // habia que proteger era el tablero; ahora que se derivan, lo que hay que garantizar
+    // es que dos secuencias del MISMO tablero no compartan el array.
     const f = colocar('F', 0, false, 1, 1);
-    const seq = buildSequence([f]);
-    seq.steps[0].notes[0] = -1;
-    expect(f.notes[0]).not.toBe(-1);
+    const primera = buildSequence([f]);
+    primera.steps[0].notes[0] = -1;
+    expect(buildSequence([f]).steps[0].notes[0]).not.toBe(-1);
   });
 });
 

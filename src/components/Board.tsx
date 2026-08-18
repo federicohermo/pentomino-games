@@ -47,10 +47,13 @@ import Playhead from './Playhead.tsx';
  *   celdas ya colocadas: el grado se arrastra por indice —rotar y reflejar son
  *   `map`— y recalcularlo sobre la forma transformada daria otro mapeo, porque
  *   rotar corre el origen del angulo.
- * - El arpegio sale de `notesForRotation` y NO de `occ.notes`. `occ.notes` ya trae
- *   el retrogrado aplicado cuando la pieza se coloco reflejada, asi que indexarlo
- *   con el grado leeria la forma al derecho contra un arpegio al reves. La
- *   reflexion invierte el ORDEN EN EL TIEMPO, no que nota le toca a que celda.
+ * - El arpegio sale de `notesForRotation` y NO de `arpeggioFor`. `arpeggioFor` es la
+ *   derivacion completa y devuelve las notas EN ORDEN DE REPRODUCCION, con el
+ *   retrogrado ya aplicado si la pieza se coloco reflejada, asi que indexarlo con el
+ *   grado leeria la forma al derecho contra un arpegio al reves. La reflexion invierte
+ *   el ORDEN EN EL TIEMPO, no que nota le toca a que celda. Quien pinta UNA celda
+ *   quiere el arpegio ASCENDENTE, que es lo que `notesForRotation` da y lo que la
+ *   propia firma de `arpeggioFor` remite aca.
  *
  * El fantasma dice EXACTAMENTE lo mismo que va a decir la celda una vez colocada:
  * misma nota, mismo grado, misma cadena de puras — la unica diferencia es de donde
@@ -191,7 +194,17 @@ export default function Board({
                    onMouseEnter={()=> onCellEnter([x,y])}
                    style={{width: CELL_PX, height: CELL_PX}}
                    className={`p-[2px] ${previewValid || !hover? 'cursor-pointer':'cursor-not-allowed'}`}
-                   title={`(${x},${y})`}
+                   /* El title dice las tres cosas de la celda, no solo su coordenada: la
+                      nota entra en la baldosa pero el grado va abreviado a `#3`, y sobre
+                      el fantasma las dos son lo que decide la jugada. Sale del MISMO
+                      `cell` que se pinta, asi que no puede decir una nota y mostrar otra.
+                      NO es accesibilidad: la celda es un `div` con `onClick` y sin
+                      `role`, sin `tabIndex` y sin nombre accesible, y un `title` sobre un
+                      elemento generico que no recibe foco no lo anuncia ningun lector de
+                      pantalla — es un tooltip de mouse y nada mas. El hueco real (la
+                      celda no se alcanza con el teclado) esta en Deuda conocida de
+                      `specs/log.md`; darlo por cubierto con esto lo dejaba invisible. */
+                   title={cell? `(${x},${y}) · ${cell.note} · grado ${cell.degree}` : `(${x},${y})`}
               >
                 {/* La baldosa: el padding del contenedor hace la separacion y el
                     redondeo la forma. La celda ocupada se lee como una ficha y no

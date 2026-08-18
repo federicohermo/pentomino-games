@@ -112,11 +112,26 @@
 - [x] Antes/después de `simulate_board`: el compás contra el recorrido
 - [x] Aclarar la latencia de D5: **es una decisión, no un bug**
 - [x] Aclarar que `firstOnsetAfter` no cambió: el reloj sigue siendo un origen, no un cursor
-- [ ] `/pr-review` antes de pedir revisión
+- [ ] `/pr-review` antes de pedir revisión — **quedó sin correr y el PR ya está mergeado.** Registro,
+      no pendiente
 
 ## Seguimiento (no bloquea)
-- [ ] Retirar `PlacedPiece.notes` — ya no queda ninguna excusa
-- [ ] Medir `occupantAt` antes de que el 010 dibuje a ritmo de intervalo
-- [ ] Esquivar piezas colocadas (BFS sobre celdas libres) — spec propio, con el caso "no hay camino"
-- [ ] Colocación envolvente sobre la costura — spec propio
-- [ ] La dirección de dependencia dentro de `domain/` podría lintearse como la de capas
+
+> **Cierre del seguimiento — 2026-08-18.** Todo lo de esta sección se resolvió o se movió a su
+> lugar definitivo en la rama `chore/cierre-seguimientos-007-010`. Lo que quedó abierto dice dónde vive.
+
+- [x] Retirar `PlacedPiece.notes` — ya no queda ninguna excusa. **Hecho**: lo deriva `arpeggioFor` y
+      `buildSequence` la llama por paso. Sin cambio de audio
+- [x] Medir `occupantAt` antes de que el 010 dibuje a ritmo de intervalo. **Medido**: un render entero
+      del tablero con las 12 piezas —el peor caso, porque no queda celda vacía que corte antes— son 60
+      llamadas y **4,1 µs** en total (p95 7,4 µs), o sea el 0,02 % de un cuadro de 16,7 ms. A 160 bpm el
+      intervalo mide 93,75 ms: sobra por cuatro órdenes de magnitud. El número quedó en su docblock, y
+      la cabeza del 010 igual no la usa
+- [x] Esquivar piezas colocadas (BFS sobre celdas libres) — spec propio, con el caso "no hay camino".
+      **Es el [spec 011](../011-el-recorrido-esquiva-las-piezas/spec.md)**, que además reemplazó el BFS
+      sobre celdas libres por un PESO: rodear con excepción resultó ser la peor esquina de la curva
+- [ ] Colocación envolvente sobre la costura — spec propio. **Sigue abierta y deja de vivir acá**: pasó
+      a Deuda conocida de `specs/log.md`, que es la única fuente de lo que no tiene spec todavía
+- [x] La dirección de dependencia dentro de `domain/` podría lintearse como la de capas. **Hecho**:
+      `DOMAIN_INTERNO` en `eslint.config.js`, módulo por módulo y en tres niveles. Era la única
+      dirección del repo que vivía sólo como dibujo
