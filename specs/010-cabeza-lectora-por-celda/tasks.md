@@ -60,12 +60,32 @@
 - [x] Escribir el estilo **solo cuando la celda cambió**
 - [x] Posición con estilo inline desde `CELL_PX` (una clase interpolada de Tailwind no se generaría)
 - [x] Nota fuerte, click tenue (D7)
-- [x] La pieza pendiente se ve atenuada hasta el swap de ciclo (AC5), **por React**: el loop llama a
-      `setPendingIds` solo cuando `cycleGeneration()` cambió, y `Board` los recibe por props. Es la
-      excepción declarada a D1 — cambia una vez cada 7,5 s, no 10 veces por segundo
+- [x] ~~La pieza pendiente se ve atenuada hasta el swap de ciclo (AC5), **por React**: el loop llama a
+      `setPendingIds` solo cuando `cycleGeneration()` cambió, y `Board` los recibe por props~~ — **no se
+      hizo así, y el plan estaba mal.** La excepción declarada a D1 valía mientras el destape fuera en
+      bloque al cerrar el ciclo (una vez cada 7,5 s); dejó de valer cuando el estreno pasó a ser **celda
+      por celda**, que son cinco cambios al ritmo del intervalo, o sea exactamente la frecuencia que D1
+      mide y prohíbe. El velo son nodos que `Playhead.tsx` crea y destruye a mano, y no queda nada del
+      010 en el árbol de React
+- [x] El estreno celda por celda: una celda se destapa cuando la cabeza la **pisa**, no cuando arranca
+      el ciclo. Necesita que `playheadOffset()` devuelva `null` mientras `now < origin` — el swap se
+      decide dentro del lookahead y ahí la cola del ciclo nuevo destapaba las cinco de un saque
+      (`scheduler.test.ts`, «el swap deja `origin` en el FUTURO»)
 
 ## La lista
 - [x] `PlacedList` muestra el orden del circuito, tomado de la misma `buildSequence` que ya calcula `App`
+- [x] Decidir **cuál** circuito muestra la lista: el **pendiente**, que es el que incluye a la pieza
+      recién colocada. La cabeza muestra el que suena (AC9) y la lista el encolado, así que durante la
+      espera dicen cosas distintas — a propósito: la lista es el inventario de `placed`, no una vista de
+      reproducción, y numerar sin la pieza que el usuario acaba de poner sería peor. Queda escrito en el
+      docblock de `PlacedList.tsx` para que sea una decisión y no un accidente
+
+## Fuera del spec, en este PR
+- [x] **Reset frena el transporte** además de vaciar el tablero (`App.tsx`). No lo pide ningún AC y no
+      es del 010: vaciar solo `placed` deja al motor terminando su ciclo activo —D5 del 009— o sea
+      hasta 7,5 s sonando sobre un tablero vacío. Reset es una orden de volver a cero, no una edición
+      del tablero. Va declarado acá y en el cuerpo del PR porque es un cambio de comportamiento del
+      producto adentro de un PR que dice "cabeza lectora"
 
 ## Documentación
 - [x] `docs/architecture/modelo-musical.md`: la tabla dice "Reflexión → el orden de las notas

@@ -62,8 +62,12 @@ El porqué de cada decisión, con las mediciones que la respaldan, está en
   y por eso está separado del nodo.
 - **La cabeza lectora (spec 010) es el segundo consumidor del motor por fuera de React.** Su superficie
   son dos exports de `engine.ts`: `playheadOffset(): number | null` (lee del singleton y de la secuencia
-  **activa**; `null` en pausa, sin contexto o con la secuencia vacía, igual que `readSpectrum()`) y
-  `cycleGeneration(): number`, un contador de swaps de ciclo. La aritmética vive aparte, en
+  **activa**; `null` en pausa, sin contexto, con la secuencia vacía y mientras `now < clock.origin`,
+  igual que `readSpectrum()` en reposo) y
+  `cycleGeneration(): number`, un contador de swaps de ciclo. **La guarda `now < origin` no es
+  defensiva:** el swap se decide dentro del lookahead y deja `origin` en el borde, que todavía es futuro,
+  así que sin ella la cabeza contesta la cola del ciclo nuevo —el offset MÁXIMO— mientras suena la vieja.
+  La aritmética vive aparte, en
   `audio/playhead.ts` (`offsetAt`, módulo euclídeo, `null` y nunca `NaN` en los tres degradados), por el
   mismo motivo que `spectrum.ts`. Lo que no hay que romper: la posición está **compensada por la
   latencia de salida** (`outputLatency` → `baseLatency` → `0`) o la cabeza queda sistemáticamente

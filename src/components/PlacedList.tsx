@@ -21,6 +21,19 @@ import { PIECE_COLOR } from './constants/palette.constants.ts';
  * circuito es CERRADO y no tiene principio: `buildSequence` fija el arranque en el
  * indice 0 solo para eliminar las rotaciones equivalentes del mismo recorrido, asi
  * que "1" es un punto de partida convencional, no el comienzo de nada.
+ *
+ * ## Muestra el circuito PENDIENTE, no el que suena — y es a propósito
+ *
+ * `orden` sale de la `buildSequence` de `App`, o sea del tablero de AHORA: durante los
+ * hasta 7,5 s que el spec 009 hace esperar, la lista ya numera con el circuito nuevo
+ * mientras la cabeza lectora todavía recorre el viejo (AC9 del 010). Las dos superficies
+ * dicen cosas distintas al mismo tiempo, así que la elección tiene que ser explícita.
+ *
+ * Esta lista es el inventario de `placed`, no una vista de reproducción: la pieza recién
+ * colocada aparece en ella desde el click, y numerarla con un circuito que todavía no la
+ * contiene la dejaría sin número o con uno prestado. La regla "dibujá lo que suena" es de
+ * la cabeza, que dibuja SOBRE el tablero y ahí una celda encendida afirma "esto es lo que
+ * estás oyendo". Un número en una tarjeta no afirma eso.
  */
 
 interface Props {

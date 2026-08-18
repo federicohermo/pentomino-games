@@ -371,7 +371,8 @@ singleton sin pasar por estado de React porque la frecuencia de actualización l
 
 **Superficie:** `playheadOffset(): number | null` y `cycleGeneration(): number`, dos exports nuevos de
 `engine.ts`. `playheadOffset` lee del singleton y de la secuencia **activa**, y devuelve `null` en pausa,
-sin contexto o con la secuencia vacía — exactamente como `readSpectrum()` devuelve `null` en reposo.
+sin contexto, con la secuencia vacía y mientras la activa **todavía no empezó a sonar** (ver abajo) —
+exactamente como `readSpectrum()` devuelve `null` en reposo.
 `cycleGeneration` es un contador de swaps de ciclo: es el único observador del instante exacto en que la
 secuencia pendiente reemplaza a la activa (ver [el swap en el cierre de
 ciclo](#el-swap-en-el-cierre-de-ciclo)), y `components/route-source.ts` lo usa para saber cuándo cambiar
@@ -410,6 +411,18 @@ Que el estreno sea celda por celda no es un adorno: es lo único que hace visibl
 su turno en un instante concreto, y que ese instante no lo decide el orden de colocación sino el
 circuito. Con el destape en bloque al cerrar el ciclo, las ocho piezas se encendían juntas y esa
 información se perdía.
+
+**Y depende de una guarda de una línea, que el review encontró apagada.** `collectWindow` pone la
+pendiente en vigencia **dentro del lookahead** y deja `origin` en el borde, que en ese momento todavía es
+futuro: medido, hasta 82 ms a 110 bpm, más la latencia de salida, y lo mismo en el primer arranque con
+los 50 ms de `CLOCK_START_DELAY`. Con `now < origin`, `offsetAt` contesta —bien, como función total— la
+**cola** del ciclo, o sea `ciclo − 1`; y como el velo destapa toda celda con `offset ≤ offset actual`, ese
+número, que es el máximo posible, destapaba las cinco de un saque en el mismo cuadro en que se creaban.
+El estreno celda por celda no se veía **nunca**, ni al colocar con el ciclo andando ni al apretar play, y
+`pnpm verify` no podía verlo. Por eso `playheadOffset()` devuelve `null` en esa ventana: la ruta vieja ya
+no está y la nueva todavía no empezó, así que cualquier celda que se dibujara ahí sería mentira. El hecho
+del scheduler que lo causa queda clavado en `scheduler.test.ts` («el swap deja `origin` en el FUTURO»),
+que es la parte testeable — la lectura del reloj no lo es.
 
 `components/route-source.ts` es el singleton de módulo que espeja el
 par `active`/`pending` del motor pero con la `Sequence` del **dominio**, que es la única que lleva
