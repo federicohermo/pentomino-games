@@ -57,7 +57,7 @@ src/
 ├── domain/                       # puro: sin React, sin Web Audio, sin DOM
 │   ├── transform.ts              # rotate90 · normalize · rotateN · reflect · centroid ·
 │   │                             #   angleFromCentroid
-│   ├── board.ts                  # cellsAt · isValid · cellDistance · pathBetween · occupantAt ·
+│   ├── board.ts                  # cellsAt · isValid · routeBetween · occupantAt ·
 │   │                             #   occupantCellIndex
 │   ├── music.ts                  # midiFor · midiName · notesForRotation · arpeggioFor · degreeByCellIndex
 │   ├── sequence.ts               # buildSequence — el circuito (Held-Karp) y los offsets del ciclo —
@@ -67,12 +67,11 @@ src/
 │   │   ├── transform.types.ts    #   Cell
 │   │   ├── pieces.types.ts       #   PieceKey
 │   │   ├── board.types.ts        #   PlacedPiece
-│   │   └── sequence.types.ts     #   Step · Click · Sequence · RouteKind
+│   │   └── sequence.types.ts     #   Step · Click · Sequence
 │   ├── constants/                # los datos del modelo. Solo importan tipos
 │   │   ├── pieces.constants.ts   #   SHAPES · ANCHOR_INDEX
-│   │   ├── board.constants.ts    #   GRID_W · GRID_H · SEAM
-│   │   ├── music.constants.ts    #   CHROMATIC · PENT_* · BASE_MAP · DEFAULT_OCTAVE
-│   │   └── route.constants.ts    #   ROUTE
+│   │   ├── board.constants.ts    #   GRID_W · GRID_H · SEAM · CROSS_COST
+│   │   └── music.constants.ts    #   CHROMATIC · PENT_* · BASE_MAP · DEFAULT_OCTAVE
 │   └── __tests__/                # uno por módulo
 │       └── transform · board · music · sequence · invariants
 ├── audio/                        # Web Audio; habla MIDI, no conoce el dominio ni la UI

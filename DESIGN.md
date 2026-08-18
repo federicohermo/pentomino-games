@@ -179,14 +179,11 @@ nada más. Los valores viven en `Playhead.tsx`:
 | Qué suena | Hacia adentro | Hacia afuera | Se lee como |
 |---|---|---|---|
 | **Nota** de una pieza | 3 px | 2 px | la celda tiene su turno |
+| **Cruce** con nota, sobre celda ocupada (spec 011) | 2 px | 1 px | un paso que pesa: la cabeza cruza y la celda suena, pero no es su turno |
 | **Click** sobre celda vacía | 2 px | — | un roce: la cabeza pasó por acá |
 
-Nota fuerte, click tenue: si se vieran igual, el recorrido parecería tener piezas donde no hay.
-
-> **Pendiente del spec 011 — todavía no está en el árbol.** El recorrido va a pisar celdas **ocupadas**
-> y a sonar su nota como floritura, y eso es un tercer caso: ni el turno de la pieza ni un roce sobre el
-> vacío. Le toca un tercer escalón entre los dos de arriba, **también sin agregar color**. Mientras no
-> se implemente, esta tabla tiene dos filas y el 011 agrega la tercera.
+Nota fuerte, cruce intermedio, click tenue: si se vieran igual, el recorrido parecería tener piezas
+donde no hay, o confundiría un turno con un roce.
 
 **La cabeza salta, no se desliza.** El instrumento está cuantizado a la grilla de intervalos, y un
 movimiento continuo sugeriría una continuidad que no existe.

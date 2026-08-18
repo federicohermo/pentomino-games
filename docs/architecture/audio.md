@@ -154,16 +154,20 @@ del motor, que **no lleva celdas**:
 // audio/types/scheduler.types.ts
 export interface Sequence {
   steps: { offset: number; notes: number[] }[];   // sin pieceId: el motor no tiene a quién devolvérselo
-  clicks: { offset: number }[];                    // sin cell: para sonar solo hace falta contar
+  clicks: { offset: number; note?: number }[];     // sin cell, pero desde el spec 011 SÍ con altura
   length: number;                                  // el ciclo, en intervalos
 }
 ```
 
-El click no tiene altura y suena igual en cualquier celda (ver [más abajo](#el-click)), así que la
-celda no es información que el motor pueda usar — y no puede importar `Cell` del dominio ni con
-`import type`, porque `audio/` y `domain/` son hermanos sin aristas entre ellos. `setSequence(next)`
-reemplaza a `addJob`/`removeJob`/`clearJobs`; `sequenceInfo()` reemplaza a `jobCount()` como receta de
-verificación en el navegador — ver [más abajo](#cómo-verificar-el-audio).
+El click **mudo** no tiene altura y suena igual en cualquier celda (ver [más abajo](#el-click)); desde
+el spec 011 el recorrido puede cruzar una celda ocupada, y ese cruce lleva su nota en `note` —MIDI,
+ausente cuando la celda está vacía—. La celda en sí sigue sin ser información que el motor pueda usar,
+y `Sequence` sigue sin poder importar `Cell` del dominio ni con `import type`, porque `audio/` y
+`domain/` son hermanos sin aristas entre ellos: `note` viaja como número plano, no como referencia a la
+celda que lo originó. Pero **ya no es cierto que para sonar alcance con contar clicks** — un click con
+`note` suena distinto de uno sin ella (ver [más abajo](#el-click)). `setSequence(next)` reemplaza a
+`addJob`/`removeJob`/`clearJobs`; `sequenceInfo()` reemplaza a `jobCount()` como receta de verificación
+en el navegador — ver [más abajo](#cómo-verificar-el-audio).
 
 ### El período pasa del compás al ciclo
 
@@ -202,23 +206,41 @@ más fina y su propio cambio.
 ### El click
 
 Un salto de `d` celdas entre la salida de una pieza y la entrada de la siguiente produce `d − 1`
-clicks, uno por celda intermedia de `pathBetween` — sin altura, a volumen bajo (`CLICK_VELOCITY`,
-`CLICK_SECONDS` en `audio/constants/`), para que no compita armónicamente con las notas.
-`scheduleClick` en `voice.ts` es la otra forma de sonido de la capa, aparte de `scheduleVoice`. Con 8
-piezas un ciclo tiene ~15 clicks contra 40 notas (`research.md` del spec 009, §4) — sin el click, un
-salto de varias celdas es un silencio mudo de casi un segundo, y el recorrido —que es todo el modelo—
-se vuelve inaudible.
+eventos intermedios, uno por celda del camino que devuelve `routeBetween(a, b, placed)`
+(`domain/board.ts`). Sobre celda **vacía** suena un click sin altura, a volumen bajo
+(`CLICK_VELOCITY`, `CLICK_SECONDS` en `audio/constants/`), para que no compita armónicamente con las
+notas — `scheduleClick` en `voice.ts` es la otra forma de sonido de la capa, aparte de
+`scheduleVoice`. Sobre celda **ocupada** suena la nota de esa celda —la misma que la celda muestra
+desde el spec 007— como una floritura: más corta y más suave que la nota de una pieza
+(`GRACE_INTERVALS`, `GRACE_VELOCITY` en `voice.constants.ts`, junto a `NOTE_INTERVALS` y no a
+`CLICK_SECONDS`, porque a diferencia del click sí tiene altura), agendada con `scheduleVoice` — no
+hace falta una función nueva. Con 8 piezas un ciclo tiene ~15 eventos intermedios contra 40 notas
+(`research.md` del spec 009, §4) — sin ellos, un salto de varias celdas es un silencio mudo de casi un
+segundo, y el recorrido —que es todo el modelo— se vuelve inaudible.
 
-**Se pueden apagar, y el interruptor es de mezcla y no del modelo.** `setClicksAudible(false)` —el
-toggle «Clicks» de la paleta— deja de cablearlos a sonido en `tick()`; la `Sequence` sigue teniendo sus
-clicks y `collectHits` los sigue emitiendo. Filtrarlos antes obligaría a reconstruir la secuencia por
-algo que no es una decisión del tablero, y haría que el ciclo pareciera distinto según el volumen.
+**Solo el click mudo se puede apagar; el interruptor es de mezcla y no del modelo.**
+`setClicksAudible(false)` —el toggle «Clicks» de la paleta— deja de cablear a sonido los clicks **sin
+nota** en `tick()`; la `Sequence` sigue teniendo sus clicks y `collectWindow` los sigue emitiendo.
+Filtrarlos antes obligaría a reconstruir la secuencia por algo que no es una decisión del tablero, y
+haría que el ciclo pareciera distinto según el volumen. El cruce con altura **no** se apaga con este
+interruptor (D6 del spec 011): es modelo, no mezcla.
 
-El interruptor existe porque **el camino cruza celdas ocupadas**: `pathBetween` es el camino mínimo
-ignorando obstáculos, así que un click puede caer encima de una pieza. No es un caso raro — en el
-tablero lleno de 12 piezas caen ahí los 21 clicks del ciclo. Esquivar las piezas es un spec propio
-(BFS sobre celdas libres, con el caso "no hay camino"), y hasta entonces poder apagarlos es la
-mitigación que el spec 009 dejó prevista en su tabla de riesgos.
+**Hasta el spec 011 el camino cruzaba celdas ocupadas sin pagar nada.** `pathBetween` —hoy borrado,
+junto con `cellDistance`, `bestRoute` y el const-object `ROUTE`— era el camino mínimo *ignorando*
+obstáculos: medido, entre el 71 % y el 88 % de los tramos pisaban una pieza, y en el tablero lleno de
+12 piezas caían ahí los 21 clicks del ciclo. Esquivar las piezas dejó de ser "un spec propio" —así lo
+anotaba el 009 en su tabla de riesgos— y es exactamente lo que hace el 011: `routeBetween` no es un
+BFS que rodea a cualquier costo, es un camino de **costo mínimo** con peso 1 en celda vacía y
+`CROSS_COST = 5` (`domain/constants/board.constants.ts`, junto a `SEAM`) en celda ocupada, así que
+rodea cuando el rodeo sale barato y cruza —sonando la nota— cuando rodear cuesta más caro. El
+interruptor de clicks queda, pero ya no es la única mitigación: la mitigación de fondo es el peso.
+
+**El 5 no es el 2 con el que este spec arrancó, y el porqué está medido en el docblock de la
+constante.** Con peso 2 el recorrido cruzaba una pieza **teniendo un rodeo libre disponible** en el
+20,4 % de los tramos (200 tableros aleatorios por tamaño); con 5 baja al 9,9 % y el ciclo crece 7,1 %.
+Los 21 clicks del tablero lleno son hoy 14, y los 14 llevan altura: sin ninguna celda vacía el peso no
+puede evitar nada, y ahí el recorrido no se apaga —sigue sonando y ahora dice sobre qué. El valor no
+está cerrado: AC11 del 011 lo deja abierto a confirmarse escuchando, y moverlo es cambiar ese número.
 
 ## Reconciliación de loops
 
@@ -230,7 +252,7 @@ useEffect(() => {
   const s = buildSequence(placed);
   setSequence({
     steps: s.steps.map(({ offset, notes }) => ({ offset, notes })),   // se cae pieceId
-    clicks: s.clicks.map(({ offset }) => ({ offset })),               // se cae cell
+    clicks: s.clicks.map(({ offset, note }) => ({ offset, note })),   // se cae cell, viaja la altura
     length: s.length,
   });
 }, [placed]);

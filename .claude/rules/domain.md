@@ -45,7 +45,22 @@ orientaciones, porque rotar corre el origen del ángulo. La rotación elige *qu�
 
 **El tablero se repliega sobre sí mismo**: `(0,0)` y `(9,5)` son adyacentes (una costura extra sobre la
 grilla, spec 009), y el orden de reproducción sale de un circuito exacto (Held-Karp) sobre esas
-distancias, no de la columna ni del orden de colocación. Es geometría y no reloj de pared: el mismo
+distancias. Desde el spec 011 la distancia entre dos celdas **ya no es función solo de esas dos
+celdas**: `routeBetween(a, b, placed)` (`domain/board.ts`) reemplaza a `cellDistance` y `pathBetween`
+—los dos dejaron de existir, junto con `bestRoute` y el const-object `ROUTE`— y devuelve
+`{ path, steps, cost, crossed }` en una sola llamada: el camino de costo mínimo sobre las 60 celdas,
+con las intermedias ocupadas pagando `CROSS_COST` (`domain/constants/board.constants.ts`, junto a
+`SEAM`) en vez de las dos puntas.
+
+**El costo ordena, los pasos miden el tiempo, y confundirlos es un bug con nombre.** Un cruce cuesta
+`CROSS_COST` pero dura **un** intervalo, así que dos circuitos pueden costar lo mismo y durar distinto
+— cosa que antes del 011 era imposible, porque el costo *era* la cantidad de pasos. Por eso el
+comparador de Held-Karp tiene **tres** criterios y no uno: costo, después **pasos**, y recién después
+el índice. Sin el segundo, el desempate cae en el índice —que **es** el orden de colocación— y el
+mismo tablero suena con ciclos distintos según en qué orden se armó: medido, el 8,3 % de los tableros
+de 5 piezas. El test `el ORDEN DE COLOCACION no cambia lo que suena` lo fija con 120 permutaciones. El orden de reproducción sigue sin depender de la columna ni del orden de
+colocación, pero sí depende de qué otras piezas están en el tablero al trazar el camino entre dos
+puertas. Es geometría y no reloj de pared: el mismo
 tablero suena siempre igual, porque `buildSequence` es aritmética pura sobre enteros. Hoy se lee
 también: el spec 010 agrega una cabeza lectora (`components/Playhead.tsx`) que recorre el tablero celda
 por celda leyendo `playheadOffset()` del motor — detalle en

@@ -14,7 +14,7 @@ qué es un pentominó (ver [audio.md](./audio.md#el-recorrido-en-el-scheduler)).
 | **Rotación** | La fórmula de escala | `notesForRotation` |
 | **Reflexión** | El orden de las notas, y con él la puerta de entrada y salida del recorrido | `ns.reverse()` — retrógrado; `gates` lee `cellsByPlayOrder` |
 | **La forma** | Qué celda tiene qué nota | `degreeByCellIndex` — orden angular |
-| **La posición en el tablero** | El orden de reproducción y el silencio entre piezas | `buildSequence` — circuito + `cellDistance` |
+| **La posición en el tablero** | El orden de reproducción y el silencio entre piezas | `buildSequence` — circuito + `routeBetween` |
 
 La **forma** de la pieza decide **qué celda es dueña de cada grado** —el orden angular alrededor del
 centroide, ver [abajo](#forma--qué-celda-tiene-qué-nota)— pero no decide *cuándo* suena ninguna: el
@@ -35,14 +35,29 @@ vecino-más-cercano da recorridos 20,1 % más largos en promedio y hasta 79 % pe
 (`research.md` del spec 009, §3), y el exacto cuesta 1,87 ms con las 12 piezas posibles — el tope
 estructural, porque hay 12 pentominós libres y no se repiten.
 
+**Que el recorrido "se saltee" una pieza cercana y vuelva después no es un error: es lo que hace que el
+ciclo sea más corto.** Un circuito cerrado óptimo pasa al lado de una pieza sin visitarla cuando
+visitarla ahí alargaría el total; "la más cercana primero" es exactamente el vecino-más-cercano que se
+descartó, y medido sobre 120 tableros da un ciclo **más largo en el 54 % de los casos**, +5,8 % en
+promedio y +49 % en el peor.
+
+**A igual costo gana el circuito de menos PASOS, y solo después el índice** (spec 011). Es un criterio
+que antes no hacía falta: hasta el 011 el costo de un tramo era su cantidad de pasos, así que empatar
+en costo era empatar en duración. Con el peso un cruce cuesta `CROSS_COST` y dura un intervalo, y sin
+este segundo criterio el desempate caía en el índice —o sea el orden de colocación—, haciendo que el
+mismo tablero sonara con ciclos de distinto largo según cómo se hubiera armado. Medido: pasaba en el
+8,3 % de los tableros de 5 piezas, y con el criterio de los pasos pasa en el 0 %.
+
 **Cada pieza tiene una puerta de entrada y una de salida**: la celda donde suena la primera nota del
 arpegio y la celda donde suena la última, según `cellsByPlayOrder` — no un grado fijo. Sin reflexión eso
 coincide con la celda de grado 0 (la tónica) y la de grado 4, según el mapeo de
 [arriba](#forma--qué-celda-tiene-qué-nota); con reflexión el retrógrado invierte el orden de reproducción
 sin mover qué nota le toca a qué celda, así que las puertas se invierten también — entra por la celda de
 grado 4 y sale por la de grado 0. Detalle y el bug que esto corrigió en
-[Reflexión → retrógrado](#reflexión--retrógrado). El costo de ir de la pieza `i` a la `j` es
-`cellDistance(salida(i), entrada(j))` — asimétrico, porque volver no cuesta lo mismo.
+[Reflexión → retrógrado](#reflexión--retrógrado). El silencio entre la pieza `i` y la `j`, en
+intervalos, son los pasos que devuelve `routeBetween(salida(i), entrada(j), placed)` (spec 011,
+reemplaza a `cellDistance`) — asimétrico, porque volver usa otro par de celdas: la puerta de salida y
+la de entrada no son la misma.
 
 **Con una sola pieza no hay recorrido, y por lo tanto no hay clicks.** El ciclo es su arpegio y vuelve
 a empezar contiguo: mide 5 intervalos, uno más que los 4 que abarcan las cinco notas, porque con 4 la
@@ -61,11 +76,17 @@ la nota siguiente cae exactamente un intervalo después de la última de la ante
 Separar dos piezas en el tablero es la forma de crear espacio entre ellas, y no hay tope porque uno
 volvería la distancia ilegible pasado cierto punto.
 
-**Las celdas que el recorrido cruza sin detenerse suenan como un click**, sin altura y a volumen bajo —
-si no, un salto de varias celdas es un silencio mudo. `pathBetween(a, b)` materializa esas celdas
-intermedias con la regla "primero en X, después en Y", y cada click de la `Sequence` lleva la celda que
-cruza — aunque para sonar alcance con contarlas, porque el recorrido *es* el modelo. Detalle del click
-—volumen y cómo se agenda— en [audio.md](./audio.md#el-click).
+**Las celdas que el recorrido cruza sin detenerse suenan.** Sobre celda vacía suena un click sin altura
+y a volumen bajo — si no, un salto de varias celdas es un silencio mudo. Sobre celda **ocupada** suena
+la nota de esa celda —la misma altura que la celda muestra desde el spec 007— como una floritura más
+corta y más suave que la nota de una pieza (spec 011). `routeBetween(a, b, placed)` (`domain/board.ts`)
+materializa esas celdas intermedias: es el camino de **costo mínimo** sobre las 60 celdas —peso 1 en
+celda vacía, `CROSS_COST` en celda ocupada, con desempate lexicográfico explícito entre caminos de
+igual costo— y no la regla "primero en X, después en Y" de `pathBetween`, que dejó de existir junto con
+`cellDistance`, `bestRoute` y el const-object `ROUTE`. Cada click de la `Sequence` lleva `note?: number`
+—MIDI, ausente si la celda está vacía— porque desde el spec 011 ya no alcanza con contar clicks para
+saber qué suena. Detalle del click y de la floritura —volumen y cómo se agenda— en
+[audio.md](./audio.md#el-click).
 
 **El ciclo no tiene marca de inicio ni de fin.** Cuando el recorrido termina en la última pieza, sigue
 hacia la primera con la misma regla de distancia: el circuito se cierra sin costura audible propia.
