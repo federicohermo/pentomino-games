@@ -116,7 +116,12 @@ export default function PiecePalette({
           <div className="flex items-center justify-between">
             <span className="font-medium">Tempo</span>
             <input type="range" min={TEMPO_MIN} max={TEMPO_MAX} value={tempo} onChange={e=>onTempo(parseInt(e.target.value))} />
-            <span className="tabular-nums w-10 text-right">{tempo}</span>
+            {/* Con la unidad: "110" a secas no dice si son bpm o intervalos, y desde el
+                spec 008 el instrumento maneja las dos unidades. `w-16` y no `w-10`
+                porque " bpm" agrega ~24 px; lo absorbe el `range`, que es el unico
+                elemento elastico de la fila. `tabular-nums` mantiene el numero quieto
+                al arrastrar, que es para lo que estaba el ancho fijo. */}
+            <span className="tabular-nums w-16 text-right whitespace-nowrap">{tempo} <span className="text-slate-500">bpm</span></span>
           </div>
           {/* Un solo boton para el transporte: antes el checkbox decidia si sonaba y
               este boton arrancaba el reloj, y ninguno de los dos mostraba si el reloj

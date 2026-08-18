@@ -191,7 +191,13 @@ export default function Board({
                    onMouseEnter={()=> onCellEnter([x,y])}
                    style={{width: CELL_PX, height: CELL_PX}}
                    className={`p-[2px] ${previewValid || !hover? 'cursor-pointer':'cursor-not-allowed'}`}
-                   title={`(${x},${y})`}
+                   /* El title dice las tres cosas de la celda, no solo su coordenada: la
+                      nota entra en la baldosa pero el grado va abreviado a `#3`, y sobre
+                      el fantasma las dos son lo que decide la jugada. Es ademas lo unico
+                      que un lector de pantalla puede leer de una celda, que hoy es un
+                      `div` con dos numeros sueltos. Sale del MISMO `cell` que se pinta,
+                      asi que no puede decir una nota y mostrar otra. */
+                   title={cell? `(${x},${y}) · ${cell.note} · grado ${cell.degree}` : `(${x},${y})`}
               >
                 {/* La baldosa: el padding del contenedor hace la separacion y el
                     redondeo la forma. La celda ocupada se lee como una ficha y no
