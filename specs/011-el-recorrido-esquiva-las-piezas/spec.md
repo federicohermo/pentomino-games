@@ -132,7 +132,9 @@ y «la cabeza pasó por encima» es justo lo que el 010 hizo legible.
 
 **D9 — El orden de visita de las piezas cambia, y está bien.**
 Medido: en el **30 % a 48 %** de los tableros el circuito óptimo con la matriz nueva no es el mismo que
-con la vieja. No es daño colateral: el 009 dice que la geometría decide el orden, y los obstáculos son
+con la vieja — **con `P = ∞`, que es el escenario más agresivo** (`research.md` §9). Con `P = 2` el
+crecimiento del ciclo baja del 8-17 % al 2 %, y el porcentaje de reordenamientos con ese valor **no se
+midió**: 30-48 % es la cota de arriba, no el número de `P = 2`. No es daño colateral: el 009 dice que la geometría decide el orden, y los obstáculos son
 geometría. Pero **cambia lo que suena**, así que va en su propio commit y lo declara el PR.
 
 ## Criterios de Aceptación
@@ -142,10 +144,14 @@ geometría. Pero **cambia lo que suena**, así que va en su propio commit y lo d
 - **AC2** — El camino devuelto es de **costo mínimo**, contrastado contra un Dijkstra de referencia
   escrito en el propio test —no contra la implementación—, sobre los prefijos del teselado y sobre
   tableros aleatorios con semilla fija. El corolario, que es el que se lee: si existe un camino libre
-  con a lo sumo **`P − 1` pasos extra por celda ocupada evitada**, el devuelto no pisa ninguna. El
+  con **menos de `P − 1` pasos extra por celda ocupada evitada**, el devuelto no pisa ninguna. El
   coeficiente es `P − 1` y no `P`, porque pisar una celda no cuesta `P` pasos: cuesta `P` **en vez de**
   1. Con `P = 2` es un paso extra por celda evitada, y la versión anterior de este AC decía dos —o sea
-  que habría dado en rojo sobre una implementación correcta.
+  que habría dado en rojo sobre una implementación correcta. **Y la desigualdad es estricta, no `≤`**:
+  con exactamente `P − 1` pasos extra por celda evitada los dos caminos EMPATAN en costo, y ahí no
+  decide este AC sino el desempate lexicográfico de AC5, que puede devolver el que pisa. Escrito con
+  `≤` el corolario daría en rojo sobre una implementación correcta — el mismo error que la versión
+  anterior, un escalón más abajo.
 - **AC3** — Cada celda ocupada que el recorrido igual pisa **suena su nota**, la misma que el tablero
   muestra, con la duración y el volumen de floritura. Con test sobre la `X`, que es el caso estructural.
 - **AC4** — Camino, costo y cruces salen de la misma llamada (D3), y el invariante
@@ -169,11 +175,11 @@ geometría. Pero **cambia lo que suena**, así que va en su propio commit y lo d
 - **AC12** — **No-regresión sobre los consumidores de `cellDistance` y `pathBetween`**, que son código
   compartido y hoy tienen 13 tests que este spec no nombraba. Ninguno queda rojo ni borrado en
   silencio: cada uno se migra a `routeBetween` o se declara superado con su motivo escrito.
-  - `domain/__tests__/board.test.ts:186-306` — los `describe` de `cellDistance` y `pathBetween`. Cinco
+  - `domain/__tests__/board.test.ts:186-308` — los `describe` de `cellDistance` y `pathBetween`. Cinco
     afirman propiedades que el modelo nuevo **cambia**: "coincide con Manhattan", la simetría y la
     desigualdad triangular sobre los 3.600 pares (ahora solo valen con el tablero vacío) y "traza
     primero en X y después en Y" (ahora lo decide el desempate de AC5).
-  - `domain/__tests__/sequence.test.ts:57`, `:141-142`, `:430-431`.
+  - `domain/__tests__/sequence.test.ts:66`, `:150-151`, `:439-440`, más el `import` de `:3`.
   - `mcp-server/src/__tests__/tools.test.ts:8`, `:298-299` — **cruza el borde de paquete**: contrasta cada
     hop de `simulate_board` contra `cellDistance`/`pathBetween`. Si desaparecen, o se reescribe contra
     `routeBetween` o `pnpm verify` no compila. Es la arista que el `CLAUDE.md` avisa que existe.
@@ -185,6 +191,20 @@ geometría. Pero **cambia lo que suena**, así que va en su propio commit y lo d
   agrega `hz?: number` a la rama del click: el docblock de `Hit` rechaza esa forma por escrito —"el
   campo opcional dejaría pasar en silencio un click con altura"— y `setClicksAudible` necesita
   justamente poder distinguir el mudo del que tiene altura (D6).
+- **AC14** — **Quien CONSTRUYE la tercera clase de evento, y los docblocks que argumentan por escrito la
+  forma vieja.** Son contrato igual que los que AC13 ya nombra, y el spec no los tenía:
+  - `audio/scheduler.ts` — `collectWindow` es quien arma los `Hit`: `:144` la nota y `:150` el click.
+    La tercera clase se emite **ahí**, no en `engine.ts`, que solo despacha (`:302`). El archivo no
+    figuraba en ninguna tarea ni en `research.md` §10.
+  - `audio/types/scheduler.types.ts` — el docblock de `Sequence` argumenta que la celda "no es
+    información que el motor pueda usar — para sonar solo hace falta CONTAR clicks", y el comentario
+    del campo `clicks` lo repite. Con el cruce con altura esa mitad deja de valer; la otra —que el
+    motor no puede ver `Cell`— sigue valiendo, y hay que reescribirlo diciendo cuál es cuál.
+  - `domain/constants/board.constants.ts:26-28` y `domain/sequence.ts:188` explican el orden de `SEAM`
+    y el invariante del largo **en términos de `bestRoute` y de `viaStart`/`viaEnd` de `ROUTE`**, que
+    mueren con el borrado de AC12. Ídem `domain/sequence.ts:68` y los comentarios de
+    `domain/__tests__/sequence.test.ts:106` y `:182`, que nombran a `pathBetween` como el que ignora
+    obstáculos.
 
 ## Fuera de Alcance
 

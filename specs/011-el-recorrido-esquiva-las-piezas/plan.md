@@ -106,6 +106,11 @@ Para que `tick()` pueda distinguirlos hay que sumar la **tercera clase de evento
 una rama que lleva su `hz`. **No** un `hz?: number` sobre la rama del click: el docblock de `Hit` lo
 rechaza por escrito, y sin la discriminación `setClicksAudible` no puede apagar solo los mudos (D6).
 
+**Y ojo con dónde se emite, que este plan no decía:** quien CONSTRUYE los `Hit` es `collectWindow`, en
+`audio/scheduler.ts` —`:144` la nota, `:150` el click—. La tercera clase nace ahí; `tick()`
+(`engine.ts:302`) solo despacha. Un plan que solo nombra `tick()` deja afuera el archivo donde el `Hit`
+con `hz` se arma.
+
 En `tick()`: cruce con altura → `scheduleVoice` con `GRACE_INTERVALS * intervalDuration(bpm)` y
 `GRACE_VELOCITY`; cruce mudo → `scheduleClick`, como hoy. **No hace falta ninguna función nueva en
 `voice.ts`**: `scheduleVoice` ya recibe `dur` y `vel`. Pero `dur` **no tiene default y es a propósito**
@@ -115,6 +120,11 @@ excepción de `CLICK_SECONDS` está justificada en que el click no tiene altura,
 `vel` sí tiene default, y `GRACE_VELOCITY` va al lado de `CLICK_VELOCITY`.
 
 `setClicksAudible` sigue apagando solo los mudos (D6).
+
+El docblock de `Sequence` en `audio/types/scheduler.types.ts` argumenta hoy lo contrario —«la celda no
+es información que el motor pueda usar — para sonar solo hace falta CONTAR clicks»— y el comentario de
+su campo `clicks` lo repite. Se reescribe: lo que sigue valiendo es que el motor no puede ver `Cell`;
+lo que deja de valer es que alcance con contar.
 
 ## 4. Que se vea distinto
 

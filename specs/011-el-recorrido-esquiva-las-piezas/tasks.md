@@ -3,12 +3,15 @@
 > **Primer spec con la convención de [`README.md`](../README.md#formato-de-una-tarea):** cada tarea
 > lleva un `T0NN` estable, `[P]` marca las que no dependen entre sí ni comparten archivo, y `[M]` las
 > que piden una persona —oído, navegador, captura— y por eso no bloquean el cierre. Los IDs no se
-> renumeran al insertar una tarea nueva: se sigue contando desde `T072`.
+> renumeran al insertar una tarea nueva: se sigue contando desde `T075` (el review gastó T072-T074).
 
 ## Backlog
-- [ ] T001 Commitear el spec a `main` **antes** de crear la rama (convención de `specs/README.md`)
-- [ ] T002 Fila del 011 en `specs/log.md` (`Propuesto`)
-- [ ] T003 [P] **Verificar que el 010 esté mergeado.** No es dependencia de código —este spec no importa nada del
+- [x] T001 Commitear el spec a `main` **antes** de crear la rama (convención de `specs/README.md`). Hecho en
+      seis commits, de `1fda1ea` a `b3703ee`, y `feature/011-*` todavía no existe. **Las ediciones del
+      review van al mismo lugar**: se commitean a `main` antes de sacar la rama de T005, no adentro
+- [x] T002 Fila del 011 en `specs/log.md` (`Propuesto`) — `specs/log.md:26`
+- [x] T003 [P] **Verificar que el 010 esté mergeado.** Lo está: `log.md:25` lo da `Implementado`, y `spec_status`
+      le reporta `pendientes: 0`. No es dependencia de código —este spec no importa nada del
       010— pero sí de verificación: AC10 se hace mirando la cabeza lectora, y fue ella la que encontró
       el problema. Sin el 010, este spec se implementa a ciegas
 - [ ] T004 [P] `check_invariants` **en proceso fresco**: el MCP de la sesión cachea los módulos y contesta con el
@@ -21,13 +24,17 @@
 - [x] T007 Hoy pisan una celda ocupada entre el **71 % y el 88 %** de los tramos (§7)
 - [x] T008 **La curva de P** — cruces por ciclo y crecimiento del ciclo para P = 1, 2, 3, 5, ∞ (§8). Es la
       medición que define el spec
-- [x] T009 El orden de visita cambia en el **30-48 %** de los tableros, y el ciclo crece 8-17 % (§9)
+- [x] T009 El orden de visita cambia en el **30-48 %** de los tableros, y el ciclo crece 8-17 % (§9). **Los
+      dos números son de `P = ∞`**, el escenario más agresivo: con `P = 2` el ciclo crece 2 % y el
+      porcentaje de reordenamientos con ese valor no se midió. 30-48 % es cota de arriba
 - [x] T010 La celda central de la `X` está rodeada por sus propios brazos y es siempre una de sus puertas —
       con un peso deja de ser caso especial (§4)
 - [x] T011 Elegir mejor entre caminos **mínimos**, sin pagar nada, solo evita el 11-30 % de las pisadas: no
       alcanza como solución sola (§7)
 - [x] T012 La variante "permitir cruzar origen y destino" **no arregla el caso testigo** (§5)
-- [x] T013 Matriz 12×12: **0,31 ms** contra 0,62 ms de Held-Karp (§6)
+- [x] T013 Matriz 12×12: **0,31 ms** contra **1,87 ms** de Held-Karp (§6). El 0,62 ms que decía esta tarea
+      es el número que §6 ya corrigió: el que el 009 midió y escribió en su `research.md` §5 y en el
+      docblock de `shortestCircuit` es 1,87 ms, y con él el recorrido crece 17 % y no 50 %
 - [x] T014 `scheduleVoice` ya recibe `dur` y `vel`: la floritura **no necesita función nueva** en `voice.ts`.
       **Corregido en review:** `vel` tiene default, **`dur` no** — y su docblock dice que es a propósito,
       «un default sería un número fijo en segundos que miente sobre el bpm vigente». De ahí que la
@@ -46,23 +53,38 @@
 - [ ] T018 **Desempate lexicográfico explícito** (D7): secuencias de celdas intermedias comparadas posición
       por posición, cada celda como el par `(x, y)`. No alcanza con fijar el orden de exploración, ni
       con desempatar mirando solo el vecino que relaja: hay que comparar el prefijo entero
-- [ ] T019 [P] `P` va a `domain/constants/`, con la tabla de D1 en su comentario
+- [ ] T019 [P] `P` va a **`domain/constants/board.constants.ts`**, al lado de `SEAM`: es una propiedad del
+      grafo del tablero, igual que la costura. **No** a `route.constants.ts`, que T022 borra. Con la
+      tabla de D1 en su comentario
 - [ ] T020 `cellDistance` y `pathBetween`: envoltorios o borrado según los llamadores. Si se borran, **commit
       propio**
 - [ ] T021 **Los llamadores, enumerados** (AC12) — ninguno queda rojo ni borrado en silencio:
-      `domain/__tests__/board.test.ts:186-306` (13 tests; cinco afirman propiedades que el modelo nuevo
+      `domain/__tests__/board.test.ts:186-308` (13 tests; cinco afirman propiedades que el modelo nuevo
       **cambia**: Manhattan, simetría, desigualdad triangular y «traza primero en X»),
-      `domain/__tests__/sequence.test.ts:57`, `:141-142`, `:430-431`, y
+      `domain/__tests__/sequence.test.ts:66`, `:150-151`, `:439-440` con el `import` de `:3`, y
       `mcp-server/src/__tests__/tools.test.ts:8`, `:298-299`, que **cruza el borde de paquete**
 - [ ] T022 `ROUTE` (`domain/constants/route.constants.ts`) y `RouteKind` (`domain/types/sequence.types.ts`)
       quedan **sin consumidor** al morir `bestRoute`. Borrado en **su propio commit**
+- [ ] T074 Los docblocks que nombran a **`bestRoute`** y a **`ROUTE`** y mueren con T022 (AC14):
+      `domain/constants/board.constants.ts:26-28` explica el orden de `SEAM` en términos de `viaStart`/
+      `viaEnd`, y `domain/sequence.ts:188` dice que el invariante del largo «lo garantiza `bestRoute`».
+      Ídem `domain/sequence.ts:68` y los comentarios de `domain/__tests__/sequence.test.ts:106` y
+      `:182`, que nombran a `pathBetween` como el que ignora obstáculos
 - [ ] T023 La matriz de costos de `buildSequence` pasa `placed` — ya lo tiene como parámetro
-- [ ] T024 [P] Test AC1: caso testigo, con los números escritos a mano
-- [ ] T025 [P] Test AC2: ningún cruce evitable, prefijos del teselado + tableros aleatorios con semilla
-- [ ] T026 [P] Test AC5: determinismo, **con un tablero donde el empate se ejerza de verdad**. El 009 buscó uno
-      así para su desempate de circuito; acá hace falta el equivalente para el de camino
-- [ ] T027 [P] Test AC6: Held-Karp exacto por fuerza bruta hasta 7 piezas
-- [ ] T028 [P] Test AC8: mediana de 21 corridas con 12 piezas, tope 5 ms
+- [ ] T024 [P] Test AC1 en `domain/__tests__/board.test.ts`: caso testigo, con los números escritos a mano.
+      **Es el único `[P]` de los cinco tests**: T025 y T026 caen en el MISMO archivo, así que van
+      detrás de este y no en paralelo
+- [ ] T025 Test AC2 en `domain/__tests__/board.test.ts`: ningún cruce evitable, prefijos del teselado +
+      tableros aleatorios con semilla, contrastado contra un Dijkstra de referencia escrito en el propio
+      test. **Ojo con el corolario de AC2: la desigualdad es ESTRICTA** — con exactamente `P − 1` pasos
+      extra por celda evitada los caminos empatan y decide el desempate lexicográfico, no este AC
+- [ ] T026 Test AC5 en `domain/__tests__/board.test.ts`: determinismo, **con un tablero donde el empate se
+      ejerza de verdad**. El 009 buscó uno así para su desempate de circuito; acá hace falta el
+      equivalente para el de camino
+- [ ] T027 [P] Test AC6 en `domain/__tests__/sequence.test.ts:365`: Held-Karp exacto por fuerza bruta hasta 7
+      piezas. `[P]` con T024 porque es otro archivo; **no** con T028, que es este mismo
+- [ ] T028 Test AC8 en `domain/__tests__/sequence.test.ts:528`: mediana de 21 corridas con 12 piezas, tope
+      5 ms
 - [ ] T029 **Commit propio declarando el cambio de audio Y el cambio de orden de visita** (AC7)
 
 ## Paso 2 — El cruce lleva altura
@@ -95,11 +117,21 @@
 - [ ] T041 `tick()`: cruce con altura → `scheduleVoice(…, GRACE_INTERVALS * intervalDuration(bpm),
       GRACE_VELOCITY)`; mudo → `scheduleClick`. **Sin función nueva en `voice.ts`**
 - [ ] T042 `setClicksAudible` apaga solo los mudos (D6)
+- [ ] T072 **`audio/scheduler.ts` es quien CONSTRUYE los `Hit`** (AC14): `collectWindow` los arma —`:144` la
+      nota, `:150` el click—. La tercera clase se emite ahí; `engine.ts:302` solo despacha. El archivo
+      no estaba en ninguna tarea ni en `research.md` §10, y es donde el `Hit` con `hz` nace
+- [ ] T073 [P] El docblock de `Sequence` en `audio/types/scheduler.types.ts` argumenta que la celda «no es
+      información que el motor pueda usar — para sonar solo hace falta CONTAR clicks», y el comentario
+      del campo `clicks` repite «Sin `cell`: para sonar solo hace falta contar». Con el cruce con altura
+      la primera mitad deja de valer y la segunda —no ver `Cell`— sigue valiendo: hay que reescribirlo
+      diciendo cuál es cuál, igual que se hace con el docblock de `Hit` en T038
 
 ## Paso 4 — Que se vea distinto
 - [ ] T043 `route-source.ts`: la tabla por offset pasa de dos casos a tres. El booleano `Marca.nota` se queda
       corto — va const-object con union derivada (`erasableSyntaxOnly` rechaza los `enum`). **El
-      const-object a `components/constants/`** (los módulos de capa no declaran constantes) y la union a
+      const-object a `components/constants/route.constants.ts`** —archivo nuevo, que es el que espeja a
+      `components/types/route.types.ts`; los dos que hay hoy son `layout` y `palette` y no es ninguno de
+      esos— porque los módulos de capa no declaran constantes, y la union a
       `components/types/route.types.ts`, cuyo docblock argumenta hoy lo contrario y hay que reescribir
 - [ ] T044 `components/__tests__/route-source.test.ts:120-152` afirma `nota: true` / `nota: false` en cuatro
       lugares: se migra con el tipo
@@ -124,7 +156,11 @@
       tablero lleno» describe justamente lo que este spec arregla
 - [ ] T052 [P] `.claude/rules/domain.md` y `docs/architecture/modelo-musical.md`: la distancia deja de depender
       solo de las dos celdas
-- [ ] T053 [P] `docs/architecture/audio.md`: el cruce con altura como tercer camino a sonido
+- [ ] T053 [P] `docs/architecture/audio.md`: el cruce con altura como tercer camino a sonido. Tres lugares
+      concretos: `:157` reproduce el tipo con `clicks: { offset: number }[]  // sin cell: para sonar
+      solo hace falta contar`, `:162` argumenta que el click no tiene altura, y la sección «El click»
+      (`:202-219`) dice que el camino ignora obstáculos y que esquivar «es un spec propio» — que es
+      justamente este
 - [ ] T054 [P] `docs/architecture/overview.md:42-43`, `:79`, `:81` y `docs/architecture/directory-structure.md:60`,
       `:70`, `:75`: las dos tablas de símbolos nombran `cellDistance` y `pathBetween`, y
       `directory-structure.md` lista además `RouteKind` y `ROUTE`
