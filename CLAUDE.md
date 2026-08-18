@@ -2,7 +2,8 @@
 
 Guía para Claude Code (claude.ai/code) al trabajar en este repositorio. Es un *cheat sheet*: lo que no
 se puede averiguar mirando un archivo. El detalle vive en `docs/`, las reglas por capa en
-`.claude/rules/` —se cargan solas al tocar sus archivos— y el trabajo planificado en `specs/log.md`.
+`.claude/rules/` —se cargan solas al tocar sus archivos— y el trabajo planificado en `specs/`
+(`log.md` · `deuda.md` · `revisiones.md`).
 
 ## Qué es
 
@@ -122,7 +123,7 @@ también construye su índice **en la consulta** — nada se persiste, así que 
 | `describe_piece` | derivar a mano una rotación, una escala o un retrógrado |
 | `simulate_board` | recorrer el lookahead a mano para saber qué suena junto |
 | `check_invariants` | y después de tocar geometría, `SHAPES` o el modelo musical |
-| `spec_status` | leer `log.md` y todos los `tasks.md` |
+| `spec_status` | leer `log.md` y todos los `tasks.md` para saber qué falta de verdad |
 | `find_symbol` | `grep` para ubicar un símbolo, o abrir un archivo para ver una firma |
 
 Su `usedBy` incluye a `mcp-server/`, que importa 31 símbolos del dominio: tocar una firma de `domain/`
@@ -152,8 +153,10 @@ así — eso vive en los comentarios, no en la salida de una tool.
 | MCP server de dominio | [docs/guides/mcp-domain.md](./docs/guides/mcp-domain.md) | Las cuatro tools que ejecutan el dominio |
 | Deploy | [docs/infra/deploy.md](./docs/infra/deploy.md) | Netlify, `publish = "dist"`, versión de Node |
 
-**Trabajo planificado y deuda conocida:** [specs/log.md](./specs/log.md), con estados, dependencias y
-notas de revisión. Es la única fuente — no se duplica acá para que no se desactualice.
+**Trabajo planificado:** [specs/log.md](./specs/log.md) —registro y dependencias—, con la deuda sin
+spec en [specs/deuda.md](./specs/deuda.md) y el porqué de cada decisión en
+[specs/revisiones.md](./specs/revisiones.md). Son la única fuente: no se duplican acá para que no se
+desactualicen.
 
 ---
 

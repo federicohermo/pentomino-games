@@ -167,7 +167,7 @@ exactamente invertidas respecto de la melodía, en la mitad del espacio de coloc
 audible y medido: con esa `L` reflejada más una `P` rotación 0 en `(7,1)`, el ciclo pasa de 23 a 21
 intervalos; todo tablero **sin** reflexión suena exactamente igual que antes, y las 48 orientaciones al
 derecho lo verifican con un test. Historia completa en la nota de revisión del 009 en
-[log.md](../../specs/log.md#notas-de-revisión).
+[revisiones.md](../../specs/revisiones.md).
 
 ## Forma → qué celda tiene qué nota
 

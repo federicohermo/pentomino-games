@@ -439,7 +439,7 @@ recorrería el circuito nuevo mientras suena el viejo. El swap está atado a `cy
 **Este spec no calcula ningún recorrido: lo lee.** Entre el par de celdas más lejano del tablero hay 792
 caminos mínimos, o sea 792 formas de que el dibujo discrepe del sonido si la UI eligiera el suyo — el
 mismo argumento que ya separó al 009 del 010 (ver la nota de revisión correspondiente en
-[log.md](../../specs/log.md#notas-de-revisión)).
+[revisiones.md](../../specs/revisiones.md)).
 
 ## Cómo verificar el audio
 
