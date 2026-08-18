@@ -17,7 +17,7 @@ import PiecePalette from "./components/PiecePalette.tsx";
 import Board from "./components/Board.tsx";
 import PlacedList from "./components/PlacedList.tsx";
 import Spectrum from "./components/Spectrum.tsx";
-import { encolar, suscribirPendientes } from "./components/route-source.ts";
+import { encolar } from "./components/route-source.ts";
 
 /**
  * Pentomino Music — prototipo de instrumento, no un juego con reglas de resolucion.
@@ -53,18 +53,7 @@ export default function App(){
   // celda del tablero bajo el cursor, para el fantasma de previsualización
   const [hover, setHover] = useState<Cell | null>(null);
 
-  // Las piezas que ya estan en el tablero pero todavia no entraron al ciclo que suena.
-  // Es la UNICA parte del spec 010 que pasa por estado de React, y es la excepcion
-  // declarada a D1: cambia una vez por cierre de ciclo —7,5 s con 8 piezas a 110 bpm—,
-  // no entre 4 y 11 veces por segundo como la cabeza lectora. D1 mide FRECUENCIA, y esos
-  // 60x son la diferencia. Quien avisa es `route-source.ts`, que tiene las dos rutas.
-  const [pendientes, setPendientes] = useState<string[]>([]);
-
   const idRef = useRef(0);
-
-  // Deps vacias y la baja devuelta directo: la suscripcion no depende de nada del
-  // render, y StrictMode monta y desmonta dos veces sin dejar oyentes colgados.
-  useEffect(()=> suscribirPendientes(setPendientes), []);
 
   useEffect(()=>{ setBpm(tempo); }, [tempo]);
   useEffect(()=>{ setClicksAudible(clicks); }, [clicks]);
@@ -108,7 +97,16 @@ export default function App(){
     if (!playing) playNow(noteSet);
   }
 
+  // Reset frena el transporte ADEMÁS de vaciar el tablero, y esa segunda mitad no es
+  // cosmética. Vaciar solo `placed` deja al motor terminando su ciclo activo —D5 del
+  // spec 009: la secuencia nueva, vacía, entra recién al cerrar—, o sea hasta 7,5 s
+  // sonando sobre un tablero que ya está vacío. Reset es una orden explícita de volver
+  // a cero, no una edición del tablero, así que es el único lugar donde saltearse D5 es
+  // lo correcto. Lo que queda es la latencia de pausar, que el motor ya documenta: los
+  // 100 ms del lookahead más la cola del arpegio ya agendado.
   function resetBoard(){
+    stopClock();
+    setPlaying(false);
     setPlaced([]); // el efecto de reconciliación se encarga de vaciar la secuencia
   }
 
@@ -209,7 +207,6 @@ export default function App(){
 
         <Board
           placed={placed}
-          pendingIds={pendientes}
           previewCells={previewCells}
           previewValid={previewValid}
           hover={hover}

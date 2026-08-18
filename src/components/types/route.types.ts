@@ -18,3 +18,21 @@ export interface Marca {
   /** Nota fuerte, click tenue (D7): si se vieran igual, el recorrido parece tener piezas donde no hay. */
   nota: boolean;
 }
+
+/**
+ * Una celda que todavia no se estreno: esta colocada pero no sono nunca dentro del
+ * ciclo, asi que se dibuja atenuada hasta que la cabeza la toca por primera vez.
+ *
+ * `offset` es el intervalo en que se estrena, o `null` si la pieza ni siquiera entro al
+ * ciclo que esta sonando —quedo encolada esperando el cierre—: ahi no hay instante que
+ * esperar todavia, solo el swap.
+ *
+ * Lleva `id` de pieza y no solo la celda porque el estreno se recuerda: sin el, quitar
+ * una pieza y colocar otra en la misma celda haria que la nueva naciera ya estrenada.
+ * Los ids son monotonos (`String(++idRef.current)` en `App`), asi que nunca se reciclan.
+ */
+export interface CeldaPorEstrenar {
+  id: string;
+  cell: Cell;
+  offset: number | null;
+}

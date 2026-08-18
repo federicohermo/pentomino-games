@@ -399,9 +399,19 @@ celda calculada contra la anterior y solo escribe el estilo **cuando cambió**: 
 ~10 escrituras. Y la cabeza **salta, no se desliza**: el instrumento está cuantizado a la grilla de
 intervalos, y un movimiento continuo sugeriría una continuidad que no existe.
 
-**El estado "pendiente" sí pasa por React, y es la excepción declarada.** Cambia una vez por ciclo —7,5 s
-con 8 piezas a 110 bpm—, no entre 4 y 11 veces por segundo: la medición de arriba es sobre la
-**frecuencia**, así que no la cubre. `components/route-source.ts` es el singleton de módulo que espeja el
+**El estado "pendiente" no pasa por React, y esa fue una corrección sobre la marcha.** El plan del 010 lo
+tenía como la excepción declarada a D1, con el argumento de que cambia una vez por ciclo —7,5 s con 8
+piezas a 110 bpm— contra las 4 a 11 veces por segundo de la cabeza. Dejó de valer cuando el estreno pasó
+a ser **celda por celda**: son cinco cambios al ritmo del intervalo, o sea exactamente la frecuencia que
+la medición de arriba prohíbe. Hoy el velo son nodos que `Playhead.tsx` crea y destruye a mano encima de
+la grilla, así que **no queda nada del spec 010 en el árbol de React**, y la regla no tiene excepciones.
+
+Que el estreno sea celda por celda no es un adorno: es lo único que hace visible que a una pieza le toca
+su turno en un instante concreto, y que ese instante no lo decide el orden de colocación sino el
+circuito. Con el destape en bloque al cerrar el ciclo, las ocho piezas se encendían juntas y esa
+información se perdía.
+
+`components/route-source.ts` es el singleton de módulo que espeja el
 par `active`/`pending` del motor pero con la `Sequence` del **dominio**, que es la única que lleva
 celdas: el motor tiene el par pero su `Sequence` no puede ver `Cell` (ver
 [arriba](#el-recorrido-en-el-scheduler)), y la UI tiene las celdas pero solo del tablero de *ahora*, o

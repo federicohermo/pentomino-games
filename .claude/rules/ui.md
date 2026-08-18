@@ -15,10 +15,17 @@ ni efectos propios. La excepción ya no es una sola: `Spectrum.tsx` y `Playhead.
 props y leen del motor por su cuenta, dibujando imperativamente. La regla que las habilita es la misma en
 las dos: un componente puede leer del motor por su cuenta y dibujar imperativamente cuando la frecuencia
 de actualización haría que el estado de React re-renderizara el árbol para nada —60 fps en `Spectrum`,
-4 a 10,6 veces por segundo en `Playhead`—. El número que separa este caso del estado normal de React es
-el de `pendingIds` (spec 010): cambia una vez por ciclo del recorrido —hasta 7,5 s con 8 piezas a
-110 bpm—, no varias veces por segundo, y esa distancia de **60x** entre las dos frecuencias es el
-argumento para usar `useState` ahí en vez del motor directo.
+4 a 10,6 veces por segundo en `Playhead`—. Lo que decide no es la importancia del dato sino su
+**frecuencia**, y el spec 010 lo pagó: su plan dejaba el estado "pieza pendiente" en `useState` porque
+cambiaba una vez por ciclo (7,5 s con 8 piezas a 110 bpm), y hubo que sacarlo cuando el estreno pasó a
+ser celda por celda —cinco cambios al ritmo del intervalo—. Hoy `Playhead.tsx` también dibuja ese velo,
+con nodos que crea y destruye él mismo.
+
+- **El loop no toca nodos que renderiza React, y React no toca nodos del loop.** Es la otra mitad de la
+  regla, y la más fácil de romper: la tentación es atenuar la celda de `Board` desde el bucle. Las celdas
+  van con `key={i}` y **sin refs ni `data-*`** justamente para que no haya handle; lo que el loop
+  necesita pintar, lo pinta con nodos propios superpuestos. Partir el estilo de un mismo nodo entre los
+  dos es lo que el review del spec 007 pagó caro.
 
 - **Todo lo que suena en el loop pasa por el efecto de reconciliación.** Un único `useEffect` sobre
   `[placed]` proyecta `buildSequence(placed)` y se la entrega al motor con `setSequence`; los handlers

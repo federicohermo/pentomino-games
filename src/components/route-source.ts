@@ -1,6 +1,7 @@
 import type { Sequence } from '../domain/types/sequence.types.ts';
 import type { PlacedPiece } from '../domain/types/board.types.ts';
-import type { Marca } from './types/route.types.ts';
+import type { Cell } from '../domain/types/transform.types.ts';
+import type { Marca, CeldaPorEstrenar } from './types/route.types.ts';
 import { cellsByPlayOrder } from '../domain/sequence.ts';
 import { cycleGeneration } from '../audio/engine.ts';
 
@@ -34,13 +35,23 @@ import { cycleGeneration } from '../audio/engine.ts';
  *   antes de dejar de sonar, que es el mismo desfasaje que AC9 existe para evitar.
  */
 
+/** Una celda de pieza dentro del ciclo: donde esta y en que intervalo suena. */
+interface CeldaDePieza {
+  cell: Cell;
+  offset: number;
+}
+
 /** Una ruta ya lista para dibujar: que celda pisa cada offset, y quienes suenan en ella. */
 interface Ruta {
   marcas: (Marca | null)[];
   ids: string[];
+  /** Las cinco celdas de cada pieza con el intervalo en que suena cada una. */
+  porPieza: Map<string, CeldaDePieza[]>;
 }
 
-let activa: Ruta = { marcas: [], ids: [] };
+const RUTA_VACIA: Ruta = { marcas: [], ids: [], porPieza: new Map() };
+
+let activa: Ruta = RUTA_VACIA;
 let pendiente: Ruta | null = null;
 
 /**
@@ -50,7 +61,14 @@ let pendiente: Ruta | null = null;
  */
 let generacion = 0;
 
-const oyentes = new Set<(ids: string[]) => void>();
+/**
+ * Las piezas que entraron al ciclo en el ultimo swap y todavia no se estrenaron celda
+ * por celda. Se reemplaza entero en cada swap; recordar cuales YA se estrenaron es del
+ * loop de dibujo, que es quien lo observa cuadro a cuadro.
+ */
+let estrenando: string[] = [];
+
+let veloActual: CeldaPorEstrenar[] = [];
 
 /**
  * Encola el recorrido nuevo. La llama el mismo efecto de `App` que ya hace
@@ -62,7 +80,74 @@ const oyentes = new Set<(ids: string[]) => void>();
  */
 export function encolar(s: Sequence, placed: readonly PlacedPiece[]): void {
   pendiente = construir(s, placed);
-  notificar();
+  recomputarVelo();
+}
+
+/**
+ * El recorrido que esta sonando ahora mismo, como tabla indexada por offset. La llama
+ * el loop de dibujo, y el swap ocurre ACA: en el mismo cuadro en que el motor lo
+ * reporta, no cuando React se entere.
+ *
+ * Que el loop corra tambien en pausa —igual que el de `Spectrum`— no es un problema
+ * sino lo que hace que el swap se observe en el cuadro exacto.
+ */
+export function rutaActiva(): readonly (Marca | null)[] {
+  const g = cycleGeneration();
+  if (g === generacion) return activa.marcas;
+
+  // La generacion se sincroniza SIEMPRE, haya pendiente o no: si el motor conto un swap
+  // que aca no tenia contraparte, quedarse atras haria que el proximo encolar entre en
+  // vigencia al cuadro siguiente en vez de esperar su borde.
+  generacion = g;
+  if (pendiente === null) return activa.marcas;
+
+  // Las que no estaban sonando estrenan en este ciclo, y estrenan CELDA POR CELDA: es
+  // lo unico que hace visible en que momento exacto a la pieza le toca su turno.
+  const sonaban = new Set(activa.ids);
+  estrenando = pendiente.ids.filter((id) => !sonaban.has(id));
+
+  activa = pendiente;
+  pendiente = null;
+  recomputarVelo();
+  return activa.marcas;
+}
+
+/**
+ * Las celdas colocadas que todavia no sonaron nunca, para dibujarlas atenuadas (AC5).
+ *
+ * Son dos poblaciones distintas y por eso `offset` puede ser `null`:
+ *
+ * - Las de una pieza que YA entro al ciclo y todavia no llego su turno: tienen offset,
+ *   y se estrenan cuando la cabeza las pisa. Esto es lo que hace legible que el orden
+ *   de reproduccion no es el de colocacion — la pieza no se enciende cuando arranca el
+ *   ciclo sino cuando le toca.
+ * - Las de una pieza encolada, que ni siquiera entro: no hay instante que esperar
+ *   todavia, solo el cierre del ciclo. Offset `null`.
+ *
+ * La IDENTIDAD del array es la senal de cambio: mientras sea el mismo array, el loop no
+ * tiene nada que rearmar. Cambia al encolar y al hacer swap, o sea rarisimo comparado
+ * con los 60 cuadros por segundo que lo leen.
+ */
+export function velo(): readonly CeldaPorEstrenar[] {
+  return veloActual;
+}
+
+function recomputarVelo(): void {
+  const out: CeldaPorEstrenar[] = [];
+
+  for (const id of estrenando) {
+    for (const c of activa.porPieza.get(id) ?? []) out.push({ id, cell: c.cell, offset: c.offset });
+  }
+
+  if (pendiente !== null) {
+    const sonando = new Set(activa.ids);
+    for (const id of pendiente.ids) {
+      if (sonando.has(id)) continue;
+      for (const c of pendiente.porPieza.get(id) ?? []) out.push({ id, cell: c.cell, offset: null });
+    }
+  }
+
+  veloActual = out;
 }
 
 /**
@@ -80,6 +165,7 @@ export function encolar(s: Sequence, placed: readonly PlacedPiece[]): void {
  */
 function construir(s: Sequence, placed: readonly PlacedPiece[]): Ruta {
   const marcas: (Marca | null)[] = new Array<Marca | null>(Math.max(0, s.length)).fill(null);
+  const porPieza = new Map<string, CeldaDePieza[]>();
   const porId = new Map(placed.map((p) => [p.id, p]));
 
   for (const step of s.steps) {
@@ -90,7 +176,12 @@ function construir(s: Sequence, placed: readonly PlacedPiece[]): Ruta {
     // mentira, porque una celda equivocada se lee como que el modelo esta mal.
     if (!pieza) continue;
     const celdas = cellsByPlayOrder(pieza);
-    for (let j = 0; j < celdas.length; j++) marcas[step.offset + j] = { cell: celdas[j], nota: true };
+    const deLaPieza: CeldaDePieza[] = [];
+    for (let j = 0; j < celdas.length; j++) {
+      marcas[step.offset + j] = { cell: celdas[j], nota: true };
+      deLaPieza.push({ cell: celdas[j], offset: step.offset + j });
+    }
+    porPieza.set(step.pieceId, deLaPieza);
   }
 
   // Los clicks despues de las notas y no antes: sus offsets no se pisan —lo garantiza el
@@ -98,71 +189,5 @@ function construir(s: Sequence, placed: readonly PlacedPiece[]): Ruta {
   // gane la nota es lo correcto: es lo que se escucha con altura.
   for (const c of s.clicks) marcas[c.offset] = { cell: c.cell, nota: false };
 
-  return { marcas, ids: s.steps.map((st) => st.pieceId) };
-}
-
-/**
- * El recorrido que esta sonando ahora mismo. La llama el loop de dibujo, y el swap
- * ocurre ACA: en el mismo cuadro en que el motor lo reporta, no cuando React se entere.
- *
- * Que el loop corra tambien en pausa —igual que el de `Spectrum`— no es un problema
- * sino lo que hace que el swap se observe en el cuadro exacto.
- */
-export function rutaActiva(): readonly (Marca | null)[] {
-  const g = cycleGeneration();
-  if (g === generacion) return activa.marcas;
-
-  // La generacion se sincroniza SIEMPRE, haya pendiente o no: si el motor conto un swap
-  // que aca no tenia contraparte, quedarse atras haria que el proximo encolar entre en
-  // vigencia al cuadro siguiente en vez de esperar su borde.
-  generacion = g;
-  if (pendiente === null) return activa.marcas;
-
-  activa = pendiente;
-  pendiente = null;
-  notificar();
-  return activa.marcas;
-}
-
-/**
- * Los ids de las piezas que estan encoladas y todavia no suenan (AC5).
- *
- * Esto si pasa por estado de React —es la excepcion declarada a D1—: la atenuacion de
- * la pieza pendiente cambia una vez cada 7,5 s, no 60 veces por segundo, asi que un
- * render por cambio es mas barato que leerlo desde el loop.
- *
- * Se notifica en los DOS momentos en que la lista cambia: al encolar y al hacer el swap.
- * Tambien al suscribirse, para que un componente que monta despues de un `encolar` no
- * quede mostrando una lista vieja hasta el proximo cambio — que puede tardar el ciclo
- * entero.
- *
- * Devuelve la baja. Suscribir y dar de baja son idempotentes porque StrictMode monta y
- * desmonta dos veces.
- */
-export function suscribirPendientes(cb: (ids: string[]) => void): () => void {
-  oyentes.add(cb);
-  cb(idsPendientes());
-  return () => { oyentes.delete(cb); };
-}
-
-/**
- * Que piezas hay en la pendiente que no esten ya sonando en la activa.
- *
- * Por `pieceId` y no por identidad del `Step`: `buildSequence` reconstruye la secuencia
- * entera en cada cambio, asi que hasta las piezas que no se movieron traen `Step` nuevos.
- */
-function idsPendientes(): string[] {
-  if (pendiente === null) return [];
-  const sonando = new Set(activa.ids);
-  return pendiente.ids.filter((id) => !sonando.has(id));
-}
-
-/**
- * Un array nuevo por notificacion y no el mismo reusado: React compara por identidad y
- * un array conservado entre avisos no dispararia el render. Es la trampa opuesta a la de
- * `readSpectrum()`, que reusa su buffer justamente porque su consumidor NO es React.
- */
-function notificar(): void {
-  const ids = idsPendientes();
-  for (const cb of oyentes) cb(ids);
+  return { marcas, ids: s.steps.map((st) => st.pieceId), porPieza };
 }
