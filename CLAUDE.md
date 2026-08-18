@@ -89,9 +89,10 @@ porqué de cada una está en [docs/guides/conventions.md](./docs/guides/conventi
 
 - **La dirección de dependencia la verifica el linter**, no la revisión. `eslint.config.js` tiene un
   override por capa con `@typescript-eslint/no-restricted-imports` —la variante que también ve los
-  `import type`— y un import prohibido falla `pnpm lint` con el mensaje de la capa. Los patrones cubren
-  `../` y `../../`, que es la profundidad de hoy: al crear un subdirectorio nuevo hay que agregar el
-  patrón. Es una red, no una prueba formal.
+  `import type`— y un import prohibido falla `pnpm lint` con el mensaje de la capa. También cubre la
+  dirección **adentro** de `domain/`, módulo por módulo (`DOMAIN_INTERNO`): el dibujo de acá abajo es
+  hoy una regla, no una convención. Los patrones cubren `../` y `../../`, que es la profundidad de hoy:
+  al crear un subdirectorio nuevo hay que agregar el patrón. Es una red, no una prueba formal.
 - **Sin barrels, con extensión explícita, sin alias.** Todo import local lleva extensión
   (`./domain/transform.ts`) — omitirla **no rompe la app**, porque Vite resuelve igual, así que el
   error sería invisible del lado del navegador y solo aparecería al cargar `domain/` con node crudo.

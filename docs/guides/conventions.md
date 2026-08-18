@@ -26,6 +26,16 @@ desde un test.
 `__tests__/` están un nivel más abajo que los módulos. Si algún día aparece `domain/sub/x.ts`, **hay que
 agregar el patrón**: esto es una red, no una prueba formal.
 
+**Adentro de `domain/` también hay dirección, y desde el cierre de los seguimientos del 009 también la
+verifica el linter.** Era la única del repo que vivía sólo como dibujo en `CLAUDE.md`: las cuatro capas
+tenían su override, pero un `board.ts` importando `sequence.ts` pasaba el lint sin decir nada.
+`DOMAIN_INTERNO` en `eslint.config.js` la escribe módulo por módulo, en tres niveles —`transform.ts`
+abajo; `board.ts` y `music.ts` encima de ella y **sin conocerse entre sí**, porque que las reglas del
+tablero y el modelo musical sean ortogonales es una propiedad del instrumento; `sequence.ts` e
+`invariants.ts` como hojas que no se importan entre sí—. Cada override **repite** los patrones de la
+capa: en flat config el más específico reemplaza al anterior en vez de sumarse, así que sin esa
+repetición darle a `board.ts` su regla interna lo dejaría libre de importar React.
+
 El efecto más importante es indirecto: `voice.ts` y `scheduler.ts` reciben el `AudioContext` por
 parámetro y **no pueden** tocar el singleton, porque vive en `engine.ts` y ellos no lo importan. El
 invariante que antes sostenía un comentario ahora lo sostiene el grafo de imports — y es lo que hace
