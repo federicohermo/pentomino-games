@@ -1,6 +1,7 @@
 import type { Sequence, ClockState } from './types/scheduler.types.ts';
 import { midiToHz, scheduleVoice, scheduleClick } from './voice.ts';
 import { collectWindow, intervalDuration } from './scheduler.ts';
+import { offsetAt } from './playhead.ts';
 import { NOTE_INTERVALS } from './constants/voice.constants.ts';
 import { LOOKAHEAD, TICK_MS, HIT } from './constants/scheduler.constants.ts';
 import {
@@ -177,6 +178,60 @@ export const sequenceInfo = (): { steps: number; clicks: number; length: number 
 
 export const clockRunning = (): boolean => timer !== null;
 
+/**
+ * Cuantas veces el motor puso en vigencia una secuencia nueva desde que carga el modulo.
+ *
+ * Es lo unico que sabe el INSTANTE exacto en que el ciclo nuevo empezo a sonar. La UI
+ * tiene el par activa/pendiente del dominio (`components/route-source.ts`) pero no puede
+ * derivar el borde: el swap lo decide `collectWindow` dentro del lookahead, medio
+ * intervalo antes del cierre, y ninguna cuenta sobre `placed` lo ve venir.
+ *
+ * Arranca en 0 y NO se resetea en stopClock/startClock: pausar no cambia que ciclo esta
+ * en vigencia, asi que resetear haria creer a la UI que hubo un swap que no hubo.
+ */
+let cycleGen = 0;
+export const cycleGeneration = (): number => cycleGen;
+
+/**
+ * En que intervalo del ciclo esta la cabeza lectora, o null si no hay nada que marcar.
+ *
+ * Devuelve null en pausa, sin contexto, con el contexto que no esta corriendo y con la
+ * secuencia activa vacia. Es informacion y no una falla, igual que `readSpectrum()` en
+ * reposo: "no hay cabeza" y "la cabeza esta en 0" se dibujan distinto.
+ *
+ * Lee `ctx` y no `audio()` por el mismo motivo que readSpectrum: el llamador previsto es
+ * un loop de dibujo y crear el AudioContext desde ahi seria hacerlo sin gesto del usuario.
+ *
+ * Mira la secuencia ACTIVA, no la pendiente: la cabeza tiene que recorrer lo que suena.
+ * Que la UI dibuje el circuito correcto abajo es problema de `components/route-source.ts`.
+ */
+export function playheadOffset(): number | null {
+  if (timer === null || !ctx || ctx.state !== 'running') return null;
+  if (active.length <= 0) return null;
+  return offsetAt(ctx.currentTime - outputLatency(ctx), clock.origin, intervalDuration(bpm), active.length);
+}
+
+/**
+ * Cuanto tarda en oirse lo que se agenda en `currentTime`. Sin restarlo, la cabeza va
+ * sistematicamente adelantada y en un instrumento eso se percibe como que la imagen miente.
+ *
+ * La cadena `outputLatency` → `baseLatency` → 0 NO es redundante aunque el tipo diga que
+ * si: `lib.dom.d.ts` declara `outputLatency` como `number` no opcional, pero Firefox no lo
+ * implementa y ahi la propiedad llega `undefined`. Por eso las dos lecturas se tipan a mano
+ * como `number | undefined` en vez de taparse con un `any` o un `@ts-ignore`, que ademas el
+ * repo prohibe: el fallback tiene que sobrevivir a que TypeScript lo crea innecesario.
+ *
+ * No tiene test: los tests corren contra node-web-audio-api, donde estos numeros no
+ * describen ninguna salida real. Se verifica en el navegador y a oido.
+ */
+function outputLatency(c: AudioContext): number {
+  const out: number | undefined = c.outputLatency;
+  if (typeof out === 'number' && Number.isFinite(out)) return out;
+  const base: number | undefined = c.baseLatency;
+  if (typeof base === 'number' && Number.isFinite(base)) return base;
+  return 0;
+}
+
 function tick(): void {
   const c = audio();
   if (!c || !master) return;
@@ -187,6 +242,16 @@ function tick(): void {
   // que es testeable; aca queda el cableado a sonido, que sin AudioContext no se
   // puede correr. Ver el docblock de collectWindow.
   const w = collectWindow(c.currentTime, LOOKAHEAD, bpm, active, pending, clock);
+  // Identidad de referencia y no comparacion de contenido: `collectWindow` devuelve la
+  // MISMA referencia cuando no hubo swap y la de la pendiente cuando si, asi que un
+  // `!==` cubre sus DOS ramas —la del borde de ciclo y la de `vigente.length <= 0`— sin
+  // que el scheduler tenga que enterarse de que alguien cuenta.
+  //
+  // Que cuente tambien la segunda importa mas de lo que parece: el primer arranque pasa
+  // siempre por ahi —active vacia, reloj recien largado—, y si no subiera, la cabeza no
+  // apareceria en el primer ciclo y si en todos los siguientes. Es un sintoma raro de
+  // diagnosticar despues.
+  if (w.active !== active) cycleGen++;
   active = w.active;
   pending = w.pending;
   for (const hit of w.hits) {

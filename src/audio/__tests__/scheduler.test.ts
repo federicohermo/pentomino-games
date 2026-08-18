@@ -497,6 +497,23 @@ describe('D5 — la secuencia cambia al cerrar el ciclo', () => {
     expect(state.origin).toBe(ORIGIN);
   });
 
+  it('con pendiente pero antes del borde devuelve la MISMA referencia de la activa', () => {
+    // No es un detalle de implementacion: `engine.ts` cuenta los swaps de ciclo
+    // comparando por identidad (`w.active !== active`) y la UI ata a ese contador el
+    // momento en que la cabeza lectora salta al circuito nuevo (spec 010, AC9). Si esta
+    // funcion devolviera una copia defensiva cuando NO hubo swap, el contador subiria 40
+    // veces por segundo y la cabeza dibujaria el circuito nuevo antes de que suene — que
+    // es exactamente el bug que AC9 existe para evitar, y ningun test de audio lo veria.
+    // A mitad del primer ciclo de A y no en t = 0: con `origin` en 0.05 el borde del
+    // ciclo 0 cae DENTRO del primer lookahead, asi que en t = 0 el swap ya ocurre y el
+    // caso que hay que medir —hay pendiente pero el borde todavia no llego— no existe.
+    const state = recienArrancado();
+    const w = collectWindow(0.5, LOOKAHEAD, BPM, A, B, state);
+    expect(w.active).toBe(A);
+    expect(w.pending).toBe(B);
+    expect(state.origin).toBe(ORIGIN);
+  });
+
   it('AC5 — cambiar la secuencia a mitad de ciclo no altera los hits hasta el borde', () => {
     const sinCambio = simular(A, TICKS, recienArrancado());
     const conCambio = simular(A, TICKS, recienArrancado(), { enTick: CAMBIO, a: B });
