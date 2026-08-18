@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildSequence } from '../sequence.ts';
+import { buildSequence, cellsByPlayOrder } from '../sequence.ts';
 import { cellsAt, isValid, cellDistance, pathBetween } from '../board.ts';
 import { degreeByCellIndex, notesForRotation } from '../music.ts';
 import { rotateN, reflect } from '../transform.ts';
@@ -161,6 +161,72 @@ describe('las puertas de una pieza', () => {
         }
       }
     }
+  });
+});
+
+/**
+ * La nota que `Board.tsx` pinta en una celda de la pieza: grado POR INDICE sobre la
+ * forma canonica y el arpegio ASCENDENTE, sin retrogrado.
+ *
+ * Es la cadena del spec 007 replicada a mano —`occupantCellIndex` -> `degreeByCellIndex`
+ * -> `notesForRotation`— y no una llamada a la pura que se esta verificando: si el
+ * oraculo saliera de `cellsByPlayOrder`, el test seria una tautologia.
+ */
+const notaPintadaEn = (p: PlacedPiece, c: Cell): number => {
+  const grados = degreeByCellIndex(SHAPES[p.piece]);
+  const asc = notesForRotation(BASE_MAP[p.piece], DEFAULT_OCTAVE, p.rotation);
+  const k = p.cells.findIndex((q) => q[0] === c[0] && q[1] === c[1]);
+  return asc[grados[k]];
+};
+
+describe('AC11 — `cellsByPlayOrder`: la celda de cada nota', () => {
+  it('`[j]` es la celda que el tablero pinta con `notes[j]`, en las 96 orientaciones', () => {
+    // La propiedad que ata las dos puntas del modelo. El tablero deriva la nota de
+    // una celda por GRADO sobre el arpegio ascendente (spec 007) y la secuencia las
+    // reproduce en el orden de `notes`, con el retrogrado ya aplicado: si las dos
+    // derivaciones no coinciden, la cabeza lectora enciende una celda y suena otra.
+    // Es el bug de D9 visto desde adentro de la pieza, y esto es lo que impide que
+    // vuelva.
+    for (const k of PIECES) {
+      for (let rot = 0; rot < 4; rot++) {
+        for (const mirror of [false, true]) {
+          const p = colocar(k, rot, mirror, 5, 3);
+          const orden = cellsByPlayOrder(p);
+          expect(orden, `${k}/${rot}/${mirror}`).toHaveLength(CELLS_PER_PIECE);
+          for (let j = 0; j < CELLS_PER_PIECE; j++) {
+            expect(notaPintadaEn(p, orden[j]), `${k}/${rot}/${mirror} nota ${j}`).toBe(p.notes[j]);
+          }
+          // Y son las cinco celdas de la pieza, sin repetir ni inventar ninguna.
+          expect(new Set(orden.map((c) => c.join(','))).size).toBe(CELLS_PER_PIECE);
+          expect(new Set(orden.map((c) => c.join(',')))).toEqual(new Set(p.cells.map((c) => c.join(','))));
+        }
+      }
+    }
+  });
+
+  it('la reflexion es lo unico que la separa del orden de grado', () => {
+    // Escrito aparte porque es la mitad del modelo que el 009 no miro: sin `mirror`
+    // el orden de reproduccion ES el orden de grado, y con `mirror` es su reverso
+    // exacto. La mitad del espacio de colocacion cae del segundo lado.
+    for (const k of PIECES) {
+      for (let rot = 0; rot < 4; rot++) {
+        const derecha = cellsByPlayOrder(colocar(k, rot, false, 5, 3));
+        const reflejada = cellsByPlayOrder(colocar(k, rot, true, 5, 3));
+        const g = degreeByCellIndex(SHAPES[k]);
+        const porGrado = (p: PlacedPiece) => g.map((_, d) => p.cells[g.indexOf(d)]);
+        expect(derecha, `${k}/${rot}`).toEqual(porGrado(colocar(k, rot, false, 5, 3)));
+        expect(reflejada, `${k}/${rot} reflejada`).toEqual([...porGrado(colocar(k, rot, true, 5, 3))].reverse());
+      }
+    }
+  });
+
+  it('no toca el array de celdas de la pieza', () => {
+    // `reverse()` muta, y el array que se invierte tiene que ser el intermedio y
+    // nunca `p.cells`: la regla del repo es no mutar lo que ya se entrego a React.
+    const l = colocar('L', 0, true, 1, 1);
+    const antes = JSON.stringify(l.cells);
+    cellsByPlayOrder(l).reverse();
+    expect(JSON.stringify(l.cells)).toBe(antes);
   });
 });
 

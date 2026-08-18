@@ -17,6 +17,36 @@ import { SHAPES, CELLS_PER_PIECE } from './constants/pieces.constants.ts';
  */
 
 /**
+ * Las celdas de la pieza en ORDEN DE REPRODUCCION: `[j]` es la celda donde suena
+ * `p.notes[j]`.
+ *
+ * El grado sale de la forma CANONICA y se lee POR INDICE:
+ * `degreeByCellIndex(SHAPES[p.piece])[k]` es el grado de `p.cells[k]`, porque rotar,
+ * reflejar y trasladar son `map` y la celda `k` sigue siendo la celda `k`. Correrla
+ * sobre `p.cells` compila igual y devuelve otro mapeo en 74 de las 96 orientaciones,
+ * porque rotar corre el origen del angulo — es la trampa mas cara de esta capa.
+ *
+ * El retrogrado YA VIENE APLICADO, con el mismo criterio que `PlacedPiece.notes`: la
+ * reflexion invierte el orden EN EL TIEMPO sin mover que nota le toca a que celda,
+ * asi que con `mirror` la primera nota que suena es la del grado 4. Que la inversion
+ * viva aca y no en el consumidor es lo que hace que `[j]` case con `notes[j]` sin que
+ * nadie vuelva a invertir — es la regla que `sequence.types.ts` ya declara para
+ * `Step.notes`, ahora sostenida por las dos puntas.
+ *
+ * Existe porque `Step` no lleva celdas: ir de la nota `j` a la celda donde se ve era
+ * una derivacion que solo estaba adentro de `gates`, y para los grados 0 y 4 nada
+ * mas. Es lo unico que el spec 010 le agrega al dominio, y no reabre D5 del 009: un
+ * mapeo grado->celda no es un camino ni una distancia.
+ */
+export function cellsByPlayOrder(p: PlacedPiece): Cell[] {
+  const grados = degreeByCellIndex(SHAPES[p.piece]);
+  // Por GRADO y no por indice del array: `grados[k]` es el grado de `p.cells[k]`,
+  // asi que el inverso —la celda del grado g— es `p.cells[grados.indexOf(g)]`.
+  const porGrado = grados.map((_, g) => p.cells[grados.indexOf(g)]);
+  return p.mirror ? porGrado.reverse() : porGrado;
+}
+
+/**
  * Las dos puertas de una pieza: por donde entra el recorrido y por donde sale.
  *
  * Entrada = grado 0, salida = grado 4 (spec 009, D8). El grado sale de la forma
