@@ -19,6 +19,7 @@ spec posterior reemplazó lo que hacía; el spec queda como historia y no se ree
 | [008](./008-el-intervalo-como-unidad-musical/spec.md) | 2026-08-16 | Implementado | El espaciado del arpegio deja de ser 0,15 s fijos y pasa a ser la semicorchea del tempo; `Job` pierde `spread`; el checkbox de loop y el botón de reloj se funden en un play/pausa con estado |
 | [009](./009-el-tablero-como-recorrido/spec.md) | 2026-08-16 | Implementado | El tablero deja de ser un compás y pasa a ser un circuito cerrado: el orden y los silencios salen de la geometría, `(0,0)` y `(9,5)` se repliegan, las celdas recorridas suenan. Muere `phaseFor` y **supera al 004** |
 | [010](./010-cabeza-lectora-por-celda/spec.md) | 2026-08-16 | Propuesto | Cabeza lectora celda por celda, fuera del estado de React: cierra la limitación que el 004 dejó anotada y da señal visual a la espera de un ciclo que introduce el 009 |
+| [011](./011-el-recorrido-esquiva-las-piezas/spec.md) | 2026-08-17 | Propuesto | El recorrido entre piezas deja de atravesarlas: la distancia pasa a ser el camino mas corto que esquiva lo ocupado, y cuando esquivar es imposible —la celda central de la `X` esta rodeada por sus propios brazos— el cruce **suena la nota de la celda** en vez de un golpe sordo. **Cambia la matriz de costos y con ella el circuito**; revisa el modelo del 009 |
 
 ## Dependencias entre specs
 
