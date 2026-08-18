@@ -474,9 +474,16 @@ describe('el cruce por celda ocupada (spec 011)', () => {
    */
   const esCruce = (h: Hit): h is Extract<Hit, { kind: typeof HIT.cross }> => h.kind === HIT.cross;
 
-  // El caso testigo del spec: `P` rot 1 en (3,2) e `Y` rot 1 en (7,2) hacen que el
-  // recorrido pise (7,2), que suena F5 = MIDI 77. Aca entra ya proyectado a la forma
-  // del motor, que es todo lo que este lado del borde puede ver.
+  // Una altura cualquiera para el cruce, que de este lado del borde es todo lo que hay:
+  // el motor ve un MIDI suelto y no la celda que lo origino, asi que la secuencia entra
+  // escrita a mano y no derivada de un tablero.
+  //
+  // NO es el caso testigo del spec, y vale decir por que: con `CROSS_COST = 5` ese
+  // tablero —`P` rot 1 en (3,2) e `Y` rot 1 en (7,2)— dejo de pisar nada, porque rodea
+  // por la fila 0 (lo fija `domain/__tests__/board.test.ts`, "el tramo de la P a la Y no
+  // pisa [7,1]"). Atar este test al testigo lo dejaria midiendo un cruce que ya no
+  // ocurre, que es la misma trampa que `components/__tests__/route-source.test.ts`
+  // esquiva eligiendo la `X`.
   const F5 = 77;
 
   it('AC13 — un cruce con nota es una TERCERA clase de hit, con su altura', () => {

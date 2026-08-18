@@ -491,11 +491,17 @@ Dos trampas que costaron un ciclo de tests cada una:
 
 ```js
 const m = await import('/src/audio/engine.ts');   // en dev, mismo singleton
-m.sequenceInfo();                                  // { steps, clicks, length } de la secuencia activa
+m.sequenceInfo();                                  // { steps, clicks, crosses, length } de la activa
 m.clockRunning();                                  // reloj
 m.audio().state;                                   // 'running' | 'suspended'
 m.readSpectrum();                                  // null en reposo; Uint8Array(128) sonando
 ```
+
+`clicks` y `crosses` van **separados desde el spec 011**, y `clicks` ya no es el total de celdas
+cruzadas: cuenta solo las mudas —celda vacía—, y las ocupadas, que suenan su nota como floritura, van
+en `crosses`. El campo `clicks` de la `Sequence` sigue mezclando las dos, pero el motor las distingue
+—una se apaga con `setClicksAudible` y la otra no (D6)— y esta función existe justamente para mirar el
+motor sin oírlo: un solo número obligaría a oír cuál es cuál.
 
 Para comprobar que el scheduler realmente dispara, contar osciladores creados:
 

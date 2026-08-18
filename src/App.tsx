@@ -149,7 +149,12 @@ export default function App(){
     encolar(secuencia, placed);
     setSequence({
       steps: secuencia.steps.map(({ offset, notes }) => ({ offset, notes })),
-      clicks: secuencia.clicks.map(({ offset, note }) => ({ offset, note })),
+      // El ternario y no `({ offset, note })`: con la forma corta el click mudo sale con
+      // la clave `note` PRESENTE y en `undefined`, y la ausencia del campo es justo lo
+      // que dice "celda vacía" (ver el docblock de `Click`). Hoy nadie lo notaría
+      // —`collectHits` compara `=== undefined`— pero es el tercer estado que el tipo
+      // existe para no tener.
+      clicks: secuencia.clicks.map((c) => c.note === undefined ? { offset: c.offset } : { offset: c.offset, note: c.note }),
       length: secuencia.length,
     });
     // `placed` esta en las dependencias aunque `secuencia` ya se derive de el: no agrega
@@ -169,7 +174,10 @@ export default function App(){
     const s = buildSequence([]);
     setSequence({
       steps: s.steps.map(({ offset, notes }) => ({ offset, notes })),
-      clicks: s.clicks.map(({ offset, note }) => ({ offset, note })),
+      // Misma proyección que el efecto de arriba, y por el mismo motivo: la ausencia de
+      // `note` es lo que dice "celda vacía". Acá el tablero está vacío y no hay clicks,
+      // pero escribirla distinto invitaría a divergir la próxima vez que se toque una.
+      clicks: s.clicks.map((c) => c.note === undefined ? { offset: c.offset } : { offset: c.offset, note: c.note }),
       length: s.length,
     });
   }, []);

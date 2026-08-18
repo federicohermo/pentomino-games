@@ -4,7 +4,7 @@ import { PIECE_KEYS } from '../pieces.ts';
 import { rotateN, reflect } from '../../../src/domain/transform.ts';
 import { cellsAt, isValid, occupantAt } from '../../../src/domain/board.ts';
 import { midiName } from '../../../src/domain/music.ts';
-import { buildSequence, gates, noteAtCell } from '../../../src/domain/sequence.ts';
+import { buildSequence, gates } from '../../../src/domain/sequence.ts';
 import { SHAPES, ANCHOR_INDEX, CELLS_PER_PIECE } from '../../../src/domain/constants/pieces.constants.ts';
 import { GRID_W, GRID_H } from '../../../src/domain/constants/board.constants.ts';
 import type { Cell } from '../../../src/domain/types/transform.types.ts';
@@ -88,30 +88,21 @@ function gatesOf(p: PlacedPiece): Gates {
 }
 
 /**
- * Que celdas de `path` estan ocupadas y que nota suena si se las pisa (T046).
+ * Los cruces de un tramo: las celdas que el camino pisa y que estan ocupadas, con la
+ * nota que suena al pisarlas (T046).
  *
- * Usa `occupantAt` y `noteAtCell` del dominio —las MISMAS que arman `clickEn` adentro
- * de `buildSequence`— y no vuelve a derivar la nota a mano: esa derivacion tiene dos
- * trampas medidas (`degreeByCellIndex` sobre la forma CANONICA, arpegio ASCENDENTE y
- * nunca el retrogrado de `arpeggioFor`) que compilan igual y suenan mal. Es la forma
- * barata de comparar valores de `CROSS_COST` sin escuchar cada tablero.
+ * **Lee `Click.note` y NO vuelve a derivar la nota desde la celda**, aunque el dominio
+ * exponga las dos puras que harian falta (`occupantAt` y `noteAtCell`). Es D3 del spec
+ * 011 aplicado a esta capa: el `Click` ya trae la altura que `buildSequence` le puso, y
+ * derivarla de nuevo aca serian dos lugares calculando lo mismo sin nada que los obligue
+ * a coincidir — justo lo que la tool existe para descartar, porque su unico valor es
+ * reportar lo que la app va a sonar y no una segunda opinion sobre eso.
  *
- * Vacio cuando el tramo no pisa ninguna pieza, nunca ausente: la respuesta siempre
- * trae el campo para que un tablero sin cruces no se distinga de uno sin reportar.
+ * Vacio cuando el tramo no pisa ninguna pieza, nunca ausente: la respuesta siempre trae
+ * el campo para que un tablero sin cruces no se distinga de uno sin reportar.
  */
-function crucesDe(path: readonly Cell[], placed: readonly PlacedPiece[]): Cruce[] {
-  const cruces: Cruce[] = [];
-  for (const cell of path) {
-    const ocupante = occupantAt(placed, cell[0], cell[1]);
-    if (ocupante === null) continue;
-    const nota = noteAtCell(ocupante, cell);
-    // Inalcanzable: `occupantAt` ya dijo que `ocupante` ocupa esta celda, asi que
-    // `noteAtCell` no puede devolver null aca. El chequeo esta igual porque el tipo
-    // de `nota` sigue siendo `number | null` y `midiName` no acepta null.
-    if (nota === null) continue;
-    cruces.push({ cell, note: midiName(nota) });
-  }
-  return cruces;
+function crucesDe(tramo: readonly { cell: Cell; note?: number }[]): Cruce[] {
+  return tramo.flatMap((c): Cruce[] => c.note === undefined ? [] : [{ cell: c.cell, note: midiName(c.note) }]);
 }
 
 /**
@@ -238,7 +229,13 @@ export const simulateBoard = defineTool({
       // caer typechequea igual —`note` es opcional— y la tool reportaria los cruces
       // como clicks mudos, o sea distinto de lo que suena la app. Es justo la
       // propiedad que esta tool existe para sostener.
-      clicks: seq.clicks.map(({ offset, note }) => ({ offset, note })),
+      //
+      // El ternario y no `({ offset, note })`: con la forma corta el click mudo sale
+      // con la clave `note` PRESENTE y en `undefined`, que es el estado intermedio que
+      // el docblock de `Click` rechaza — ausencia significa "celda vacia", y un campo
+      // presente valiendo undefined es un tercer estado esperando a que alguien lo lea
+      // con `in` o con `Object.keys`.
+      clicks: seq.clicks.map((c) => c.note === undefined ? { offset: c.offset } : { offset: c.offset, note: c.note }),
       length: seq.length,
     };
 
@@ -272,17 +269,19 @@ export const simulateBoard = defineTool({
       const ultima = step.offset + CELLS_PER_PIECE - 1;
       const siguiente = t + 1 < n ? seq.steps[t + 1].offset : seq.length;
       const to = seq.steps[(t + 1) % n].pieceId;
-      const path = seq.clicks.filter(c => c.offset > ultima && c.offset < siguiente).map(c => c.cell);
+      // Los clicks del tramo enteros y no solo sus celdas: `path` y `crossed` son dos
+      // lecturas de ESTA lista, asi que no pueden discrepar (D3).
+      const tramo = seq.clicks.filter(c => c.offset > ultima && c.offset < siguiente);
       return {
         from: step.pieceId,
         to,
         exit: puertas[step.pieceId].exit,
         entry: puertas[to].entry,
-        distance: path.length + 1,
-        path,
+        distance: tramo.length + 1,
+        path: tramo.map(c => c.cell),
         // Los cruces de ESTE tramo: subconjunto de `path` que cae sobre una pieza,
         // cada uno con la nota que suena si se lo pisa (T046).
-        crossed: crucesDe(path, placed),
+        crossed: crucesDe(tramo),
       };
     });
 

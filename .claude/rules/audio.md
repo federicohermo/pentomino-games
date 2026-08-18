@@ -44,7 +44,7 @@ El porqué de cada decisión, con las mediciones que la respaldan, está en
   primer onset del ciclo 0.
 - **El click se apaga en la mezcla, no en el modelo — pero solo el click mudo.**
   `setClicksAudible(false)` deja de cablear a sonido los clicks sin nota en `tick()`; la secuencia
-  sigue teniendo sus clicks y `collectWindow` los sigue emitiendo. Filtrarlos antes obligaría a
+  sigue teniendo sus clicks y `collectHits` los sigue emitiendo. Filtrarlos antes obligaría a
   reconstruir la secuencia por algo que no decide el tablero. Desde el spec 011 el recorrido
   (`routeBetween`) puede cruzar una celda ocupada, y esa celda **suena su nota** —una floritura más
   corta y más suave que la nota de pieza—; ese cruce con altura **no se apaga con
@@ -82,5 +82,6 @@ El porqué de cada decisión, con las mediciones que la respaldan, está en
   [docs/architecture/audio.md](../../docs/architecture/audio.md#la-cabeza-lectora).
 
 **Verificar audio sin oírlo:** en tests con `OfflineAudioContext`; en el navegador con `sequenceInfo()`
-—pasos, clicks y largo del ciclo de la secuencia activa— y contando osciladores. Recetas en
+—pasos, clicks **mudos**, cruces con altura y largo del ciclo de la secuencia activa; los dos últimos
+son del spec 011, y `clicks` dejó de ser el total de celdas cruzadas— y contando osciladores. Recetas en
 [docs/architecture/audio.md](../../docs/architecture/audio.md#cómo-verificar-el-audio).

@@ -60,8 +60,9 @@ src/
 │   ├── board.ts                  # cellsAt · isValid · routeBetween · occupantAt ·
 │   │                             #   occupantCellIndex
 │   ├── music.ts                  # midiFor · midiName · notesForRotation · arpeggioFor · degreeByCellIndex
-│   ├── sequence.ts               # buildSequence — el circuito (Held-Karp) y los offsets del ciclo —
-│   │                             #   y gates, las dos puertas de una pieza (la usa simulate_board)
+│   ├── sequence.ts               # buildSequence — el circuito (Held-Karp) y los offsets del ciclo —,
+│   │                             #   cellsByPlayOrder, gates —las dos puertas, las usa simulate_board—
+│   │                             #   y noteAtCell, qué nota hay en una celda
 │   ├── invariants.ts             # los cinco chequeos del modelo + checkAll
 │   ├── types/                    # el contrato de la capa. Cero imports de afuera
 │   │   ├── transform.types.ts    #   Cell

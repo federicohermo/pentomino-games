@@ -185,8 +185,9 @@ export function routeBetween(a: Cell, b: Cell, placed: readonly PlacedPiece[]): 
   const peso = (n: number): number => n === destino ? 0 : ocupada[n] ? CROSS_COST : 1;
 
   // Centinela de "todavia sin alcanzar": mas caro que el camino mas caro posible —60
-  // celdas ocupadas son 120— y lejos del borde de Int32 para que sumarle un peso no
-  // desborde.
+  // celdas ocupadas a `CROSS_COST` son 300 con el 5 de hoy, y 3.660 con el 61 que la
+  // constante discute y descarta— y lejos del borde de Int32 para que sumarle un peso
+  // no desborde. O sea que aguanta cualquier valor razonable sin tocarlo.
   const INF = 0x3fffffff;
   const dist = new Int32Array(N).fill(INF);
   const listo = new Uint8Array(N);

@@ -156,7 +156,7 @@ export const setBpm = (v: number): void => { bpm = v; };
 /**
  * Si los clicks MUDOS del recorrido suenan. Es MEZCLA, no modelo.
  *
- * Vive aca y no en la secuencia por eso: apagarlos no cambia el recorrido —los cruces
+ * Vive aca y no en la secuencia por eso: apagarlos no cambia el recorrido —los clicks
  * siguen en la `Sequence` y `collectHits` los sigue emitiendo—, solo deja de
  * cablearlos a sonido en `tick()`. Filtrar antes obligaria a reconstruir la
  * secuencia para algo que no es una decision del tablero, y ademas haria que el

@@ -84,8 +84,8 @@ parámetro. Si empiezan a tomarlo del singleton, dejan de ser testeables.
 ### Verificar audio sin oírlo
 
 En tests, `OfflineAudioContext` renderiza determinísticamente y permite afirmar sobre frecuencia,
-envolvente e instantes. En el navegador, `sequenceInfo()` —pasos, clicks y largo del ciclo de la
-secuencia activa— y el conteo de osciladores. Recetas en
+envolvente e instantes. En el navegador, `sequenceInfo()` —pasos, clicks mudos, cruces con altura y
+largo del ciclo de la secuencia activa— y el conteo de osciladores. Recetas en
 [audio.md](../architecture/audio.md#cómo-verificar-el-audio).
 
 ### Preguntarle al modelo en vez de simularlo
