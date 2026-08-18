@@ -1,9 +1,10 @@
 import type { Cell } from './types/transform.types.ts';
 import type { PlacedPiece } from './types/board.types.ts';
 import type { Step, Click, Sequence } from './types/sequence.types.ts';
-import { cellDistance, pathBetween } from './board.ts';
-import { degreeByCellIndex, arpeggioFor } from './music.ts';
+import { routeBetween, occupantAt, occupantCellIndex } from './board.ts';
+import { degreeByCellIndex, arpeggioFor, notesForRotation } from './music.ts';
 import { SHAPES, CELLS_PER_PIECE } from './constants/pieces.constants.ts';
+import { BASE_MAP, DEFAULT_OCTAVE } from './constants/music.constants.ts';
 
 /**
  * El tablero como recorrido: de un conjunto de piezas colocadas a una secuencia.
@@ -65,7 +66,7 @@ export function cellsByPlayOrder(p: PlacedPiece): Cell[] {
  * decision del 010.
  *
  * Las dos nunca son la misma celda: son dos grados distintos de la misma pieza. Hoy
- * no es lo que protege a `pathBetween` de recibir `a === b` —de eso se encargan que
+ * no es lo que protege a `routeBetween` de recibir `a === b` —de eso se encargan que
  * dos piezas no se solapen, asi que la salida de una y la entrada de la siguiente
  * son celdas distintas, y la guarda de `n === 1`, porque con una sola pieza no hay
  * tramo que trazar—, pero es la propiedad que dejaria seguro cualquier tramo futuro
@@ -81,6 +82,87 @@ export function gates(p: PlacedPiece): { entrada: Cell; salida: Cell } {
   // `orden[orden.length - 1]` y no `orden.at(-1)`: `at` devuelve `Cell | undefined` y
   // el tipo de retorno no admite el undefined que nunca puede pasar.
   return { entrada: orden[0], salida: orden[orden.length - 1] };
+}
+
+/**
+ * El MIDI de la celda `cell` de la pieza `p`, o `null` si `p` no la ocupa.
+ *
+ * Es la derivacion celda-a-nota del spec 007 convertida en pura del dominio, y no tres
+ * lineas adentro de `buildSequence`: por la misma razon por la que `cellsByPlayOrder`
+ * salio de adentro de `gates` en el 010 —una derivacion escondida en su unico
+ * consumidor no se puede contrastar contra nada— y porque `components/Board.tsx` hace
+ * exactamente esta cadena para PINTAR la nota de una celda. Si las dos se corrieran, la
+ * celda diria una altura y pisarla sonaria otra.
+ *
+ * Las dos trampas de la cadena, que compilan igual y suenan mal:
+ *
+ * - El grado sale de `degreeByCellIndex(SHAPES[p.piece])` —la forma CANONICA— y viaja
+ *   por INDICE. Correrla sobre `p.cells`, que ya esta rotada, reflejada y trasladada,
+ *   devuelve otro mapeo en 74 de las 96 orientaciones.
+ * - El arpegio es el ASCENDENTE de `notesForRotation`, y NUNCA `arpeggioFor`, que ya
+ *   trae el retrogrado aplicado. El grado lee la forma al derecho: indexar con el un
+ *   arpegio invertido da la nota espejada. `arpeggioFor` responde en que ORDEN suenan
+ *   las notas; esta responde que nota hay en una celda, que es otra pregunta.
+ */
+export function noteAtCell(p: PlacedPiece, cell: Cell): number | null {
+  const k = occupantCellIndex(p, cell[0], cell[1]);
+  if (k < 0) return null;
+  const ascendente = notesForRotation(BASE_MAP[p.piece], DEFAULT_OCTAVE, p.rotation);
+  return ascendente[degreeByCellIndex(SHAPES[p.piece])[k]];
+}
+
+/**
+ * El click de una celda del camino: con altura si hay una pieza abajo, sin ella si la
+ * celda esta vacia.
+ *
+ * Que `note` FALTE es lo que dice "vacia", asi que no hay un `note: null` intermedio
+ * que alguien pueda leer como un tercer estado (ver `Click`).
+ */
+function clickEn(offset: number, celda: Cell, placed: readonly PlacedPiece[]): Click {
+  const ocupante = occupantAt(placed, celda[0], celda[1]);
+  const nota = ocupante === null ? null : noteAtCell(ocupante, celda);
+  return nota === null ? { offset, cell: celda } : { offset, cell: celda, note: nota };
+}
+
+/**
+ * Cota superior de los pasos de UN tramo: el tablero tiene 60 celdas y un camino
+ * no repite ninguna, asi que ningun tramo puede medir mas.
+ */
+const PASOS_MAX = 1024;
+
+/**
+ * La clave con la que Held-Karp compara dos tramos: **primero el costo, y a igual
+ * costo los PASOS**.
+ *
+ * ## Por que hacen falta dos criterios y no alcanza con el costo
+ *
+ * Hasta el spec 011 el costo de un tramo ERA su cantidad de pasos, asi que empatar en
+ * costo era empatar en duracion y desempatar por indice no cambiaba nada de lo que se
+ * oia. El peso rompio esa identidad: un cruce cuesta `CROSS_COST` pero sigue durando UN
+ * intervalo, asi que dos circuitos pueden costar lo mismo y durar distinto.
+ *
+ * Medido sobre el tablero `U`(2,0) `T`(4,2) `I`(7,2) `W`(7,4) `F`(3,4): los circuitos
+ * `U>T>F>I>W` y `U>W>I>T>F` cuestan **los dos 24**, pero miden **17 y 21 pasos**. Sin
+ * este criterio gana el de indice menor, y el indice es el ORDEN DE COLOCACION — o sea
+ * que el mismo tablero sonaba con un ciclo de 37 o de 41 intervalos segun en que orden
+ * se hubieran puesto las piezas. Sobre 120 tableros de 5 piezas pasaba en el 8,3 %.
+ *
+ * Eso contradecia lo que el 009 promete y el 011 no queria tocar: **el recorrido lo
+ * decide la geometria**. Con los pasos como segundo criterio la eleccion vuelve a ser
+ * geometrica, y ademas es la correcta musicalmente: a igual costo, el ciclo mas corto.
+ *
+ * El indice sigue siendo el TERCER criterio, y ahi si es inofensivo: dos circuitos que
+ * empatan en costo Y en pasos duran lo mismo, asi que cual gane no cambia el ritmo.
+ *
+ * Se empaquetan en un entero en vez de comparar pares porque Held-Karp suma tramos y
+ * compara sumas: con `costo * PASOS_MAX + pasos` la suma de claves ordena igual que
+ * comparar (suma de costos, suma de pasos) en ese orden, **siempre que la suma de pasos
+ * no llegue a `PASOS_MAX`**. Con 12 tramos de a lo sumo 60 pasos el maximo es 720, asi
+ * que no puede acarrear. Todo entero, asi que la igualdad exacta del desempate de la
+ * reconstruccion sigue siendo exacta y no aproximada.
+ */
+function claveDeTramo(r: { cost: number; steps: number }): number {
+  return r.cost * PASOS_MAX + r.steps;
 }
 
 /**
@@ -120,8 +202,10 @@ function shortestCircuit(cost: readonly (readonly number[])[]): number[] {
   const size = 1 << n;
 
   // Centinela de "no alcanzable": cualquier valor mayor que el circuito mas caro
-  // posible (12 piezas x distancia maxima 12 = 144) sirve, y se toma uno lejos del
-  // borde de Int32 para que sumarle un tramo no desborde.
+  // posible sirve. Con la clave de `claveDeTramo` el techo es 12 tramos x (costo
+  // maximo 300 x PASOS_MAX + 60) = 3,7 millones, asi que 0x3fffffff sigue estando
+  // tres ordenes de magnitud arriba y lejos del borde de Int32: sumarle un tramo no
+  // desborda.
   const INF = 0x3fffffff;
   const g = new Int32Array(n * size).fill(INF);
 
@@ -175,20 +259,25 @@ function shortestCircuit(cost: readonly (readonly number[])[]): number[] {
  * Cada pieza abarca `CELLS_PER_PIECE - 1` intervalos: cinco notas dejan cuatro
  * saltos entre la primera y la ultima. Si arranca en `o`, su ultima nota cae en
  * `o + 4`, sus clicks en `o + 5 ... o + 4 + (d - 1)` y la primera nota de la
- * siguiente en `o + 4 + d`, con `d` el salto entre las dos. Con `d = 1` no hay
- * clicks y la nota siguiente cae exactamente un intervalo despues de la ultima: dos
- * piezas adyacentes quedan contiguas, sin costura audible (AC3).
+ * siguiente en `o + 4 + d`, con `d` los PASOS del tramo. Con `d = 1` no hay clicks y
+ * la nota siguiente cae exactamente un intervalo despues de la ultima: dos piezas
+ * adyacentes quedan contiguas, sin costura audible (AC3).
  *
  * El `length` cierra sumando tambien el salto de la ultima pieza a la primera, asi
  * que es `4n + suma de los saltos`. Sin ese ultimo tramo el loop se cerraria antes
  * de tiempo y el circuito dejaria de ser cerrado.
  *
- * ## Por que el salto se lee del camino y no de la distancia
+ * ## El costo ordena, los pasos miden el tiempo
  *
- * `camino.length + 1` y `cellDistance` son el mismo numero —lo garantiza `bestRoute`,
- * que es la unica decision de ruta de `board.ts`—, pero leerlo del camino es lo que
- * hace IMPOSIBLE que la cantidad de clicks y el instante de la nota siguiente
- * discrepen (D8). La cantidad de clicks no se calcula: es el largo del camino.
+ * Desde el spec 011 son DOS numeros y no dos lecturas del mismo: un tramo que pisa una
+ * pieza cuesta `CROSS_COST` de mas por celda pisada, pero sigue durando un intervalo
+ * por paso. El costo entra en la matriz que ordena el circuito —es lo que hace que el
+ * recorrido prefiera rodear— y los pasos, y solo ellos, entran en los offsets.
+ * Mezclarlos estiraria el ciclo con silencios donde no hay nada que esperar.
+ *
+ * Los dos salen de la MISMA llamada a `routeBetween`, guardada en `rutas` (D3): el
+ * camino que se agenda es el que el circuito eligio, y la cantidad de clicks no se
+ * calcula sino que es el largo de ese camino (D8).
  */
 export function buildSequence(placed: readonly PlacedPiece[]): Sequence {
   const n = placed.length;
@@ -196,12 +285,15 @@ export function buildSequence(placed: readonly PlacedPiece[]): Sequence {
 
   // Con UNA pieza no hay salto: el ciclo es su arpegio y vuelve a empezar contiguo.
   //
-  // El plan de este spec decia que el ciclo era "el salto de la pieza a si misma",
+  // El plan del spec 009 decia que el ciclo era "el salto de la pieza a si misma",
   // de la salida (grado 4) a la entrada (grado 0). Se cambio DESPUES DE ESCUCHARLO:
-  // con la `Z` en (0,1)(1,1)(1,0)(2,0)(3,0) ese salto mide 3 y su camino es
-  // [[2,0],[1,0]], o sea que los dos clicks caen SOBRE la propia pieza que acaba de
-  // sonar. No se oye un recorrido —no hay a donde ir— sino dos golpes encima del
+  // con la `Z` en (0,1)(1,1)(1,0)(2,0)(3,0) ese salto mide 3 y su camino era
+  // [[2,0],[1,0]], o sea que los dos clicks caian SOBRE la propia pieza que acababa de
+  // sonar. No se oia un recorrido —no hay a donde ir— sino dos golpes encima del
   // arpegio. El recorrido existe ENTRE piezas; con una sola no hay entre.
+  //
+  // El spec 011 le saco el sintoma y no el motivo: `routeBetween` rodea la pieza en vez
+  // de pisarla, asi que hoy esos clicks caerian en celdas vacias. Siguen sobrando.
   //
   // El ciclo mide `CELLS_PER_PIECE` y no `CELLS_PER_PIECE - 1`: las cinco notas
   // abarcan 4 intervalos, asi que con largo 4 la ultima nota de una vuelta y la
@@ -217,8 +309,13 @@ export function buildSequence(placed: readonly PlacedPiece[]): Sequence {
   }
 
   const puertas = placed.map(gates);
-  const cost = puertas.map((desde) => puertas.map((hasta) => cellDistance(desde.salida, hasta.entrada)));
-  const order = shortestCircuit(cost);
+  // Las n x n rutas de una vez —144 con el tablero lleno—, y no una tanda para la matriz
+  // y otra para los clicks: asi no existe la posibilidad de ordenar el circuito con un
+  // camino y agendar otro.
+  // `placed` entero y no "las demas piezas": un tramo puede pisar tambien a las dos que
+  // une, y esquivarlas es igual de deseable.
+  const rutas = puertas.map((desde) => puertas.map((hasta) => routeBetween(desde.salida, hasta.entrada, placed)));
+  const order = shortestCircuit(rutas.map((fila) => fila.map(claveDeTramo)));
 
   const steps: Step[] = [];
   const clicks: Click[] = [];
@@ -232,10 +329,10 @@ export function buildSequence(placed: readonly PlacedPiece[]): Sequence {
     steps.push({ pieceId: p.id, offset, notes: arpeggioFor(p.piece, p.rotation, p.mirror) });
 
     const ultima = offset + (CELLS_PER_PIECE - 1);
-    const camino = pathBetween(puertas[order[t]].salida, puertas[order[(t + 1) % n]].entrada);
-    for (let m = 0; m < camino.length; m++) clicks.push({ offset: ultima + 1 + m, cell: camino[m] });
+    const ruta = rutas[order[t]][order[(t + 1) % n]];
+    for (let m = 0; m < ruta.path.length; m++) clicks.push(clickEn(ultima + 1 + m, ruta.path[m], placed));
 
-    offset = ultima + camino.length + 1;
+    offset = ultima + ruta.steps;
   }
 
   return { steps, clicks, length: offset };

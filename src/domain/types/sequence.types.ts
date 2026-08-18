@@ -1,14 +1,4 @@
 import type { Cell } from './transform.types.ts';
-import { ROUTE } from '../constants/route.constants.ts';
-
-/**
- * Cual de las tres rutas de `ROUTE` gano al medir la distancia entre dos celdas.
- *
- * Se deriva del const-object en vez de escribirse como union literal a mano: asi
- * agregar una ruta a `ROUTE` es un solo lugar, y una ruta que exista en el tipo
- * pero no en el objeto —o al reves— no puede compilar.
- */
-export type RouteKind = typeof ROUTE[keyof typeof ROUTE];
 
 /**
  * Una pieza dentro del circuito: cuando arranca su arpegio y que cinco notas toca.
@@ -33,7 +23,8 @@ export interface Step {
 }
 
 /**
- * Una celda vacia cruzada por el recorrido: donde suena y cuando.
+ * Una celda cruzada por el recorrido: donde suena, cuando, y con que altura si la
+ * celda estaba ocupada.
  *
  * La `cell` no es decorativa aunque el motor solo necesite el `offset`. Es lo que
  * permite que la garantia de "dos clicks no caen nunca en el mismo instante" se
@@ -41,10 +32,20 @@ export interface Step {
  * dos coincidieran, el motor los agendaria a los dos y las amplitudes se sumarian,
  * que es exactamente lo que D4 pide evitar. Tambien es lo que deja que la celda que
  * se ilumina y la que suena salgan del MISMO dato (D8).
+ *
+ * `note` es el MIDI de la celda pisada cuando el recorrido no pudo esquivar una
+ * pieza (spec 011), y no esta cuando la celda estaba vacia. Es opcional y NO una
+ * union discriminada, y aca esa es la forma correcta justamente por la `cell`: la
+ * altura es un DERIVADO de ella —`noteAtCell` del ocupante, o nada si no hay
+ * ocupante—, asi que "sin `note`" significa exactamente "esa celda estaba vacia" y
+ * ninguna construccion puede producir la combinacion equivocada. En `audio/` la
+ * decision es la contraria y va union discriminada: alla la celda no viaja, y sin
+ * ella nada atajaria un click con altura que no deberia tenerla.
  */
 export interface Click {
   offset: number;
   cell: Cell;
+  note?: number;
 }
 
 /**
