@@ -77,10 +77,10 @@ La nota del cruce es la que la celda ya muestra desde el spec 007, o sea la cade
   número está en el docblock de `cellsByPlayOrder`; este plan decía 75.
 - El arpegio se indexa **ascendente**, o sea `notesForRotation(...)`, y **nunca** el que ya trae el
   retrógrado aplicado. Indexarlo con el grado lee la forma al derecho contra un arpegio al revés.
-  Enunciado sobre la derivación y no sobre un nombre a propósito: hoy el arpegio con retrógrado es
-  `PlacedPiece.notes`, y hay un cambio **sin commitear** en el árbol que lo borra y lo reemplaza por
-  `arpeggioFor(piece, rotation, mirror)`. La trampa es la misma con los dos nombres, y el docblock de
-  `arpeggioFor` ya la declara.
+  Enunciado sobre la derivación y no sobre un nombre a propósito: cuando este plan se escribió el
+  arpegio con retrógrado era `PlacedPiece.notes`, y el cierre de los seguimientos del 007/009/010 borró
+  ese campo y lo reemplazó por `arpeggioFor(piece, rotation, mirror)`. La trampa es la misma con los dos
+  nombres, y el docblock de `arpeggioFor` ya la declara.
 
 La derivación va en una **pura del dominio**, no adentro de `buildSequence`, por lo mismo que
 `cellsByPlayOrder` salió de adentro de `gates` en el 010: una derivación escondida dentro de otra

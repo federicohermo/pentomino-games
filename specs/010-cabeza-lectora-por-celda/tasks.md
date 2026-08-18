@@ -134,10 +134,22 @@
 - [x] **Declarar el cambio de audio arriba de todo**: el paso 0b arregla las puertas con reflexión y
       eso cambia el circuito de los tableros reflejados. Es un arreglo del 009, va en su commit, y sin
       decirlo el PR parece que la cabeza lectora cambió cómo suena el instrumento
-- [ ] Si el PR queda grande, sacar el paso 0 como PR propio y primero — es independiente y mergeable solo
-- [ ] `/pr-review` antes de pedir revisión
+- [ ] Si el PR queda grande, sacar el paso 0 como PR propio y primero — es independiente y mergeable
+      solo. **No se hizo**: el PR #9 fue uno solo. Registro, no pendiente
+- [ ] `/pr-review` antes de pedir revisión — **quedó sin correr y el PR ya está mergeado.** Registro,
+      no pendiente
 
 ## Seguimiento (no bloquea)
-- [ ] Retirar `PlacedPiece.notes` — el panel lateral se toca en este spec, es el momento
-- [ ] Si aparece un tercer consumidor del estado del motor por fuera de React, unificar la lectura
-- [ ] `occupantAt` recorre todas las piezas por celda: medir si el tablero crece
+
+> **Cierre del seguimiento — 2026-08-18.** Todo lo de esta sección se resolvió o se movió a su
+> lugar definitivo en la rama `chore/cierre-seguimientos-007-010`. Lo que quedó abierto dice dónde vive.
+
+- [x] Retirar `PlacedPiece.notes` — el panel lateral se toca en este spec, es el momento. **Hecho**
+      después del merge: `PlacedList` deriva el arpegio con `arpeggioFor` igual que el motor, así que
+      la lista no puede decir un arpegio distinto del que suena
+- [x] Si aparece un tercer consumidor del estado del motor por fuera de React, unificar la lectura.
+      **No apareció**: siguen siendo dos (`Spectrum` por `readSpectrum`, `Playhead` por
+      `playheadOffset` + `cycleGeneration`). Era una tarea condicional y la condición no se cumplió;
+      cuando se cumpla, el disparador es el tercero y no esta lista
+- [x] `occupantAt` recorre todas las piezas por celda: medir si el tablero crece. **Medido** junto con
+      el mismo seguimiento del 009: 4,1 µs un render entero con 12 piezas. No hace falta ningún índice

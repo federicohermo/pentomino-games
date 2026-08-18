@@ -67,10 +67,9 @@
       la transformada cambia en **74** de 96 — el docblock de `cellsByPlayOrder` tiene el número; acá
       decía 75), y el arpegio **ascendente** de `notesForRotation` y **nunca** el que ya trae el
       retrógrado aplicado
-- [ ] **Ojo con el nombre:** el arpegio con retrógrado es hoy `PlacedPiece.notes`, y hay un cambio **sin
-      commitear** en el árbol que borra ese campo y lo reemplaza por `arpeggioFor(piece, rotation,
-      mirror)` en `domain/music.ts`. Si ese trabajo mergea primero, la trampa no cambia pero el nombre
-      sí — verificar cuál está en `main` antes de escribir el paso 2
+- [ ] **Ojo con el nombre:** el arpegio con retrógrado era `PlacedPiece.notes` cuando se escribió este
+      spec. El cierre de los seguimientos del 007/009/010 borró el campo y lo reemplazó por
+      `arpeggioFor(piece, rotation, mirror)` en `domain/music.ts`. La trampa no cambió, el nombre sí
 - [ ] `Click` puede llevar altura — `domain/types/sequence.types.ts`
 - [ ] **NO agregar** la garantía de que un cruce no coincida con una nota: ya vale por construcción y el
       test del 009 la cubre

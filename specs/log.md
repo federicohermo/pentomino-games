@@ -18,7 +18,7 @@ spec posterior reemplazó lo que hacía; el spec queda como historia y no se ree
 | [007](./007-nota-por-celda-y-lenguaje-visual/spec.md) | 2026-08-16 | Implementado | Cada celda es dueña de un grado de la escala, y el tablero lo muestra: color por pieza y nota por celda. Absorbe al 001. **Sin cambio de audio** |
 | [008](./008-el-intervalo-como-unidad-musical/spec.md) | 2026-08-16 | Implementado | El espaciado del arpegio deja de ser 0,15 s fijos y pasa a ser la semicorchea del tempo; `Job` pierde `spread`; el checkbox de loop y el botón de reloj se funden en un play/pausa con estado |
 | [009](./009-el-tablero-como-recorrido/spec.md) | 2026-08-16 | Implementado | El tablero deja de ser un compás y pasa a ser un circuito cerrado: el orden y los silencios salen de la geometría, `(0,0)` y `(9,5)` se repliegan, las celdas recorridas suenan. Muere `phaseFor` y **supera al 004** |
-| [010](./010-cabeza-lectora-por-celda/spec.md) | 2026-08-16 | En curso | Cabeza lectora celda por celda, fuera del estado de React: cierra la limitación que el 004 dejó anotada y da señal visual a la espera de un ciclo que introduce el 009 |
+| [010](./010-cabeza-lectora-por-celda/spec.md) | 2026-08-16 | Implementado | Cabeza lectora celda por celda, fuera del estado de React: cierra la limitación que el 004 dejó anotada y da señal visual a la espera de un ciclo que introduce el 009 |
 | [011](./011-el-recorrido-esquiva-las-piezas/spec.md) | 2026-08-17 | Propuesto | Pisar una celda ocupada deja de ser gratis y pasa a **costar**: el recorrido rodea las piezas cuando le conviene y las cruza cuando rodear sale caro, y el cruce **suena la nota de esa celda** como floritura en vez de un golpe sordo. Medido: hoy pisan entre el 71 % y el 88 % de los tramos. **Cambia la matriz de costos y con ella el orden de visita en el 30-48 % de los tableros**; revisa el modelo del 009 |
 
 ## Dependencias entre specs
@@ -88,6 +88,11 @@ Lo que está registrado y todavía no tiene spec. Vivía en `CLAUDE.md`, que dec
   el componente sigue siendo un encadenado de puras testeadas en `environment: 'node'`. Su
   `components/__tests__/palette.test.ts` es el primer test de la carpeta, pero es de constantes: no
   renderiza nada y **no** desbloquea ni requiere jsdom.
+  **El primer caso a cubrir cuando exista la infra es AC10 del spec 008**: que el botón de transporte
+  refleje si el reloj *arrancó de verdad* (`setPlaying(clockRunning())`) y no si se lo apretó. El spec
+  lo daba por falsable sin navegador y terminó verificado por lectura; testearlo pide extraer el
+  handler de `App.tsx` o agregar testing-library. Vivía en el seguimiento del 008, que ya no es su
+  dueño.
 - **`L` (`#29ABE2`) e `Y` (`#FF7BAC`) no llegan al piso de contraste con ningún color de texto**: Lc
   55,8 y 56,9 contra un piso de 60. Les falta contraste al `bg`, no al `fg`, así que ninguna elección
   de texto las arregla y subirlas exige mover el color de la lámina — o sea, es una decisión de
@@ -97,6 +102,12 @@ Lo que está registrado y todavía no tiene spec. Vivía en `CLAUDE.md`, que dec
 - **`postcss` y `autoprefixer`** están en `devDependencies` sin ningún config que los use — Tailwind 4
   va por el plugin de Vite. Candidatos a borrar.
 - **`@types/jest`** sigue en el árbol y es lo que impide usar `globals: true` en Vitest.
+- **La colocación no se repliega sobre la costura.** El *recorrido* sí —`(0,0)` y `(9,5)` son
+  adyacentes desde el spec 009— pero una pieza no se puede colocar cruzando ese borde: `isValid`
+  rechaza toda celda fuera de la grilla. O sea que el tablero es un cilindro para el circuito y un
+  rectángulo para las piezas, y esa asimetría no está justificada por nada — es sólo lo que quedó.
+  Necesita spec propio: cambia `cellsAt`, `isValid` y el fantasma, y hay que decidir qué muestra el
+  tablero de una pieza partida en dos bordes. Venía del seguimiento del 009.
 - **La rotación es un `number` sin acotar**, comparada contra `0|1|2|3` en cuatro lugares. El reemplazo
   ya está decidido —const-object en `constants/` + union type derivado en `types/`, **nunca un `enum`**,
   que el `erasableSyntaxOnly` del tsconfig rechaza— pero cambia firmas, así que quedó como seguimiento
@@ -372,3 +383,33 @@ tipo a todos los llamadores que solo quieren saber qué pieza ocupa una celda, p
   una opinión»), un spec más tarde.
   El arreglo va en la rama del 010, en su propio commit y atribuido al 009 (AC13 del 010) — el mismo
   procedimiento con el que el 006 bajó `phaseFor` al dominio en un commit del 005.
+
+- **2026-08-18 — Cerrar los seguimientos de cuatro specs de una vez mostró que la mitad no eran tareas
+  sino deudas de registro.** Las cuatro secciones de Seguimiento sumaban 16 ítems, y se repartieron en
+  cinco clases muy distintas; confundirlas es lo que las había dejado abiertas tanto tiempo.
+  **Tarea real y chica** (10 ítems, 7 tareas distintas): retirar `PlacedPiece.notes`, el `asciiDegrees`
+  del MCP, el `title` de la celda, el slider en bpm, el release en intervalos, el lint adentro de
+  `domain/` y la medición de `occupantAt`. Ninguna pasó de un commit. `PlacedPiece.notes` estaba anotada **cuatro
+  veces** —001, 007, 009 y 010— y cada spec la postergaba al siguiente: la señal de que una tarea se
+  repite en cuatro seguimientos es que ya nadie la considera suya.
+  **Lo que no era una tarea sino una decisión ya tomada** (2): `CLOCK_START_DELAY` y `PLAY_DELAY` «se
+  quedan en segundos a propósito» era una respuesta, no un pendiente, y estaba anotada en el único lugar
+  donde no la va a leer quien intente cambiarlos. Cerrarla fue mover el porqué a la constante. Lo mismo
+  con el tercer consumidor del motor del 010: era condicional y la condición no se cumplió.
+  **Lo que no tenía dueño** (2): AC10 del 008 —el botón de transporte sin test— y la colocación
+  envolvente del 009. Las dos vivían en el seguimiento de un spec cerrado, que es donde nadie las va a
+  buscar; su lugar es Deuda conocida, que es la única fuente que este repo declara.
+  **Lo que ya era otro spec** (1): «esquivar piezas colocadas» es el 011, que además reemplazó el BFS
+  que el 009 proponía por un peso.
+  Y **lo que no se puede cerrar leyendo código** (1 acá, más las verificaciones a oído y a ojo que el 009 y
+  el 010 dejaron sin marcar): la decisión sobre `TEMPO_MAX`. Siguen abiertas y ahora dicen que lo
+  están, con el motivo escrito al lado.
+  Dos hallazgos del camino, los dos por medir en vez de suponer. **El release era el último número del
+  modelo temporal en segundos**, y su costo no era estético: las voces simultáneas son
+  `1 + release/intervalo`, así que el instrumento se espesaba al acelerar —2,28 voces a 160 bpm contra
+  1,88 a 110— justo lo que el 008 había arreglado para el espaciado y la duración. El valor que lo cierra
+  no es redondo a propósito: `0,88 = 0,12 / intervalDuration(110)` deja el tempo por defecto sonando
+  idéntico. Y **el argumento de costo con el que `route-source.ts` justificaba no usar `occupantAt` era
+  falso**: son 4,1 µs un tablero entero con 12 piezas. La razón real —contesta sobre el tablero de ahora
+  y no sobre la ruta que suena— ya estaba escrita al lado; el costo inventado la tapaba. Un comentario
+  que da dos razones y sólo una es cierta es peor que uno que da una sola.
