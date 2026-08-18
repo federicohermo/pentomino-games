@@ -164,8 +164,17 @@ geometría. Pero **cambia lo que suena**, así que va en su propio commit y lo d
 - **AC6** — Held-Karp sigue dando el óptimo exacto sobre la matriz nueva, verificado por fuerza bruta
   hasta 7 piezas igual que hoy.
 - **AC7** — **El cambio de audio va en su propio commit y declarado** (D9).
-- **AC8** — Rendimiento: la matriz de 12×12 no supera los **2 ms** (medido: 0,31 ms), y `buildSequence`
-  con 12 piezas sigue bajo los 5 ms que ya afirma el test del 009.
+- **AC8** — Rendimiento: la matriz de 12×12 no supera los **4 ms**, y `buildSequence` con 12 piezas
+  sigue bajo los 5 ms que ya afirma el test del 009. **El tope era 2 y se movió midiendo, no por
+  conveniencia**, y es el único número del spec que cambió al implementarlo: los 0,31 ms del
+  `research.md` §6 se midieron sobre un BFS de referencia que **no materializa el camino ni desempata
+  lexicográficamente** (D7), o sea la mitad de lo que `routeBetween` hace, así que ese 6x de holgura
+  nunca existió. Lo real es 1,31 ms aislado y **2,10-2,35 ms bajo `pnpm verify`**, que corre
+  lint ‖ typecheck ‖ test ‖ mcp:test en paralelo: con el tope en 2, el test fallaba 2 de cada 3
+  corridas del nodo de convergencia del repo y pasaba 3 de 3 aislado. Un test que se cae dos de cada
+  tres veces no mide rendimiento, mide carga de la máquina. El techo que de verdad protege esta
+  operación es el test de al lado —`buildSequence` con 12 piezas bajo 5 ms, que incluye esta matriz
+  **más** el Held-Karp de 1,87 ms del 009—, y una matriz cerca de 4 ms lo revienta antes que a este.
 - **AC9** — `pnpm verify` en verde, y `check_invariants` **en proceso fresco** antes y después.
 - **AC10** — **A ojo con la cabeza lectora del 010**: el recorrido rodea las piezas cuando le conviene, y
   donde no, la celda que pisa se enciende con su escalón propio y suena su nota. Es la verificación que

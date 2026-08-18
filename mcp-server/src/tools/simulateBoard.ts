@@ -37,6 +37,12 @@ interface Gates {
   exit: Cell;
 }
 
+/** Una celda del camino que esta ocupada, con la nota que suena si se la pisa. */
+interface Cruce {
+  cell: Cell;
+  note: string;
+}
+
 const placementSchema = z.object({
   piece: z.enum(PIECE_KEYS),
   rotation: z.number().int().min(0).max(3).default(0),
@@ -79,6 +85,24 @@ interface Resolved {
 function gatesOf(p: PlacedPiece): Gates {
   const { entrada, salida } = gates(p);
   return { entry: entrada, exit: salida };
+}
+
+/**
+ * Los cruces de un tramo: las celdas que el camino pisa y que estan ocupadas, con la
+ * nota que suena al pisarlas (T046).
+ *
+ * **Lee `Click.note` y NO vuelve a derivar la nota desde la celda**, aunque el dominio
+ * exponga las dos puras que harian falta (`occupantAt` y `noteAtCell`). Es D3 del spec
+ * 011 aplicado a esta capa: el `Click` ya trae la altura que `buildSequence` le puso, y
+ * derivarla de nuevo aca serian dos lugares calculando lo mismo sin nada que los obligue
+ * a coincidir — justo lo que la tool existe para descartar, porque su unico valor es
+ * reportar lo que la app va a sonar y no una segunda opinion sobre eso.
+ *
+ * Vacio cuando el tramo no pisa ninguna pieza, nunca ausente: la respuesta siempre trae
+ * el campo para que un tablero sin cruces no se distinga de uno sin reportar.
+ */
+function crucesDe(tramo: readonly { cell: Cell; note?: number }[]): Cruce[] {
+  return tramo.flatMap((c): Cruce[] => c.note === undefined ? [] : [{ cell: c.cell, note: midiName(c.note) }]);
 }
 
 /**
@@ -174,13 +198,16 @@ export const simulateBoard = defineTool({
     'lookahead a mano: valida cada colocación con las mismas funciones que la app, arma la secuencia ' +
     'con `buildSequence` y corre el scheduler real en ventanas de 25 ms.\n' +
     'El tablero es un RECORRIDO y no un compás: un circuito cerrado visita las piezas —en el orden ' +
-    'del camino más corto entre sus puertas, NO en el de colocación— y cada celda que cruza al ir de ' +
+    'del camino más BARATO entre sus puertas, NO en el de colocación— y cada celda que cruza al ir de ' +
     'una a la siguiente suena como un click. La respuesta trae ese orden, cada salto con las celdas ' +
     'que atraviesa, el ciclo en intervalos y en segundos, y la línea de tiempo con notas y clicks ' +
     'distinguidos: el camino en la respuesta es lo que permite verificar el recorrido sin oírlo.\n' +
     'Dos trampas medidas: mover una pieza puede reordenar la música entera, porque cambia el ' +
-    'circuito; y el camino ignora lo que haya en el medio, así que un click puede caer sobre una ' +
-    'celda ocupada — en el teselado de 12 piezas los 21 clicks caen sobre celdas con pieza.',
+    'circuito; y el camino PREFIERE rodear lo que haya en el medio pero no siempre puede — cruzar una ' +
+    'celda ocupada cuesta más (pisar la pieza), y cuando ese cruce es inevitable el click cae sobre esa ' +
+    'celda con la MISMA nota que suena al pisarla. Cada salto trae esos cruces aparte, con su celda y ' +
+    'su nota, para comparar el costo de pisar sin escucharlo. En el teselado de 12 piezas —sin ninguna ' +
+    'celda vacía, el peso no puede evitar nada— los 14 clicks caen todos sobre celdas con pieza.',
   inputSchema,
   run: ({ pieces, bpm, cycles }) => {
     const { resolved, placed } = resolve(pieces);
@@ -198,7 +225,17 @@ export const simulateBoard = defineTool({
     // justamente esa propiedad.
     const engine: Sequence = {
       steps: seq.steps.map(({ offset, notes }) => ({ offset, notes })),
-      clicks: seq.clicks.map(({ offset }) => ({ offset })),
+      // `note` viaja y `cell` no: es la misma proyeccion que hace `App.tsx`. Dejarla
+      // caer typechequea igual —`note` es opcional— y la tool reportaria los cruces
+      // como clicks mudos, o sea distinto de lo que suena la app. Es justo la
+      // propiedad que esta tool existe para sostener.
+      //
+      // El ternario y no `({ offset, note })`: con la forma corta el click mudo sale
+      // con la clave `note` PRESENTE y en `undefined`, que es el estado intermedio que
+      // el docblock de `Click` rechaza — ausencia significa "celda vacia", y un campo
+      // presente valiendo undefined es un tercer estado esperando a que alguien lo lea
+      // con `in` o con `Object.keys`.
+      clicks: seq.clicks.map((c) => c.note === undefined ? { offset: c.offset } : { offset: c.offset, note: c.note }),
       length: seq.length,
     };
 
@@ -224,20 +261,27 @@ export const simulateBoard = defineTool({
     // el `map` sintetiza un tramo de la pieza a si misma y le reporta
     // `distance: path.length + 1`, que sin clicks da 1 SIEMPRE — y ese 1 contradice a
     // las dos celdas que la respuesta imprime al lado: medido, con la `Z` sola
-    // `cellDistance(exit, entry)` es 3 y con la `F` es 2. Que el ciclo igual dure lo
+    // `routeBetween(exit, entry, []).steps` es 3 y con la `F` es 2 (tablero vacio,
+    // que es lo que `cellDistance` media antes de que el spec 011 la reemplazara:
+    // `.steps` es el equivalente de hoy, no `.cost`). Que el ciclo igual dure lo
     // dice `cycle`, que son los 5 intervalos del arpegio y no un salto.
     const hops = n === 1 ? [] : seq.steps.map((step, t) => {
       const ultima = step.offset + CELLS_PER_PIECE - 1;
       const siguiente = t + 1 < n ? seq.steps[t + 1].offset : seq.length;
       const to = seq.steps[(t + 1) % n].pieceId;
-      const path = seq.clicks.filter(c => c.offset > ultima && c.offset < siguiente).map(c => c.cell);
+      // Los clicks del tramo enteros y no solo sus celdas: `path` y `crossed` son dos
+      // lecturas de ESTA lista, asi que no pueden discrepar (D3).
+      const tramo = seq.clicks.filter(c => c.offset > ultima && c.offset < siguiente);
       return {
         from: step.pieceId,
         to,
         exit: puertas[step.pieceId].exit,
         entry: puertas[to].entry,
-        distance: path.length + 1,
-        path,
+        distance: tramo.length + 1,
+        path: tramo.map(c => c.cell),
+        // Los cruces de ESTE tramo: subconjunto de `path` que cae sobre una pieza,
+        // cada uno con la nota que suena si se lo pisa (T046).
+        crossed: crucesDe(tramo),
       };
     });
 
@@ -286,16 +330,21 @@ export const simulateBoard = defineTool({
       onsets: {
         notes: hits.filter(h => h.kind === HIT.note).length,
         clicks: hits.filter(h => h.kind === HIT.click).length,
+        crosses: hits.filter(h => h.kind === HIT.cross).length,
         total: hits.length,
         distinctInstants: instantes.size,
       },
       // Plana y no agrupada por instante: al no haber coincidencias, agrupar
       // envolvia cada evento en un array de uno. `kind` es el discriminante del
-      // `Hit` del motor tal cual sale, no una etiqueta traducida aca, y un click
-      // no trae nota porque no tiene altura. Sus celdas estan en `route.hops`.
-      timeline: hits.map(h => h.kind === HIT.note
-        ? { at: round4(h.at), kind: h.kind, note: nameByHz.get(h.hz) ?? `${Math.round(h.hz)}Hz` }
-        : { at: round4(h.at), kind: h.kind }),
+      // `Hit` del motor tal cual sale, no una etiqueta traducida aca.
+      //
+      // Las DOS ramas con altura llevan nota, y el discriminante se lee del `Hit` y no
+      // de si `hz` esta presente: el cruce del spec 011 tiene altura igual que la nota
+      // —lo que lo distingue es que dura y pega menos, no que suene distinto— y el
+      // unico mudo es `HIT.click`. Sus celdas estan en `route.hops`.
+      timeline: hits.map(h => h.kind === HIT.click
+        ? { at: round4(h.at), kind: h.kind }
+        : { at: round4(h.at), kind: h.kind, note: nameByHz.get(h.hz) ?? `${Math.round(h.hz)}Hz` }),
     });
   },
 });

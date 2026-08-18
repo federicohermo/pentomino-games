@@ -43,7 +43,9 @@ export default function App(){
   const [tempo, setTempo] = useState<number>(DEFAULT_BPM);
   const [playing, setPlaying] = useState<boolean>(false);
   // Los clicks del recorrido arrancan encendidos: son D4, sin ellos un salto largo
-  // es un silencio mudo y el recorrido se vuelve inaudible.
+  // por celdas vacías es un silencio mudo y el recorrido se vuelve inaudible. Apaga
+  // solo esos: el cruce por celda ocupada suena su nota y no lo gobierna este flag,
+  // porque es modelo y no mezcla (D6 del spec 011).
   const [clicks, setClicks] = useState<boolean>(true);
 
   // placed pieces
@@ -124,11 +126,15 @@ export default function App(){
   // sin que el patrón salte a mitad de frase.
   //
   // La `Sequence` de `buildSequence` no es la que espera el motor: acá se
-  // proyecta, no se traduce (D7, D8, AC12). `offset` y `notes` viajan tal cual;
-  // lo que se cae es `pieceId` —el motor no tiene a quien devolvérselo— y `cell`
-  // en los clicks: el motor no puede ver `Cell`, que vive en `domain/` y el
-  // override de eslint sobre `audio/**` lo prohíbe importar incluso como `import
-  // type`. Un click tampoco tiene altura (D4): para sonar alcanza con contarlo.
+  // proyecta, no se traduce (D7, D8, AC12). `offset`, `notes` y la `note` MIDI del
+  // cruce viajan tal cual; lo que se cae es `pieceId` —el motor no tiene a quién
+  // devolvérselo— y `cell` en los clicks: el motor no puede ver `Cell`, que vive en
+  // `domain/` y el override de eslint sobre `audio/**` lo prohíbe importar incluso
+  // como `import type`. La `note` sí cruza, porque es un número MIDI y el motor habla
+  // MIDI: desde el spec 011 el recorrido puede pisar una celda ocupada y ese cruce
+  // suena su altura (D5), así que ya no alcanza con contar los clicks. Convertirla a
+  // Hz es del motor —lo hace `collectHits`, igual que con `steps.notes`—: acá se
+  // proyecta, y traducir sería justo lo que estas dos líneas no hacen.
   // Las celdas no se pierden: siguen en la secuencia del dominio, y por eso este efecto
   // encola en DOS colas con la misma `secuencia`. Leerlas de `placed` —que es lo que
   // decía este comentario antes del spec 010— no alcanza, y ese es justo el punto de
@@ -143,7 +149,12 @@ export default function App(){
     encolar(secuencia, placed);
     setSequence({
       steps: secuencia.steps.map(({ offset, notes }) => ({ offset, notes })),
-      clicks: secuencia.clicks.map(({ offset }) => ({ offset })),
+      // El ternario y no `({ offset, note })`: con la forma corta el click mudo sale con
+      // la clave `note` PRESENTE y en `undefined`, y la ausencia del campo es justo lo
+      // que dice "celda vacía" (ver el docblock de `Click`). Hoy nadie lo notaría
+      // —`collectHits` compara `=== undefined`— pero es el tercer estado que el tipo
+      // existe para no tener.
+      clicks: secuencia.clicks.map((c) => c.note === undefined ? { offset: c.offset } : { offset: c.offset, note: c.note }),
       length: secuencia.length,
     });
     // `placed` esta en las dependencias aunque `secuencia` ya se derive de el: no agrega
@@ -163,7 +174,10 @@ export default function App(){
     const s = buildSequence([]);
     setSequence({
       steps: s.steps.map(({ offset, notes }) => ({ offset, notes })),
-      clicks: s.clicks.map(({ offset }) => ({ offset })),
+      // Misma proyección que el efecto de arriba, y por el mismo motivo: la ausencia de
+      // `note` es lo que dice "celda vacía". Acá el tablero está vacío y no hay clicks,
+      // pero escribirla distinto invitaría a divergir la próxima vez que se toque una.
+      clicks: s.clicks.map((c) => c.note === undefined ? { offset: c.offset } : { offset: c.offset, note: c.note }),
       length: s.length,
     });
   }, []);

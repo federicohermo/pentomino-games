@@ -75,6 +75,11 @@ casillas abiertas como próxima tarea.
   el orden lo da el recorrido entre piezas. El 004 no se reescribe —es historia— pero su estado pasa a
   `Superado`, y con él se van `phaseFor`, sus tests, el campo `phase` de `Job` y la mitad de
   `simulate_board` que lo reporta.
+- **El 011 salió de mirar la cabeza lectora del 010 recorriendo el tablero, no de leer código.** Es el
+  segundo hallazgo que sale del mismo lugar — el primero fue el bug de reflexión invertida del 009 que
+  el review del 010 encontró (nota del 2026-08-17 en [revisiones.md](./revisiones.md)). Con la cabeza
+  marcando qué celda suena en cada instante quedó a la vista que el recorrido pisaba piezas sin costo;
+  no hizo falta leer `pathBetween` para notarlo, alcanzó con mirar.
 
 ## Lo que dejó de vivir acá
 

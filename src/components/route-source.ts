@@ -2,6 +2,7 @@ import type { Sequence } from '../domain/types/sequence.types.ts';
 import type { PlacedPiece } from '../domain/types/board.types.ts';
 import type { Cell } from '../domain/types/transform.types.ts';
 import type { Marca, CeldaPorEstrenar } from './types/route.types.ts';
+import { MARCA } from './constants/route.constants.ts';
 import { cellsByPlayOrder } from '../domain/sequence.ts';
 import { cycleGeneration } from '../audio/engine.ts';
 
@@ -179,7 +180,7 @@ function construir(s: Sequence, placed: readonly PlacedPiece[]): Ruta {
     const celdas = cellsByPlayOrder(pieza);
     const deLaPieza: CeldaDePieza[] = [];
     for (let j = 0; j < celdas.length; j++) {
-      marcas[step.offset + j] = { cell: celdas[j], nota: true };
+      marcas[step.offset + j] = { cell: celdas[j], kind: MARCA.nota };
       deLaPieza.push({ cell: celdas[j], offset: step.offset + j });
     }
     porPieza.set(step.pieceId, deLaPieza);
@@ -188,7 +189,15 @@ function construir(s: Sequence, placed: readonly PlacedPiece[]): Ruta {
   // Los clicks despues de las notas y no antes: sus offsets no se pisan —lo garantiza el
   // test del 009— asi que el orden no cambia nada hoy, pero si alguna vez se pisaran, que
   // gane la nota es lo correcto: es lo que se escucha con altura.
-  for (const c of s.clicks) marcas[c.offset] = { cell: c.cell, nota: false };
+  //
+  // `Click.note` (spec 011) distingue el cruce sobre celda ocupada del click mudo de
+  // siempre: `routeBetween` no sabe que hay debajo del camino que traza (D5 — la vista
+  // no elige su propio recorrido), asi que el mismo offset puede caer sobre una celda
+  // vacia o sobre una pieza que no le toca sonar todavia. Cuando cae sobre una pieza,
+  // esa celda SUENA su nota como floritura, y eso tiene que verse distinto del click.
+  for (const c of s.clicks) {
+    marcas[c.offset] = { cell: c.cell, kind: c.note !== undefined ? MARCA.cruce : MARCA.click };
+  }
 
   return { marcas, ids: s.steps.map((st) => st.pieceId), porPieza };
 }

@@ -23,12 +23,19 @@ export const BEATS_PER_BAR = 4;
 export const SUBDIVISIONS_PER_BEAT = 4;
 
 /**
- * Las dos clases de evento sonoro del recorrido: la nota que dispara una pieza y el
- * click de una celda vacia que el circuito cruza al ir de una pieza a la siguiente.
+ * Las TRES clases de evento sonoro del recorrido: la nota que dispara una pieza, el
+ * click de una celda vacia que el circuito cruza al ir de una pieza a la siguiente, y
+ * el cruce por una celda OCUPADA, que desde el spec 011 suena la nota de esa celda
+ * como floritura (D5).
+ *
+ * Tres claves y no dos con un campo opcional (AC13 del spec 011): el argumento largo
+ * esta en el docblock de `Hit`, y ademas `cross` y `click` se despachan distinto en
+ * `tick()` — `setClicksAudible` apaga solo al segundo (D6), y sin discriminante no
+ * tendria a quien apagar.
  *
  * Const-object con union derivada (`HitKind`) y no un `enum`: `erasableSyntaxOnly`
  * los rechaza, y es la misma opcion que permite cargar estos modulos con node sin
  * compilar. Los valores son strings iguales a sus claves para que un `Hit` sea
  * legible tal cual sale en un log o en un test, sin tener que traducir un numero.
  */
-export const HIT = { note: 'note', click: 'click' } as const;
+export const HIT = { note: 'note', click: 'click', cross: 'cross' } as const;

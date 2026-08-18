@@ -2,7 +2,9 @@ import type { Sequence, ClockState } from './types/scheduler.types.ts';
 import { midiToHz, scheduleVoice, scheduleClick } from './voice.ts';
 import { collectWindow, intervalDuration } from './scheduler.ts';
 import { offsetAt } from './playhead.ts';
-import { NOTE_INTERVALS, RELEASE_INTERVALS } from './constants/voice.constants.ts';
+import {
+  NOTE_INTERVALS, RELEASE_INTERVALS, GRACE_INTERVALS, GRACE_VELOCITY,
+} from './constants/voice.constants.ts';
 import { LOOKAHEAD, TICK_MS, HIT } from './constants/scheduler.constants.ts';
 import {
   MASTER_GAIN, DEFAULT_BPM, PLAY_DELAY, CLOCK_START_DELAY,
@@ -152,18 +154,24 @@ let bpm = DEFAULT_BPM;
 export const setBpm = (v: number): void => { bpm = v; };
 
 /**
- * Si los clicks del recorrido suenan. Es MEZCLA, no modelo.
+ * Si los clicks MUDOS del recorrido suenan. Es MEZCLA, no modelo.
  *
- * Vive aca y no en la secuencia por eso: apagarlos no cambia el recorrido —los
- * clicks siguen en la `Sequence` y `collectHits` los sigue emitiendo—, solo deja de
+ * Vive aca y no en la secuencia por eso: apagarlos no cambia el recorrido —los clicks
+ * siguen en la `Sequence` y `collectHits` los sigue emitiendo—, solo deja de
  * cablearlos a sonido en `tick()`. Filtrar antes obligaria a reconstruir la
  * secuencia para algo que no es una decision del tablero, y ademas haria que el
  * ciclo pareciera distinto segun el volumen.
  *
  * El spec 009 lo dejo previsto en su tabla de riesgos —"es un parametro suelto: si
- * molesta, se baja o se apaga sin tocar el modelo"— y salio de escuchar: mientras
- * `pathBetween` cruce celdas ocupadas, hay clicks que caen encima de la pieza que
- * acaba de sonar.
+ * molesta, se baja o se apaga sin tocar el modelo"— y salio de escuchar: los clicks
+ * de un salto largo se acumulan y tapan la frase.
+ *
+ * **Solo los mudos** (D6 del spec 011). El cruce por celda ocupada suena la nota de esa
+ * celda, y eso es MODELO: es la pieza pisada contestando, no un adorno de mezcla. Por
+ * eso `tick()` lo despacha por su propia rama del `kind` y este interruptor no lo toca
+ * — apagarlo dejaria el recorrido diciendo que cruzo por el vacio donde cruzo por una
+ * pieza. Es tambien la razon por la que `HIT` tiene tres claves y no dos con un campo
+ * opcional: sin discriminante, esta funcion no tendria a quien apagar.
  */
 let clicksAudible = true;
 export const setClicksAudible = (v: boolean): void => { clicksAudible = v; };
@@ -190,9 +198,14 @@ export function setSequence(next: Sequence): void { pending = next; }
  * motor que agendo y que le contesten lo que todavia no agendo seria peor que no
  * tener la funcion.
  */
-export const sequenceInfo = (): { steps: number; clicks: number; length: number } => ({
+// `clicks` y `crosses` por separado desde el spec 011: el campo `clicks` de la
+// `Sequence` mezcla las dos cosas, pero el motor las distingue —una se apaga con
+// `setClicksAudible` y la otra no—, y esta funcion existe para mirar el motor sin
+// oirlo. Un solo numero obligaria a oir cual es cual, que es lo que no se puede.
+export const sequenceInfo = (): { steps: number; clicks: number; crosses: number; length: number } => ({
   steps: active.steps.length,
-  clicks: active.clicks.length,
+  clicks: active.clicks.filter((c) => c.note === undefined).length,
+  crosses: active.clicks.filter((c) => c.note !== undefined).length,
   length: active.length,
 });
 
@@ -282,6 +295,11 @@ function tick(): void {
   const interval = intervalDuration(bpm);
   const dur = NOTE_INTERVALS * interval;
   const rel = RELEASE_INTERVALS * interval;
+  // El cruce con altura comparte el release con la nota —lo que lo hace floritura es el
+  // cuerpo mas corto y la amplitud mas baja, no otro timbre—, asi que solo su `dur` es
+  // propio. Ver GRACE_INTERVALS: por debajo de 0,75 la envolvente se desarma al tempo
+  // maximo del instrumento.
+  const grace = GRACE_INTERVALS * interval;
   // Toda la decision —incluido el swap al cierre del ciclo— vive en el scheduler,
   // que es testeable; aca queda el cableado a sonido, que sin AudioContext no se
   // puede correr. Ver el docblock de collectWindow.
@@ -298,8 +316,12 @@ function tick(): void {
   if (w.active !== active) cycleGen++;
   active = w.active;
   pending = w.pending;
+  // Tres clases y tres ramas (AC13 del spec 011). El cruce con altura vuelve a pasar
+  // por `scheduleVoice` y no por una funcion nueva: es una nota, con otros dos numeros.
+  // Y no lo mira `clicksAudible`, que apaga solo la rama muda (D6).
   for (const hit of w.hits) {
     if (hit.kind === HIT.note) scheduleVoice(c, master, hit.hz, hit.at, dur, rel);
+    else if (hit.kind === HIT.cross) scheduleVoice(c, master, hit.hz, hit.at, grace, rel, GRACE_VELOCITY);
     else if (clicksAudible) scheduleClick(c, master, hit.at);
   }
 }

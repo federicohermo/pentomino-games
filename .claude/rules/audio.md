@@ -42,15 +42,21 @@ El porqué de cada decisión, con las mediciones que la respaldan, está en
   usa `floor(x) + 1` y no `ceil(x)`: con `ceil`, un onset en el borde de la ventana sale dos veces. Y
   `startClock` tiene que dejar `scheduledUntil` **estrictamente antes** de `origin`, o se pierde el
   primer onset del ciclo 0.
-- **El click se apaga en la mezcla, no en el modelo.** `setClicksAudible(false)` deja de cablearlo a
-  sonido en `tick()`; la secuencia sigue teniendo sus clicks y `collectHits` los sigue emitiendo.
-  Filtrarlos antes obligaría a reconstruir la secuencia por algo que no decide el tablero. Hace falta
-  porque `pathBetween` ignora obstáculos y un click puede caer sobre una pieza — los 21 del ciclo, en
-  el tablero lleno.
-- **El motor no ve celdas.** La `Sequence` de `audio/types/scheduler.types.ts` no lleva `Cell` ni
-  ningún otro tipo de `domain/` —ni con `import type`—, porque el click no tiene altura y para sonar
-  alcanza con contarlo. `App.tsx` proyecta `buildSequence(placed)` a esa versión sin celdas antes de
-  pasarla a `setSequence`. Es D7/D8 del spec 009, y lo verifica `pnpm lint` con el override de capa.
+- **El click se apaga en la mezcla, no en el modelo — pero solo el click mudo.**
+  `setClicksAudible(false)` deja de cablear a sonido los clicks sin nota en `tick()`; la secuencia
+  sigue teniendo sus clicks y `collectHits` los sigue emitiendo. Filtrarlos antes obligaría a
+  reconstruir la secuencia por algo que no decide el tablero. Desde el spec 011 el recorrido
+  (`routeBetween`) puede cruzar una celda ocupada, y esa celda **suena su nota** —una floritura más
+  corta y más suave que la nota de pieza—; ese cruce con altura **no se apaga con
+  `setClicksAudible`**: es modelo, no mezcla (D6 del spec 011).
+- **El motor distingue tres clases de evento, no dos.** `HIT` (`audio/constants/scheduler.constants.ts`)
+  pasa de dos a tres claves, y el union `Hit` (`audio/types/scheduler.types.ts`) gana una tercera rama
+  con su propio `hz` —no un `hz?: number` sobre la rama del click—. La construye `collectHits` en
+  `audio/scheduler.ts`; `engine.ts` solo la despacha. La `Sequence` sigue sin llevar `Cell` ni ningún
+  otro tipo de `domain/` —ni con `import type`—, pero desde el spec 011 **ya no es cierto que para
+  sonar alcance con contar clicks**: `clicks` es `{ offset: number; note?: number }[]`. `App.tsx`
+  sigue proyectando `buildSequence(placed)` a esa versión antes de pasarla a `setSequence`. Es D7/D8
+  del spec 009 más la ampliación del 011, y lo verifica `pnpm lint` con el override de capa.
 - **El swap de secuencia al cerrar el ciclo (spec 009) tiene la misma trampa que `startClock`.** Al
   reemplazar la secuencia activa por la pendiente hay que bajar `scheduledUntil` a estrictamente
   **antes** del nuevo `origin`, o el primer onset del ciclo nuevo se pierde en silencio sin ningún
@@ -76,5 +82,6 @@ El porqué de cada decisión, con las mediciones que la respaldan, está en
   [docs/architecture/audio.md](../../docs/architecture/audio.md#la-cabeza-lectora).
 
 **Verificar audio sin oírlo:** en tests con `OfflineAudioContext`; en el navegador con `sequenceInfo()`
-—pasos, clicks y largo del ciclo de la secuencia activa— y contando osciladores. Recetas en
+—pasos, clicks **mudos**, cruces con altura y largo del ciclo de la secuencia activa; los dos últimos
+son del spec 011, y `clicks` dejó de ser el total de celdas cruzadas— y contando osciladores. Recetas en
 [docs/architecture/audio.md](../../docs/architecture/audio.md#cómo-verificar-el-audio).

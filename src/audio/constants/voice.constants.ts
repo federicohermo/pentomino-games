@@ -68,6 +68,40 @@ export const NOTE_INTERVALS = 1;
  */
 export const RELEASE_INTERVALS = 0.88;
 
+/**
+ * Cuanto dura un CRUCE por celda ocupada, en INTERVALOS. Su release es el mismo
+ * `RELEASE_INTERVALS` de una nota: lo que cambia es el cuerpo, no el timbre.
+ *
+ * En intervalos y no en segundos como `CLICK_SECONDS`. La excepcion del click esta
+ * justificada en que NO tiene altura —es un transitorio y su identidad es la brevedad
+ * absoluta—; el cruce si la tiene: es la nota de la celda que se piso (D5 del spec
+ * 011), asi que su precedente es `NOTE_INTERVALS` y tiene que mantener su relacion
+ * con el pulso a cualquier tempo. Quien la multiplica por `intervalDuration(bpm)` es
+ * `engine.ts`, que es donde vive el bpm.
+ *
+ * **Menor que uno**, porque el cruce es una floritura y no puede disputarle el turno
+ * a la pieza: con 0,75 el cuerpo se apaga a tres cuartos del camino a la casilla
+ * siguiente, y lo que queda sonando en ese ultimo cuarto es solo la cola del release.
+ * Contado en voces simultaneas —`(dur + release) / intervalo`, la misma cuenta de
+ * `NOTE_INTERVALS`—, un cruce pesa 1,63 contra las 1,88 de una nota.
+ *
+ * **0,75 y no menos, y ese es un piso MEDIDO, no una preferencia.** `scheduleVoice`
+ * agenda `setValueAtTime(vel * sustain, at + dur)` despues de la rampa de decay, que
+ * termina en `attack + decay = 0,065 s` ABSOLUTOS (los dos viven en `DEFAULT_VOICE`
+ * porque son el transitorio del instrumento y no dependen del tempo). Si `dur` cae
+ * antes de ese instante los eventos se procesan igual en orden temporal y la
+ * envolvente se da vuelta: en vez de decaer se queda clavada en el pico y despues
+ * baja de GOLPE al sustain. Renderizado offline a 160 bpm —el `TEMPO_MAX` del
+ * instrumento, donde el intervalo mide 0,0938 s— con dur 0,25 · 0,5 · 0,693: las tres
+ * sostienen 0,450 (el pico entero) y saltan a 0,225 en 1 ms, o sea un escalon que se
+ * oye como un click justo lo que este cruce no quiere ser. Con 0,75 la envolvente
+ * decae limpia y el salto mas grande del cuerpo pasa a ser la propia rampa de ataque.
+ * El piso exacto a 160 bpm es 0,693 (`0,065 / 0,0938`) y 0,75 es el valor redondo que
+ * lo pasa, con 5 ms de margen. Bajarlo obliga a mirar `DEFAULT_VOICE` y `TEMPO_MAX`
+ * en la misma cuenta.
+ */
+export const GRACE_INTERVALS = 0.75;
+
 /** Amplitud de una nota, 0-1. */
 export const DEFAULT_VELOCITY = 0.8;
 
@@ -87,6 +121,33 @@ export const DEFAULT_VELOCITY = 0.8;
  * sostenida de la misma amplitud: bajar el numero seria descontar dos veces lo mismo.
  */
 export const CLICK_VELOCITY = 0.25;
+
+/**
+ * Amplitud de un CRUCE por celda ocupada, 0-1. Entre las otras dos, y no en el medio
+ * aritmetico.
+ *
+ * El cruce es una floritura: tiene que oirse mas presente que un click —lleva altura,
+ * y si no se identifica como nota no se entiende que se piso una celda de una pieza—
+ * pero mas al fondo que la nota de la pieza cuyo turno es (D5 del spec 011). O sea que
+ * el numero esta acotado por los dos que ya existen: `CLICK_VELOCITY` (0,25) y
+ * `DEFAULT_VELOCITY` (0,8).
+ *
+ * **0,45 y no 0,525, que seria el promedio.** La amplitud se percibe en dB y no
+ * linealmente, asi que el punto medio real es la media GEOMETRICA: `sqrt(0,25 * 0,8) =
+ * 0,447`. Con 0,45 el cruce queda a -5,0 dB de una nota y a +5,1 dB de un click, o sea
+ * a la misma distancia de los dos; con el promedio aritmetico quedaria a -3,7 dB de la
+ * nota y a +6,4 dB del click, mucho mas cerca de sonar como una nota mas.
+ *
+ * Cinco dB tampoco es un numero arbitrario: es la diferencia mas chica que se lee
+ * claramente como "esto suena mas suave" en vez de como una nota mal tocada, y todavia
+ * deja al cruce audible en la mezcla — con 8 piezas un ciclo tiene 40 notas contra un
+ * punado de cruces, asi que si se hunde no se escucha nunca.
+ *
+ * Ademas el cruce dura menos que una nota (`GRACE_INTERVALS`, 0,75 contra 1) y eso ya
+ * lo aleja por su cuenta: bajar mas la amplitud seria descontar dos veces lo mismo, el
+ * mismo argumento que cierra el docblock de `CLICK_VELOCITY`.
+ */
+export const GRACE_VELOCITY = 0.45;
 
 /**
  * Cuanto dura un click, en SEGUNDOS.

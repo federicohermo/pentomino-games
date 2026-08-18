@@ -3,9 +3,11 @@ import { midiToHz, scheduleVoice, scheduleClick } from '../voice.ts';
 import { collectHits, intervalDuration } from '../scheduler.ts';
 import { FFT_SIZE, SMOOTHING } from '../constants/engine.constants.ts';
 import { HIT } from '../constants/scheduler.constants.ts';
-import { CLICK_SECONDS, RELEASE_INTERVALS } from '../constants/voice.constants.ts';
+import {
+  CLICK_SECONDS, RELEASE_INTERVALS, NOTE_INTERVALS, GRACE_INTERVALS, GRACE_VELOCITY,
+} from '../constants/voice.constants.ts';
 import type { ClockState } from '../types/scheduler.types.ts';
-import { offline, peakNear, detectOnsets, SR } from './test-context.ts';
+import { offline, peakNear, detectOnsets, zeroCrossHz, SR } from './test-context.ts';
 
 const A4 = 69;
 const VEL = 0.8;
@@ -71,6 +73,52 @@ describe('scheduler + sintesis integrados', () => {
     const click = hits[1].at;
     expect(peakNear(d, click + 0.002)).toBeGreaterThan(0.1);
     expect(peakNear(d, click + CLICK_SECONDS + 0.03)).toBe(0);
+  });
+
+  it('D5 — el cruce por celda ocupada suena su altura, mas corto y mas suave (spec 011)', async () => {
+    const bpm = 110;
+    const interval = intervalDuration(bpm);
+    const rel = RELEASE_INTERVALS * interval;
+    const state: ClockState = { origin: 0.2, scheduledUntil: 0 };
+    // Una pieza y, cuatro intervalos despues, el recorrido pisando una celda ocupada
+    // que suena F5 (MIDI 77) — el caso testigo del spec 011.
+    const hits = collectHits(0, 8 * interval, bpm, {
+      steps: [{ offset: 0, notes: [A4] }],
+      clicks: [{ offset: 4, note: 77 }],
+      length: 8,
+    }, state);
+    expect(hits).toHaveLength(2);
+
+    const ctx = offline(2);
+    const g = ctx.createGain();
+    g.gain.value = 1;
+    g.connect(ctx.destination);
+    // El mismo despacho que hace `tick()`, que no se puede correr aca: `engine.ts`
+    // toca el singleton del AudioContext. Lo que se verifica es que con esos dos
+    // numeros el cruce SUENA como floritura y no como una nota mas.
+    for (const h of hits) {
+      if (h.kind === HIT.note) scheduleVoice(ctx, g, h.hz, h.at, NOTE_INTERVALS * interval, rel, VEL);
+      else if (h.kind === HIT.cross) scheduleVoice(ctx, g, h.hz, h.at, GRACE_INTERVALS * interval, rel, GRACE_VELOCITY);
+    }
+    const d = (await ctx.startRendering()).getChannelData(0);
+
+    const [nota, cruce] = [hits[0].at, hits[1].at];
+
+    // TIENE altura, y es la de la celda: es lo que lo separa del click, que es ruido
+    // justamente para no tenerla. Se mide en el sostenido, despues del transitorio.
+    const hz = zeroCrossHz(d, cruce + 0.02, cruce + GRACE_INTERVALS * interval);
+    expect(Math.abs(hz - midiToHz(77)) / midiToHz(77)).toBeLessThan(0.02);
+
+    // Mas SUAVE: 0.45 contra 0.8, unos -5 dB. Se compara contra la nota renderizada en
+    // el mismo buffer y no contra un numero, que seria copiar la constante.
+    expect(peakNear(d, cruce + 0.003)).toBeLessThan(peakNear(d, nota + 0.003) * 0.7);
+    expect(peakNear(d, cruce + 0.003)).toBeGreaterThan(0.2);
+
+    // Mas CORTO: 0,75 + 0,88 intervalos contra 1 + 0,88. A 1,75 intervalos del onset
+    // la nota todavia esta cayendo y el cruce ya se apago — 34 ms de diferencia, que
+    // es lo que separa a una floritura de una nota que ocupa su lugar en el ciclo.
+    expect(peakNear(d, nota + 1.75 * interval)).toBeGreaterThan(0.02);
+    expect(peakNear(d, cruce + 1.75 * interval)).toBe(0);
   });
 
   it('dos notas superpuestas suman amplitud', async () => {

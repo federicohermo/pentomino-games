@@ -1,22 +1,30 @@
 import type { Cell } from '../../domain/types/transform.types.ts';
+import { MARCA } from '../constants/route.constants.ts';
+
+/** Los tres sonidos que puede pisar la cabeza: ver `MARCA` en `route.constants.ts`. */
+export type MarcaKind = (typeof MARCA)[keyof typeof MARCA];
 
 /**
- * Que pisa la cabeza lectora en un intervalo del ciclo: una celda, y si lo que suena
- * ahi es una nota o un click.
+ * Que pisa la cabeza lectora en un intervalo del ciclo: una celda, y CUAL de los tres
+ * sonidos posibles suena ahi.
  *
  * Es la traduccion de `Sequence` que el dibujo necesita y que el dominio no tiene por
  * que dar: `Step` lleva `pieceId`, `offset` y `notes` pero NO las celdas de sus cinco
  * notas, y `Click` lleva su celda pero por separado. Unir las dos cosas indexadas por
  * offset es trabajo de la UI, no del modelo.
  *
- * `nota` y no un `kind` de tres valores: son exactamente dos casos y el tercero —"no
- * hay nada en este intervalo"— se expresa con la ausencia de la marca. Un booleano
- * que solo puede tomar dos valores no necesita un const-object.
+ * Hasta el spec 010 esto era un booleano (`nota`): dos casos con marca, y el
+ * tercero —"no hay nada en este intervalo"— se expresaba con la ausencia de la marca,
+ * asi que un booleano alcanzaba. El spec 011 agrega un caso ADENTRO de lo que antes
+ * era "hay marca y suena": `routeBetween` puede cruzar una celda OCUPADA sin que sea
+ * el turno de esa pieza, y ese cruce suena una floritura (`Click.note`) que no es ni
+ * la nota propia de una pieza ni el click mudo de siempre. Tres casos con marca mas la
+ * ausencia, y un booleano ya no distingue los tres — de ahi el const-object.
  */
 export interface Marca {
   cell: Cell;
-  /** Nota fuerte, click tenue (D7): si se vieran igual, el recorrido parece tener piezas donde no hay. */
-  nota: boolean;
+  /** Nota de pieza, cruce con floritura o click mudo (D8, spec 011): los tres se ven distinto. */
+  kind: MarcaKind;
 }
 
 /**
