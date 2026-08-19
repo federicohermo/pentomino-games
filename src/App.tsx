@@ -42,11 +42,25 @@ export default function App(){
   // Arranca del mismo numero que el motor: DEFAULT_BPM es una sola declaracion.
   const [tempo, setTempo] = useState<number>(DEFAULT_BPM);
   const [playing, setPlaying] = useState<boolean>(false);
-  // Los clicks del recorrido arrancan encendidos: son D4, sin ellos un salto largo
-  // por celdas vacías es un silencio mudo y el recorrido se vuelve inaudible. Apaga
-  // solo esos: el cruce por celda ocupada suena su nota y no lo gobierna este flag,
-  // porque es modelo y no mezcla (D6 del spec 011).
-  const [clicks, setClicks] = useState<boolean>(true);
+  // Los clicks del recorrido arrancan APAGADOS desde el spec 015, y hasta ahí venían
+  // encendidos por D4 del 009: sin ellos un salto largo por celdas vacías es un
+  // silencio mudo y el recorrido se vuelve inaudible. Ese argumento no se niega —está
+  // medido y es grande: en un tablero de 3 piezas el 44 % de los eventos del ciclo son
+  // clicks, así que apagarlos apaga casi la mitad de lo que el tablero dice—. Lo que
+  // cambia es quién decide: el default lo elige quien escucha el instrumento, y con el
+  // click en ruido blanco molestaba. Con la campana del 015 puede volver a `true`, y si
+  // vuelve conviene que quede escrito que pasó por los dos estados.
+  //
+  // Y por eso el botón es MÁS necesario que antes y no menos —el `T070` del 011 propuso
+  // borrarlo y quedó cerrado con un "no"—: pasa a ser la única forma de encender el
+  // recorrido en vez de la única forma de apagarlo.
+  //
+  // El default vive acá y en `clicksAudible` de `engine.ts`, que este efecto pisa al
+  // montar. Los dos dicen `false`: el mismo valor declarado dos veces no puede discrepar.
+  //
+  // Apaga solo esos: el cruce por celda ocupada suena su nota y no lo gobierna este
+  // flag, porque es modelo y no mezcla (D6 del spec 011).
+  const [clicks, setClicks] = useState<boolean>(false);
 
   // placed pieces
   const [placed, setPlaced] = useState<PlacedPiece[]>([]);

@@ -88,18 +88,29 @@ export default function PiecePalette({
             spec 009 lo previo asi en su tabla de riesgos ("es un parametro suelto:
             si molesta, se baja o se apaga sin tocar el modelo").
 
-            Dice "mudos" y no "Clicks" a secas desde el spec 011: el recorrido pasó a
-            tener DOS clases de cruce y este boton apaga solo una. El cruce sobre una
+            Dijo "Clicks mudos" desde el spec 011 y hasta el 015, y el motivo de la
+            palabra "mudos" SIGUE VALIENDO aunque la palabra se haya ido: el recorrido
+            tiene DOS clases de cruce y este boton apaga solo una. El cruce sobre una
             celda ocupada suena su nota y no se apaga, porque es modelo y no mezcla
-            (D6) — apagarlo seria silenciar parte de lo que el tablero dice. Con la
-            etiqueta vieja el boton prometia mas de lo que hace.
+            (D6) — apagarlo seria silenciar parte de lo que el tablero dice. La
+            etiqueta nueva tampoco puede prometer eso.
+
+            Cambia por el default (D7 del 015). "Clicks mudos" con ON/OFF ya era
+            retorcido —un click *mudo* que esta *encendido*— y con el default en OFF lo
+            primero que se ve del control es un apagado que no se sabe si apaga el click
+            o apaga el mute. La etiqueta nueva dice QUE SE OYE cuando esta encendido, en
+            el idioma que el instrumento ya usa desde el 009: el recorrido, y la parte
+            de el que pasa por celdas vacias. Y ademas ya no dice "click", que desde el
+            015 tampoco es cierto: es una campana de altura fija.
 
             Y ojo con el motivo por el que nacio: existia para tapar los golpes sordos
-            que produce cruzar una pieza, o sea el problema que el 011 arregla. Si con
-            el peso y la floritura el recorrido deja de molestar, se queda sin razon de
-            ser — esta anotado como Seguimiento del 011 y se decide escuchando. */}
+            que produce cruzar una pieza, o sea el problema que el 011 arregla. Su
+            `T070` propuso borrarlo por eso y quedo cerrado con un "no" en el 015: con
+            el default apagado este boton es la unica forma de ENCENDER el recorrido,
+            asi que borrarlo lo dejaria inalcanzable. La historia se conserva; lo que
+            cambio es la conclusion. */}
         <div className="flex items-center justify-between">
-          <span className="font-medium">Clicks mudos</span>
+          <span className="font-medium">Recorrido en el vacío</span>
           <button onClick={onToggleClicks} className={`px-3 py-1 rounded ${clicks?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{clicks? 'ON':'OFF'}</button>
         </div>
         <div className="pt-2 text-sm text-slate-600">
