@@ -78,7 +78,7 @@ Formato en [`specs/README.md`](../README.md): `[P]` se puede hacer en paralelo d
 - [x] T050 Commit del paso 1 (sin cambio de comportamiento) separado del paso 2 (AC10)
 - [x] T051 El commit del paso 2 dice en su mensaje que cambia lo que suena: 9 de 12 piezas, 56 % de los
       tableros reordenados (D8)
-- [ ] T052 PR a `main` con el resumen del cambio y los números de `research.md` §8
+- [x] T052 PR a `main` con el resumen del cambio y los números de `research.md` §8 — [#12](https://github.com/federicohermo/pentomino-games/pull/12)
 
 ## Seguimiento (no bloquea)
 
