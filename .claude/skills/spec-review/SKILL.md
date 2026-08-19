@@ -21,7 +21,13 @@ buscar la deuda ahí la deja fuera del review entero. El registro está partido 
 | `specs/README.md` | Solo la convención de formato y el flujo | F · Estructura |
 
 **Los estados `Descartado` y `Superado` son terminales.** Un spec en uno de esos dos no se revisa ni
-se corrige: es historia. Si el spec bajo review contradice a uno terminal, eso no es un hallazgo.
+se corrige: es historia.
+
+**Que el spec bajo review contradiga a uno anterior no es un hallazgo** — sea terminal o mergeado.
+Los specs son planes de desarrollo con fecha, no documentación de lo que el código hace hoy: dar
+vuelta una decisión vieja es para lo que existe un spec nuevo. No lo reportes, ni siquiera como nota
+al pasar. Lo único accionable que sale de una contradicción está en *Un spec mergeado no se
+reescribe*, más abajo.
 
 ## El contrato de `tasks.md`
 
@@ -53,9 +59,11 @@ falta de IDs como hallazgo.
 Acá los specs son ADR, no documentación viva: registro de qué se decidió y con qué evidencia. Lo que
 sí se mantiene al día es `docs/`, `.claude/rules/` y `CLAUDE.md`.
 
-Consecuencia para el review: si el spec bajo revisión **falsifica** algo que un spec anterior afirma,
-el hallazgo no es "corregir el spec viejo" — es *"actualizar los archivos de `docs/` y
-`.claude/rules/` que lo afirman en presente"*, y anotar el aprendizaje en `specs/revisiones.md`. Hay
+Consecuencia para el review: que el spec bajo revisión **falsifique** algo que un spec anterior
+afirma no genera hallazgo por sí solo, y el spec viejo no se toca. El hallazgo existe solo si hay
+archivos de `docs/`, `.claude/rules/` o `CLAUDE.md` que **lo siguen afirmando en presente** — esos
+son los que se mantienen al día —, y entonces la tarea es actualizarlos y anotar el aprendizaje en
+`specs/revisiones.md`. Si ninguno lo afirma, no hay nada que reportar. Hay
 precedente: los commits `d936597` (once archivos afirmaban que el eje X del tablero era tiempo) y
 `eb154a0` (cinco archivos afirmaban en presente cosas que el 008 falsifica).
 
