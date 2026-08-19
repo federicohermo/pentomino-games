@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { defineTool, json } from './types.ts';
-import { renderAscii, renderDegrees, sizeOf } from '../render.ts';
+import { renderAscii, renderCellNumbers, sizeOf } from '../render.ts';
 import { PIECE_KEYS } from '../pieces.ts';
 import { rotateN, reflect } from '../../../src/domain/transform.ts';
-import { notesForRotation, midiName, degreeByCellIndex } from '../../../src/domain/music.ts';
+import { notesForRotation, midiName, degreeByCellIndex, playOrderByCellIndex } from '../../../src/domain/music.ts';
 import { SHAPES, ANCHOR_INDEX } from '../../../src/domain/constants/pieces.constants.ts';
 import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE } from '../../../src/domain/constants/music.constants.ts';
 
@@ -60,8 +60,11 @@ export const describePiece = defineTool({
     'cuatro rotaciones, y en T y U en las rotaciones 0 y 180°; (3) `cellMap` sale del arpegio ' +
     'ASCENDENTE, no de `notes` — el retrógrado es del ORDEN DE REPRODUCCIÓN, así que reflejar ' +
     'mueve las celdas de lugar pero no cambia qué nota le toca a cada una.\n' +
-    'Hay DOS dibujos: `ascii` marca la celda de agarre (`@`) y `asciiDegrees` pone el grado de cada ' +
-    'celda, que es la forma de ver la melodía sobre la geometría sin cruzar `cellMap` a mano.',
+    'Hay DOS dibujos: `ascii` marca la celda de agarre (`@`) y `asciiPlayOrder` pone el PASO de ' +
+    'cada celda —su lugar en el orden de reproducción, que es el número que el tablero pinta en la ' +
+    'esquina—, así que el `0` es siempre por donde el recorrido entra y el `4` por donde sale. Con ' +
+    '`mirror` NO coincide con el grado: el retrógrado invierte el orden, así que el paso es ' +
+    '`4 - grado`. `cellMap` trae los dos números por celda.',
   inputSchema,
   run: ({ piece, rotation, mirror, octave }) => {
     const rotated = rotateN(SHAPES[piece], rotation);
@@ -77,6 +80,9 @@ export const describePiece = defineTool({
     // recalcular el mapeo sobre la transformada daria otros grados. Se arrastra
     // por indice porque `rotateN` y `reflect` son `map`, igual que el ancla.
     const degrees = degreeByCellIndex(SHAPES[piece]);
+    // El paso es el grado con el retrogrado aplicado, y NO se recalcula aca: sale de
+    // la misma pura que alimenta a `gates` y al numero que se ve en el tablero.
+    const playOrder = playOrderByCellIndex(SHAPES[piece], mirror);
 
     return json({
       piece, rotation, mirror, octave,
@@ -90,15 +96,26 @@ export const describePiece = defineTool({
       // silencio el contrato de la tool. Indexa `ascending` y no `notes` porque
       // el retrogrado es del orden de reproduccion —eso ya lo dice `notes`—: la
       // nota de una celda es la del grado que le toca en el arpegio ascendente.
-      cellMap: cells.map((c, k) => ({ cell: c, degree: degrees[k], note: midiName(ascending[degrees[k]]) })),
+      // `degree` y `playOrder` son el MISMO numero solo sin reflexion. El `degree`
+      // contesta que nota tiene la celda —por eso indexa `ascending`—; el `playOrder`
+      // contesta cuando suena, y es el que hay que mirar para seguir a la cabeza
+      // lectora o para contrastar contra lo que se ve en pantalla.
+      cellMap: cells.map((c, k) => ({
+        cell: c,
+        degree: degrees[k],
+        playOrder: playOrder[k],
+        note: midiName(ascending[degrees[k]]),
+      })),
       anchorIndex,
       anchor: cells[anchorIndex],
       size: sizeOf(cells),
       ascii: renderAscii(cells, anchorIndex),
-      // El mismo dibujo con el grado en cada celda: es donde se ve que la rotacion
-      // mueve la forma sin reordenar el mapeo, y donde `X` e `I` muestran su celda
-      // central en grado 0. `ascii` no se toca — dicen cosas distintas.
-      asciiDegrees: renderDegrees(cells, degrees),
+      // El mismo dibujo con el PASO en cada celda: es donde se ve el recorrido que
+      // el arpegio hace por la forma, siempre del `0` al `4`. Dibuja el paso y no el
+      // grado porque es el numero que el tablero pinta, y dos numeraciones distintas
+      // —una en pantalla y otra en la tool— es exactamente como se verifica mal.
+      // `ascii` no se toca — dicen cosas distintas.
+      asciiPlayOrder: renderCellNumbers(cells, playOrder),
       notes: notes.map(m => ({ midi: m, name: midiName(m) })),
       retrograde: mirror,
     });

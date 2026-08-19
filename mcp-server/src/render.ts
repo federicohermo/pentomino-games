@@ -60,17 +60,22 @@ export function renderAscii(cells: readonly Cell[], anchorIndex: number): string
  * pares de coordenadas contra el dibujo. Era el seguimiento que el 007 dejo anotado.
  *
  * Va en un campo APARTE y no reemplazando a `ascii`: los dos dibujos dicen cosas
- * distintas —uno la celda de agarre, el otro la melodia sobre la geometria— y pisar el
- * primero cambiaria en silencio el contrato de la tool.
+ * distintas —uno la celda de agarre, el otro el orden en que suenan las celdas— y
+ * pisar el primero cambiaria en silencio el contrato de la tool.
  *
- * `degrees` viene POR INDICE, igual que lo devuelve `degreeByCellIndex`: el elemento
- * `k` es el grado de `cells[k]`. Un grado de dos digitos desalinearia la grilla, asi
- * que cae a `CELL`: con formas de hasta 10 celdas no puede pasar, y si alguna vez pasa
- * es mejor que se vea como un `#` fuera de lugar que como un dibujo torcido.
+ * `values` viene POR INDICE, igual que lo devuelven `degreeByCellIndex` y
+ * `playOrderByCellIndex`: el elemento `k` es el numero de `cells[k]`. La firma es
+ * generica —numeros por indice y no "grados"— justamente porque hay DOS numeraciones
+ * por celda y la tool dibuja la del orden de reproduccion: un nombre que dijera
+ * `grados` invitaria a alimentarla con la otra sin que nada se pusiera en rojo.
+ *
+ * Un numero de dos digitos desalinearia la grilla, asi que cae a `CELL`: con formas de
+ * hasta 10 celdas no puede pasar, y si alguna vez pasa es mejor que se vea como un `#`
+ * fuera de lugar que como un dibujo torcido.
  */
-export function renderDegrees(cells: readonly Cell[], degrees: readonly number[]): string {
+export function renderCellNumbers(cells: readonly Cell[], values: readonly number[]): string {
   return draw(cells, k => {
-    const d = degrees[k];
+    const d = values[k];
     return Number.isInteger(d) && d >= 0 && d <= 9 ? String(d) : CELL;
   });
 }

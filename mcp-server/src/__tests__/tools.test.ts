@@ -113,33 +113,52 @@ describe('describe_piece', () => {
     }
   });
 
-  test('AC9 — `cellMap` le pone grado y nota a cada celda, sin tocar `cells`', () => {
+  test('AC9 — `cellMap` le pone grado, paso y nota a cada celda, sin tocar `cells`', () => {
     // Los dos casos del AC, releidos con el camino del spec 012: en la X la tonica cae
     // en un brazo y no en el centro —el centro tiene cuatro vecinos, y arrancar ahi
     // obligaria a tres saltos en vez de dos—, y la F es la unica pieza cuyo camino
     // coincide con el orden en que estan tipeadas sus celdas en `SHAPES`.
     const x = call(describePiece, { piece: 'X' });
     assert.deepEqual(x.cellMap, [
-      { cell: [1, 0], degree: 4, note: 'F#5' },
-      { cell: [0, 1], degree: 2, note: 'C#5' },
-      { cell: [1, 1], degree: 3, note: 'E5' },
-      { cell: [2, 1], degree: 0, note: 'A4' },
-      { cell: [1, 2], degree: 1, note: 'B4' },
+      { cell: [1, 0], degree: 4, playOrder: 4, note: 'F#5' },
+      { cell: [0, 1], degree: 2, playOrder: 2, note: 'C#5' },
+      { cell: [1, 1], degree: 3, playOrder: 3, note: 'E5' },
+      { cell: [2, 1], degree: 0, playOrder: 0, note: 'A4' },
+      { cell: [1, 2], degree: 1, playOrder: 1, note: 'B4' },
     ]);
 
     const f = call(describePiece, { piece: 'F' });
     assert.deepEqual(f.cellMap, [
-      { cell: [0, 1], degree: 0, note: 'C4' },
-      { cell: [1, 0], degree: 1, note: 'D4' },
-      { cell: [1, 1], degree: 2, note: 'E4' },
-      { cell: [1, 2], degree: 3, note: 'G4' },
-      { cell: [2, 2], degree: 4, note: 'A4' },
+      { cell: [0, 1], degree: 0, playOrder: 0, note: 'C4' },
+      { cell: [1, 0], degree: 1, playOrder: 1, note: 'D4' },
+      { cell: [1, 1], degree: 2, playOrder: 2, note: 'E4' },
+      { cell: [1, 2], degree: 3, playOrder: 3, note: 'G4' },
+      { cell: [2, 2], degree: 4, playOrder: 4, note: 'A4' },
     ]);
 
     // `cells` sigue siendo la lista de coordenadas de siempre: el campo se agrego
     // AL LADO, no encima. Es lo que el chequeo de longitud del AC5 no ve.
     assert.deepEqual(f.cells, [[0, 1], [1, 0], [1, 1], [1, 2], [2, 2]]);
   });
+
+  test('el paso es el grado sin reflexion y su inverso con ella, en las 96', () => {
+    // La unica diferencia entre las dos numeraciones, y la razon de que existan las
+    // dos: el grado dice QUE NOTA tiene la celda —la reflexion no lo mueve, eso es
+    // AC12— y el paso dice CUANDO suena, que es justo lo que la reflexion invierte.
+    for (const piece of PIECE_KEYS) {
+      for (let rotation = 0; rotation < 4; rotation++) {
+        const pasos = (r: Record<string, unknown>) =>
+          (r.cellMap as { degree: number; playOrder: number }[]);
+        for (const e of pasos(call(describePiece, { piece, rotation }))) {
+          assert.equal(e.playOrder, e.degree, `${piece} rot${rotation}`);
+        }
+        for (const e of pasos(call(describePiece, { piece, rotation, mirror: true }))) {
+          assert.equal(e.playOrder, 4 - e.degree, `${piece} rot${rotation} mirror`);
+        }
+      }
+    }
+  });
+
 
   test('AC12 — la reflexion invierte `notes` y NO invierte `cellMap`', () => {
     // El retrogrado es del ORDEN DE REPRODUCCION. La nota de una celda sale del
