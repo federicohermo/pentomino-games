@@ -104,6 +104,17 @@ una persona y no bloquea el cierre.
 - [x] T033 `pnpm verify` en verde y `check_invariants` en proceso fresco antes y después — **AC13**
 - [x] T034 [P] `DESIGN.md`: el canal nuevo, y por qué no es color ni opacidad. Y se va la fila de
       `PlacedList` de la tabla de contraste, con su párrafo (`DESIGN.md:129-131`)
+- [x] T055 `DESIGN.md`, la tabla **«Qué muestra una celda»** y los dos párrafos que la siguen: seguían
+      diciendo `CELL_PX` **63**, tablero **630 × 378** en tarjeta 633 × 380, `md:col-span-7`, «los 63 px
+      son la pista» y «630 px de pistas fijas». Los cinco son presentes y falsos desde T028. Salió de
+      `/pr-review`: **AC11 contó dos comentarios y hay más** — este spec los daba por cubiertos con los
+      de `layout.constants.ts` y `Board.tsx`
+- [x] T056 `Playhead.tsx:135` es el **tercer** comentario de código que explicaba el 63 («el `transform`
+      va en la caja de 63 px»). Pasa a nombrar `CELL_PX`, que es lo que no se pudre. Y la medición del
+      `scale` —`scrollHeight` de 378 a 381, en `Playhead.tsx:87` y `DESIGN.md:196`— queda anotada como
+      tomada **con `CELL_PX` en 63**: no se remidió a 71 y lo que decide es el mecanismo, no el número
+- [x] T057 `music.ts:51` nombraba a `PlacedList.tsx` entre las cuatro copias de la derivación. Está en
+      pasado y no miente, pero apuntaba a un archivo que ya no existe: se le agrega dónde se fue
 - [x] T035 [P] `docs/architecture/directory-structure.md:99` **y `docs/architecture/overview.md:30`**:
       los **dos** nombran a `PlacedList` en el árbol de componentes
 - [x] T036 [P] `docs/architecture/modelo-musical.md`: una pieza colocada puede no sonar y seguir
@@ -131,7 +142,9 @@ una persona y no bloquea el cierre.
 
 - [ ] T047 **El tablero sigue sin teclado**, y ahora un click borra. El hueco de `specs/deuda.md` deja
       de ser solo de lectura: una grilla que no se alcanza con el teclado tiene una operación
-      destructiva que no se puede ejecutar de otra forma. Sube de prioridad, no se cierra acá
+      destructiva que no se puede ejecutar de otra forma. Sube de prioridad, no se cierra acá — la
+      subida quedó **anotada en la entrada de `specs/deuda.md`** (`/pr-review`), la casilla sigue
+      abierta porque lo que la cierra es el modelo de foco de la grilla y eso es un spec propio
 - [ ] T048 **No hay deshacer.** Reponer a mano alcanza cuando la orientación seleccionada no cambió
       (AC15); si cambió, la pieza vuelve distinta. Si molesta, es un spec propio y chico
 - [ ] T049 **La orientación de una pieza colocada dejó de leerse en texto.** Se lee del `#0..#4` de sus

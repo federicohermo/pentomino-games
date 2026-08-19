@@ -76,9 +76,9 @@ texto blanco **sin oscurecer ni un color de la lámina** — bajo 2.1 las dos co
 
 | Medida | Valor | Por qué |
 |---|---|---|
-| `CELL_PX` | **63** (era 28) | el piso son 60 —`D#5` mide 35,4 px medidos a `text-[19px]`— y 63 es lo que la tarjeta deja |
-| Tablero | **630 × 378 px** (era 280 × 168) | 10 × 6 × `CELL_PX` en una tarjeta de 633 × 380: llena las dos dimensiones |
-| Tarjeta del tablero | **`md:col-span-7`** (era 6) | con 6 sobraban 68 px de alto: 10 × 6 no tenía la proporción de la tarjeta |
+| `CELL_PX` | **71** (era 63, y 28 antes) | el piso son 60 —`D#5` mide 35,4 px medidos a `text-[19px]`— y 71 es lo que la tarjeta deja |
+| Tablero | **710 × 426 px** (era 630 × 378) | 10 × 6 × `CELL_PX` en una tarjeta de 730,7 × 429,6: desde el 014 lo limita el **alto** y no el ancho |
+| Tarjeta del tablero | **`md:col-span-8`** (era 7, y 6 antes) | el 014 borró `PlacedList` y liberó dos columnas; la novena no le compraría un píxel al tablero y va a la paleta |
 | Aire de la baldosa | **2 px** por lado | separa las fichas sin sumar un segundo número al ancho |
 | Borde de la baldosa | **1 px `slate-900`** | el tablero se define reforzando la celda, no rellenando el fondo |
 
@@ -96,7 +96,7 @@ hacia atrás. El número que se ve tiene que seguir a lo que se ve moverse. La t
 celda de grado 0, pero eso ya no se lee del número: se lee de la nota, que es el dato que la reflexión
 no mueve.
 
-**Cada celda es una baldosa redondeada, no un casillero.** Los 63 px son la pista; adentro va una ficha
+**Cada celda es una baldosa redondeada, no un casillero.** Los `CELL_PX` de la pista son la caja externa; adentro va una ficha
 `rounded-lg` con 2 px de aire alrededor. Es el lenguaje de la lámina: una pieza colocada se lee como
 cinco fichas apoyadas sobre la grilla, no como cinco celdas de una tabla. El aire lo hace el padding de
 la pista y no un `gap` de la grilla, así que el ancho del tablero sigue siendo exactamente 10 × `CELL_PX`.
@@ -108,7 +108,7 @@ colores, que es lo único que este tablero está para comunicar. Queda **un bord
 baldosa**, ocupada o vacía: la grilla se dibuja sola y el resto del panel sigue blanco.
 
 **Debajo del breakpoint `md` el tablero no entra y scrollea en horizontal.** A 375 px de viewport el
-panel deja 311 px útiles contra 630 px de pistas fijas. Lo absorbe un `overflow-x-auto` en el contenedor
+panel deja 311 px útiles contra 710 px de pistas fijas. Lo absorbe un `overflow-x-auto` en el contenedor
 de la grilla —scrollea el tablero, no la página— y deliberadamente **no** un `CELL_PX` menor: el nombre
 de nota es lo que hay que poder leer, así que achicar la celda debajo de `md` devuelve el problema que
 el número existe para resolver.
@@ -192,10 +192,12 @@ así que engrosar hacia adentro es un cambio de grado contra un campo lleno de b
 exterior es lo que agrega el salto de tamaño: la celda se lee más grande sin que crezca su caja.
 
 **Por qué no `transform: scale`, que es lo obvio.** Porque `scale` cuenta para el overflow
-**scrolleable** del contenedor. Medido en el DOM: con la cabeza en `(9,5)` y `scale(1.10)`, el
-`scrollHeight` del `overflow-x-auto` de `Board` pasa de 378 a 381 y aparecen las barras de
-desplazamiento —las dos, porque Tailwind fija solo `overflow-x` y entonces el eje Y computa a `auto`—.
-`box-shadow` es *ink overflow*: pinta afuera de la caja sin agrandar la región scrolleable.
+**scrolleable** del contenedor. Medido en el DOM con `CELL_PX` en 63 —grilla de 630 × 378—: con la
+cabeza en `(9,5)` y `scale(1.10)`, el `scrollHeight` del `overflow-x-auto` de `Board` pasaba de 378 a
+381 y aparecían las barras de desplazamiento —las dos, porque Tailwind fija solo `overflow-x` y
+entonces el eje Y computa a `auto`—. El spec 014 movió la celda a 71 y esos dos números no se
+remidieron; lo que no depende del tamaño es el mecanismo, que es lo que decide: `box-shadow` es *ink
+overflow*, pinta afuera de la caja sin agrandar la región scrolleable.
 
 **El color del resalte es gris pizarra (`#0f172a`) y no un color de pieza.** Es la regla de arriba sin
 excepción: el hue dice *qué pieza es*, nunca *qué está pasando*. Misma razón por la que el fantasma es
