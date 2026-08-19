@@ -238,6 +238,23 @@ export function checkNotes(): CheckResult {
       // El arpegio de rotacion 0, que en `orden` es la referencia del corrimiento. Se
       // pide una vez por pieza y no una por rotacion: es el mismo en las cuatro.
       const referencia = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 0, regimen);
+
+      // D2, y NO es redundante con el corrimiento de abajo: ese chequeo es RELATIVO a la
+      // rotacion 0, asi que un corrimiento uniforme —`rot + 1` en vez de `rot`— mueve la
+      // referencia junto con el resto y pasa invisible. Medido: la mutacion `(j + rot + 1)`
+      // en `notesForRotation` deja `checkNotes` en verde sin este ancla. Lo que lo fija es
+      // que la rotacion 0 de `orden` sea la pentatonica mayor de la tonica, o sea la de
+      // `escala` — que es ademas la propiedad que hace auditable comparar los dos.
+      if (regimen === REGIMEN.orden) {
+        const enEscala = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 0, REGIMEN.escala);
+        if (referencia.join() !== enEscala.join()) {
+          failures.push(
+            `${p} rot0: los dos regimenes tienen que dar lo mismo a rotacion 0 ` +
+            `(escala ${enEscala.join(',')} vs orden ${referencia.join(',')})`,
+          );
+        }
+      }
+
       for (const rot of ROTATIONS) {
         const ns = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, regimen);
         if (ns.length !== NOTES_PER_PIECE) {
