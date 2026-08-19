@@ -96,7 +96,7 @@ export default function App(){
     if (!isValid(cells, placed)) return;
     const newPiece: PlacedPiece = {
       id: String(++idRef.current),
-      piece: selected, rotation, mirror, cells,
+      piece: selected, rotation, mirror, cells, muted: false,
     };
     setPlaced(prev => [...prev, newPiece]);
     // Con el transporte corriendo, disparar acá duplicaría el arpegio: con D5

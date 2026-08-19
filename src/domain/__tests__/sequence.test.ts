@@ -22,7 +22,7 @@ const PIECES = Object.keys(SHAPES) as PieceKey[];
  * de este archivo las compone a mano (`notaEsperada`) para no verificar una funcion
  * contra si misma.
  */
-const colocar = (piece: PieceKey, rot: number, mirror: boolean, x: number, y: number): PlacedPiece => {
+const colocar = (piece: PieceKey, rot: number, mirror: boolean, x: number, y: number, muted = false): PlacedPiece => {
   const base = rotateN(SHAPES[piece], rot);
   const shape = mirror ? reflect(base) : base;
   return {
@@ -31,6 +31,7 @@ const colocar = (piece: PieceKey, rot: number, mirror: boolean, x: number, y: nu
     rotation: rot,
     mirror,
     cells: cellsAt(shape, ANCHOR_INDEX[piece], x, y),
+    muted,
   };
 };
 

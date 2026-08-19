@@ -47,6 +47,11 @@ const placementSchema = z.object({
   piece: z.enum(PIECE_KEYS),
   rotation: z.number().int().min(0).max(3).default(0),
   mirror: z.boolean().default(false),
+  // Una pieza muteada ocupa su lugar y su tiempo en el circuito pero no suena sus
+  // notas: donde iba su arpegio van cinco clicks (spec 014). Se acepta aca para que la
+  // tool pueda contestar "que cambia si muteo esta" sin que nadie lo derive a mano, y
+  // el default es `false` porque es el tablero de siempre.
+  muted: z.boolean().default(false),
   at: z.tuple([z.number().int(), z.number().int()])
     .describe(`Celda [x, y] donde cae la CELDA DE AGARRE, no la esquina. Tablero de ${GRID_W}x${GRID_H}, y crece hacia abajo.`),
 });
@@ -144,7 +149,7 @@ function resolve(entries: z.output<typeof inputSchema>['pieces']): { resolved: R
       // Sin `notes`: el arpegio ya no se guarda en la pieza, lo deriva `buildSequence`
       // con la misma `arpeggioFor` que usa la app. Antes se componia aca a mano, que era
       // una de las cuatro copias de esa derivacion.
-      const p: PlacedPiece = { id, piece: e.piece, rotation: e.rotation, mirror: e.mirror, cells };
+      const p: PlacedPiece = { id, piece: e.piece, rotation: e.rotation, mirror: e.mirror, cells, muted: e.muted };
       placed.push(p);
       gates = gatesOf(p);
     }
@@ -306,6 +311,7 @@ export const simulateBoard = defineTool({
         rotation: pieces[i].rotation,
         mirror: pieces[i].mirror,
         at: pieces[i].at,
+        muted: pieces[i].muted,
         cells: r.cells,
         valid: r.valid,
         // Las puertas reemplazan a la `phase` del spec 004: la columna del ancla
