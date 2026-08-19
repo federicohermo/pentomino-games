@@ -306,7 +306,7 @@ sin spec en [deuda.md](./deuda.md).
   como el grado —qué lugar ocupa la nota en el arpegio ascendente—, y era la lectura correcta mientras
   el tablero era un compás. Desde el 010 hay una cabeza lectora encima, y entonces la pregunta que la
   celda contesta de hecho pasó a ser *cuándo suena esta*, que es el paso. **Un dibujo nuevo puede
-  cambiar qué pregunta hace un dato viejo**, y eso no lo detecta ningún test: los 243 estaban en verde,
+  cambiar qué pregunta hace un dato viejo**, y eso no lo detecta ningún test: los 238 estaban en verde,
   y ninguno miraba la relación entre el rótulo y la puerta.
   El arreglo introduce `playOrderByCellIndex(forma, mirror)` como **única** derivación del retrógrado
   sobre celdas: `cellsByPlayOrder` tenía su propio `reverse` y era la segunda copia. Que la regla que
@@ -314,3 +314,10 @@ sin spec en [deuda.md](./deuda.md).
   que el 010 unificó `gates`, y por el mismo motivo. Ni una nota cambia: el grado sigue diciendo qué
   altura tiene cada celda, y las dos numeraciones conviven documentadas porque cruzarlas compila
   —`ascendente[paso]` da la nota espejada en las 48 reflejadas— y ahora hay tests que lo ejercen.
+  Y una segunda lección, del review del propio arreglo: **las puras estaban bien, y no alcanzó**.
+  `playOrderByCellIndex`, `degreeByCellIndex` y `gates` daban todas la respuesta correcta; lo que estaba
+  mal era cuál de ellas llamaba la pantalla, y esa elección vivía adentro de `Board.tsx`, donde
+  `react-refresh/only-export-components` impide exportarla y por lo tanto testearla — el mismo motivo
+  por el que el dominio salió de `App.tsx` en su momento. Por eso el encadenado se fue a
+  `components/cell-text.ts` con su test al lado: **un test del dominio no cubre la decisión de qué le
+  pide el componente al dominio**, y era justo ahí donde no había ninguno.
