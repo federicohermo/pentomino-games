@@ -108,6 +108,47 @@ const distanciaAlCentro = (p: PieceKey, k: number) => {
   return Math.hypot(SHAPES[p][k][0] - cent[0], SHAPES[p][k][1] - cent[1]);
 };
 
+/**
+ * Tests de CARACTERIZACION del regimen `escala`, escritos ANTES de que existiera la
+ * segunda rama (spec 017, paso 1). No describen una regla nueva: congelan la que ya
+ * habia, para que romperla falle aca y no en una escucha tres pasos despues.
+ *
+ * Lo que congelan no son las notas —eso ya lo hace la referencia congelada del 012—
+ * sino la propiedad de que rotar CONSERVA parte del material. Es justo lo que el
+ * regimen `orden` no hace, asi que sin dejarla escrita la comparacion de los dos
+ * regimenes no tendria contra que medirse.
+ */
+describe('regimen `escala` — que sobrevive a rotar (caracterizacion, spec 017)', () => {
+  // 12 piezas x 3 rotaciones != 0 x 5 celdas = 180. La rotacion 0 queda afuera porque
+  // es la referencia contra la que se compara, no un caso mas.
+  const ROTACIONES = [1, 2, 3];
+
+  it('AC6 — 36 de 180 celdas conservan su nota, con la descomposicion 24 / 12 / 0', () => {
+    const porRotacion = ROTACIONES.map(rot =>
+      PIECES.reduce((n, p) =>
+        n + SHAPES[p].reduce((m, _c, k) => m + (notaDeCelda(p, rot, k) === notaDeCelda(p, 0, k) ? 1 : 0), 0), 0));
+
+    // Las tres cifras estan EXPLICADAS y no medidas de casualidad: las formulas
+    // comparten grados. `PENT_MAJOR` y `PENT_MINOR` coinciden en los grados 0 y 3
+    // —2 grados x 12 piezas = 24—, `PENT_MAJOR` y `PENT_BLUES5` solo en el 0 —12—, y
+    // la rotacion 3 transpone TODO +7, asi que no conserva ninguna.
+    expect(porRotacion).toEqual([24, 12, 0]);
+    expect(porRotacion.reduce((a, b) => a + b, 0)).toBe(36);
+  });
+
+  it('el grado 0 conserva la tonica en las rotaciones 1 y 2, y NO en la 3', () => {
+    // Es la propiedad que hace que `BASE_MAP` se escuche como identidad: rotar una
+    // pieza cambia su escala pero la deja anclada a su nota. La rotacion 3 es la
+    // unica excepcion, y la produce la transposicion +7.
+    for (const p of PIECES) {
+      const tonica = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 0)[0];
+      expect(notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 1)[0], `${p} rot1`).toBe(tonica);
+      expect(notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 2)[0], `${p} rot2`).toBe(tonica);
+      expect(notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 3)[0], `${p} rot3`).not.toBe(tonica);
+    }
+  });
+});
+
 describe('degreeByCellIndex', () => {
   it('AC1 — las 12 piezas dan una permutacion de [0,1,2,3,4]', () => {
     // Permutacion y no "cinco numeros del 0 al 4": ningun grado se repite ni falta,
