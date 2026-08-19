@@ -13,8 +13,10 @@
 Para tocar el instrumento hay que ir al panel. Rotar una pieza es apuntar a uno de cuatro botones de
 `Rotación`, reflejarla es apuntar a `ON/OFF`, y arrancar el transporte es apuntar al triángulo verde —
 todo con el cursor, que es el mismo cursor con el que se apunta al tablero. O sea que **cada cambio de
-orientación cuesta un viaje de ida y vuelta** entre el tablero y el panel izquierdo: medido en el DOM,
-la tarjeta de la paleta y la del tablero están a 665 px de distancia a `max-w-6xl` saturado.
+orientación cuesta un viaje de ida y vuelta** entre el tablero y el panel izquierdo: medido en el DOM a
+`max-w-6xl` saturado, la tarjeta del tablero sola mide **665 px de ancho** (`research.md` §4) y la
+paleta está a su izquierda, así que desde la mitad derecha de la grilla el viaje son cientos de píxeles
+de ida y otros tantos de vuelta.
 
 Es la clase de fricción que en un instrumento se paga en cada nota: probar la misma pieza en sus 8
 orientaciones sobre la misma casilla son 8 viajes, y el fantasma —que es donde se ve el resultado—
@@ -33,11 +35,11 @@ estado. Lo que se agrega es una segunda vía de entrada, más corta.
 
 | Gesto | Qué hace | Dónde escucha |
 |---|---|---|
-| Rueda abajo / arriba | Rotación `+90°` / `−90°` | **Solo sobre el tablero**, con `preventDefault` |
-| `Shift` (keydown) | Rotación `+90°` | Ventana |
+| Rueda abajo / arriba | Rotación `+90°` / `−90°` | **Solo sobre el tablero**, con `preventDefault` en un listener **no pasivo** (D9) |
+| `Shift` (tap) | Rotación `+90°` | Ventana, en `keyup` y solo si el tap fue limpio (D10) |
 | Botón derecho | Alterna la reflexión | **Solo sobre el tablero**, con `preventDefault` |
-| `Ctrl` (keydown) | Alterna la reflexión | Ventana |
-| Barra espaciadora | Play / pausa | Ventana |
+| `Ctrl` (tap) | Alterna la reflexión | Ventana, en `keyup` y solo si el tap fue limpio (D10) |
+| Barra espaciadora | Play / pausa | Ventana, en `keydown` |
 
 La columna de la derecha no es un detalle de implementación: es la mitad de las decisiones de este
 spec, porque los tres choques que tiene esta tabla salen de ahí.
@@ -55,6 +57,11 @@ Se paga igual, y la alternativa es peor: escuchar la rueda en toda la ventana ro
 **entero** en vez de sobre un elemento. Es el trato que hace cualquier mapa embebido, y quedan la
 paleta, el panel de señal y todo el margen para scrollear.
 
+**Lo que no se paga es el zoom.** `Ctrl`+rueda es el zoom del navegador y es una afordancia de
+accesibilidad, no un atajo de conveniencia: el handler de la rueda **se saltea el evento cuando
+`ctrlKey` es true** —sin `preventDefault` y sin rotar— y el navegador hace lo suyo. Es la misma forma
+de la guarda de D2, y por el mismo motivo: un gesto del sistema le gana a uno nuestro.
+
 **D2 — En Mac, `Ctrl`+click ES el click derecho, y sin esto la reflexión no responde nunca ahí.**
 El sistema traduce `Ctrl`+click a `contextmenu`. Con las dos filas de la tabla activas, la secuencia es:
 baja `Ctrl` → `keydown` alterna (1) → llega el click → `contextmenu` alterna (2) → **neto cero**. No es
@@ -68,7 +75,11 @@ click secundario de dos dedos, que llega sin `ctrlKey`.
 `Shift` y `Ctrl` mantenidos disparan `keydown` repetido a la cadencia de repetición del sistema (~30/s).
 Sin guarda, apoyar el meñique en `Shift` —que es lo que uno hace para escribir— gira la pieza a 30
 rotaciones por segundo. Va guarda por `e.repeat`, que es exactamente el campo que el DOM tiene para
-esto. Aplica a las tres teclas, espacio incluido.
+esto.
+
+Desde D10 los dos modificadores actúan en `keyup`, que **no** se auto-repite, así que ahí la guarda
+sobra: el que la necesita es el **espacio**, que sigue en `keydown` y sí se repite. La guarda se escribe
+igual para las tres teclas —cuesta una línea y es la misma pura— pero la que la ejerce es una sola.
 
 **D4 — El handler global se saltea `<button>` e `<input>`, y eso arregla el doble disparo del espacio.**
 Después de apretar Play con el mouse, el botón **queda enfocado**. Ahí la barra espaciadora activa el
@@ -102,9 +113,10 @@ re-suscribe; son tres `addEventListener` sobre `window`, no un costo. La alterna
 estado para poder suscribir una sola vez) es la optimización que este repo no necesita y que esconde de
 dónde sale cada valor.
 
-Los dos gestos **sobre el tablero** —rueda y botón derecho— entran a `Board.tsx` como props
-(`onWheel`, `onContextMenu`), igual que `onCellClick` y `onCellEnter`: el componente sigue siendo
-presentacional y no decide nada.
+De los dos gestos **sobre el tablero**, el botón derecho entra a `Board.tsx` como prop
+(`onContextMenu`), igual que `onCellClick` y `onCellEnter`. La rueda **no puede** entrar así (D9): entra
+como `boardRef`, una prop más que `Board` cuelga de su contenedor sin mirarla. En los dos casos el
+componente sigue siendo presentacional y no decide nada — el que escucha y el que decide es `App.tsx`.
 
 **D8 — La rotación sigue siendo un `number` sin acotar, y este spec no lo arregla.**
 `rotation` es un `number` comparado contra `0|1|2|3` en cuatro lugares, y está anotado en
@@ -114,19 +126,60 @@ presentacional y no decide nada.
 cambiar el tipo mueve firmas en `domain/`, `components/` y el MCP server, y mezclarlo acá haría que un
 spec de entrada terminara tocando el dominio.
 
+**D9 — React monta `wheel` como listener PASIVO, así que un `onWheel` de JSX no puede frenar el
+scroll.**
+No es una precaución: está en el fuente de la versión que el repo tiene instalada. React registra sus
+listeners en el contenedor raíz y a tres nombres —`touchstart`, `touchmove` y **`wheel`**— los registra
+con `{ passive: true }`
+(`node_modules/react-dom/cjs/react-dom-client.development.js:16503`, React 19.1.1). Adentro de un
+listener pasivo `preventDefault()` **es un no-op** y el navegador avisa por consola; o sea que la versión
+"la prop alcanza" de este spec habría implementado AC1 y fallado AC2, con el síntoma más caro posible:
+la rotación funciona, así que parece que anda, y la página scrollea igual.
+
+La salida es la que el DOM obliga: `addEventListener('wheel', h, { passive: false })` sobre el nodo. El
+nodo llega por un `ref` que **se crea en `App.tsx`** y se le pasa a `Board` como prop, y el
+`addEventListener` vive en un efecto de `App.tsx` al lado del de las teclas. Es lo que mantiene AC11 —
+`Board` no gana ni estado ni efectos, gana una prop que cuelga y no lee.
+
+`contextmenu` **no** está en esa lista de tres, así que el botón derecho sí puede ir por prop de JSX.
+No es simetría: es que uno de los dos gestos es de scroll y el otro no.
+
+**D10 — `Ctrl` en `keydown` se dispara con cada atajo del navegador, así que los modificadores actúan al
+soltar.**
+`Ctrl`+C, `Ctrl`+V, `Ctrl`+R, `Ctrl`+Shift+I: **todos** empiezan con un `keydown` de `Control`. Con la
+tabla atada al `keydown`, copiar un texto da vuelta la reflexión sin que nadie lo pida y sin que se vea,
+porque lo que cambia es el `#N` del fantasma. Lo mismo con `Shift` y cualquier mayúscula fuera de un
+`<input>`. No es el caso raro que cubre la fila de Riesgos —apretar la tecla sin querer— es el uso
+normal de un navegador.
+
+Los dos modificadores pasan entonces a actuar en **`keyup`**, y solo si el tap fue **limpio**: se
+ensucia si mientras la tecla estaba abajo llegó **otra tecla o la rueda**. Con eso `Ctrl`+C no refleja,
+`Ctrl`+rueda hace zoom y no refleja, y un `Ctrl` solo sigue reflejando.
+
+El mouse **no** ensucia el tap, y es a propósito: en Mac `Ctrl`+click es el click derecho (D2), y si el
+`mousedown` ensuciara el tap el `keyup` no haría nada, el `contextmenu` estaría vetado por su guarda de
+`ctrlKey` y volveríamos al neto cero que D2 existe para evitar. Con esta regla, el `Ctrl`+click de Mac
+alterna **exactamente una vez**, y la que la alterna es el `keyup`.
+
 ## Criterios de Aceptación
 
 - **AC1** — La rueda sobre el tablero rota: abajo `+90°`, arriba `−90°`, con vuelta cíclica en los dos
   sentidos (`3 → 0` y `0 → 3`). El panel refleja el cambio, porque es el mismo estado.
 - **AC2** — La rueda sobre el tablero **no scrollea la página** (D1), y la rueda **fuera** del tablero
-  scrollea normalmente.
-- **AC3** — `Shift` rota `+90°` **una vez por pulsación**: mantenerla apretada no acumula rotaciones
-  (D3), con test sobre la guarda de `e.repeat`.
+  scrollea normalmente. Es el AC que el `onWheel` de JSX no puede cumplir (D9): se verifica en el
+  navegador y con la consola limpia, porque un `preventDefault` sobre un listener pasivo **avisa por
+  consola en vez de fallar**.
+- **AC3** — `Shift` rota `+90°` **una vez por tap**: mantenerla apretada no acumula rotaciones, y la
+  rotación llega al soltar (D10). Con test sobre las dos guardas: `keydown` no produce acción, y un
+  `keyup` con el tap sucio tampoco.
 - **AC4** — El botón derecho sobre el tablero alterna la reflexión y **no abre el menú contextual**.
-- **AC5** — `Ctrl` alterna la reflexión, con la misma guarda de repetición que AC3.
+- **AC5** — `Ctrl` alterna la reflexión con la misma regla de tap que AC3, y **`Ctrl`+C, `Ctrl`+R y
+  `Ctrl`+rueda no la alteran** (D10), con test sobre el tap sucio.
 - **AC6** — **`Ctrl`+click sobre el tablero alterna la reflexión exactamente una vez** (D2), y no cero.
   Es el AC que no se puede verificar a ojo desde Windows, que es donde se desarrolla: va con test sobre
-  el handler, disparando un `contextmenu` con `ctrlKey: true` y comprobando que no lo cuenta.
+  el handler, disparando un `contextmenu` con `ctrlKey: true` y comprobando que no lo cuenta. Con D10 el
+  uno lo pone el `keyup`, así que la otra mitad del AC es que **el mouse no ensucie el tap**: sin eso el
+  gesto vuelve a valer cero en Mac, que es el bug que D2 existe para matar.
 - **AC7** — La barra espaciadora alterna el transporte desde cualquier lugar de la página, **sin
   scrollear**, y **una sola vez** con el botón de Play enfocado (D4).
 - **AC8** — Con el foco sobre `Reset` o sobre un botón de pieza, la barra activa **ese** botón y no el
@@ -134,15 +187,23 @@ spec de entrada terminara tocando el dominio.
 - **AC9** — El estado del transporte lo sigue diciendo el motor y no el gesto: el atajo pasa por el
   mismo `togglePlay` que ya hace `setPlaying(clockRunning())`, así que con Web Audio caído la barra no
   miente. Es la regla de `.claude/rules/audio.md`, y este spec no abre una segunda puerta.
-- **AC10** — Los listeners **se desuscriben al desmontar**, verificado bajo StrictMode: montar y
-  desmontar dos veces no deja dos handlers atendiendo la misma tecla.
-- **AC11** — `Board.tsx` sigue sin estado y sin efectos: los dos gestos del tablero llegan por props
-  (D7).
+- **AC10** — `[M]` Los listeners **se desuscriben al desmontar**. No hay forma de testearlo —el repo no
+  monta componentes y no tiene jsdom (`research.md` §7)—, así que se verifica en el navegador y con un
+  método concreto: con `pnpm dev`, que corre bajo StrictMode y monta dos veces,
+  `getEventListeners(window).keydown.length` en la consola de Chrome tiene que dar **1**, y lo mismo
+  `keyup`. Sin el `removeEventListener` del retorno del efecto da 2, que es exactamente el bug.
+- **AC11** — `Board.tsx` sigue **sin estado y sin efectos**: el botón derecho llega como handler por
+  prop y la rueda como `boardRef`, que el componente cuelga de su contenedor sin leer (D7, D9).
 - **AC12** — `pnpm verify` en verde.
 - **AC13** — `[M]` A mano en el navegador: rotar con la rueda mientras el transporte corre no corta el
   sonido ni reordena nada — la orientación es de la pieza **por colocar**, no de las colocadas.
 - **AC14** — La documentación dice cómo se toca: `docs/guides/quickstart.md` y el `<footer>` de
-  `App.tsx`, que hoy explica el modelo y no menciona ningún gesto.
+  `App.tsx`, que hoy explica el modelo y no menciona ningún gesto. Y la que este spec **falsifica**
+  también se actualiza: `App.tsx` pasa de cuatro efectos a **seis** —el del teclado y el de la rueda— y
+  hay tres archivos que dicen "los cuatro efectos" en presente: `CLAUDE.md:73`, `.claude/rules/ui.md:9`
+  y `docs/architecture/overview.md:22` y `:67` (`research.md` §11).
+- **AC15** — `Ctrl`+rueda sobre el tablero **hace el zoom del navegador** y no rota (D1): el handler se
+  saltea el evento entero, `preventDefault` incluido.
 
 ## Fuera de Alcance
 
@@ -166,3 +227,5 @@ spec de entrada terminara tocando el dominio.
 | La barra espaciadora dispara dos veces con el botón enfocado (D4). | La regla del `target` interactivo, con AC7 y AC8. |
 | `Shift` y `Ctrl` como teclas sueltas son atajos poco convencionales, y alguien que navegue con el teclado los aprieta sin querer. | Son los que pidió el pedido, y las dos acciones son **reversibles y baratas**: rotar de más se arregla rotando, reflejar de más se arregla reflejando. Ninguna de las dos toca el tablero ni lo que suena. |
 | Cinco listeners nuevos y ningún test de UI en el repo. | Los handlers se extraen como puras que reciben el evento y devuelven la acción, así se testean en `environment: 'node'` sin jsdom. Es el mismo movimiento con el que `cell-text.ts` salió de `Board.tsx` en el 012. |
+| El `onWheel` de JSX no frena el scroll, porque React monta `wheel` pasivo (D9). | Está medido sobre el fuente instalado (`research.md` §10), no supuesto: la rueda va por `addEventListener` no pasivo desde el efecto de `App.tsx`, con el nodo por `ref`. |
+| El cableado de los listeners es la mitad del spec y **ninguna pura lo cubre**: las puras deciden bien y `App.tsx` puede pasarles mal el `targetEsControl`, el tipo de evento o el tap. | Es lo que dejan `[M]` AC2, AC4, AC7/AC8, AC10 y AC13. La deuda de fondo —no hay tests de componentes— es de `specs/deuda.md` y este spec no la salda; sí la hace más visible, porque es el primer spec cuyo riesgo vive entero en el cableado. |

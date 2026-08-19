@@ -154,13 +154,58 @@ trabajo de un spec de entrada.
 
 | Archivo | Qué |
 |---|---|
-| `src/App.tsx` | El efecto con los tres listeners de ventana, los dos handlers del tablero, y pasarlos por props |
-| `src/components/Board.tsx` | Dos props nuevas (`onWheel`, `onContextMenu`) sobre el `div.relative.overflow-x-auto` |
+| `src/App.tsx` | Los efectos de entrada (teclado sobre `window`, rueda sobre el nodo del tablero), los handlers y el `ref` |
+| `src/components/Board.tsx` | Dos props nuevas: `onContextMenu` y `boardRef`, las dos sobre el `div.relative.overflow-x-auto` |
 | `src/components/input.ts` *(nuevo)* | Las puras de cada gesto (§7) |
 | `src/components/__tests__/input.test.ts` *(nuevo)* | AC1, AC3, AC5, AC6, AC7, AC8 |
-| `src/components/types/input.types.ts` *(nuevo)* | El tipo de la acción que devuelven las puras |
+| `src/components/constants/input.constants.ts` *(nuevo)* | El const-object `ACCION` — los módulos no declaran constantes, y el precedente es `MARCA` en `route.constants.ts` |
+| `src/components/types/input.types.ts` *(nuevo)* | La union derivada de `ACCION`, igual que `MarcaKind` en `route.types.ts` |
 | `docs/guides/quickstart.md` | La tabla de gestos |
-| `.claude/rules/ui.md` | Dónde vive un listener global y por qué (§1: no hay precedente) |
+| `.claude/rules/ui.md` | Dónde vive un listener global y por qué (§1: no hay precedente) — y el conteo de efectos (§11) |
+| `CLAUDE.md`, `docs/architecture/overview.md` | El conteo de efectos de `App.tsx` (§11) |
 
 **No se toca** `domain/`, `audio/`, `mcp-server/` ni ninguna constante de audio: este spec no puede
 cambiar una nota, y que la lista de archivos lo muestre es parte de la verificación.
+
+## 10. React monta `wheel` PASIVO, y eso decide el paso 3
+
+El plan escrito antes de este review decía «React monta `onWheel` como no pasivo sobre el elemento, así
+que la prop alcanza». Es falso, y no hace falta el navegador para verlo: está en el fuente de la versión
+instalada (`react-dom` 19.1.1). React registra sus listeners en el **contenedor raíz**, no en el
+elemento, y a tres nombres los registra pasivos:
+
+```js
+// node_modules/react-dom/cjs/react-dom-client.development.js:16503
+!passiveBrowserEventsSupported ||
+  ("touchstart" !== domEventName &&
+    "touchmove"  !== domEventName &&
+    "wheel"      !== domEventName) ||
+  (listenerWrapper = !0);          // → addEventListener(..., { passive: true })
+```
+
+Adentro de un listener pasivo `preventDefault()` no hace nada y el navegador lo avisa por consola. O
+sea que un `onWheel` de JSX **rota pero no frena el scroll**: AC1 en verde y AC2 en rojo, con la
+apariencia de que anda.
+
+`contextmenu` no está en los tres, así que el botón derecho sí puede ir por prop de JSX.
+
+Consecuencia para el plan: la rueda va por `addEventListener('wheel', h, { passive: false })` desde un
+efecto de `App.tsx`, con el nodo por `ref`. El `ref` **se crea en `App.tsx`** y viaja a `Board` como una
+prop más: así el componente no gana ni estado ni efectos (AC11), que era el motivo por el que la rueda
+iba a ir por prop.
+
+## 11. Tres archivos dicen "los cuatro efectos" en presente
+
+`App.tsx` tiene hoy cuatro `useEffect` (líneas 59, 60, 148 y 172) y este spec agrega **dos**: el del
+teclado sobre `window` y el de la rueda sobre el nodo del tablero, que van separados porque no comparten
+ni el target ni las dependencias. Son seis. Lo afirman en presente:
+
+```
+CLAUDE.md:73                    "el shell: estado, derivados, handlers, los cuatro efectos"
+.claude/rules/ui.md:9           idem
+docs/architecture/overview.md:22 y :67   idem, una de las dos adentro del diagrama ASCII
+```
+
+Acá los specs son ADR y no se reescriben, pero `docs/`, `CLAUDE.md` y `.claude/rules/` sí se mantienen
+al día — hay precedente en los commits `d936597` y `eb154a0`. Entra al alcance como tarea de
+documentación (AC14).
