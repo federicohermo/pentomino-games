@@ -41,13 +41,26 @@ casualidad medida, está garantizado porque **5 es primo** y un corrimiento cíc
 elementos tiene puntos fijos sólo si `gcd(k, n) > 1`. Escrito así, el test sigue significando algo si
 alguien cambia `NOTES_PER_PIECE`.
 
-`checkNotes` de `invariants.ts` pasa a recorrer los dos regímenes o declara por qué no (§7, AC12).
+`checkNotes` de `invariants.ts` pasa a recorrer los dos regímenes, **partiendo su chequeo de orden**:
+el `ns[i] > ns[i-1]` de `invariants.ts:220-224` es una propiedad de `escala` y no del modelo —medido,
+falla en 36 de las 48 de `orden`—, así que extenderlo entero pondría `check_invariants` en rojo por
+diseño. En `orden` lo reemplaza «es una permutación cíclica del arpegio de rotación 0», que implica lo
+mismo y ata además el corrimiento (§7, AC12).
 
 ## Paso 3 — El interruptor y las tools
 
-`App.tsx`: el estado, con default `escala` (AC11), y pasarlo a las tres llamadas. Como las notas nunca
-se guardan, cambiarlo re-deriva el tablero entero solo (D3, AC7) y entra en el ciclo siguiente por D5
-del 009 — no hay nada que hacer para eso, pero sí hay que **verificarlo**.
+`App.tsx`: el estado, con default `escala` (AC11), y pasarlo a `buildSequence` (`:74`), a
+`arpeggioFor` (`:81`) y a la proyección de desmontaje (`:174`). **`cellTextFor` no se llama desde
+`App.tsx`**: lo llama `Board.tsx` dos veces (`:163`, `:164`), así que el régimen baja como **prop**.
+
+Que las notas no se guarden hace que cambiar el régimen re-derive el tablero solo (D3, AC7) — **pero
+sólo si el régimen entra en las tres cachés de derivación** (AC15): las dep arrays de los dos `useMemo`
+y, sobre todo, la clave del `Map` de módulo de `cell-text.ts:9`, que no lo mira ningún linter y
+sobrevive al render. Sin eso, el audio cambia y las celdas siguen mostrando las notas viejas.
+
+Y `noteAtCell` (`domain/sequence.ts:115`, AC16) es la tercera firma pública que cambia: de ella sale la
+altura del click de una celda **cruzada**. `tsc` obliga a tocar la línea; propagar es la respuesta, fijar
+un régimen ahí es el error.
 
 `PiecePalette.tsx`: el interruptor en la fila de `Rotación`, leyéndose como una oración (D4, AC10). El
 ancho se mide contra la tarjeta que dejó el 016, que ya la llenó de miniaturas.
@@ -56,12 +69,20 @@ MCP: `describe_piece` y `simulate_board` aceptan el régimen **y lo reportan** (
 cortesía: en 36 de 48 casos la misma pregunta tiene dos respuestas, y una tool que contesta cinco notas
 sin decir bajo qué régimen es ambigua.
 
+Y **`SCALE_LABEL`** (`describePiece.ts:31-36`), que es lo que ningún gate atrapa: un array hardcodeado
+indexado por rotación cuyas cuatro entradas son falsas bajo `orden`. Su propio docblock lo declara uno
+de los dos supuestos del server que pueden desincronizarse **sin que `tsc` diga nada**.
+
 ## Paso 4 — Documentación y la escucha
 
-`docs/architecture/modelo-musical.md` es el que más cambia: su tabla de derivaciones dice «rotación →
-fórmula de escala» como si fuera la única. `CLAUDE.md` lo repite en dos lugares. `.claude/rules/domain.md`
-también. Y el docblock de `notesForRotation`, que hoy declara ese mapeo como *la* decisión de diseño del
-instrumento — pasa a ser una de dos, con la otra al lado.
+Son **seis** lugares y están enumerados con su línea en AC14. `docs/architecture/modelo-musical.md` es
+el que más cambia y lo dice en **tres** puntos, no en uno: la fila `:14`, el «rotar elige *qué* notas,
+reflejar elige *en qué* orden» de `:169` —que en `orden` es al revés— y el `:252`. Después
+`docs/README.md:11`, `CLAUDE.md:152` y `.claude/rules/domain.md:36`.
+
+Y en `music.ts`, **los dos docblocks**: la frase «*la* decisión de diseño del instrumento» está en el de
+**módulo** (`:9-14`), no en el de `notesForRotation` (`:22-31`, que lista el mapeo rotación→fórmula y el
+`octShift`). Los dos pasan a decir una de dos, con la otra al lado.
 
 Y después **AC13, que es el punto del spec**: el mismo tablero en los dos regímenes, alternando en
 vivo. La pregunta no es cuál suena mejor sino **si los dos merecen quedarse**, que es lo que el pedido
@@ -77,6 +98,8 @@ dijo que iba a decidir después.
 | AC7 | `[M]` navegador: alternar el régimen con el transporte corriendo |
 | AC9 | Test en `mcp-server`: la misma pieza con los dos regímenes da respuestas distintas y **cada una dice cuál es** |
 | AC10, AC11 | Por lectura y medición en el navegador |
+| AC15 | Test: `cellTextFor` con la misma pieza y los dos regímenes devuelve notas distintas — es lo que el memo rompería, y hoy `cell-text.test.ts:80` ya ejercita el memo con `toBe` |
+| AC16 | Test: `noteAtCell` sobre una pieza en `orden` devuelve la nota que el tablero pinta en esa celda, no la de `escala` |
 | AC12 | `pnpm verify` + `check_invariants` en proceso fresco |
 | AC13, AC14 | `[M]` y lectura |
 

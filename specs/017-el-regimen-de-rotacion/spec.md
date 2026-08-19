@@ -116,8 +116,11 @@ pero tiene que estar escrita, porque es justo lo que se va a escuchar.
 
 **D6 — Medido y no previsto: en `orden` el arpegio deja de ser monótono ascendente, y el registro se
 angosta siete semitonos.**
-Los cuatro arpegios de `escala` suben siempre, con saltos de 2 o 3 semitonos. Correr el arpegio
-cíclicamente mete **exactamente un salto grande**: la nota de arriba vuelve abajo.
+Los cuatro arpegios de `escala` suben siempre, con pasos de **1, 2 o 3** semitonos —el 1 lo aporta
+`PENT_BLUES5`, que es `[0,3,5,6,7]` y tiene dos—. Correr el arpegio cíclicamente mete **exactamente un
+salto grande, y siempre el mismo**: la nota de arriba vuelve abajo, **9 semitonos exactos** en las 36
+combinaciones que se mueven. No es «hasta 9»: el techo de `PENT_MAJOR` está a 9 de la tónica, así que
+el descenso es siempre esa distancia.
 
 | | salto máximo dentro del arpegio (promedio / máx) | registro del instrumento |
 |---|---|---|
@@ -169,19 +172,55 @@ este research.
   linter de dirección de dependencia sigue en verde.
 - **AC9** — El MCP server acepta el régimen en `describe_piece` y `simulate_board`, y lo **reporta** en
   la respuesta: una tool que contesta un arpegio sin decir bajo qué régimen es una tool que miente la
-  mitad de las veces.
+  mitad de las veces. Incluye **`SCALE_LABEL`** (`mcp-server/src/tools/describePiece.ts:31-36`), un
+  array hardcodeado indexado por rotación que bajo `orden` es falso en sus cuatro entradas: la fórmula
+  es siempre la pentatónica mayor y lo que la rotación mueve es el arranque. Su propio docblock lo
+  declara «uno de los DOS supuestos del server sobre el dominio que pueden quedar desincronizados
+  **sin que `tsc` diga nada**», así que ningún gate lo atrapa. Reportar el régimen y seguir diciendo
+  «pentatónica menor (rotación 90°)» es peor que no reportarlo.
 - **AC10** — El control está en la fila de `Rotación` y se lee como una oración (D4), con la etiqueta
   midiendo contra el ancho de la tarjeta que dejó el 016.
 - **AC11** — El default es **`escala`**: abrir la app suena como hoy.
 - **AC12** — `pnpm verify` en verde y `check_invariants` en proceso fresco. `checkNotes` recorre 48
-  combinaciones y pasa a tener que recorrer 96 —las 48 de cada régimen— o declarar por qué no.
+  combinaciones y pasa a recorrer 96 —las 48 de cada régimen—, **con el chequeo de orden partido por
+  régimen**: hoy exige que cada nota supere a la anterior (`invariants.ts:220-224`), y eso es una
+  propiedad de `escala`, no del modelo. Medido: en `orden` **36 de 48** combinaciones no son
+  ascendentes estrictas, así que extenderlo tal cual pone la tool en rojo — y esta misma AC la pide en
+  verde. En `orden` el chequeo equivalente, y más fuerte, es **«es una permutación cíclica del arpegio
+  de rotación 0»**: cubre lo mismo que cubría el ascendente —ninguna celda sin nota, ninguna repetida—
+  y además ata el corrimiento. Lo que vale en los dos regímenes —`length === NOTES_PER_PIECE` y sin
+  repetidas— se queda compartido.
 - **AC13** — `[M]` **A oído, y es el punto del spec**: el mismo tablero en los dos regímenes,
   alternando en vivo. La pregunta no es cuál suena mejor sino **si los dos merecen quedarse**.
-- **AC14** — La documentación deja de afirmar una sola regla:
-  `docs/architecture/modelo-musical.md` (la fila «rotación → escala»), `CLAUDE.md` (la tabla de
-  documentación y la descripción del instrumento), `.claude/rules/domain.md` y el docblock de
-  `notesForRotation`, que hoy dice que el mapeo rotación→fórmula *es* la decisión de diseño del
-  instrumento.
+- **AC14** — La documentación deja de afirmar una sola regla. Son **seis** lugares, verificados uno
+  por uno:
+  - `docs/architecture/modelo-musical.md:14` — la fila «Rotación | La fórmula de escala».
+  - `docs/architecture/modelo-musical.md:169` — «rotar elige *qué* notas, reflejar elige *en qué
+    orden*», que en `orden` es al revés.
+  - `docs/architecture/modelo-musical.md:252` — «la rotación cambia qué notas, la forma cambia dónde».
+  - `docs/README.md:11` — «rotación → escala», en el índice.
+  - `CLAUDE.md:152` — la fila del modelo musical en la tabla de documentación.
+  - `.claude/rules/domain.md:36` — «Rotación | La fórmula de escala (mayor → menor → blues → mayor +7)».
+
+  Y en `src/domain/music.ts`, **los dos docblocks**: la frase «que la rotación elija la fórmula es la
+  decisión de diseño del instrumento» está en el docblock **de módulo** (`music.ts:9-14`), no en el de
+  `notesForRotation` (`music.ts:22-31`, que es el que lista «0° → pentatónica mayor · 90° → menor …» y
+  la nota del `octShift`). Tocar uno solo deja el otro afirmándolo. Hay precedente de barridas así:
+  `d936597`, once archivos, y `eb154a0`, cinco.
+
+- **AC15** — **Las tres cachés de derivación llevan el régimen**, o AC7 queda verde en el audio y
+  falso en la pantalla. Son el `Map` de módulo de `cell-text.ts` (`cell-text.ts:9`, clave hoy
+  `${piece}${rotation}${mirror}`) y los dos `useMemo` de `App.tsx` (`:74` `buildSequence`, `:81`
+  `arpeggioFor`). El `Map` **no lo mira ningún linter** y sobrevive al render: sin el régimen en la
+  clave, cambiarlo deja las celdas mostrando las notas del régimen anterior para siempre. Las dep
+  arrays sí las ve `react-hooks/exhaustive-deps`, pero `recommended-latest` la reporta como
+  **warning** y `pnpm lint` corre sin `--max-warnings 0`, así que tampoco frena el gate. Es la misma
+  razón por la que la reflexión ya está en esa clave, escrita en el docblock de `cellTextFor`.
+- **AC16** — **La nota de una celda cruzada sale del mismo régimen que la pieza que la ocupa.**
+  `noteAtCell` (`domain/sequence.ts:115`) es la **tercera** firma pública del dominio que cambia —no
+  dos—, y de ella salen el `Click.note` de `clickEn` (`sequence.ts:131`) y el `crossed` que reporta
+  `simulate_board`. Su docblock existe justamente para prevenir esto: «si las dos se corrieran, la
+  celda diría una altura y pisarla sonaría otra».
 
 ## Fuera de Alcance
 
@@ -203,6 +242,6 @@ este research.
 | **El régimen `orden` mete un salto de hasta 9 semitonos donde antes había 3** (D6). No estaba previsto: salió midiendo. | Está escrito con su número y con la variante que lo evita, a una línea de distancia. Y es justo lo que AC13 va a escuchar. |
 | El registro se angosta 7 semitonos en `orden` (D6). | Consecuencia directa de sacar la transposición `+7`. Declarada; si molesta, la fórmula fija es lo único que habría que revisar — pero eso rompe D2. |
 | Cambiar firmas del dominio rompe el MCP server. | Es deseable y está previsto: `pnpm verify` typechequea cruzando el borde. AC9 obliga además a que las tools **reporten** el régimen, no sólo que compilen. |
-| `checkNotes` de `invariants.ts` recorre 48 combinaciones y quedaría cubriendo la mitad del espacio. | AC12: o pasa a 96 o declara por qué no. Un invariante que se queda mirando medio modelo es peor que no tenerlo. |
+| `checkNotes` de `invariants.ts` recorre 48 combinaciones y quedaría cubriendo la mitad del espacio. **Y su chequeo de ascendente estricto es propio de `escala`**: extenderlo tal cual pone en rojo 36 de las 48 de `orden`. | AC12, que parte el chequeo por régimen en vez de extenderlo entero. Un invariante que mira medio modelo es peor que no tenerlo; uno que falla por diseño es peor todavía, porque se termina apagando. |
 | El interruptor es un control más en una tarjeta que el 016 ya llenó de miniaturas. | AC10 lo mide contra el ancho que el 016 dejó, y va en la fila de `Rotación` — no agrega una fila, completa una. |
 | Alguien lee «dificultad» en algún lado y el instrumento empieza a tener niveles. | D4, y la palabra no aparece en ningún archivo de este spec salvo para descartarla. |
