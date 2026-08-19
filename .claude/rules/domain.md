@@ -36,12 +36,21 @@ en pantalla. No está mal — es la clase de cosa que alguien "arregla" por erro
 | Rotación | La fórmula de escala (mayor → menor → blues → mayor +7) |
 | Reflexión | El orden de las notas (retrógrado) y, con él, la puerta de entrada/salida del recorrido (`gates`, spec 010) |
 | La posición en el tablero | El orden de reproducción y el silencio entre piezas (`buildSequence`, spec 009) |
-| **La forma** | **Qué celda tiene qué nota** (`degreeByCellIndex`, spec 007) |
+| **La forma** | **El camino que recorre el arpegio, y con él qué celda tiene qué nota** (`degreeByCellIndex`, specs 007 y 012) |
 
 `degreeByCellIndex` se llama **sobre `SHAPES[pieza]` sin transformar** y el grado viaja por índice.
-Correrla sobre una forma ya rotada compila igual y devuelve otro mapeo en **75 de las 96**
-orientaciones, porque rotar corre el origen del ángulo. La rotación elige *qué* notas; la forma,
-*dónde* está cada una.
+Correrla sobre una forma ya rotada compila igual y devuelve otro mapeo en **53 de las 96**
+orientaciones, porque rotar corre el origen del ángulo y el ángulo es lo que desempata. La rotación
+elige *qué* notas; la forma, *dónde* está cada una.
+
+**Desde el spec 012 el arpegio RECORRE la pieza**: de una nota a la siguiente se llega moviéndose
+arriba, abajo, izquierda o derecha. El orden lo da `pathThroughCells` (`domain/transform.ts`, Held-Karp
+de camino abierto) y el orden angular del 007 —hoy `angularRank`— quedó como desempate: elige por qué
+punta se entra. Cuatro piezas no admiten recorrido completo (`F`, `T`, `Y`, `X`: su grafo de celdas es
+un árbol con un nodo de 3 o 4 vecinos) y en ellas el salto va **al principio**. Dos consecuencias que
+muerden a otras capas: el grado 0 dejó de ser el centro geométrico de `I` y `X` —es la puerta de
+entrada—, y con eso la `X` dejó de tener una puerta rodeada por sus propios brazos, que es la propiedad
+sobre la que el 011 apoyaba su caso estructural del cruce.
 
 **El tablero se repliega sobre sí mismo**: `(0,0)` y `(9,5)` son adyacentes (una costura extra sobre la
 grilla, spec 009), y el orden de reproducción sale de un circuito exacto (Held-Karp) sobre esas

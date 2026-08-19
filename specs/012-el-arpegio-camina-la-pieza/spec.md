@@ -133,6 +133,22 @@ alguna de sus dos puertas**, **el 56 % de los tableros cambia el orden de visita
 geometría— pero **cambia lo que suena en casi todos los tableros**, así que va en su propio commit y lo
 declara el PR.
 
+**D9 — La `X` pierde su puerta rodeada, y eso le saca el caso estructural al 011.**
+Anotado **durante la implementación**, no previsto al escribir el spec. El 011 se apoyaba en una
+propiedad de la `X`: su celda central estaba rodeada por sus cuatro brazos y era **siempre** una de sus
+dos puertas —porque el 007 le daba el grado 0 a la celda del centroide—, así que todo tramo que entrara
+a la `X` cruzaba una celda ocupada *por mucho que subiera `CROSS_COST`*. Sobre eso eligió su caso
+testigo y sus tres tests del cruce.
+
+Con el camino, la `X` entra por un brazo y sale por el opuesto, y **esa propiedad desaparece**: su
+tablero testigo —`X`(4,2) + `F`(3,4) + `I`(5,0)— pasa a tener **cero cruces**, y los tres tests que se
+apoyaban en él se habrían quedado verdes sin ejercer nada. No es una regresión del 011 —el cruce sigue
+existiendo, medido en el **32 % de los tableros de 3 piezas**— sino que vuelve a ser lo que su propio D1
+dice que es: **un costo, no una imposibilidad**.
+
+Los tres tests se mudan a un tablero donde cruzar sigue siendo lo más barato, y **los tres al mismo**, a
+propósito: si algún día deja de cruzar, fallan juntos en vez de quedar uno verde afirmando lo contrario.
+
 ## Criterios de Aceptación
 
 - **AC1** — El caso testigo, con test: la `U` recorre sus cinco celdas sin saltar, y en la colocación
@@ -166,6 +182,12 @@ declara el PR.
 - **AC12** — **A ojo con la cabeza lectora del 010** `[M]`: la cabeza recorre cada pieza celda por celda
   sin brincos, y donde brinca es una de las cuatro que no pueden evitarlo. Es la verificación que este
   spec no habría podido hacer antes de existir el 010 — y es la que lo hizo aparecer.
+- **AC14** — **Los testigos del cruce del spec 011 siguen ejerciendo el cruce** (D9). El tablero de la
+  `X` deja de cruzar, así que los tres tests que lo usaban —`sequence.test.ts`, `route-source.test.ts` y
+  `tools.test.ts` del MCP— se mudan al mismo tablero nuevo, con una guarda que cuenta los cruces exactos
+  para que mover `CROSS_COST` los ponga en rojo en vez de vaciarlos. Y lo mismo con los **tres tableros
+  que ejercen empates** del circuito: un empate depende del modelo, y heredarlo deja el test verde sin
+  ejercer nada.
 - **AC13** — La documentación que describe el modelo viejo queda al día:
   `docs/architecture/modelo-musical.md` (la tabla de derivaciones y la sección «forma → qué celda tiene
   qué nota»), `CLAUDE.md` (la fila del modelo musical) y `.claude/rules/domain.md`.
@@ -179,8 +201,11 @@ declara el PR.
   que en una pieza reflejada los saltos de D2 quedan al final.
 - **El recorrido entre piezas.** `routeBetween` y el circuito no se tocan; cambian de resultado porque
   cambian las puertas.
-- **El costo de pisar una pieza.** Es el spec 011, que sigue `Propuesto`. Son ortogonales: el 011 cambia
-  la matriz de costos, este cambia las puertas que la alimentan.
+- **El costo de pisar una pieza.** Es el spec 011, **ya mergeado** —`CROSS_COST = 5` está en el código;
+  su fila del log todavía dice `Propuesto` porque mover el estado es del autor—. Son ortogonales: el 011
+  cambia la matriz de costos, este cambia las puertas que la alimentan, y todas las mediciones de acá se
+  hicieron sobre el código **con** el 011 puesto. Lo que este spec sí toca del 011 son sus casos testigo,
+  por D9.
 - **Los colores y el layout de la celda.** El tablero ya muestra nota y grado por celda; muestra otros.
 
 ## Riesgos
@@ -191,4 +216,5 @@ declara el PR.
 | La lámina de referencia del 007 deja de valer, y con ella el argumento de por qué el desempate era por índice. | D7 y AC8: el test se recongela contra la tabla medida acá, con su docblock diciendo de dónde sale. El desempate angular sobrevive como criterio de dirección, no como reproductor de la lámina. |
 | `I` y `X` pierden «el centro se lleva la tónica», que el 007 eligió a conciencia. | D3: el grado 0 pasa a ser la puerta de entrada, que es la lectura que el 009/010 ya le daban. En la `I` la regla vieja es incompatible con el pedido. |
 | El algoritmo es exponencial en la cantidad de celdas. | Con `n = 5` son 160 estados y 4 µs. El docblock declara el dominio —una pieza— con el mismo argumento que `shortestCircuit` ya usa: `n` está acotado por las reglas del juego. |
+| La `X` deja de tener una puerta rodeada y tres tests del 011 se quedan sin ejercer el cruce (D9). | Los tres se mudan al mismo tablero, con guardas que cuentan cruces exactos (AC14). El cruce sigue ocurriendo en el 32 % de los tableros de 3 piezas. |
 | Cuatro piezas siguen saltando y alguien lo lee como un bug. | AC4 lo verifica contra fuerza bruta, y `research.md` §2 explica por qué es la forma y no el algoritmo: son las cuatro piezas cuyo grafo de celdas es un árbol con un nodo de grado ≥ 3. |

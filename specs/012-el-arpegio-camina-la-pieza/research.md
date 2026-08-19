@@ -224,3 +224,45 @@ El ciclo se **acorta**, que es la dirección esperable: las puertas de una pieza
 quedan en las dos puntas de ese camino, y eso suele dejarlas más lejos una de otra pero mejor orientadas
 respecto de las piezas vecinas. No es un objetivo del spec ni algo que haya que defender — es el número
 que salió, y sirve para descartar que el cambio alargue el ciclo.
+
+## 9. Lo que apareció implementando: la `X` deja de tener una puerta rodeada
+
+No estaba previsto al escribir el spec y cambia tres tests del 011, así que queda medido acá.
+
+El 011 eligió la `X` como **caso estructural** del cruce con este argumento, escrito en tres archivos:
+su celda central está rodeada por sus propios cuatro brazos y es **siempre** una de sus dos puertas, así
+que entrar a ella cruza una celda ocupada por mucho que suba `CROSS_COST`. La segunda mitad de esa frase
+era consecuencia de D1 del 007 —el grado 0 iba a la celda del centroide— y **el 012 la revierte**: la
+`X` entra por el brazo derecho y sale por el de arriba.
+
+Medido sobre su tablero testigo, `X`(4,2) + `F`(3,4) + `I`(5,0):
+
+| | con el mapeo del 007 | con el camino del 012 |
+|---|---|---|
+| clicks del ciclo | 11 | 10 |
+| de esos, cruces con altura | **2** | **0** |
+
+Los tres tests que se apoyaban en él —`domain/__tests__/sequence.test.ts`,
+`components/__tests__/route-source.test.ts` y `mcp-server/src/__tests__/tools.test.ts`— habrían quedado
+verdes sin ejercer nada, que es exactamente contra lo que sus guardas existían.
+
+**El cruce no desaparece**: sobre 300 tableros aleatorios de 3 piezas con `CROSS_COST = 5`, el **32,3 %**
+tiene al menos un cruce y el promedio es de **0,38 cruces por ciclo**. Lo que desaparece es el caso donde
+cruzar es *inevitable por la forma*, y con él la garantía de que un test escrito sobre la `X` no se pueda
+vaciar. El reemplazo —`X`(1,1) + `F`(3,2) + `N`(2,4), tres cruces sobre la `X` incluido su centro— cruza
+porque **rodear sale más caro**, que es lo que D1 del 011 dice que el modelo es, y su guarda cuenta los
+cruces exactos: si alguien mueve `CROSS_COST`, falla en rojo.
+
+## 10. Los tres tableros de empate que hubo que volver a buscar
+
+Misma clase de hallazgo: un tablero elegido para que **dos circuitos empaten** depende del modelo, y las
+puertas cambiaron. Los tres se buscaron de nuevo por fuerza bruta:
+
+| Test | Tablero viejo | Qué le pasó | Tablero nuevo |
+|---|---|---|---|
+| `ante dos circuitos de igual costo gana el de indices menores` | `F`(2,2) `I`(2,0) `L`(0,2), empataban a 24 y 11 pasos | dejó de empatar: 13 contra 20 | `F`(3,3) `Z` rot 90 (6,4) `Y` rot 180 (4,1) — los dos a 19 y 14 pasos |
+| `el ORDEN DE COLOCACION no cambia lo que suena` | `N V Z U F`, dos óptimos a 27 con 28 y 24 pasos | óptimo único (17) | `N X U I P`, dos óptimos a 32 con 21 y 25 pasos |
+| `con salto 1 no hay clicks` | `F`(1,1) + `P` rot 90 (3,1), 1 paso en los dos sentidos | 1 en un sentido y 6 en el otro | `L`(1,1) + `N` rot 90 (3,2) |
+
+El patrón vale para cualquier spec que mueva las puertas: **los tests que se apoyan en un empate son los
+que primero dejan de ejercer lo suyo, y lo hacen en verde.**

@@ -85,7 +85,9 @@ texto blanco **sin oscurecer ni un color de la lámina** — bajo 2.1 las dos co
 Una celda ocupada muestra **el nombre de su nota** como contenido principal (`C4`, `D#5`, …) y **el grado
 como número chico en la esquina inferior derecha**, con `#`. Son dos lecturas del mismo dato: la nota es
 lo que se oye, el grado es la posición dentro del arpegio y es lo que deja ver la forma —la celda de
-grado 0 es la tónica, y el recorrido 0→4 dibuja el orden angular alrededor del centroide.
+grado 0 es la tónica, y el recorrido 0→4 dibuja el camino con que el arpegio recorre la pieza: salvo en
+`F`, `T`, `Y` y `X` —las cuatro que no admiten recorrido completo—, cada número está pegado al
+anterior.
 
 **Cada celda es una baldosa redondeada, no un casillero.** Los 63 px son la pista; adentro va una ficha
 `rounded-lg` con 2 px de aire alrededor. Es el lenguaje de la lámina: una pieza colocada se lee como

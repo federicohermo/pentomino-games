@@ -77,10 +77,12 @@ casillas abiertas como próxima tarea.
   `Superado`, y con él se van `phaseFor`, sus tests, el campo `phase` de `Job` y la mitad de
   `simulate_board` que lo reporta.
 - **El 012 y el 011 son ortogonales, y los dos cambian el circuito.** El 011 cambia la **matriz de
-  costos** —cuánto cuesta ir de una puerta a otra—; el 012 cambia **cuáles son las puertas**. Ninguno
-  necesita al otro y se pueden implementar en cualquier orden, pero el segundo que se mergee va a
-  reordenar tableros que el primero ya había reordenado: los porcentajes de cada uno están medidos
-  contra `main`, no contra el otro, y no se suman.
+  costos** —cuánto cuesta ir de una puerta a otra—; el 012 cambia **cuáles son las puertas**. El 012 se
+  midió e implementó sobre el código **con el 011 puesto**, así que sus porcentajes ya lo incluyen.
+  Donde sí se tocan es en los **casos testigo**: el 012 le saca a la `X` la propiedad de tener una puerta
+  rodeada por sus propios brazos, que es sobre la que el 011 eligió su caso estructural del cruce
+  (`012/research.md` §9). El cruce sigue existiendo —32 % de los tableros de 3 piezas— pero deja de ser
+  inevitable por la forma.
 - **El 012 sale del mismo lugar que el 011: mirar la cabeza lectora del 010.** Es el tercer hallazgo de
   esa fuente. El 011 vio que el recorrido pisaba piezas sin costo; el 012, que adentro de la pieza el
   recorrido no camina sino que se teletransporta. Los dos son cosas que el modelo decía desde el 007 y
