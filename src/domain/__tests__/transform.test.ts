@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rotate90, normalize, rotateN, reflect, centroid, angleFromCentroid } from '../transform.ts';
+import { rotate90, normalize, rotateN, reflect, centroid, angleFromCentroid, pathThroughCells } from '../transform.ts';
 import { SHAPES } from '../constants/pieces.constants.ts';
 // El mismo numero que usa `degreeByCellIndex` para decidir "esta celda cae sobre el
 // centroide", y no una copia local: es la misma pregunta, y dos epsilon que tienen
@@ -220,5 +220,172 @@ describe('angleFromCentroid', () => {
     // Y sigue yendo al final del anillo, que es lo correcto: la celda esta apenas
     // al norte del este, o sea justo ANTES de cerrar la vuelta.
     expect(a).toBeGreaterThan(Math.PI);
+  });
+});
+
+/**
+ * Spec 012 — el camino que recorre una pieza.
+ *
+ * La referencia es una FUERZA BRUTA escrita aca y no la implementacion: enumera las
+ * `n!` permutaciones y aplica los cuatro criterios en orden. Contrastar Held-Karp
+ * contra si mismo no diria nada; contra esto si, porque son dos algoritmos distintos
+ * que tienen que coincidir en el mismo optimo.
+ */
+const manhattan = (a: Cell, b: Cell) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
+
+/** Se tocan: comparten un lado o una esquina. Es con lo que se decide, no con lo que se mide. */
+const seTocan = (a: Cell, b: Cell) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1])) === 1;
+
+/** Las distancias de un recorrido, paso por paso. Su largo es `orden.length - 1`. */
+const distancias = (cells: readonly Cell[], orden: readonly number[]) =>
+  orden.slice(1).map((k, i) => manhattan(cells[orden[i]], cells[k]));
+
+const lexTest = (a: readonly number[], b: readonly number[]) => {
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] - b[i];
+  return 0;
+};
+
+function permutaciones(xs: number[]): number[][] {
+  if (xs.length <= 1) return [xs];
+  const out: number[][] = [];
+  for (let i = 0; i < xs.length; i++) {
+    const resto = [...xs.slice(0, i), ...xs.slice(i + 1)];
+    for (const q of permutaciones(resto)) out.push([xs[i], ...q]);
+  }
+  return out;
+}
+
+/** El mismo contrato que `pathThroughCells`, resuelto por fuerza bruta. */
+function caminoPorFuerzaBruta(cells: readonly Cell[], tiebreak: readonly number[]): number[] {
+  const todos = permutaciones(cells.map((_, k) => k)).map(orden => {
+    const d = distancias(cells, orden);
+    // Los vecinos se cuentan con `seTocan` y la suma con Manhattan, a proposito: es lo
+    // que hace que la diagonal se tolere (cuenta como paso) sin preferirse (cuesta 2).
+    const vecinos = orden.slice(1).filter((k, i) => seTocan(cells[orden[i]], cells[k])).length;
+    return { orden, d, vecinos, suma: d.reduce((a, b) => a + b, 0) };
+  });
+  const maxVecinos = Math.max(...todos.map(t => t.vecinos));
+  const c1 = todos.filter(t => t.vecinos === maxVecinos);
+  const minSuma = Math.min(...c1.map(t => t.suma));
+  const c2 = c1.filter(t => t.suma === minSuma);
+  const dTop = [...c2].sort((x, y) => lexTest(y.d, x.d))[0].d;
+  const c3 = c2.filter(t => lexTest(t.d, dTop) === 0);
+  return [...c3].sort((x, y) => lexTest(x.orden.map(k => tiebreak[k]), y.orden.map(k => tiebreak[k])))[0].orden;
+}
+
+/** PRNG con semilla (mulberry32): las formas aleatorias tienen que ser reproducibles. */
+function conSemilla(seed: number) {
+  return () => {
+    seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Los desempates con los que se ejerce la funcion. Son sinteticos a proposito: el que
+ * usa la app es el orden angular, pero eso es una decision MUSICAL y esta capa no la
+ * conoce —por eso `tiebreak` entra por parametro—. Con la identidad y su inversa se
+ * cubren las dos direcciones posibles de cada camino, que es lo unico que el desempate
+ * puede cambiar.
+ */
+const porIndice = (cells: readonly Cell[]) => cells.map((_, k) => k);
+const alReves = (cells: readonly Cell[]) => cells.map((_, k) => cells.length - 1 - k);
+
+describe('pathThroughCells', () => {
+  it('AC2 — coincide con la fuerza bruta sobre las 12 piezas', () => {
+    for (const p of PIECES) {
+      for (const desempate of [porIndice, alReves]) {
+        const rank = desempate(SHAPES[p]);
+        expect(pathThroughCells(SHAPES[p], rank)).toEqual(caminoPorFuerzaBruta(SHAPES[p], rank));
+      }
+    }
+  });
+
+  it('AC2 — coincide con la fuerza bruta sobre 200 formas arbitrarias, incluidas las desconexas', () => {
+    // Formas arbitrarias a proposito: la funcion las acepta, y las desconexas son las
+    // que mas ejercen el criterio de "el salto mas corto" porque no hay vecinos.
+    const rnd = conSemilla(20260819);
+    for (let i = 0; i < 200; i++) {
+      const n = 4 + Math.floor(rnd() * 3);
+      const vistas = new Set<string>();
+      const cells: Cell[] = [];
+      while (cells.length < n) {
+        const c: Cell = [Math.floor(rnd() * 4), Math.floor(rnd() * 4)];
+        if (vistas.has(c.join())) continue;
+        vistas.add(c.join());
+        cells.push(c);
+      }
+      const rank = porIndice(cells);
+      expect(pathThroughCells(cells, rank)).toEqual(caminoPorFuerzaBruta(cells, rank));
+    }
+  });
+
+  it('devuelve una permutacion de 0..n-1', () => {
+    for (const p of PIECES) {
+      const orden = pathThroughCells(SHAPES[p], porIndice(SHAPES[p]));
+      expect([...orden].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
+    }
+  });
+
+  it('AC3 — las 12 piezas se recorren enteras: ningun paso pasa por encima de una celda', () => {
+    // La propiedad que compra tolerar la diagonal. Antes eran 8 de 12 y las otras
+    // cuatro pasaban POR ENCIMA de una celda propia que todavia no habia sonado.
+    for (const p of PIECES) {
+      const orden = pathThroughCells(SHAPES[p], porIndice(SHAPES[p]));
+      for (let i = 1; i < orden.length; i++) {
+        expect(seTocan(SHAPES[p][orden[i - 1]], SHAPES[p][orden[i]]), p).toBe(true);
+      }
+    }
+  });
+
+  it('AC4 — la diagonal se tolera pero no se prefiere: solo cuatro piezas la usan', () => {
+    // Un paso diagonal mide 2 en Manhattan, o sea el doble que uno recto, asi que el
+    // segundo criterio lo evita donde la forma permite ir en cruz. Las cuatro que la
+    // usan son las que no admiten recorrido ortogonal: tienen un nodo con 3 o 4 vecinos
+    // y su grafo es un arbol, y un arbol solo se recorre entero si es un camino. Los
+    // numeros no son una eleccion — los prueba la fuerza bruta de arriba.
+    const diagonalesEsperadas: Record<string, number> = {
+      F: 1, I: 0, L: 0, N: 0, P: 0, T: 1, U: 0, V: 0, W: 0, X: 2, Y: 1, Z: 0,
+    };
+    for (const p of PIECES) {
+      const d = distancias(SHAPES[p], pathThroughCells(SHAPES[p], porIndice(SHAPES[p])));
+      expect(d.filter(x => x > 1), p).toHaveLength(diagonalesEsperadas[p]);
+    }
+  });
+
+  it('el criterio del paso largo al principio sigue decidiendo: la Y', () => {
+    // Con la diagonal aceptada, el tercer criterio ya no separa "continuo" de
+    // "cortado" — todos los pasos llegan a una celda que se toca. Se queda porque es lo
+    // unico que separa las dos versiones de la `Y`, las dos con un solo paso diagonal y
+    // la misma suma: la elegida lo pone PRIMERO. Es la que trajo el pedido, dibujada a
+    // mano, y la unica evidencia que existe sobre ese criterio.
+    const d = distancias(SHAPES.Y, pathThroughCells(SHAPES.Y, porIndice(SHAPES.Y)));
+    expect(d).toEqual([2, 1, 1, 1]);
+  });
+
+  it('AC6 — el desempate decide, y decide siempre lo mismo', () => {
+    // `Y` y `X` son las que tienen empate de verdad: 8 y 24 recorridos igual de buenos
+    // sobreviven a los tres primeros criterios. Un test sobre una pieza de camino unico
+    // pasaria sin ejercer nada.
+    for (const p of ['Y', 'X'] as PieceKey[]) {
+      const rank = porIndice(SHAPES[p]);
+      const primero = pathThroughCells(SHAPES[p], rank);
+      for (let i = 0; i < 5; i++) expect(pathThroughCells(SHAPES[p], rank)).toEqual(primero);
+    }
+
+    // Y que el desempate REALMENTE decide: con el rango invertido, la `I` —cuyo camino
+    // es unico salvo por la direccion— se recorre al reves.
+    expect(pathThroughCells(SHAPES.I, porIndice(SHAPES.I))).toEqual([0, 1, 2, 3, 4]);
+    expect(pathThroughCells(SHAPES.I, alReves(SHAPES.I))).toEqual([4, 3, 2, 1, 0]);
+  });
+
+  it('casos borde: 0, 1 y 2 celdas', () => {
+    expect(pathThroughCells([], [])).toEqual([]);
+    expect(pathThroughCells([[3, 4]], [0])).toEqual([0]);
+    // Con dos celdas los dos ordenes son igual de buenos y decide el desempate solo.
+    expect(pathThroughCells([[0, 0], [5, 5]], [0, 1])).toEqual([0, 1]);
+    expect(pathThroughCells([[0, 0], [5, 5]], [1, 0])).toEqual([1, 0]);
   });
 });

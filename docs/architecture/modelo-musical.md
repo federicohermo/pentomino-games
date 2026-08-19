@@ -13,11 +13,11 @@ qué es un pentominó (ver [audio.md](./audio.md#el-recorrido-en-el-scheduler)).
 | **Qué pieza** | La tónica | `BASE_MAP` |
 | **Rotación** | La fórmula de escala | `notesForRotation` |
 | **Reflexión** | El orden de las notas, y con él la puerta de entrada y salida del recorrido | `ns.reverse()` — retrógrado; `gates` lee `cellsByPlayOrder` |
-| **La forma** | Qué celda tiene qué nota | `degreeByCellIndex` — orden angular |
+| **La forma** | Qué celda tiene qué nota, y en qué orden se recorren | `degreeByCellIndex` — el camino por la pieza |
 | **La posición en el tablero** | El orden de reproducción y el silencio entre piezas | `buildSequence` — circuito + `routeBetween` |
 
-La **forma** de la pieza decide **qué celda es dueña de cada grado** —el orden angular alrededor del
-centroide, ver [abajo](#forma--qué-celda-tiene-qué-nota)— pero no decide *cuándo* suena ninguna: el
+La **forma** de la pieza decide **qué celda es dueña de cada grado** —el arpegio la recorre celda a
+celda, ver [abajo](#forma--qué-celda-tiene-qué-nota)— pero no decide *cuándo* suena ninguna: el
 mapeo dice dónde está cada nota, no en qué momento. La **fila** (`y`) tampoco: octava, duración y
 velocity son los candidatos obvios, y van de a un eje por vez.
 
@@ -193,27 +193,43 @@ derecho lo verifican con un test. Historia completa en la nota de revisión del 
 ## Forma → qué celda tiene qué nota
 
 Cada celda de una pieza es **dueña de un grado de la escala**, y quién es dueña de cuál lo decide la
-forma. `degreeByCellIndex` (`domain/music.ts`, apoyada en `centroid` y `angleFromCentroid` de
-`domain/transform.ts`) recibe una forma y devuelve el grado **por índice de celda**:
+forma. Desde el [spec 012](../../specs/012-el-arpegio-camina-la-pieza/spec.md) el arpegio **recorre** la
+pieza: de una nota a la siguiente se llega a una celda que **se toca** con la anterior, preferentemente
+por un lado y si la forma no da, por una esquina.
+`degreeByCellIndex` (`domain/music.ts`) compone dos cosas —`pathThroughCells` de `domain/transform.ts`,
+que es geometría pura, y `angularRank`, que es el orden angular del 007 reducido a desempate— y devuelve
+el grado **por índice de celda**:
 
 ```
-centroide de la pieza → ángulo de cada celda alrededor del centroide → orden angular = grados 0..4
+camino que encadena la mayor cantidad de pasos a una celda que se toca → grados 0..4 en orden de visita
 ```
 
 Cuatro cosas que definen la regla, y por qué son así:
 
-- **La celda que cae sobre el centroide sale del anillo** y recibe el grado 0, la tónica; las otras
-  cuatro se reparten 1–4 por ángulo. Sin esa excepción `Math.atan2(0, 0)` devuelve `0` **en silencio** y
-  la mete en el anillo como si estuviera al este. Solo `I` y `X` tienen una celda así, y musicalmente el
-  centro de la figura es su raíz.
-- **A igual ángulo desempata el índice original menor**, escrito como tercer criterio del comparador y no
-  delegado a la estabilidad del `sort`. No es una convención neutral: por índice el algoritmo reproduce
-  la lámina de referencia en **12 de 12** piezas, y por radio en **10 de 12** (`F` e `I` se intercambian
-  dos notas cada una). El empate se ejerce en 3 piezas y decide algo audible en 2.
+- **Las 12 se recorren enteras, y cuatro pagan una diagonal.** `F`, `T`, `Y` y `X` tienen una celda con
+  3 o 4 vecinos, y su grafo de celdas es un árbol: un árbol solo admite recorrido **ortogonal** completo
+  si es un camino. En ellas se tolera un paso en diagonal, que al menos llega a una celda que se toca.
+  Medido sobre los 48 pasos: los que **pasaban por encima** de una celda que todavía no había sonado
+  bajaron de **4 a 0**, y los diagonales de 9 a 5. La tolerancia vale **solo adentro de la pieza**: el
+  recorrido entre piezas se sigue moviendo en cruz.
+- **El orden angular alrededor del centroide sigue vivo, como desempate.** Un camino y su inverso son
+  igual de buenos, así que hace falta algo que elija **por qué punta se entra**: eso hace `angularRank`,
+  y se ejerce en las 12 piezas. Conserva sus tres reglas —la celda parada sobre el centroide sale del
+  anillo, el sentido horario, y a igual ángulo gana el índice menor—; lo que perdió es decidir el orden.
+- **El grado 0 es la puerta de entrada, no el centro de la figura.** El 007 le daba la tónica a la celda
+  del centroide (`I` y `X`); el 012 lo revierte, porque en la `I` arrancar por el centro obliga a un
+  salto de 4 celdas que la forma no necesita. El grado 0 es por donde el recorrido **entra** a la pieza
+  (`gates`), que es la lectura que el instrumento le da de hecho desde que el tablero es un circuito.
+  Y **cuál de las dos puntas es la entrada lo decide la forma, no el tablero**: se midió la alternativa
+  —entrar por la punta más cercana a la pieza anterior, que acortaría el ciclo un 10,4 %— y se descartó,
+  porque haría que mover una pieza cambiara el arpegio de sus vecinas. Una pieza suena igual esté donde
+  esté.
 - **Se calcula sobre la forma canónica y viaja por índice.** Rotar **no** reordena el mapeo: se corre una
   vez sobre `SHAPES[pieza]` sin transformar, apoyado en el invariante de orden del array. Rotar ya cambia
   la escala; si además reordenara el mapeo espacial, dos cosas ortogonales cambiarían a la vez. Queda:
-  **la rotación cambia qué notas, la forma cambia dónde.**
+  **la rotación cambia qué notas, la forma cambia dónde.** El camino en sí es invariante —rotar y
+  reflejar preservan la adyacencia, verificado sobre las 96 orientaciones— pero el desempate angular no,
+  y por eso la regla sigue siendo la forma canónica.
 - **La reflexión no cambia qué nota muestra una celda.** El retrógrado es del *orden de reproducción*: la
   celda de grado `g` muestra siempre `notesForRotation(...)[g]`, o sea la nota `g` del arpegio
   **ascendente**. Ojo con la fuente de datos, porque la lectura contraria suena igual y pinta otro
@@ -221,8 +237,9 @@ Cuatro cosas que definen la regla, y por qué son así:
   `notes` de `describe_piece` vienen **ya invertidos**.
 
 El mapeo completo de las 12 piezas —grado por índice y nota por celda— está medido en
-[research.md §2](../../specs/007-nota-por-celda-y-lenguaje-visual/research.md#2-el-algoritmo-angular-reproduce-la-referencia--con-desempate-por-índice)
-y congelado en un test, con las notas escritas a mano. Los colores con que el tablero lo muestra están en
+[research.md §5 del spec 012](../../specs/012-el-arpegio-camina-la-pieza/research.md) y congelado en un
+test, con las notas escritas a mano. La lámina de referencia del 007 **ya no lo describe**: lo que sigue
+fijando es qué cinco notas tiene cada pieza, no cuál de sus celdas muestra cuál. Los colores con que el tablero lo muestra están en
 [DESIGN.md](../../DESIGN.md).
 
 ## Reproducción
@@ -248,8 +265,8 @@ notes.forEach((m, i) =>
   160—, o sea que el instrumento se espesaba al acelerar; 0,88 es exactamente ese valor expresado en la
   unidad correcta, medido al tempo por defecto, así que a 110 bpm no cambió nada.
 - **`i` es la posición en el array**, o sea el grado de la escala. Desde el spec 007 ese orden es una
-  decisión explícita —el orden angular alrededor del centroide— y no una coincidencia del orden en que
-  alguien tipeó las coordenadas de `SHAPES`. Qué suena y cuándo no cambió; cambió de dónde sale.
+  decisión explícita —y desde el 012, el recorrido que camina la pieza celda a celda— y no una
+  coincidencia del orden en que alguien tipeó las coordenadas de `SHAPES`.
 
 Mientras el transporte está corriendo, cada pieza colocada reagenda la misma secuencia con el mismo
 espaciado, una vez por ciclo del recorrido, y el arpegio de colocación deja de sonar: son las dos caras

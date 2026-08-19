@@ -1,6 +1,6 @@
 import type { Cell } from './types/transform.types.ts';
 import type { PieceKey } from './types/pieces.types.ts';
-import { centroid, angleFromCentroid } from './transform.ts';
+import { centroid, angleFromCentroid, pathThroughCells } from './transform.ts';
 import {
   CHROMATIC, PENT_MAJOR, PENT_MINOR, PENT_BLUES5, DEGREE_EPSILON,
   BASE_MAP, DEFAULT_OCTAVE,
@@ -74,31 +74,90 @@ export function arpeggioFor(piece: PieceKey, rotation: number, mirror: boolean):
  * Que grado del arpegio le toca a cada celda de una forma. DEVUELVE POR INDICE:
  * el elemento `k` es el grado (`0..n-1`) de `cells[k]`, no al reves.
  *
+ * **El grado `g` va a la celda que el camino de `pathThroughCells` visita en el paso
+ * `g`** (spec 012): el arpegio RECORRE la pieza, sin pasar nunca por encima de una
+ * celda propia. El paso preferido es en cruz; en las cuatro piezas que no admiten
+ * recorrido ortogonal —`F`, `T`, `Y` y `X`, cuyo grafo de celdas es un arbol con un
+ * nodo de 3 o 4 vecinos— se tolera uno en diagonal, que al menos llega a una celda que
+ * se toca con la anterior.
+ *
+ * Hasta el spec 012 el orden lo daba el anillo angular del 007 alrededor del centroide,
+ * que no sabe nada de adyacencia: de los 48 pasos de las 12 piezas, **cuatro pasaban por
+ * encima** de una celda que todavia no habia sonado —en `I`, `T`, `U` e `Y`— y nueve
+ * iban en diagonal. Hoy son 0 y 5.
+ *
+ * La diagonal se tolera SOLO adentro de la pieza: el recorrido entre piezas
+ * (`routeBetween`) se sigue moviendo en cruz. Es asimetrico a proposito y esta
+ * justificado en D10 del spec — adentro de la pieza la alternativa es pasar por encima
+ * de una celda, afuera no existe ese problema porque el recorrido pisa y suena todas
+ * las celdas por las que pasa.
+ *
  * Recibe la forma y no la `PieceKey` a proposito: es lo que la hace testeable
  * sobre formas arbitrarias y lo que evita que `music.ts` conozca `SHAPES`.
  *
  * Se le pasa la forma CANONICA, no la transformada. El mapeo se arrastra por
  * indice —rotar es un `map`, asi que la celda `k` sigue siendo la celda `k`—, y
- * recalcularlo sobre la forma ya rotada daria otra cosa, porque rotar corre el
- * origen del angulo.
+ * es la trampa mas cara de esta capa: correrla sobre `p.cells`, que ya esta rotada
+ * y trasladada, compila igual y devuelve otro mapeo. Con el camino esto ya no es una
+ * necesidad geometrica —rotar y reflejar preservan la adyacencia, asi que un camino
+ * sigue siendo un camino en las 8 orientaciones— pero sigue siendo la regla: el
+ * desempate angular SI depende de la orientacion, y el arrastre por indice es lo que
+ * sostiene a `ANCHOR_INDEX` y a las puertas del circuito.
+ *
+ * ## El grado 0 es la puerta de entrada, no el centro de la figura
+ *
+ * El spec 007 sacaba del anillo a la celda parada sobre el centroide y le daba la
+ * tonica, con el argumento de que el centro de la figura es su raiz. Eso alcanzaba a
+ * `I` y `X`, y en la `I` es incompatible con recorrer la pieza: arrancar por el centro
+ * de una linea de cinco obliga a un salto de 4 celdas que la forma no necesita. Desde
+ * el 012 el grado 0 es **por donde el recorrido entra a la pieza** (`gates`), que es
+ * la lectura que el instrumento le da de hecho desde que el tablero es un circuito.
+ *
+ * ## Que hace el orden angular hoy
+ *
+ * DESEMPATA, y nada mas — pero se ejerce en las 12 piezas, asi que no es decorativo:
+ * un camino y su inverso son igual de buenos, y el rango angular es lo que elige la
+ * direccion. `angularRank` es el algoritmo que hasta el 012 decidia el orden entero.
+ *
+ * Que la direccion la decida la FORMA y no el tablero es una regla del instrumento y no
+ * una comodidad de implementacion (D11 del spec 012). Se midio la alternativa —entrar
+ * por la punta mas cercana a la pieza anterior del circuito—: acortaria el ciclo en el
+ * 79 % de los tableros, un 10,4 % en promedio. Se descarta igual, porque haria que mover
+ * una pieza cambiara el arpegio de sus vecinas: **una pieza tiene que sonar igual este
+ * donde este.**
+ */
+export function degreeByCellIndex(cells: readonly Cell[]): number[] {
+  const orden = pathThroughCells(cells, angularRank(cells));
+  const grados = new Array<number>(cells.length);
+  // `pathThroughCells` devuelve la celda de cada paso; esto es la tabla inversa, el
+  // grado de cada celda. Las dos son permutaciones de `0..n-1` y confundirlas compila.
+  orden.forEach((k, degree) => { grados[k] = degree; });
+  return grados;
+}
+
+/**
+ * El rango angular de cada celda alrededor del centroide, POR INDICE: el elemento `k`
+ * es la posicion (`0..n-1`) de `cells[k]` en el anillo.
+ *
+ * Es el orden que el spec 007 usaba como mapeo de grados y que desde el 012 solo
+ * DESEMPATA caminos de igual calidad (ver arriba). Se conserva entero —la excepcion
+ * del centroide, el sentido horario y el desempate por indice— porque cambiarlo
+ * cambiaria la direccion en la que se recorre cada pieza, que es audible.
+ *
+ * Se exporta aunque `degreeByCellIndex` sea su unico consumidor de `src/`: sin export
+ * los tests tendrian que reimplementar esas tres decisiones para poder ejercerlas, que
+ * es exactamente el patron que el spec 005 denuncio.
  *
  * Tres reglas, en este orden:
  *
  * 1. Las celdas que caen SOBRE el centroide salen del anillo y toman los
- *    primeros grados. Solo `I` y `X` tienen una.
+ *    primeros lugares. Solo `I` y `X` tienen una. La excepcion no es estetica:
+ *    `Math.atan2(0, 0)` devuelve `0` EN SILENCIO y las meteria en el anillo como si
+ *    estuvieran al este.
  * 2. El resto se ordena por angulo ascendente alrededor del centroide, que con
  *    el eje `y` hacia abajo es sentido horario en pantalla.
- * 3. A igual angulo gana el INDICE ORIGINAL MENOR.
- *
- * ## Por que el desempate es por indice y no por radio
- *
- * Porque se midieron los dos contra la lamina de referencia: por indice acierta
- * **12/12**, por radio **10/12** (`research.md` §2 del spec 007). Las dos que se
- * caen son `F` —donde `(1,0)` y `(1,1)` se intercambian G4 ↔ A4— e `I` —donde
- * `(0,0)` y `(1,0)` se intercambian G#4 ↔ A#4—. O sea: "la mas cercana primero",
- * que es el criterio que suena mas natural y el que proponia el spec 001,
- * desafina dos piezas contra la referencia. El desempate se ejerce en tres
- * piezas (`F`, `I`, `T`) y decide algo audible en dos.
+ * 3. A igual angulo gana el INDICE ORIGINAL MENOR. El desempate se ejerce en `F`, `I`
+ *    y `T`, que tienen celdas colineales con el centroide.
  *
  * El tercer criterio va ESCRITO en el comparador en vez de delegado a que el
  * `sort` sea estable: la estabilidad esta garantizada desde ES2019, pero
@@ -118,7 +177,7 @@ export function arpeggioFor(piece: PieceKey, rotation: number, mirror: boolean):
  * un entero de cubetas lo vuelve un orden total por construccion: dos angulos o
  * caen en la misma cubeta o no, y eso si es transitivo.
  */
-export function degreeByCellIndex(cells: readonly Cell[]): number[] {
+export function angularRank(cells: readonly Cell[]): number[] {
   const cent = centroid(cells);
 
   const center: number[] = [];
@@ -138,7 +197,7 @@ export function degreeByCellIndex(cells: readonly Cell[]): number[] {
 
   ring.sort((a, b) => bucket[a] === bucket[b] ? a - b : bucket[a] - bucket[b]);
 
-  const degrees = new Array<number>(cells.length);
-  [...center, ...ring].forEach((k, degree) => { degrees[k] = degree; });
-  return degrees;
+  const rank = new Array<number>(cells.length);
+  [...center, ...ring].forEach((k, posicion) => { rank[k] = posicion; });
+  return rank;
 }

@@ -15,7 +15,9 @@ recorrido angular alrededor del centroide (spec 007), y ese anillo no sabe nada 
 siguiente puede caer en una celda que no toca a la anterior.
 
 Medido sobre las 12 piezas —48 pasos en total, 4 por pieza—: **13 pasos aterrizan en una celda que no es
-vecina** de la anterior, y **solo 3 piezas de 12** (`L`, `P`, `V`) recorren su forma sin cortarse.
+vecina** de la anterior, y **solo 3 piezas de 12** (`L`, `P`, `V`) recorren su forma sin cortarse. De esos
+13, nueve van a una celda que al menos **se toca** con la anterior por una esquina; los otros **cuatro
+pasan por encima** de una celda de la propia pieza que todavía no sonó — y están en `I`, `T`, `U` e `Y`.
 
 El caso que originó el spec, la `U` colocada en `(7,3)`:
 
@@ -37,25 +39,26 @@ donde hay una pieza, que es justo adonde el recorrido va a buscar algo.
 ## Solución Propuesta
 
 **El arpegio deja de ser un anillo y pasa a ser un camino.** El orden de las notas dentro de una pieza
-es el recorrido que visita sus cinco celdas moviéndose **arriba, abajo, izquierda o derecha**, y el
-grado `g` va a la celda que el camino visita en el paso `g`.
+es el recorrido que visita sus cinco celdas **sin pasar nunca por encima de otra**, y el grado `g` va a
+la celda que el camino visita en el paso `g`.
 
-Cuatro piezas no admiten un camino así —`F`, `T`, `Y` y `X`, y es una propiedad de su forma, no una
-falla del algoritmo (§2 del `research.md`)—. Para ellas la regla es **lo más continuo posible**: el
-mínimo de saltos, los saltos más cortos posibles, y **todos al principio**, de modo que una vez que el
-arpegio empieza a caminar ya no se corta.
+El paso preferido es **arriba, abajo, izquierda o derecha**. Cuatro piezas no admiten un recorrido así
+—`F`, `T`, `Y` y `X`, y es una propiedad de su forma, no una falla del algoritmo (§2 del
+`research.md`)—: en ellas se **tolera** un paso en diagonal, que al menos llega a una celda que se toca
+con la anterior por la esquina. Con eso las 12 se recorren enteras. La diagonal se tolera y no se
+prefiere, y solo **adentro** de la pieza: el recorrido entre piezas sigue moviéndose en cruz (D10).
 
 El resultado, medido sobre las 12 piezas:
 
 | | hoy | con el camino |
 |---|---|---|
-| pasos que no van a una celda vecina | **13 / 48** | **5 / 48** |
-| piezas que recorren su forma sin cortarse | **3 / 12** | **8 / 12** |
-| piezas con un salto | 6 | 3 (`F`, `T`, `Y`) |
-| piezas con dos o más | 3 | 1 (`X`, con 2) |
+| pasos **por encima** de una celda que no sonó | **4 / 48** | **0 / 48** |
+| pasos ortogonales | 35 / 48 | **43 / 48** |
+| pasos en diagonal | 9 | 5 (`F`, `T`, `Y` con 1; `X` con 2) |
+| piezas que se recorren enteras | **3 / 12** con pasos rectos | **12 / 12** sin pasar por encima |
 
-Los 5 saltos que quedan son **el mínimo que la geometría permite**, verificado por fuerza bruta sobre
-las 120 permutaciones de cada pieza (`research.md` §2).
+Los 5 pasos en diagonal que quedan son **el mínimo que la geometría permite**, verificado por fuerza
+bruta sobre las 120 permutaciones de cada pieza (`research.md` §2).
 
 ### Decisiones de diseño
 
@@ -77,10 +80,11 @@ Y en (8,4)   elegida:  #0 (8,4) ⇢ #1 (9,5) → #2 (9,4) → #3 (9,3) → #4 (9
              la otra:  #0 (8,4) → #1 (9,4) → #2 (9,5) ⇢ #3 (9,3) → #4 (9,2)     distancias 1 1 2 1
 ```
 
-Con esta regla las 12 piezas cumplen que **sus distancias son no crecientes**: el arpegio paga lo que
-tenga que pagar al entrar y después no vuelve a cortarse (AC3). Y encaja con lo que el salto es en el
-tablero: la pieza se entra por su puerta, y el tramo que viene de la pieza anterior ya llegó ahí
-caminando.
+Con la diagonal aceptada (D10) este criterio **ya no separa «continuo» de «cortado»** —todos los pasos
+llegan a una celda que se toca— pero **se queda**, y no por inercia: es lo único que separa las dos
+versiones de la `Y`, y la referencia del pedido eligió a mano la que pone el paso diagonal primero. Lo
+que se pierde es la propiedad de que las distancias sean no crecientes en las 12: la `T` pasa a tener su
+paso diagonal en el medio, porque es donde su forma lo pone (`research.md` §11).
 
 **D3 — El grado 0 deja de ser el centro geométrico y pasa a ser la puerta de entrada.**
 Esto **revierte D1 del spec 007** —«la celda parada sobre el centroide sale del anillo y se lleva la
@@ -133,6 +137,49 @@ alguna de sus dos puertas**, **el 56 % de los tableros cambia el orden de visita
 geometría— pero **cambia lo que suena en casi todos los tableros**, así que va en su propio commit y lo
 declara el PR.
 
+**D9 — La `X` pierde su puerta rodeada, y eso le saca el caso estructural al 011.**
+Anotado **durante la implementación**, no previsto al escribir el spec. El 011 se apoyaba en una
+propiedad de la `X`: su celda central estaba rodeada por sus cuatro brazos y era **siempre** una de sus
+dos puertas —porque el 007 le daba el grado 0 a la celda del centroide—, así que todo tramo que entrara
+a la `X` cruzaba una celda ocupada *por mucho que subiera `CROSS_COST`*. Sobre eso eligió su caso
+testigo y sus tres tests del cruce.
+
+Con el camino, la `X` entra por un brazo y sale por el opuesto, y **esa propiedad desaparece**: su
+tablero testigo —`X`(4,2) + `F`(3,4) + `I`(5,0)— pasa a tener **cero cruces**, y los tres tests que se
+apoyaban en él se habrían quedado verdes sin ejercer nada. No es una regresión del 011 —el cruce sigue
+existiendo, medido en el **32 % de los tableros de 3 piezas**— sino que vuelve a ser lo que su propio D1
+dice que es: **un costo, no una imposibilidad**.
+
+Los tres tests se mudan a un tablero donde cruzar sigue siendo lo más barato, y **los tres al mismo**, a
+propósito: si algún día deja de cruzar, fallan juntos en vez de quedar uno verde afirmando lo contrario.
+
+**D10 — La diagonal se tolera adentro de la pieza, no afuera, y con fecha de revisión.**
+Decidido después de medirlo, y anotado tal cual se dijo: *«no, pero por ahora vamos a tomarlo como que
+sí dentro de las piezas»*. O sea que la diagonal **no** es un movimiento del instrumento —`routeBetween`
+sigue moviéndose solo en cruz y este spec no lo toca— pero adentro de la pieza se acepta, porque la
+alternativa medida es peor: cuatro piezas pasarían **por encima** de una celda propia que todavía no
+sonó, para volver a ella dos pasos después.
+
+Cuesta **una sola pieza**: la `T`. Las otras tres que usan diagonal —`F`, `Y`, `X`— ya la usaban con el
+criterio ortogonal estricto, porque su paso «no vecino» ya era una diagonal; lo único que cambia es cómo
+se lo llama. Las cuatro piezas de la referencia del pedido quedan **idénticas** (`research.md` §11).
+
+La implementación lo dice con dos métricas y no con una: **se decide con «se tocan»** (lado o esquina) y
+**se mide con Manhattan** (la diagonal vale 2, el doble que un paso recto). Por eso la diagonal se
+tolera sin preferirse — donde la forma da para ir en cruz, se va en cruz.
+
+**D11 — Lo que pasa adentro de una pieza lo decide la forma, y nada más.**
+Incluida la punta por donde el recorrido entra. Se evaluó la alternativa —que la entrada la eligiera el
+**tablero**, entrando por la punta más cercana a la pieza anterior— y está **medida**: acortaría el ciclo
+en el **79 % de los tableros**, un **10,4 % en promedio** (`research.md` §12). Se descarta igual, y el
+motivo es del instrumento y no del código: **una pieza tiene que sonar igual esté donde esté**. Si el
+tablero decidiera, mover una pieza cambiaría el arpegio de sus vecinas, y el instrumento dejaría de ser
+predecible.
+
+Queda escrito como regla y no como decisión de este spec, porque es con lo que hay que contrastar la
+próxima idea que empiece con «y si el tablero también decidiera…»: **el circuito decide el orden entre
+piezas y el silencio; la forma decide todo lo que pasa adentro de una.**
+
 ## Criterios de Aceptación
 
 - **AC1** — El caso testigo, con test: la `U` recorre sus cinco celdas sin saltar, y en la colocación
@@ -141,11 +188,12 @@ declara el PR.
   **escrita en el propio test** —no contra la implementación—, sobre las 12 piezas y sobre formas
   arbitrarias con semilla fija. Óptimo quiere decir, en este orden: máximo de pasos a celda vecina,
   mínima suma de distancias, saltos lo más al principio posible, y desempate por el orden angular.
-- **AC3** — **Las 12 piezas tienen distancias no crecientes** (D2): una vez que el arpegio da un paso a
-  una celda vecina, no vuelve a saltar. Con test sobre las 12.
-- **AC4** — Las 8 piezas que admiten camino completo lo tienen (`I L N P U V W Z`), y las 4 que no
-  (`F T Y X`) quedan en **el mínimo que su forma permite** —1, 1, 1 y 2 saltos—, verificado contra la
-  fuerza bruta de AC2 y no afirmado.
+- **AC3** — **Las 12 piezas se recorren enteras**: ningún paso pasa por encima de una celda de la propia
+  pieza. Con test sobre las 12.
+- **AC4** — **La diagonal se tolera pero no se prefiere**: solo la usan las 4 piezas que no admiten
+  recorrido ortogonal (`F`, `T`, `Y` con 1 paso; `X` con 2), y ese es **el mínimo que su forma permite**,
+  verificado contra la fuerza bruta de AC2 y no afirmado. Más un test de que el criterio del paso largo
+  al principio sigue decidiendo donde nació: la `Y`.
 - **AC5** — **El mapeo sigue viajando por índice** sobre las 96 orientaciones (D4), y además el camino
   **sigue siendo un camino** en las 8 orientaciones de las 12 piezas: 0 rompen.
 - **AC6** — **Determinismo declarado**: mismo `cells`, mismo resultado, sin depender del orden en que el
@@ -166,6 +214,12 @@ declara el PR.
 - **AC12** — **A ojo con la cabeza lectora del 010** `[M]`: la cabeza recorre cada pieza celda por celda
   sin brincos, y donde brinca es una de las cuatro que no pueden evitarlo. Es la verificación que este
   spec no habría podido hacer antes de existir el 010 — y es la que lo hizo aparecer.
+- **AC14** — **Los testigos del cruce del spec 011 siguen ejerciendo el cruce** (D9). El tablero de la
+  `X` deja de cruzar, así que los tres tests que lo usaban —`sequence.test.ts`, `route-source.test.ts` y
+  `tools.test.ts` del MCP— se mudan al mismo tablero nuevo, con una guarda que cuenta los cruces exactos
+  para que mover `CROSS_COST` los ponga en rojo en vez de vaciarlos. Y lo mismo con los **tres tableros
+  que ejercen empates** del circuito: un empate depende del modelo, y heredarlo deja el test verde sin
+  ejercer nada.
 - **AC13** — La documentación que describe el modelo viejo queda al día:
   `docs/architecture/modelo-musical.md` (la tabla de derivaciones y la sección «forma → qué celda tiene
   qué nota»), `CLAUDE.md` (la fila del modelo musical) y `.claude/rules/domain.md`.
@@ -179,8 +233,11 @@ declara el PR.
   que en una pieza reflejada los saltos de D2 quedan al final.
 - **El recorrido entre piezas.** `routeBetween` y el circuito no se tocan; cambian de resultado porque
   cambian las puertas.
-- **El costo de pisar una pieza.** Es el spec 011, que sigue `Propuesto`. Son ortogonales: el 011 cambia
-  la matriz de costos, este cambia las puertas que la alimentan.
+- **El costo de pisar una pieza.** Es el spec 011, **ya mergeado** —`CROSS_COST = 5` está en el código;
+  su fila del log todavía dice `Propuesto` porque mover el estado es del autor—. Son ortogonales: el 011
+  cambia la matriz de costos, este cambia las puertas que la alimentan, y todas las mediciones de acá se
+  hicieron sobre el código **con** el 011 puesto. Lo que este spec sí toca del 011 son sus casos testigo,
+  por D9.
 - **Los colores y el layout de la celda.** El tablero ya muestra nota y grado por celda; muestra otros.
 
 ## Riesgos
@@ -191,4 +248,6 @@ declara el PR.
 | La lámina de referencia del 007 deja de valer, y con ella el argumento de por qué el desempate era por índice. | D7 y AC8: el test se recongela contra la tabla medida acá, con su docblock diciendo de dónde sale. El desempate angular sobrevive como criterio de dirección, no como reproductor de la lámina. |
 | `I` y `X` pierden «el centro se lleva la tónica», que el 007 eligió a conciencia. | D3: el grado 0 pasa a ser la puerta de entrada, que es la lectura que el 009/010 ya le daban. En la `I` la regla vieja es incompatible con el pedido. |
 | El algoritmo es exponencial en la cantidad de celdas. | Con `n = 5` son 160 estados y 4 µs. El docblock declara el dominio —una pieza— con el mismo argumento que `shortestCircuit` ya usa: `n` está acotado por las reglas del juego. |
-| Cuatro piezas siguen saltando y alguien lo lee como un bug. | AC4 lo verifica contra fuerza bruta, y `research.md` §2 explica por qué es la forma y no el algoritmo: son las cuatro piezas cuyo grafo de celdas es un árbol con un nodo de grado ≥ 3. |
+| La `X` deja de tener una puerta rodeada y tres tests del 011 se quedan sin ejercer el cruce (D9). | Los tres se mudan al mismo tablero, con guardas que cuentan cruces exactos (AC14). El cruce sigue ocurriendo en el 32 % de los tableros de 3 piezas. |
+| Cuatro piezas usan un paso en diagonal y alguien lo lee como un bug. | AC4 lo verifica contra fuerza bruta, y `research.md` §2 explica por qué es la forma y no el algoritmo: son las cuatro piezas cuyo grafo de celdas es un árbol con un nodo de grado ≥ 3. |
+| La diagonal adentro y la cruz afuera es una asimetría, y las asimetrías sin motivo escrito se vuelven deuda. | D10 la deja escrita con su «por ahora» y con lo que cuesta cada lado. El motivo es concreto: adentro de la pieza la alternativa es pasar por encima de una celda; afuera no existe ese problema, porque el recorrido pisa todas las celdas por las que pasa. |

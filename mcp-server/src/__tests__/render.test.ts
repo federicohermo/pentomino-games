@@ -64,12 +64,13 @@ describe('renderAscii', () => {
 
 describe('renderDegrees', () => {
   test('pone el grado de cada celda, en el mismo bounding box que renderAscii', () => {
-    // La X: su celda central es la del centroide, o sea el grado 0, y las otras cuatro
-    // se reparten 1..4 por angulo horario empezando por el este, que con `y` hacia abajo
-    // es derecha, abajo, izquierda, arriba. Es la forma donde el mapeo se lee de un
+    // La X: desde el spec 012 el arpegio la RECORRE, y es la unica pieza que no puede
+    // recorrerse con menos de dos saltos, porque su centro tiene cuatro vecinos. Se entra
+    // por el brazo derecho (grado 0), se salta al de abajo, se salta al izquierdo, y
+    // recien ahi se camina centro → arriba. Es la forma donde el mapeo se lee de un
     // vistazo, y el dibujo lo muestra sin que haya que cruzar `cellMap` a mano.
     const grados = degreeByCellIndex(SHAPES.X);
-    assert.equal(renderDegrees(SHAPES.X, grados), '.4.\n301\n.2.');
+    assert.equal(renderDegrees(SHAPES.X, grados), '.4.\n230\n.1.');
     // Mismo dibujo, distinto contenido: las dos vistas tienen que alinear.
     const conAncla = renderAscii(SHAPES.X, ANCHOR_INDEX.X);
     assert.deepEqual(

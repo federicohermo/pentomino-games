@@ -84,31 +84,35 @@ Dos cosas que la referencia dice y que no eran obvias:
 
 ## 4. El embudo: qué criterio decide qué
 
-Sobre las 120 permutaciones de cada pieza, cuántas sobreviven a cada criterio aplicado en orden:
+Sobre las 120 permutaciones de cada pieza, cuántas sobreviven a cada criterio aplicado en orden. Medido
+con el criterio final —«se tocan» para decidir, Manhattan para medir, ver §11—:
 
-| pieza | 120 | máx. pasos continuos | mín. suma de distancias | saltos al principio | ángulo |
+| pieza | 120 | pasos que se tocan | mín. suma Manhattan | los largos al principio | ángulo |
 |---|---|---|---|---|---|
-| F | 120 | 16 | 8 | 2 | **1** |
+| F | 120 | 20 | 6 | 2 | **1** |
 | I | 120 | 2 | 2 | 2 | **1** |
-| L | 120 | 2 | 2 | 2 | **1** |
-| N | 120 | 2 | 2 | 2 | **1** |
-| P | 120 | 4 | 4 | 4 | **1** |
-| T | 120 | 16 | 8 | 2 | **1** |
-| U | 120 | 2 | 2 | 2 | **1** |
+| L | 120 | 4 | 2 | 2 | **1** |
+| N | 120 | 8 | 2 | 2 | **1** |
+| P | 120 | 36 | 4 | 4 | **1** |
+| T | 120 | 4 | 4 | 2 | **1** |
+| U | 120 | 8 | 2 | 2 | **1** |
 | V | 120 | 2 | 2 | 2 | **1** |
-| W | 120 | 2 | 2 | 2 | **1** |
-| X | 120 | 72 | 72 | 24 | **1** |
-| Y | 120 | 16 | 8 | 2 | **1** |
-| Z | 120 | 2 | 2 | 2 | **1** |
+| W | 120 | 20 | 2 | 2 | **1** |
+| X | 120 | 48 | 32 | 8 | **1** |
+| Y | 120 | 8 | 6 | 2 | **1** |
+| Z | 120 | 8 | 2 | 2 | **1** |
 
 Lo que dice la tabla:
 
-- **La suma de distancias se ejerce en 3 piezas** (`F`, `T`, `Y`), y solo entre órdenes que ya empataron
-  en cantidad de saltos: es lo que hace que un salto obligado sea el **más corto** posible.
-- **Los saltos al principio (D2) se ejercen en 4** (`F`, `T`, `Y`, `X`) — las mismas cuatro que no
-  pueden ser continuas, que es exactamente donde el criterio tiene sentido.
+- **El primer criterio no alcanza en ninguna pieza.** Con la diagonal aceptada, entre 2 y 48 recorridos
+  por pieza se tocan de punta a punta — hay que elegir entre ellos, y ahí es donde importa que la
+  métrica que mide sea Manhattan y no la misma que decide.
+- **La suma de Manhattan es la que hace el trabajo grueso**: es lo que prefiere el paso recto sobre el
+  diagonal, y lo que baja `X` de 48 candidatos a 32 y `P` de 36 a 4.
+- **El criterio del paso largo al principio se ejerce en 4** (`F`, `T`, `Y`, `X`) — las mismas cuatro
+  que usan diagonal, que es exactamente donde tiene sentido.
 - **El ángulo se ejerce en las 12**, porque un camino y su inverso son igual de buenos y hay que elegir
-  la dirección. En las 8 piezas continuas es *lo único* que queda por decidir.
+  la dirección. En las 8 piezas de recorrido ortogonal puro es *lo único* que queda por decidir.
 
 Se probaron cuatro desempates contra las cuatro piezas de la referencia (§3). Aciertos:
 
@@ -132,7 +136,7 @@ salta al entrar y después camina— mientras que con el otro la `F` salta en el
 | L | (0,3) (0,2) (0,1) (0,0) (1,0) | 1 1 1 1 | 0 → 0 *(sin cambio)* |
 | N | (3,1) (2,1) (1,1) (1,0) (0,0) | 1 1 1 1 | 1 → **0** |
 | P | (1,1) (0,1) (0,0) (1,0) (2,0) | 1 1 1 1 | 0 → 0 *(sin cambio)* |
-| T | (0,0) (2,0) (1,0) (1,1) (1,2) | 2 1 1 1 | 1 → 1 |
+| T | (1,2) (1,1) (0,0) (1,0) (2,0) | 1 2 1 1 | 1 → 1 |
 | U | (2,1) (2,0) (1,0) (0,0) (0,1) | 1 1 1 1 | 1 → **0** |
 | V | (0,2) (0,1) (0,0) (1,0) (2,0) | 1 1 1 1 | 0 → 0 *(sin cambio)* |
 | W | (2,2) (2,1) (1,1) (1,0) (0,0) | 1 1 1 1 | 2 → **0** |
@@ -140,8 +144,9 @@ salta al entrar y después camina— mientras que con el otro la `F` salta en el
 | Y | (2,1) (3,0) (2,0) (1,0) (0,0) | 2 1 1 1 | 1 → 1 |
 | Z | (0,1) (1,1) (1,0) (2,0) (3,0) | 1 1 1 1 | 1 → **0** |
 
-**13 → 5 saltos. Cambian 9 de las 12** (`L`, `P` y `V` ya estaban bien). Las 12 tienen distancias no
-crecientes.
+**Los 4 pasos que pasaban por encima de una celda se van, y quedan 5 pasos en diagonal.** Cambian **10 de
+las 12** (`L`, `P` y `V` ya estaban bien; la `T` cambió dos veces, ver §11). Las distancias son no
+crecientes en 11 de las 12 — la `T` es la excepción, y por qué está en §11.
 
 Y la propiedad que hace que el mapeo pueda seguir viajando por índice (D4): se recorrieron las **96
 orientaciones** —12 piezas × 4 rotaciones × 2 reflexiones— comprobando que la secuencia de distancias
@@ -224,3 +229,96 @@ El ciclo se **acorta**, que es la dirección esperable: las puertas de una pieza
 quedan en las dos puntas de ese camino, y eso suele dejarlas más lejos una de otra pero mejor orientadas
 respecto de las piezas vecinas. No es un objetivo del spec ni algo que haya que defender — es el número
 que salió, y sirve para descartar que el cambio alargue el ciclo.
+
+## 9. Lo que apareció implementando: la `X` deja de tener una puerta rodeada
+
+No estaba previsto al escribir el spec y cambia tres tests del 011, así que queda medido acá.
+
+El 011 eligió la `X` como **caso estructural** del cruce con este argumento, escrito en tres archivos:
+su celda central está rodeada por sus propios cuatro brazos y es **siempre** una de sus dos puertas, así
+que entrar a ella cruza una celda ocupada por mucho que suba `CROSS_COST`. La segunda mitad de esa frase
+era consecuencia de D1 del 007 —el grado 0 iba a la celda del centroide— y **el 012 la revierte**: la
+`X` entra por el brazo derecho y sale por el de arriba.
+
+Medido sobre su tablero testigo, `X`(4,2) + `F`(3,4) + `I`(5,0):
+
+| | con el mapeo del 007 | con el camino del 012 |
+|---|---|---|
+| clicks del ciclo | 11 | 10 |
+| de esos, cruces con altura | **2** | **0** |
+
+Los tres tests que se apoyaban en él —`domain/__tests__/sequence.test.ts`,
+`components/__tests__/route-source.test.ts` y `mcp-server/src/__tests__/tools.test.ts`— habrían quedado
+verdes sin ejercer nada, que es exactamente contra lo que sus guardas existían.
+
+**El cruce no desaparece**: sobre 300 tableros aleatorios de 3 piezas con `CROSS_COST = 5`, el **32,3 %**
+tiene al menos un cruce y el promedio es de **0,38 cruces por ciclo**. Lo que desaparece es el caso donde
+cruzar es *inevitable por la forma*, y con él la garantía de que un test escrito sobre la `X` no se pueda
+vaciar. El reemplazo —`X`(1,1) + `F`(3,2) + `N`(2,4), tres cruces sobre la `X` incluido su centro— cruza
+porque **rodear sale más caro**, que es lo que D1 del 011 dice que el modelo es, y su guarda cuenta los
+cruces exactos: si alguien mueve `CROSS_COST`, falla en rojo.
+
+## 10. Los tres tableros de empate que hubo que volver a buscar
+
+Misma clase de hallazgo: un tablero elegido para que **dos circuitos empaten** depende del modelo, y las
+puertas cambiaron. Los tres se buscaron de nuevo por fuerza bruta:
+
+| Test | Tablero viejo | Qué le pasó | Tablero nuevo |
+|---|---|---|---|
+| `ante dos circuitos de igual costo gana el de indices menores` | `F`(2,2) `I`(2,0) `L`(0,2), empataban a 24 y 11 pasos | dejó de empatar: 13 contra 20 | `F`(3,3) `Z` rot 90 (6,4) `Y` rot 180 (4,1) — los dos a 19 y 14 pasos |
+| `el ORDEN DE COLOCACION no cambia lo que suena` | `N V Z U F`, dos óptimos a 27 con 28 y 24 pasos | óptimo único (17) | `N X U I P`, dos óptimos a 32 con 21 y 25 pasos |
+| `con salto 1 no hay clicks` | `F`(1,1) + `P` rot 90 (3,1), 1 paso en los dos sentidos | 1 en un sentido y 6 en el otro | `L`(1,1) + `N` rot 90 (3,2) |
+
+El patrón vale para cualquier spec que mueva las puertas: **los tests que se apoyan en un empate son los
+que primero dejan de ejercer lo suyo, y lo hacen en verde.**
+
+## 11. La diagonal: qué cuesta tolerarla adentro de la pieza
+
+Medido después de la primera implementación, revisando la premisa. Un paso puede ser de tres clases, y
+la diferencia importa porque **se ve**: la cabeza lectora del 010 recorre celda por celda.
+
+| clase | qué se ve | mapeo del 007 | ortogonal estricto | con la diagonal tolerada |
+|---|---|---|---|---|
+| **recto** — comparten un lado | la cabeza avanza | 35 / 48 | 43 / 48 | 43 / 48 |
+| **diagonal** — comparten una esquina | la cabeza avanza en diagonal | 9 | 4 | **5** |
+| **por encima** — ni se tocan | la cabeza **saltea** una celda propia que no sonó | **4** (`I`, `T`, `U`, `Y`) | **1** (`T`) | **0** |
+
+El caso que trajo el pedido —la `U` cuya segunda nota caía dos celdas más abajo— es exactamente uno de
+esos cuatro.
+
+**Tolerar la diagonal cambia una sola pieza: la `T`.** `F`, `Y` y `X` ya la usaban con el criterio
+ortogonal estricto, porque su paso «no vecino» ya era una diagonal — lo único que cambia es cómo se lo
+llama. Las cuatro piezas de la referencia del pedido (`N`, `U`, `P`, `Y`) quedan **idénticas**:
+
+| pieza | ortogonal estricto | con la diagonal tolerada |
+|---|---|---|
+| `T` | (0,0) (2,0) (1,0) (1,1) (1,2) — **pasa por encima de (1,0)** | (1,2) (1,1) (0,0) (1,0) (2,0) — diagonal en el medio |
+| las otras 11 | — | sin cambio |
+
+Lo que se pierde: la propiedad de que las distancias sean **no crecientes** en las 12. La `T` queda con
+`1 2 1 1`, porque el paso diagonal es el que une su tallo con su barra y ahí está. El criterio que
+producía esa propiedad **se queda igual**: es lo único que separa las dos versiones de la `Y` (§3), y con
+la diagonal aceptada las dos son continuas, así que sin él la `Y` dejaría de coincidir con la referencia.
+
+Y lo que **no** cambia: `routeBetween`, o sea el recorrido **entre** piezas, que se sigue moviendo solo
+en cruz. La asimetría es deliberada y está en D10: adentro de la pieza la alternativa a la diagonal es
+pasar por encima de una celda; afuera no existe ese problema, porque el recorrido pisa —y suena— todas
+las celdas por las que pasa.
+
+## 12. La alternativa descartada: que la punta de entrada la elija el tablero
+
+Hoy la punta por la que el recorrido entra a una pieza la decide la **forma** (el orden angular
+desempata entre el camino y su inverso). La alternativa es que la decida el **tablero**: entrar por la
+punta más cercana a la pieza anterior del circuito.
+
+Medido sobre 150 tableros aleatorios de 3 a 5 piezas, probando las 2ⁿ orientaciones de cada tablero:
+
+| | |
+|---|---|
+| tableros donde el ciclo se podría acortar | **119 / 150 — 79,3 %** |
+| ciclo medio | 34,14 → 30,59 intervalos (**−10,4 %**) |
+
+Es casi cuatro veces lo que el 012 mueve en ese eje por su cuenta (−2,8 %), y **se descarta igual**
+(D11). El motivo es del instrumento: si el tablero decidiera, mover una pieza cambiaría el arpegio de
+sus vecinas y el instrumento dejaría de ser predecible. Queda registrado acá con su número para que la
+próxima vez que aparezca la idea no haya que volver a medirla.

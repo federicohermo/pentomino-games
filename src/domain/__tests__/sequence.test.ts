@@ -160,17 +160,18 @@ describe('bordes', () => {
 
 describe('las puertas de una pieza', () => {
   it('SIN reflexion la entrada es la celda del grado 0 y la salida la del grado 4', () => {
-    // `F` canonica da los grados [2,3,4,1,0]: el grado 0 esta en el indice 4 y el
-    // grado 4 en el indice 2. Los numeros van escritos a mano contra el mapeo del
-    // spec 007 — derivarlos aca dejaria el test sin oraculo.
-    expect(degreeByCellIndex(SHAPES.F)).toEqual([2, 3, 4, 1, 0]);
+    // `F` canonica da los grados [0,1,2,3,4] desde el spec 012: su camino arranca en
+    // el indice 0 y termina en el 4, que es el unico caso en que el mapeo coincide con
+    // el orden del array. Los numeros van escritos a mano contra la tabla del spec —
+    // derivarlos aca dejaria el test sin oraculo.
+    expect(degreeByCellIndex(SHAPES.F)).toEqual([0, 1, 2, 3, 4]);
     const f = colocar('F', 0, false, 1, 1);
     expect(f.cells).toEqual([[0, 1], [1, 0], [1, 1], [1, 2], [2, 2]]);
-    expect(puertas(f).entrada).toEqual([2, 2]);
-    expect(puertas(f).salida).toEqual([1, 1]);
+    expect(puertas(f).entrada).toEqual([0, 1]);
+    expect(puertas(f).salida).toEqual([2, 2]);
     // Y es lo que devuelve la funcion real: sin reflexion el orden de reproduccion
     // ES el orden de grado, asi que el arreglo de D9 no mueve este caso.
-    expect(gates(f)).toEqual({ entrada: [2, 2], salida: [1, 1] });
+    expect(gates(f)).toEqual({ entrada: [0, 1], salida: [2, 2] });
 
     // Y es lo que el circuito usa: el tramo que sale de `F` arranca en SU SALIDA,
     // no en su entrada ni en su ancla. Con una pieza sola no hay tramo —el
@@ -183,11 +184,13 @@ describe('las puertas de una pieza', () => {
     expect(seq.clicks.map((c) => c.cell).slice(0, tramo.steps - 1)).toEqual(tramo.path);
   });
 
-  it('salen de la forma CANONICA: recalcularlas sobre la transformada moveria 74 de las 96 orientaciones', () => {
-    // Es la trampa mas cara de esta capa. Rotar corre el origen del angulo, asi que
+  it('salen de la forma CANONICA: recalcularlas sobre la transformada moveria 53 de las 96 orientaciones', () => {
+    // Es la trampa mas cara de esta capa. Rotar corre el origen del angulo, que es lo
+    // que desde el spec 012 elige por que punta se entra al camino, asi que
     // `degreeByCellIndex(formaTransformada)` compila igual y devuelve otro mapeo. El
     // conteo va medido y no aproximado para que el dia que alguien "simplifique" la
-    // derivacion el test diga exactamente cuanto cambio.
+    // derivacion el test diga exactamente cuanto cambio: eran 74 con el orden angular
+    // del 007 y son 53 con el camino del 012.
     let distintas = 0;
     for (const k of PIECES) {
       for (let rot = 0; rot < 4; rot++) {
@@ -207,7 +210,7 @@ describe('las puertas de una pieza', () => {
         }
       }
     }
-    expect(distintas).toBe(74);
+    expect(distintas).toBe(53);
   });
 
   it('entrada y salida nunca son la misma celda, en las 96 orientaciones', () => {
@@ -440,16 +443,19 @@ const CUATRO = [
 describe('AC1 — el orden es el del circuito mas corto, no el de colocacion', () => {
   it('con cuatro piezas el circuito reordena la colocacion y sale mas barato', () => {
     expect(CUATRO.every((p, i) => isValid(p.cells, CUATRO.slice(0, i)))).toBe(true);
-    expect(ordenDe(CUATRO)).toEqual([0, 1, 3, 2]);
-    expect(costoDelCircuito([0, 1, 3, 2], CUATRO)).toBe(30);
-    expect(costoDelCircuito([0, 1, 2, 3], CUATRO)).toBe(36);
+    expect(ordenDe(CUATRO)).toEqual([0, 3, 2, 1]);
+    expect(costoDelCircuito([0, 3, 2, 1], CUATRO)).toBe(19);
+    expect(costoDelCircuito([0, 1, 2, 3], CUATRO)).toBe(25);
     // Y aca se ve de la forma mas clara la distincion de T016: **el costo ordena, los
-    // pasos miden el tiempo.** El circuito ganador cuesta 30 y dura 18 — no son el mismo
-    // numero y no tienen por que serlo, porque cada celda pisada suma `CROSS_COST` al
-    // costo y UN intervalo al reloj. Si el costo se filtrara a los offsets, este ciclo
-    // duraria 30 y el tablero sonaria distinto de lo que se ve.
-    expect(pasosDelCircuito([0, 1, 3, 2], CUATRO)).toBe(18);
-    expect(buildSequence(CUATRO).length).toBe(4 * (CELLS_PER_PIECE - 1) + 18);
+    // pasos miden el tiempo.** El ganador cuesta 19 y dura 19, pero `0>1>3>2` cuesta 21
+    // y dura 17: o sea que el circuito elegido NO es el mas corto en tiempo, porque cada
+    // celda pisada suma `CROSS_COST` al costo y UN intervalo al reloj. Si el costo se
+    // filtrara a los offsets, el ciclo se estiraria por cada celda pisada y el tablero
+    // sonaria distinto de lo que se ve.
+    expect(costoDelCircuito([0, 1, 3, 2], CUATRO)).toBe(21);
+    expect(pasosDelCircuito([0, 1, 3, 2], CUATRO)).toBe(17);
+    expect(pasosDelCircuito([0, 3, 2, 1], CUATRO)).toBe(19);
+    expect(buildSequence(CUATRO).length).toBe(4 * (CELLS_PER_PIECE - 1) + 19);
   });
 
   it('ningun otro circuito es mas corto, verificado por fuerza bruta hasta 7 piezas', () => {
@@ -470,11 +476,16 @@ describe('AC1 — el orden es el del circuito mas corto, no el de colocacion', (
 
 describe('AC3 — dos piezas adyacentes quedan contiguas', () => {
   it('con salto 1 no hay clicks y la nota siguiente cae un intervalo despues de la ultima', () => {
-    // `F` sale por (1,1) y `P` entra por (2,1); `P` sale por (3,2) y `F` entra por
-    // (2,2). Los dos tramos del circuito miden 1, asi que el patron queda contiguo en
+    // `L` sale por (2,0) y `N` entra por (3,0); `N` sale por (2,3) y `L` entra por
+    // (1,3). Los dos tramos del circuito miden 1, asi que el patron queda contiguo en
     // los dos sentidos y no hay silencio en ninguna costura.
-    const f = colocar('F', 0, false, 1, 1);
-    const p = colocar('P', 3, false, 3, 1);
+    //
+    // El par cambio con el spec 012 y no por gusto: con el mapeo del 007 el testigo era
+    // `F`(1,1) + `P` rot 90 (3,1), y hoy ese par mide 1 en un sentido y 6 en el otro.
+    // Un tramo de ida y vuelta de largo 1 depende de donde caen las DOS puertas, asi que
+    // mover el orden de las notas lo mueve.
+    const f = colocar('L', 0, false, 1, 1);
+    const p = colocar('N', 1, false, 3, 2);
     expect(isValid(p.cells, [f])).toBe(true);
     expect(pasosEntre(f, p, [f, p])).toBe(1);
     expect(pasosEntre(p, f, [f, p])).toBe(1);
@@ -564,15 +575,25 @@ describe('los offsets y los clicks', () => {
 });
 
 /**
- * El testigo estructural del cruce con altura: la `X` en (4,2), con la `F` y la `I`
- * puestas de forma que el circuito tenga que atravesarla.
+ * El testigo del cruce con altura: la `X` en (1,1), con la `F` y la `N` puestas de
+ * forma que al circuito le salga mas barato atravesarla que rodearla.
  *
- * La `X` es el caso estructural porque sus cuatro brazos salen del mismo centro: no se
- * la puede bordear por adentro, y un tramo que va de arriba a abajo pisa TRES de sus
- * celdas, una de ellas el centro. Medido: el tramo de la `I` a la `F` entra por [4,1],
- * sigue por [4,2] y sale por [4,3], y despues cruza una celda vacia.
+ * ## Por que este tablero y no el del spec 011
+ *
+ * Porque el 011 se apoyaba en una propiedad que el **spec 012 le saco a la `X`**: que su
+ * celda central fuera siempre una de sus dos puertas. Con el orden angular el grado 0 de
+ * la `X` era su centro —estaba escrito como decision, D1 del 007— asi que todo tramo que
+ * entrara a la `X` cruzaba tres de sus celdas por mucho que subiera `CROSS_COST`: no
+ * existia camino libre. Con el camino del 012 la `X` entra y sale por dos brazos
+ * opuestos, y su testigo viejo —`X`(4,2) + `F`(3,4) + `I`(5,0)— **dejo de cruzar
+ * ninguna celda**: sus 10 clicks caen todos en celdas vacias.
+ *
+ * O sea que el cruce dejo de ser estructural y volvio a ser lo que D1 del 011 dice que
+ * es: **un costo, no una imposibilidad**. Este tablero lo ejerce por ese lado — rodear
+ * la `X` sale mas caro que pagar los tres cruces— y el teselado lleno de mas abajo
+ * cubre el caso donde no hay alternativa.
  */
-const CON_X = [colocar('X', 0, false, 4, 2), colocar('F', 0, false, 3, 4), colocar('I', 0, false, 5, 0)];
+const CON_X = [colocar('X', 0, false, 1, 1), colocar('F', 0, false, 3, 2), colocar('N', 0, false, 2, 4)];
 
 /** Manhattan crudo: solo para afirmar que dos celdas son vecinas en la grilla. */
 const manhattanEntre = (a: Cell, b: Cell): number => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
@@ -581,39 +602,29 @@ describe('AC3 — el cruce lleva la altura de la celda que pisa', () => {
   it('atravesar la X suena con las notas de la X, celda por celda', () => {
     expect(CON_X.every((p, i) => isValid(p.cells, CON_X.slice(0, i)))).toBe(true);
     const equis = CON_X[0];
-    expect(equis.cells).toEqual([[4, 1], [3, 2], [4, 2], [5, 2], [4, 3]]);
+    expect(equis.cells).toEqual([[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]]);
 
-    // ## Por que la `X` es EL caso estructural (research.md §4)
-    //
-    // Su celda central esta rodeada por sus propios cuatro brazos, y es siempre una de
-    // sus dos puertas: sin reflexion la entrada, con reflexion la salida, pero siempre la
-    // misma celda. Ninguna otra de las 12 piezas tiene esa propiedad. Consecuencia: el
-    // tramo que entra a la `X` cruza una celda ocupada **por mucho que suba
-    // `CROSS_COST`**, porque no existe camino libre — y por eso el peso no necesita ni
-    // un caso "imposible" ni un trato especial para esta pieza.
-    expect(gates(equis).entrada).toEqual([4, 2]);
+    // Las puertas de la `X` son dos brazos OPUESTOS, no su centro (spec 012, D3).
+    expect(gates(equis)).toEqual({ entrada: [2, 1], salida: [1, 0] });
 
     const seq = buildSequence(CON_X);
     const cruce = seq.clicks.filter((c) => equis.cells.some((q) => misma(q, c.cell)));
 
-    // DOS y no cuatro, y las dos son brazos PEGADOS al centro: con `CROSS_COST = 2` el
-    // tramo atravesaba la pieza entera porque pisar salia mas barato que rodear. Con 5 el
-    // recorrido rodea todo lo que puede y solo paga los cruces que la geometria le impone
-    // —los brazos por los que hay que pasar para tocar el centro—. Es la diferencia entre
-    // pisar por conveniencia y pisar por necesidad.
-    expect(cruce.map((c) => [c.cell, c.note])).toEqual([[[4, 1], 78], [[4, 3], 73]]);
-    for (const c of cruce) expect(manhattanEntre(c.cell, [4, 2])).toBe(1);
+    // TRES cruces, y el del medio es la celda central: el tramo entra por un brazo,
+    // pasa por el centro y sale por el otro. Rodear la `X` por afuera existe y cuesta
+    // mas — con `CROSS_COST = 5` el recorrido rodea todo lo que le conviene y paga
+    // estos tres porque le sale mas barato que dar la vuelta.
+    expect(cruce.map((c) => [c.cell, c.note])).toEqual([[[2, 1], 69], [[1, 2], 71], [[1, 1], 76]]);
     // Y la nota es la que el tablero pinta en esa celda, no una segunda cuenta.
     for (const c of cruce) expect(c.note).toBe(notaPintadaEn(equis, c.cell));
-    // El ultimo cruce del ciclo es el brazo de abajo, inmediatamente antes de volver al
-    // centro: se paga al ENTRAR, que es donde no hay alternativa. Rodear la `X` por afuera
-    // sale gratis; llegar a su centro, no.
-    expect(seq.clicks[seq.clicks.length - 1].cell).toEqual([4, 3]);
-    expect(manhattanEntre([4, 3], gates(equis).entrada)).toBe(1);
+    // El ultimo cruce del ciclo es el centro, y el centro es vecino de la entrada: se
+    // paga al ENTRAR, que es donde la geometria de la `X` aprieta.
+    expect(seq.clicks[seq.clicks.length - 1].cell).toEqual([1, 1]);
+    expect(manhattanEntre([1, 1], gates(equis).entrada)).toBe(1);
 
-    // La celda vacia del mismo tramo no lleva altura: que `note` FALTE es lo que dice
+    // La celda vacia del mismo ciclo no lleva altura: que `note` FALTE es lo que dice
     // "aca no habia nada", y por eso no hace falta un tercer estado.
-    const vacia = seq.clicks.find((c) => misma(c.cell, [5, 1]));
+    const vacia = seq.clicks.find((c) => misma(c.cell, [2, 0]));
     expect(vacia).toBeDefined();
     expect(vacia?.note).toBeUndefined();
   });
@@ -631,12 +642,12 @@ describe('AC3 — el cruce lleva la altura de la celda que pisa', () => {
     }
   });
 
-  it('el teselado lleno: sin una sola celda vacia, los 14 clicks llevan altura', () => {
+  it('el teselado lleno: sin una sola celda vacia, los 13 clicks llevan altura', () => {
     // El caso limite del modelo. Con las 60 celdas ocupadas el peso no puede evitar nada
     // y todo click pisa: el recorrido no se apaga cuando no puede esquivar, sigue
     // sonando y ahora dice sobre que.
     const seq = buildSequence(DOCE);
-    expect(seq.clicks).toHaveLength(14);
+    expect(seq.clicks).toHaveLength(13);
     expect(seq.clicks.every((c) => c.note !== undefined)).toBe(true);
   });
 });
@@ -674,21 +685,23 @@ describe('determinismo', () => {
 
   it('ante dos circuitos de igual costo gana el de indices menores', () => {
     // El indice es el TERCER criterio y solo decide cuando los dos anteriores empatan,
-    // asi que el tablero tiene que empatar en costo **Y** en pasos. Medido: F, I, L dejan
-    // dos circuitos, 0→1→2 y 0→2→1, los dos a costo 24 y 11 pasos.
+    // asi que el tablero tiene que empatar en costo **Y** en pasos. Medido: F, Z, Y dejan
+    // dos circuitos, 0→1→2 y 0→2→1, los dos a costo 19 y 14 pasos.
     //
-    // **El tablero se busco de nuevo dos veces y nunca se heredo**, y ese es el punto del
-    // test: un empate depende del modelo. El que usaba el 009 (P, W, F) empataba a 16 con
-    // la distancia pelada, a 14 con peso 2, y con peso 5 dejo de empatar (15 contra 17).
-    // Un tablero de empate heredado deja el test verde sin ejercer nada, que es la unica
-    // forma en que este test puede mentir.
+    // **El tablero se busco de nuevo TRES veces y nunca se heredo**, y ese es el punto
+    // del test: un empate depende del modelo. El que usaba el 009 (P, W, F) empataba a 16
+    // con la distancia pelada, a 14 con peso 2, y con peso 5 dejo de empatar (15 contra
+    // 17); el que lo reemplazo (F, I, L) empataba a 24 con las puertas del 007 y con las
+    // del 012 dejo de empatar (13 contra 20), porque mover el orden de las notas mueve
+    // las puertas y con ellas la matriz entera. Un tablero de empate heredado deja el
+    // test verde sin ejercer nada, que es la unica forma en que este test puede mentir.
     const board = [
-      colocar('F', 0, false, 2, 2),
-      colocar('I', 0, false, 2, 0),
-      colocar('L', 0, false, 0, 2),
+      colocar('F', 0, false, 3, 3),
+      colocar('Z', 1, false, 6, 4),
+      colocar('Y', 2, false, 4, 1),
     ];
-    expect(circuitos(3).map((o) => costoDelCircuito(o, board))).toEqual([24, 24]);
-    expect(circuitos(3).map((o) => pasosDelCircuito(o, board))).toEqual([11, 11]);
+    expect(circuitos(3).map((o) => costoDelCircuito(o, board))).toEqual([19, 19]);
+    expect(circuitos(3).map((o) => pasosDelCircuito(o, board))).toEqual([14, 14]);
     expect(ordenDe(board)).toEqual([0, 1, 2]);
   });
 
@@ -701,13 +714,17 @@ describe('determinismo', () => {
     // durar distinto, y si el desempate mira solo el indice —que ES el orden de
     // colocacion— el mismo tablero suena distinto segun en que orden se armo.
     //
-    // Medido sobre ESTE tablero: `N>F>V>Z>U` y `N>F>Z>V>U` cuestan **los dos 27** y miden
-    // **28 y 24 pasos**, o sea ciclos de 48 y 44 intervalos. Sin el criterio de los pasos
+    // Medido sobre ESTE tablero: `N>X>U>I>P` y `N>P>X>U>I` cuestan **los dos 32** y miden
+    // **21 y 25 pasos**, o sea ciclos de 41 y 45 intervalos. Sin el criterio de los pasos
     // gana el de indice menor —el orden de colocacion— y el tablero suena cuatro
     // intervalos mas largo o mas corto segun como se armo. Sobre 120 tableros de 5 piezas
     // al azar pasaba en el 8,3 %; con los pasos como segundo criterio pasa en el 0 %.
+    //
+    // El tablero es otro desde el spec 012, por el mismo motivo que el del test de
+    // arriba: el que estaba (N, V, Z, U, F) dejo de tener dos circuitos optimos cuando
+    // las puertas se movieron, asi que ya no ejercia el desempate.
     const spec: [PieceKey, number, number, number][] = [
-      ['N', 3, 5, 1], ['V', 2, 2, 5], ['Z', 2, 4, 0], ['U', 0, 8, 4], ['F', 3, 4, 4],
+      ['N', 3, 6, 1], ['X', 0, 4, 1], ['U', 3, 2, 3], ['I', 3, 0, 2], ['P', 1, 8, 2],
     ];
     const armar = (orden: number[]): PlacedPiece[] => {
       const out: PlacedPiece[] = [];
@@ -738,13 +755,13 @@ describe('determinismo', () => {
       vistos.add([...ids.slice(k), ...ids.slice(0, k)].join('>'));
       largos.add(seq.length);
     }
-    expect([...largos]).toEqual([44]);
+    expect([...largos]).toEqual([41]);
     expect([...vistos]).toHaveLength(1);
 
     // Y que el ciclo elegido sea el CORTO de los dos que empatan en costo, no cualquiera:
     // a igual costo, menos pasos es menos silencio.
-    expect(circuitos(5).filter((o) => costoDelCircuito(o, armar([0, 1, 2, 3, 4])) === 27)
-      .map((o) => pasosDelCircuito(o, armar([0, 1, 2, 3, 4]))).sort((a, b) => a - b)[0]).toBe(24);
+    expect(circuitos(5).filter((o) => costoDelCircuito(o, armar([0, 1, 2, 3, 4])) === 32)
+      .map((o) => pasosDelCircuito(o, armar([0, 1, 2, 3, 4]))).sort((a, b) => a - b)[0]).toBe(21);
   });
 
   it('el circuito elegido es el lexicograficamente menor entre todos los optimos', () => {

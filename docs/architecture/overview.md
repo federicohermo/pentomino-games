@@ -75,9 +75,9 @@ Sin React, sin audio, sin DOM. Determinísticas y testeables en aislamiento.
 
 | Módulo | Símbolos | Responsabilidad |
 |---|---|---|
-| `transform.ts` | `rotate90`, `normalize`, `rotateN`, `reflect`, `centroid`, `angleFromCentroid` | Transformaciones de un `Cell[]`, y el centroide con el ángulo de cada celda a su alrededor |
+| `transform.ts` | `rotate90`, `normalize`, `rotateN`, `reflect`, `centroid`, `angleFromCentroid`, `pathThroughCells` | Transformaciones de un `Cell[]`, el centroide con el ángulo de cada celda a su alrededor, y el camino que recorre una forma celda vecina a celda vecina |
 | `board.ts` | `cellsAt`, `isValid`, `routeBetween`, `occupantAt`, `occupantCellIndex` | Las reglas del tablero, el camino de costo mínimo entre dos celdas replegando la costura `(0,0)↔(9,5)` y pesando `CROSS_COST` las celdas ocupadas que cruza (spec 011), y qué celda de la pieza cae en `(x, y)` |
-| `music.ts` | `midiFor`, `midiName`, `notesForRotation`, `arpeggioFor`, `degreeByCellIndex` | De pieza + rotación a cinco notas MIDI, y de la forma a qué celda lleva cuál. `arpeggioFor` es la derivación completa —tónica, escala y retrógrado—, y la única fuente del arpegio de una pieza colocada |
+| `music.ts` | `midiFor`, `midiName`, `notesForRotation`, `arpeggioFor`, `degreeByCellIndex`, `angularRank` | De pieza + rotación a cinco notas MIDI, y de la forma a qué celda lleva cuál. `arpeggioFor` es la derivación completa —tónica, escala y retrógrado—, y la única fuente del arpegio de una pieza colocada. `angularRank` es el orden angular del spec 007, que desde el 012 solo desempata la dirección del camino |
 | `sequence.ts` | `buildSequence`, `cellsByPlayOrder`, `gates`, `noteAtCell` | El circuito que visita las piezas colocadas (Held-Karp sobre `routeBetween`) y los offsets del ciclo — orden, silencios y clicks. Las otras tres son las derivaciones celda↔nota que el circuito necesita y que no pueden vivir escondidas en su único consumidor: el orden de reproducción, las dos puertas de una pieza y qué nota suena en una celda (la que da su altura al cruce del spec 011) |
 | `invariants.ts` | `checkArrayOrder`, `checkAnchors`, `checkShapes`, `checkBaseMap`, `checkNotes`, `checkAll` | Los cinco chequeos del modelo. Los dos geométricos recorren las 96 orientaciones; los otros tres, lo que les corresponde |
 
