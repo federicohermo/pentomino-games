@@ -56,7 +56,46 @@ export const CELL_PX = 71;
 
 /* `PREVIEW_CELL_PX` (20) se fue con `PiecePreview.tsx`: la previsualizacion aparte
    dejo de existir cuando el fantasma del tablero paso a mostrar la nota de cada
-   celda. */
+   celda.
+
+   El spec 016 **no deshace ese retiro**, y conviene que quede escrito porque se le
+   parece. Aquel panel se fue por repetir las NOTAS —el fantasma las dice mejor,
+   sobre la celda donde van a caer— y la miniatura de la paleta no dice ni una nota
+   ni un `#N` (D7): dice la FORMA, que es lo que aquel retiro se llevo puesto de
+   paso y lo unico que el fantasma no puede contestar, porque para verlo ya hay que
+   haber elegido la pieza. Y aquel 20 era una miniatura sola en un panel de 252 px;
+   aca son doce en el mismo lugar. */
+
+/**
+ * El lado de la caja de la miniatura de la paleta, en celdas.
+ *
+ * 5 es la caja mas chica que contiene cualquier pentomino en cualquiera de sus 8
+ * orientaciones: el maximo en un eje lo pone sola la `I` —5×1 acostada, 1×5 parada— y
+ * ninguna otra pieza pasa de 4×2 ni de 3×3. Con 4 la `I` no entra.
+ *
+ * **No se toma `CELLS_PER_PIECE` de `domain/`**, aunque valga 5 tambien. Son dos
+ * numeros distintos que coinciden por casualidad: aquel dice cuantas celdas tiene una
+ * pieza —una propiedad del modelo— y este cuantas casillas mide la caja donde se
+ * dibuja, que es una decision de layout. Atarlos haria que cambiar el pentomino a
+ * hexomino moviera el layout, y que agrandar la caja pareciera un cambio de modelo.
+ */
+export const MINI_BOX = 5;
+
+/**
+ * El lado de una celda de la miniatura, en px.
+ *
+ * El numero no sale de una preferencia sino de dos restricciones medidas, y la segunda
+ * es la que sorprende: **la paleta manda el alto de toda la fila**, asi que inflarla no
+ * agranda el tablero, le deja aire muerto. El techo por ancho del tablero a
+ * `md:col-span-8` es 73,1 px, o sea que en cuanto la paleta pasa de ~470 px de caja el
+ * tablero ya no puede aprovechar el alto extra y `CELL_PX` se clava en 73.
+ *
+ * De ahi el objetivo de 470–520 px de caja para la paleta, y de ahi 6 columnas × 8 px:
+ * con seis columnas son dos filas de botones en vez de tres, que es lo que la hace mas
+ * compacta que cualquier variante de cuatro. Medido con este commit puesto — ver
+ * `CELL_PX` para el resto de la cadena.
+ */
+export const MINI_CELL_PX = 8;
 
 /** Extremos del slider de tempo, en bpm. El valor inicial es DEFAULT_BPM del motor. */
 export const TEMPO_MIN = 60;
