@@ -159,7 +159,8 @@ export interface Sequence {
 }
 ```
 
-El click **mudo** no tiene altura y suena igual en cualquier celda (ver [más abajo](#el-click)); desde
+El click **mudo** suena igual en cualquier celda —es una campana de altura fija desde el spec 015, y
+esa altura no sale del modelo (ver [más abajo](#el-click))—; desde
 el spec 011 el recorrido puede cruzar una celda ocupada, y ese cruce lleva su nota en `note` —MIDI,
 ausente cuando la celda está vacía—. La celda en sí sigue sin ser información que el motor pueda usar,
 y `Sequence` sigue sin poder importar `Cell` del dominio ni con `import type`, porque `audio/` y
@@ -207,10 +208,32 @@ más fina y su propio cambio.
 
 Un salto de `d` celdas entre la salida de una pieza y la entrada de la siguiente produce `d − 1`
 eventos intermedios, uno por celda del camino que devuelve `routeBetween(a, b, placed)`
-(`domain/board.ts`). Sobre celda **vacía** suena un click sin altura, a volumen bajo
-(`CLICK_VELOCITY`, `CLICK_SECONDS` en `audio/constants/`), para que no compita armónicamente con las
-notas — `scheduleClick` en `voice.ts` es la otra forma de sonido de la capa, aparte de
-`scheduleVoice`. Sobre celda **ocupada** suena la nota de esa celda —la misma que la celda muestra
+(`domain/board.ts`). Sobre celda **vacía** suena una **campana de altura fija** de 50 ms a volumen
+bajo (`CLICK_MIDI`, `CLICK_VELOCITY`, `CLICK_SECONDS` en `audio/constants/`) — `scheduleClick` en
+`voice.ts` es la otra forma de sonido de la capa, aparte de `scheduleVoice`.
+
+Fue **ruido blanco** desde el spec 009 y hasta el 015, con un argumento explícito: un oscilador
+siempre tiene altura, y una altura haría que el recorrido dibujara una línea melódica que compite con
+las piezas. El 015 lo acotó en vez de negarlo: **lo que dibuja una línea melódica es tener alturas
+distintas**, y ésta nunca cambia — un metrónomo tiene altura y no toca nada. Lo que evita que se lea
+como una nota más no es la brevedad sino el **registro**: `CLICK_MIDI` (96, `C7`, 2 093 Hz) está nueve
+semitonos por encima del techo del instrumento (`D#6`, 1 244,5 Hz), así que ninguna pieza puede llegar
+ahí. "Fuera de la escala" no era una opción y está medido: el instrumento usa **las 12 clases de
+altura sobre 12**, así que no hay ninguna nota libre.
+
+El motivo del cambio también está medido, renderizando los dos timbres offline: el centroide espectral
+del ruido caía en **~11 000 Hz**, casi dos octavas por encima del techo del instrumento, contra los
+**~2 100 Hz** de la campana. Y no era un evento marginal — en un tablero de 3 piezas el **44 %** de
+los eventos de un ciclo son clicks.
+
+| | ruido (hasta el 014) | campana (desde el 015) |
+|---|---|---|
+| Fuente | `AudioBufferSourceNode` con muestras aleatorias | oscilador senoidal |
+| Altura | ninguna | fija, `CLICK_MIDI` = 2 093 Hz |
+| Duración | 20 ms | 50 ms |
+| Centroide medido | ~11 000 Hz | ~2 100 Hz (2 643 con ventana rectangular) |
+| Cae 40 dB en | 19,6 ms | 29,5 ms |
+| Default | encendido | **apagado** | Sobre celda **ocupada** suena la nota de esa celda —la misma que la celda muestra
 desde el spec 007— como una floritura: más corta y más suave que la nota de una pieza
 (`GRACE_INTERVALS`, `GRACE_VELOCITY` en `voice.constants.ts`, junto a `NOTE_INTERVALS` y no a
 `CLICK_SECONDS`, porque a diferencia del click sí tiene altura), agendada con `scheduleVoice` — no
@@ -219,8 +242,8 @@ hace falta una función nueva. Con 8 piezas un ciclo tiene ~15 eventos intermedi
 segundo, y el recorrido —que es todo el modelo— se vuelve inaudible.
 
 **Solo el click mudo se puede apagar; el interruptor es de mezcla y no del modelo.**
-`setClicksAudible(false)` —el toggle «Clicks» de la paleta— deja de cablear a sonido los clicks **sin
-nota** en `tick()`; la `Sequence` sigue teniendo sus clicks y `collectWindow` los sigue emitiendo.
+`setClicksAudible(false)` —el toggle «Recorrido en el vacío» de la paleta— deja de cablear a sonido
+los clicks **sin nota** en `tick()`; la `Sequence` sigue teniendo sus clicks y `collectWindow` los sigue emitiendo.
 Filtrarlos antes obligaría a reconstruir la secuencia por algo que no es una decisión del tablero, y
 haría que el ciclo pareciera distinto según el volumen. El cruce con altura **no** se apaga con este
 interruptor (D6 del spec 011): es modelo, no mezcla.
@@ -234,6 +257,13 @@ BFS que rodea a cualquier costo, es un camino de **costo mínimo** con peso 1 en
 `CROSS_COST = 5` (`domain/constants/board.constants.ts`, junto a `SEAM`) en celda ocupada, así que
 rodea cuando el rodeo sale barato y cruza —sonando la nota— cuando rodear cuesta más caro. El
 interruptor de clicks queda, pero ya no es la única mitigación: la mitigación de fondo es el peso.
+
+**Desde el spec 015 ese interruptor arranca en `false`** —los clicks nacen apagados, y el default vive
+en dos lugares que tienen que decir lo mismo: el `useState` de `App.tsx` y `clicksAudible` en
+`engine.ts`—. El argumento del 009 no se negó: sin clicks un salto largo es un silencio mudo, y
+apagarlos apaga el 44 % de los eventos de un tablero chico. Lo que cambió es quién decide. Por eso el
+`T070` del 011, que proponía **borrar** el botón, quedó cerrado con un "no": con el default dado vuelta
+el botón es la única forma de **encender** el recorrido.
 
 **El 5 no es el 2 con el que este spec arrancó, y el porqué está medido en el docblock de la
 constante.** Con peso 2 el recorrido cruzaba una pieza **teniendo un rodeo libre disponible** en el

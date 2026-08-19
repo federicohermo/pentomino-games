@@ -77,8 +77,13 @@ la nota siguiente cae exactamente un intervalo después de la última de la ante
 Separar dos piezas en el tablero es la forma de crear espacio entre ellas, y no hay tope porque uno
 volvería la distancia ilegible pasado cierto punto.
 
-**Las celdas que el recorrido cruza sin detenerse suenan.** Sobre celda vacía suena un click sin altura
-y a volumen bajo — si no, un salto de varias celdas es un silencio mudo. Sobre celda **ocupada** suena
+**Las celdas que el recorrido cruza sin detenerse suenan.** Sobre celda vacía suena un click a volumen
+bajo — si no, un salto de varias celdas es un silencio mudo. Ese click **no tiene altura del modelo**:
+desde el spec 015 es una campana de altura fija que no sale de ninguna escala ni de ninguna pieza, y
+que está fuera del registro del instrumento justamente para que no se lea como una nota. Antes del 015
+era ruido blanco, o sea sin altura ninguna; lo que sigue siendo cierto es que **el click no dice nada
+sobre la celda**, y ésa es la propiedad del modelo. Además arranca **apagado** (spec 015): el
+recorrido sobre el vacío se enciende desde el panel. Sobre celda **ocupada** suena
 la nota de esa celda —la misma altura que la celda muestra desde el spec 007— como una floritura más
 corta y más suave que la nota de una pieza (spec 011). `routeBetween(a, b, placed)` (`domain/board.ts`)
 materializa esas celdas intermedias: es el camino de **costo mínimo** sobre las 60 celdas —peso 1 en
