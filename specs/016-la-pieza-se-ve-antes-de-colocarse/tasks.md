@@ -5,79 +5,79 @@ una persona y no bloquea el cierre.
 
 ## Paso 1 — `miniCells`
 
-- [ ] T001 `src/components/piece-mini.ts`: `miniCells(piece, rotation, mirror)` — compone `rotateN` y
+- [x] T001 `src/components/piece-mini.ts`: `miniCells(piece, rotation, mirror)` — compone `rotateN` y
       `reflect` de `domain/transform.ts` y agrega el centrado en la caja de 5×5
-- [ ] T002 El centrado corre por `floor((5 - ancho) / 2)` sobre la forma **ya normalizada**. Con
+- [x] T002 El centrado corre por `floor((5 - ancho) / 2)` sobre la forma **ya normalizada**. Con
       `round`, o leyendo el ancho antes de normalizar, la pieza queda pegada a un borde en algunas
       orientaciones y **compila igual** (`research.md` §6)
-- [ ] T034 **AC16** — el lado de la caja (5) y el px de la mini-celda van a
+- [x] T034 **AC16** — el lado de la caja (5) y el px de la mini-celda van a
       `src/components/constants/layout.constants.ts`, **no** a `piece-mini.ts` ni al `.tsx`: un `.ts`
       de capa tiene funciones y nada más. Es donde vivía `PREVIEW_CELL_PX` y donde está `CELL_PX`
-- [ ] T035 Docblock de la constante del lado: por qué **no** se toma `CELLS_PER_PIECE` de `domain/` —
+- [x] T035 Docblock de la constante del lado: por qué **no** se toma `CELLS_PER_PIECE` de `domain/` —
       cinco celdas por pieza contra cinco casillas de caja, dos números que coinciden por casualidad
-- [ ] T003 Docblock: por qué la caja es 5×5 y no ajustada al contenido (D1 — la `I` pasa de 5×1 a 1×5 y
+- [x] T003 Docblock: por qué la caja es 5×5 y no ajustada al contenido (D1 — la `I` pasa de 5×1 a 1×5 y
       la grilla reflowearía en cada rotación), y por qué no 4×4 (la `I` no entra)
-- [ ] T004 Docblock: acá el **invariante de orden del array no aplica** — la miniatura no numera celdas
+- [x] T004 Docblock: acá el **invariante de orden del array no aplica** — la miniatura no numera celdas
       ni las conecta con grados. Vale decirlo porque todo el resto del dominio afirma lo contrario, y
       con razón
 > T005–T008 **no llevan `[P]`**: los cuatro escriben
 > `src/components/__tests__/piece-mini.test.ts`, y `[P]` significa que no comparten archivo
 > (`specs/README.md:49`). Son cuatro casos de un mismo archivo, no cuatro tareas paralelizables.
 
-- [ ] T005 **AC4** — test sobre las **96 combinaciones**: las cinco celdas caen dentro de `0..4` en
+- [x] T005 **AC4** — test sobre las **96 combinaciones**: las cinco celdas caen dentro de `0..4` en
       los dos ejes
-- [ ] T006 **AC4** — test de centrado: margen simétrico salvo por el píxel impar. Es el que atrapa
+- [x] T006 **AC4** — test de centrado: margen simétrico salvo por el píxel impar. Es el que atrapa
       el `round` de T002
-- [ ] T007 **AC5** — test de que compone y no reimplementa: `normalize(miniCells(p, r, m))` coincide
+- [x] T007 **AC5** — test de que compone y no reimplementa: `normalize(miniCells(p, r, m))` coincide
       con `rotateN` y después `reflect` aplicadas a mano. Va contra `normalize` del resultado y no
       contra «el resultado sin centrar», que la firma no expone y no hace falta exponer
-- [ ] T008 Test de determinismo: misma entrada, mismo resultado
+- [x] T008 Test de determinismo: misma entrada, mismo resultado
 
 ## Paso 2 — El botón
 
-- [ ] T009 `PiecePalette.tsx`: el botón pasa a columna — caja de 5×5 arriba, letra chica abajo
-- [ ] T036 **AC2** — la caja se dibuja con **5 pistas fijas** de la constante, nunca con `min-content`
+- [x] T009 `PiecePalette.tsx`: el botón pasa a columna — caja de 5×5 arriba, letra chica abajo
+- [x] T036 **AC2** — la caja se dibuja con **5 pistas fijas** de la constante, nunca con `min-content`
       ni `auto`: es lo que hace que su tamaño no dependa de qué celdas estén ocupadas. Sin esto AC2
       queda apoyado sólo en el `[M]` de T025
-- [ ] T010 Las celdas ocupadas se pintan con `PIECE_COLOR[key].bg` **por estilo inline**: Tailwind
+- [x] T010 Las celdas ocupadas se pintan con `PIECE_COLOR[key].bg` **por estilo inline**: Tailwind
       escanea el fuente y una clase interpolada no se generaría
-- [ ] T011 Cada celda de la miniatura lleva **borde**, heredado del que tenía el punto de color — sin él
+- [x] T011 Cada celda de la miniatura lleva **borde**, heredado del que tenía el punto de color — sin él
       el amarillo de `V` y el lima de `F` casi no se ven contra el gris del botón. Es además el idioma
       del tablero desde el 007
-- [ ] T012 **AC7** — sacar el `<span>` del punto de color, con el motivo escrito: con la forma pintada,
+- [x] T012 **AC7** — sacar el `<span>` del punto de color, con el motivo escrito: con la forma pintada,
       decía lo mismo dos veces
-- [ ] T013 **AC8** — el fondo del botón no se toca: sigue siendo el único canal de "seleccionada", en el
+- [x] T013 **AC8** — el fondo del botón no se toca: sigue siendo el único canal de "seleccionada", en el
       mismo idioma que `Rotación` y `Reflexión` de la misma tarjeta
-- [ ] T014 **AC6** — `aria-label` con el nombre y la orientación. La forma dibujada con `div`s no tiene
+- [x] T014 **AC6** — `aria-label` con el nombre y la orientación. La forma dibujada con `div`s no tiene
       nombre accesible, y el botón hoy lo tenía gratis por su texto
-- [ ] T015 Reescribir el comentario largo que argumenta el esquema de columnas: su cuenta está hecha
+- [x] T015 Reescribir el comentario largo que argumenta el esquema de columnas: su cuenta está hecha
       sobre la letra más el punto, y ninguno de los dos gobierna ya el ancho (`research.md` §1)
 
 ## Paso 3 — Remedir el layout y cerrar
 
-- [ ] T016 Elegir mini-celda y columnas **midiendo con el punto ya sacado**, contra el objetivo de D6:
+- [x] T016 Elegir mini-celda y columnas **midiendo con el punto ya sacado**, contra el objetivo de D6:
       paleta entre ~470 y 520 px de caja. Empezar por 6 columnas × 6–8 px (`research.md` §3) — **AC9**
-- [ ] T017 **AC10** — remedir el rango debajo de `md`, donde la tarjeta es `col-span-12`. Los tres
+- [x] T017 **AC10** — remedir el rango debajo de `md`, donde la tarjeta es `col-span-12`. Los tres
       números de hoy (`grid-cols-6 md:grid-cols-3 lg:grid-cols-4`) salen de la medición vieja y ninguno
       se hereda. El criterio es el que el comentario de `PiecePalette.tsx:38-52` ya usa: de 375 px a
       `max-w-6xl` saturado, el padding efectivo del botón más ancho **nunca negativo** —con el esquema
       viejo llegó a −4,6 px a 768— y la tarjeta sin scroll horizontal
-- [ ] T018 `layout.constants.ts`: `CELL_PX` 71 → **73**
-- [ ] T019 Reescribir el docblock de `CELL_PX` diciendo **cuál es la restricción que manda hoy**. Cambió
+- [x] T018 `layout.constants.ts`: `CELL_PX` 71 → **73**
+- [x] T019 Reescribir el docblock de `CELL_PX` diciendo **cuál es la restricción que manda hoy**. Cambió
       de lado dos veces en dos specs —ancho (63) → alto (71) → ancho (73)— y sin eso escrito el próximo
       mira la tarjeta equivocada (`research.md` §4)
-- [ ] T020 Verificar que el **piso de 60 px** sigue valiendo: depende de la fuente de la nota, no del
+- [x] T020 Verificar que el **piso de 60 px** sigue valiendo: depende de la fuente de la nota, no del
       layout, así que ninguno de los tres pasos lo movió
-- [ ] T021 Actualizar la lápida de `PREVIEW_CELL_PX`, para que no parezca que este spec deshace el
+- [x] T021 Actualizar la lápida de `PREVIEW_CELL_PX`, para que no parezca que este spec deshace el
       retiro del 007: aquel panel se fue por repetir las **notas**, y esto no las repite
       (`research.md` §5)
-- [ ] T022 `pnpm verify` en verde — **AC12**
-- [ ] T023 **AC11** — el diff no toca `domain/`, `audio/` ni `mcp-server/`. Este spec no puede cambiar
+- [x] T022 `pnpm verify` en verde — **AC12**
+- [x] T023 **AC11** — el diff no toca `domain/`, `audio/` ni `mcp-server/`. Este spec no puede cambiar
       una nota
-- [ ] T024 [P] `DESIGN.md`: **dos** filas, no una — `DESIGN.md:128` (la fila `PiecePalette` de *El
+- [x] T024 [P] `DESIGN.md`: **dos** filas, no una — `DESIGN.md:128` (la fila `PiecePalette` de *El
       color comunica identidad*, que dice «el color entra al costado») y `DESIGN.md:79` (la fila
       `CELL_PX` de *Qué muestra una celda*, que queda mintiendo con el número nuevo) — **AC14**
-- [ ] T037 [P] `docs/architecture/directory-structure.md`: entran `piece-mini.ts` y
+- [x] T037 [P] `docs/architecture/directory-structure.md`: entran `piece-mini.ts` y
       `__tests__/piece-mini.test.ts`. Ese doc enumera `components/` archivo por archivo —`cell-text.ts`
       y su test están ahí desde el 012— así que agregarlos sin tocarlo lo deja incompleto. Mismo
       movimiento que el T035 del 014 — **AC15**
@@ -91,12 +91,12 @@ una persona y no bloquea el cierre.
 
 ## PR
 
-- [ ] T038 **Verificar que el 014 está mergeado antes de arrancar**: `CELL_PX` en 71 y la paleta en
+- [x] T038 **Verificar que el 014 está mergeado antes de arrancar**: `CELL_PX` en 71 y la paleta en
       `md:col-span-4`. Si están en 63 y `col-span-3`, el paso 3 mide contra otro layout y hay que
       remedirlo entero después
-- [ ] T029 Rama `feature/016-la-pieza-se-ve-antes-de-colocarse` desde `main`
+- [x] T029 Rama `feature/016-la-pieza-se-ve-antes-de-colocarse` desde `main`
 - [ ] T030 [M] `/pr-review` antes de pedir revisión
-- [ ] T031 `specs/log.md`: estado del 016
+- [x] T031 `specs/log.md`: estado del 016
 
 ## Seguimiento (no bloquea)
 

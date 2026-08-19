@@ -76,8 +76,8 @@ texto blanco **sin oscurecer ni un color de la lámina** — bajo 2.1 las dos co
 
 | Medida | Valor | Por qué |
 |---|---|---|
-| `CELL_PX` | **63** (era 28) | el piso son 60 —`D#5` mide 35,4 px medidos a `text-[19px]`— y 63 es lo que la tarjeta deja |
-| Tablero | **630 × 378 px** (era 280 × 168) | 10 × 6 × `CELL_PX` en una tarjeta de 633 × 380: llena las dos dimensiones |
+| `CELL_PX` | **73** (era 28, y 63 hasta el 014) | el piso son 60 —`D#5` mide 35,4 px medidos a `text-[19px]`— y 73 es lo que la tarjeta deja hoy: 63 → 71 al morir `PlacedList` (014) y 71 → 73 cuando las miniaturas hicieron más alta la paleta (016). Cuál de las dos dimensiones manda cambió de lado dos veces, y está escrito en el docblock de la constante |
+| Tablero | **730 × 438 px** (era 280 × 168) | 10 × 6 × `CELL_PX` en una tarjeta de 730,7 × 464: llena el ancho, y los 26 px de alto que sobran son el precio de que la paleta muestre las doce formas |
 | Tarjeta del tablero | **`md:col-span-7`** (era 6) | con 6 sobraban 68 px de alto: 10 × 6 no tenía la proporción de la tarjeta |
 | Aire de la baldosa | **2 px** por lado | separa las fichas sin sumar un segundo número al ancho |
 | Borde de la baldosa | **1 px `slate-900`** | el tablero se define reforzando la celda, no rellenando el fondo |
@@ -96,7 +96,7 @@ hacia atrás. El número que se ve tiene que seguir a lo que se ve moverse. La t
 celda de grado 0, pero eso ya no se lee del número: se lee de la nota, que es el dato que la reflexión
 no mueve.
 
-**Cada celda es una baldosa redondeada, no un casillero.** Los 63 px son la pista; adentro va una ficha
+**Cada celda es una baldosa redondeada, no un casillero.** Los `CELL_PX` son la pista; adentro va una ficha
 `rounded-lg` con 2 px de aire alrededor. Es el lenguaje de la lámina: una pieza colocada se lee como
 cinco fichas apoyadas sobre la grilla, no como cinco celdas de una tabla. El aire lo hace el padding de
 la pista y no un `gap` de la grilla, así que el ancho del tablero sigue siendo exactamente 10 × `CELL_PX`.
@@ -125,7 +125,7 @@ comunicaba identidad de pieza, y nunca sobre el canal de estado.*
 | Dónde | Qué hace el color | Por qué |
 |---|---|---|
 | `Board` | celda ocupada = color de pieza | identidad debajo, estado encima |
-| `PiecePalette` | **el fondo del botón no se toca**; el color entra al costado | el fondo ya es el canal de "seleccionado" |
+| `PiecePalette` | **el fondo del botón no se toca**; el color pinta **la forma** de la pieza, dibujada en miniatura | el fondo ya es el canal de "seleccionado" |
 
 *(`PlacedList` era el tercer caso y se fue con el spec 014: la letra iba **sobre** el color de pieza y
 no *pintada* del color, porque como texto sobre el blanco de la tarjeta el amarillo de `V` da **1,07 de
@@ -136,6 +136,28 @@ se edita en el tablero.)*
 *(`PiecePreview` era el cuarto caso y ya no existe: mostraba la pieza aparte, sin notas, mientras el
 fantasma la muestra en el lugar donde va a caer y con la nota de cada celda. Dos vistas del mismo objeto
 donde una es estrictamente mejor no es lenguaje visual, es alto de pantalla gastado.)*
+
+### El botón de la paleta muestra la forma, no la letra
+
+Desde el spec 016 cada botón dibuja **la pieza**, pintada con su color y **en la orientación que está
+seleccionada ahora mismo**, con la letra chica debajo. Antes decía sólo la letra, con un punto de 8 px al
+costado para la identidad — y esas doce letras son nombres arbitrarios: la `N` no se parece a una N, y
+la `V` y la `L` son la misma forma con un brazo de distinto largo.
+
+Tres cosas que hacen que eso sea posible sin romper nada de lo de arriba:
+
+- **La caja es fija, de 5×5 celdas.** Es la más chica que contiene cualquier pentominó en cualquiera de
+  sus 8 orientaciones. Sin ella, la `I` —que pasa de 5×1 a 1×5— haría reflowear los doce botones en cada
+  rotación, que es el mismo bug que la línea de notas de esa tarjeta ya tenía documentado: *un panel de
+  control que se acomoda solo cuando lo tocás mueve el botón justo cuando vas a apretarlo.*
+- **El fondo del botón sigue sin tocarse**, porque sigue siendo el único canal de «seleccionada».
+- **El punto de color se fue** y su borde se quedó, en cada celda de la miniatura: varios de los 12
+  colores (el amarillo de `V`, el lima de `F`) casi no se ven contra el gris claro del botón sin
+  apoyarse. Es el mismo motivo por el que las baldosas del tablero llevan borde desde el 007.
+
+Y una que no cambia: **la miniatura no dice notas ni pasos**. Eso lo dice el tablero a 73 px por celda;
+en una mini-celda de 8 px no entra un `D#5`, y meterlo es lo que hacía que la previsualización del 007
+repitiera al fantasma. La paleta contesta *cuál* y *cómo está girada*; el tablero contesta *qué suena*.
 
 Lo que **no** se comunica con el color de pieza, porque el color ya está ocupado diciendo *qué pieza es*:
 
