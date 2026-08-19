@@ -153,8 +153,8 @@ export default function Board({
   // por ancho de este reparto.
   return (
     <div className="col-span-12 md:col-span-8 bg-white rounded-2xl shadow p-4">
-      {/* `overflow-x-auto` y no un `CELL_PX` mas chico: la grilla mide 10 × 71 =
-          710 px FIJOS y no se encoge, y abajo del breakpoint `md` el panel util
+      {/* `overflow-x-auto` y no un `CELL_PX` mas chico: la grilla mide 10 × 73 =
+          730 px FIJOS y no se encoge, y abajo del breakpoint `md` el panel util
           queda en ~311 px. Sin esto la grilla se sale del borde derecho y —toda la
           cadena de ancestros es `overflow-x: visible`— empuja scroll horizontal a
           la PAGINA entera. Scrollea el tablero, que es lo que sobra, en vez de

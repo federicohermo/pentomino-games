@@ -2,8 +2,9 @@ import { midiName } from '../domain/music.ts';
 import { SHAPES } from '../domain/constants/pieces.constants.ts';
 import { CHROMATIC, BASE_MAP } from '../domain/constants/music.constants.ts';
 import type { PieceKey } from '../domain/types/pieces.types.ts';
-import { TEMPO_MIN, TEMPO_MAX } from './constants/layout.constants.ts';
+import { TEMPO_MIN, TEMPO_MAX, MINI_BOX, MINI_CELL_PX } from './constants/layout.constants.ts';
 import { PIECE_COLOR } from './constants/palette.constants.ts';
+import { miniCells } from './piece-mini.ts';
 
 /**
  * Panel izquierdo: eleccion de pieza, rotacion, reflexion, tempo y transporte.
@@ -41,39 +42,101 @@ export default function PiecePalette({
   return (
     <div className="col-span-12 md:col-span-4 bg-white rounded-2xl shadow p-3">
       <h2 className="text-lg font-semibold mb-2">Piezas</h2>
-      {/* Las columnas bajan de 6 a partir de `md`, y eso es consecuencia del punto:
-          medido en el DOM, el boton mas ancho (`W`) pide 42,7 px de min-content —
-          `px-2` (16) + borde (2) + punto (8) + `gap-1` (4) + la letra (13,1)— contra
-          pistas de 18 px a 768 y 35,3 px con el `max-w-6xl` saturado.
+      {/* El esquema de columnas se REMIDIO entero para el spec 016 y no se hereda: la
+          cuenta anterior estaba hecha sobre la letra mas el punto de color, y ninguno
+          de los dos gobierna ya el ancho. Hoy el que manda es la caja de la miniatura,
+          que mide 5 × `MINI_CELL_PX` = 40 px y **no depende ni de la pieza ni de la
+          orientacion** — asi que el peor caso dejo de ser el `W` y pasa a ser el mismo
+          para las doce.
 
-          El `1fr` no desborda la tarjeta: el contenido se sale del PADDING del boton,
-          que tiene `overflow: visible`. Por eso no se ve como scroll sino como aire
-          que desaparece — el padding efectivo medido caia de 8 px a 3,5 en pantalla
-          ancha y a **-4,6 px a 768**, o sea la letra cruzando su propio borde. Sin el
-          punto el peor caso era 1,4 px: apretado, pero nunca negativo.
+          Lo que si se hereda es la METRICA, que es la que atrapo el bug la vez pasada:
+          el `1fr` no produce scroll —el contenido se sale del PADDING del boton, que
+          tiene `overflow: visible`— asi que lo que hay que mirar es el **padding
+          efectivo**, `(pista - 42) / 2` con los 40 de la caja mas 2 de borde. Con el
+          esquema viejo llegaba a **-4,6 px a 768**, o sea la letra cruzando su propio
+          borde, y eso no se ve como desborde sino como aire que desaparece.
 
-          6 columnas solo debajo de `md`, donde la tarjeta es `col-span-12` y sobra
-          ancho: ahi el peor caso a 375 px de viewport son 9,7 px de padding. Con 3 a
-          `md` y 4 a `lg` el peor caso de todo el rango vuelve a **8,5 px** (a 768,
-          que es el mas apretado), a costa de una fila mas. */}
-      <div className="grid grid-cols-6 md:grid-cols-3 lg:grid-cols-4 gap-2">
+          Medido en el DOM sobre todo el rango, con este commit puesto:
+
+            viewport   tarjeta   interior   columnas   pista    padding
+            375        12/12      319,0        6        46,5      2,3
+            768         4/12      210,7        3        64,9     11,4
+            1024        4/12      296,0        4        68,0     13,0
+            1280+       4/12      349,3        6        51,5      4,8
+
+          **Seis columnas NO andan a `md`**: ahi la tarjeta cae a 210,7 px de interior
+          —es el punto mas apretado de todo el rango, igual que la vez pasada— y la
+          pista queda en 28,4, o sea **-6,8 px de padding efectivo**. Por eso el
+          esquema vuelve a ser escalonado, con el ultimo escalon en `xl` y no en `lg`:
+          a 1024 la tarjeta todavia mide 296 y seis columnas dejarian 0,35 px, que es
+          positivo por casualidad y no por margen.
+
+          Y seis arriba de todo tambien por el ALTO, que es lo que decide el layout de
+          la fila entera: seis columnas son dos filas de botones en vez de tres, y la
+          paleta es la tarjeta mas alta — lo que crezca de mas no agranda el tablero,
+          le deja aire muerto. Ver el docblock de `MINI_CELL_PX`. */}
+      <div className="grid grid-cols-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
         {/* El fondo del boton NO toma el color de pieza: ese fondo es el canal de
             "seleccionada" y pintarlo dejaria a la paleta sin decir cual esta activa.
-            La identidad entra como un punto al costado de la letra, que es donde ya
-            se comunicaba identidad. El punto lleva borde propio porque varios de los
-            12 colores (el amarillo de `V`, el lima de `F`) casi no se ven contra el
-            gris claro del boton sin apoyarse. */}
-        {(Object.keys(SHAPES) as PieceKey[]).map(key=> (
-          <button
-            key={key}
-            onClick={()=> onSelect(key)}
-            className={`px-2 py-1 rounded-lg border text-sm inline-flex items-center justify-center gap-1 ${selected===key? 'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}
-          >
-            <span className="w-2 h-2 rounded-full border border-slate-400 shrink-0"
-                  style={{background: PIECE_COLOR[key].bg}}></span>
-            {key}
-          </button>
-        ))}
+            Eso no cambia — lo que cambia es donde entra la identidad.
+
+            Hasta el spec 016 entraba como un punto de 8 px al costado de la letra.
+            Con la forma pintada del color de la pieza, el punto decia lo mismo dos
+            veces y se fue. Lo que SI se hereda es su borde: varios de los 12 colores
+            (el amarillo de `V`, el lima de `F`) casi no se ven contra el gris claro
+            del boton sin apoyarse, asi que las celdas de la miniatura lo llevan — que
+            ademas es el idioma del tablero desde el 007, donde todas las baldosas
+            tienen borde por el mismo motivo.
+
+            La letra se queda abajo y en chico. No es decoracion: es el vocabulario con
+            el que se habla de las piezas en `describe_piece`, en el `title` del tablero
+            y en `DESIGN.md`, y ademas es el unico nombre accesible que el boton tenia
+            —una forma dibujada con `div`s no tiene ninguno—. El `aria-label` dice
+            tambien la orientacion, para que el lector de pantalla diga lo que el ojo
+            ve: la miniatura muestra la orientacion ACTUAL, no la canonica. */}
+        {(Object.keys(SHAPES) as PieceKey[]).map(key=> {
+          const celdas = miniCells(key, rotation, mirror);
+          const ocupada = new Set(celdas.map(([x, y]) => `${x},${y}`));
+          return (
+            <button
+              key={key}
+              onClick={()=> onSelect(key)}
+              aria-label={`${key}, rotación ${rotation * 90}°${mirror ? ', reflejada' : ''}`}
+              className={`px-2 py-1 rounded-lg border text-sm flex flex-col items-center justify-center gap-1 ${selected===key? 'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}
+            >
+              {/* CINCO pistas fijas y no `min-content` ni `auto`: es lo que hace que el
+                  tamano de la caja no dependa de que celdas esten ocupadas, y por lo
+                  tanto que rotar no mueva un pixel de la grilla de botones. Con pistas
+                  automaticas la `I` sola haria saltar la fila entera entre 5 y 1
+                  celdas de ancho, que es el reflow que la caja fija existe para evitar.
+                  Va por estilo inline y no por clase porque el numero sale de una
+                  constante, y Tailwind escanea el fuente: `grid-cols-[repeat(5,8px)]`
+                  interpolado no se generaria. */}
+              <div
+                className="grid"
+                style={{
+                  gridTemplateColumns: `repeat(${MINI_BOX}, ${MINI_CELL_PX}px)`,
+                  gridTemplateRows: `repeat(${MINI_BOX}, ${MINI_CELL_PX}px)`,
+                }}
+              >
+                {Array.from({ length: MINI_BOX * MINI_BOX }, (_, i) => {
+                  const x = i % MINI_BOX; const y = Math.floor(i / MINI_BOX);
+                  const llena = ocupada.has(`${x},${y}`);
+                  // Inline y no `bg-[...]`: una clase interpolada desde `PIECE_COLOR`
+                  // no la generaria Tailwind. La celda vacia queda transparente para
+                  // que se vea el fondo del boton, que es quien dice "seleccionada".
+                  return (
+                    <div key={i}
+                      className={llena ? 'border border-slate-900' : ''}
+                      style={llena ? { background: PIECE_COLOR[key].bg } : undefined}
+                    />
+                  );
+                })}
+              </div>
+              <span className="text-xs leading-none">{key}</span>
+            </button>
+          );
+        })}
       </div>
       <div className="mt-4 space-y-2">
         <div className="flex items-center justify-between">
