@@ -27,3 +27,18 @@ export interface EventoDeTecla {
   /** Mientras el modificador estuvo abajo no llegó otra tecla ni la rueda (D10). */
   tapLimpio: boolean;
 }
+
+/**
+ * Los cuatro modificadores que un `keydown` reporta, más la tecla que lo produjo.
+ *
+ * Es lo único que hace falta para saber si el `keydown` ABRE un tap o lo ensucia, y va
+ * separado de `EventoDeTecla` porque esa pregunta se contesta antes: el tap es lo que
+ * `EventoDeTecla` recibe ya resuelto.
+ */
+export interface EventoDeModificador {
+  key: string;
+  shiftKey: boolean;
+  ctrlKey: boolean;
+  altKey: boolean;
+  metaKey: boolean;
+}

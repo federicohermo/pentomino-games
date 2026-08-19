@@ -1,5 +1,5 @@
 import { ACCION } from './constants/input.constants.ts';
-import type { Accion, EventoDeTecla } from './types/input.types.ts';
+import type { Accion, EventoDeTecla, EventoDeModificador } from './types/input.types.ts';
 
 /**
  * La DECISIÓN de cada gesto de entrada, separada del cableado que la ejecuta.
@@ -37,6 +37,27 @@ import type { Accion, EventoDeTecla } from './types/input.types.ts';
 export function rotacionPorRueda(rotation: number, deltaY: number): number {
   const delta = deltaY > 0 ? 1 : deltaY < 0 ? -1 : 0;
   return (rotation + 4 + delta) % 4;
+}
+
+/**
+ * Si este `keydown` ABRE un tap limpio. Si no, ensucia el que hubiera abierto.
+ *
+ * El spec 013 describe la regla como «arranca en `true` con el `keydown` del
+ * modificador», y así escrita tiene un agujero que el código destapa: `Ctrl`+`Shift`
+ * son DOS keydown de modificador seguidos, así que los dos abrirían tap y al soltarlos
+ * la pieza rotaría y se reflejaría sola. No es un caso inventado — `Ctrl`+`Shift` es el
+ * atajo con el que Windows cambia de distribución de teclado, y a diferencia de
+ * `Ctrl`+`Shift`+`I` no trae una tercera tecla que ensucie el tap.
+ *
+ * De ahí la condición completa: un modificador abre tap solo si **ningún otro**
+ * modificador estaba abajo. `Alt` y `Meta` cuentan aunque no sean nuestros — `Alt` lo
+ * reserva el spec 014 para mutear, y `Meta` es el modificador de los atajos de macOS.
+ */
+export function abreTapLimpio(e: EventoDeModificador): boolean {
+  const otroAbajo = (e.key !== 'Shift' && e.shiftKey)
+    || (e.key !== 'Control' && e.ctrlKey)
+    || e.altKey || e.metaKey;
+  return (e.key === 'Shift' || e.key === 'Control') && !otroAbajo;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rotacionPorRueda, accionDeTecla, reflejaElContextMenu } from '../input.ts';
+import { rotacionPorRueda, accionDeTecla, abreTapLimpio, reflejaElContextMenu } from '../input.ts';
 import { ACCION } from '../constants/input.constants.ts';
 import type { EventoDeTecla } from '../types/input.types.ts';
 
@@ -93,6 +93,43 @@ describe('AC7 y AC8 — la barra espaciadora', () => {
     // Escribir en el slider de tempo con Shift no tiene por qué rotar la pieza.
     expect(accionDeTecla(tecla({ key: 'Shift', tipo: 'keyup', targetEsControl: true }))).toBeNull();
     expect(accionDeTecla(tecla({ key: 'Control', tipo: 'keyup', targetEsControl: true }))).toBeNull();
+  });
+});
+
+describe('qué keydown abre un tap limpio', () => {
+  /** Un `keydown` sin modificadores encendidos salvo los que el test pide. */
+  const bajar = (key: string, mods: Partial<Record<'shiftKey' | 'ctrlKey' | 'altKey' | 'metaKey', boolean>> = {}) =>
+    abreTapLimpio({
+      key,
+      shiftKey: key === 'Shift', ctrlKey: key === 'Control',
+      altKey: false, metaKey: false,
+      ...mods,
+    });
+
+  it('un modificador solo lo abre', () => {
+    expect(bajar('Shift')).toBe(true);
+    expect(bajar('Control')).toBe(true);
+  });
+
+  it('cualquier otra tecla lo ensucia', () => {
+    for (const key of ['a', ' ', 'Alt', 'Enter']) expect(bajar(key), key).toBe(false);
+  });
+
+  it('un modificador con OTRO ya abajo no lo abre', () => {
+    // El agujero que la regla del spec —"arranca en true con el keydown del
+    // modificador"— deja abierto: `Ctrl`+`Shift` son dos keydown de modificador
+    // seguidos y ninguna tercera tecla que ensucie el tap. Es el atajo con el que
+    // Windows cambia de distribución de teclado, así que sin esto la pieza rotaría y
+    // se reflejaría sola al soltarlo.
+    expect(bajar('Shift', { ctrlKey: true })).toBe(false);
+    expect(bajar('Control', { shiftKey: true })).toBe(false);
+  });
+
+  it('`Alt` y `Meta` abajo también lo ensucian', () => {
+    // `Alt` lo reserva el spec 014 para mutear y `Meta` es el modificador de los
+    // atajos de macOS: los dos son gestos de otro dueño.
+    expect(bajar('Control', { altKey: true })).toBe(false);
+    expect(bajar('Shift', { metaKey: true })).toBe(false);
   });
 });
 

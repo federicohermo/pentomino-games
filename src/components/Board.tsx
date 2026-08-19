@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, MouseEvent, RefObject } from 'react';
 import { occupantAt, occupantCellIndex } from '../domain/board.ts';
 import { GRID_W, GRID_H } from '../domain/constants/board.constants.ts';
 import type { Cell } from '../domain/types/transform.types.ts';
@@ -112,11 +112,17 @@ interface Props {
   onCellClick: (x: number, y: number) => void;
   onCellEnter: (cell: Cell) => void;
   onMouseLeave: () => void;
+  /** El boton derecho sobre el tablero alterna la reflexion (spec 013). Handler y no
+      logica: quien decide si el evento cuenta es `App.tsx` con `reflejaElContextMenu`. */
+  onContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
+  /** El nodo al que `App.tsx` le engancha la rueda. Este componente lo CUELGA y no lo
+      lee: el `ref` se crea alla, asi que aca no hay ni estado ni efecto. */
+  boardRef: RefObject<HTMLDivElement | null>;
 }
 
 export default function Board({
   placed, previewCells, previewValid, hover, selected, rotation, mirror,
-  onCellClick, onCellEnter, onMouseLeave,
+  onCellClick, onCellEnter, onMouseLeave, onContextMenu, boardRef,
 }: Props) {
   // Que celda del fantasma cae en (x,y), POR INDICE: es lo que permite pedirle su
   // texto al mapeo canonico. Se arma una vez por render y no una vez por celda.
@@ -142,7 +148,20 @@ export default function Board({
           directo y no llega por una ranura de `children`: `Playhead` no recibe props, o
           sea que no le pide nada a `App`, y una ranura generica reabriria la puerta que
           el review del 007 cerro midiendo. */}
-      <div className="relative overflow-x-auto">
+      {/* Los dos gestos del spec 013 enganchan ACA y no en el `.grid` de adentro ni en
+          la tarjeta: este div cubre exactamente el area del tablero —incluida la franja
+          que queda a la derecha cuando la grilla scrollea debajo de `md`— mientras que
+          el `.grid` dejaria un borde muerto y la tarjeta se comeria el `p-4`.
+
+          Entran distinto y la asimetria esta medida, no elegida: React registra sus
+          listeners en el contenedor raiz y a `touchstart`, `touchmove` y `wheel` los
+          registra PASIVOS (react-dom 19.1.1), y adentro de un listener pasivo
+          `preventDefault()` es un no-op que el navegador avisa por consola. O sea que un
+          `onWheel` de JSX rotaria sin frenar el scroll, que es la falla mas cara: parece
+          que anda. Por eso la rueda va por `addEventListener(..., { passive: false })`
+          desde `App.tsx`, y lo unico que llega aca es el `ref` del nodo. `contextmenu`
+          no esta entre esos tres nombres, asi que el boton derecho si puede ir por prop. */}
+      <div ref={boardRef} className="relative overflow-x-auto" onContextMenu={onContextMenu}>
         <Playhead />
         <div
           className="grid w-max"

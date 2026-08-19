@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import {
   playNow, setSequence, setBpm, setClicksAudible,
   startClock, stopClock, clockRunning,
@@ -17,6 +17,8 @@ import Board from "./components/Board.tsx";
 import PlacedList from "./components/PlacedList.tsx";
 import Spectrum from "./components/Spectrum.tsx";
 import { encolar } from "./components/route-source.ts";
+import { rotacionPorRueda, accionDeTecla, abreTapLimpio, reflejaElContextMenu } from "./components/input.ts";
+import { ACCION } from "./components/constants/input.constants.ts";
 
 /**
  * Pentomino Music — prototipo de instrumento, no un juego con reglas de resolucion.
@@ -55,6 +57,15 @@ export default function App(){
   const [hover, setHover] = useState<Cell | null>(null);
 
   const idRef = useRef(0);
+
+  // El nodo del tablero, para colgarle la rueda. Se crea ACA y viaja a `Board` como una
+  // prop mas: asi el componente no gana ni estado ni efectos (AC11 del spec 013).
+  const boardRef = useRef<HTMLDivElement | null>(null);
+
+  // Si el tap del modificador que esta abajo sigue siendo limpio. Va en un ref y no en
+  // `useState` porque cambia varias veces por gesto y no lo dibuja nadie: meterlo al
+  // estado re-renderizaria el arbol entero por una tecla apretada.
+  const tapLimpio = useRef<boolean>(false);
 
   useEffect(()=>{ setBpm(tempo); }, [tempo]);
   useEffect(()=>{ setClicksAudible(clicks); }, [clicks]);
@@ -182,7 +193,12 @@ export default function App(){
     });
   }, []);
 
-  function togglePlay(){
+  // `useCallback` y no una función suelta desde que el atajo de la barra espaciadora
+  // también la llama (spec 013): el efecto del teclado la tiene en sus dependencias, y
+  // sin memo cambiaría de identidad en cada render y re-suscribiría los dos listeners
+  // por cada tecla. Con `[playing]`, la identidad cambia exactamente cuando cambia el
+  // transporte, que es la dependencia real que el efecto declara.
+  const togglePlay = useCallback(()=>{
     if (playing) stopClock(); else startClock();
     // El motor es quien sabe si arrancó: startClock() es un no-op silencioso
     // cuando audio() devuelve null, y sin este chequeo el botón diría "Pausa"
@@ -190,6 +206,97 @@ export default function App(){
     // a chequear en todo llamador, y era lo único que la consulta imperativa
     // hacía bien antes de este spec.
     setPlaying(clockRunning());
+  }, [playing]);
+
+  // ── Entrada directa (spec 013) ──────────────────────────────────────────────────
+  // Los tres gestos que gobiernan la pieza POR COLOCAR se atan a la mano que ya está
+  // sobre el tablero, para no pagar un viaje al panel por cada cambio de orientación.
+  // La DECISIÓN de cada uno vive en `components/input.ts` —donde se puede testear sin
+  // jsdom— y acá queda solo el cableado.
+
+  // Las dependencias son las REALES —`rotation`, `mirror` y el `togglePlay` que lleva
+  // `playing` adentro— y el efecto se re-suscribe cuando cambian. La alternativa es un
+  // ref con el estado para suscribir una sola vez, que es la optimización que este repo
+  // no necesita: son dos `addEventListener` sobre `window`, no un costo, y el ref
+  // escondería de dónde sale cada valor.
+  useEffect(()=>{
+    // El `target` interactivo se mira acá y no en la pura: `HTMLButtonElement` es un
+    // tipo del DOM, y `input.ts` tiene que poder cargarse en `environment: 'node'`.
+    const esControl = (t: EventTarget | null) =>
+      t instanceof HTMLButtonElement || t instanceof HTMLInputElement;
+
+    const despachar = (e: KeyboardEvent, tipo: 'keydown' | 'keyup') => {
+      const accion = accionDeTecla({
+        key: e.key, tipo, repeat: e.repeat,
+        targetEsControl: esControl(e.target),
+        tapLimpio: tapLimpio.current,
+      });
+      // `preventDefault` SOLO cuando la acción no es null: si el handler se saltea el
+      // evento, el navegador tiene que quedárselo entero — es lo que deja que la barra
+      // active el botón que tiene el foco en vez de alternar el transporte dos veces.
+      if (accion === null) return;
+      e.preventDefault();
+      if (accion === ACCION.rotar) setRotation((rotation + 1) % 4);
+      else if (accion === ACCION.reflejar) setMirror(!mirror);
+      // El transporte pasa por `togglePlay` y no por `startClock`/`stopClock` sueltos:
+      // ahí vive la consulta a `clockRunning()` que `.claude/rules/audio.md` obliga a
+      // hacer en todo llamador, y abrir una segunda puerta la saltearía.
+      else togglePlay();
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Un modificador ABRE un tap limpio; cualquier otra tecla ENSUCIA el que hubiera.
+      // Con esto `Ctrl`+C no da vuelta la reflexión, que es el uso normal de un
+      // navegador y no el caso raro de apretar la tecla sin querer.
+      tapLimpio.current = abreTapLimpio(e);
+      despachar(e, 'keydown');
+    };
+    const onKeyUp = (e: KeyboardEvent) => despachar(e, 'keyup');
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return ()=>{
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, [rotation, mirror, togglePlay]);
+
+  // La rueda va por `addEventListener` no pasivo y no por una prop `onWheel`: React
+  // registra `wheel` PASIVO en su contenedor raíz (react-dom 19.1.1), y adentro de un
+  // listener pasivo `preventDefault()` es un no-op que el navegador solo avisa por
+  // consola. Con la prop, la rueda rotaría y la página scrollearía igual — o sea que
+  // parecería andar. Ver el comentario del contenedor en `Board.tsx`.
+  //
+  // Con el setter funcional este efecto no depende de `rotation` y se suscribe una sola
+  // vez, que es lo contrario del efecto del teclado y por un motivo concreto: acá no hay
+  // ningún valor que el handler tenga que leer.
+  useEffect(()=>{
+    const nodo = boardRef.current;
+    if (!nodo) return;
+    const onWheel = (e: WheelEvent) => {
+      // `Ctrl`+rueda es el zoom del navegador, que es una afordancia de accesibilidad y
+      // no un atajo de conveniencia: el evento se saltea ENTERO, `preventDefault`
+      // incluido, y el navegador hace lo suyo. Un gesto del sistema le gana a uno nuestro.
+      if (e.ctrlKey) return;
+      e.preventDefault();
+      // La rueda ensucia el tap: `Ctrl`+rueda no puede reflejar al soltar el `Ctrl`.
+      tapLimpio.current = false;
+      setRotation(r => rotacionPorRueda(r, e.deltaY));
+    };
+    // `{ passive: false }` explícito: Chrome asume `passive: true` para `wheel` sobre
+    // window y document, y aunque sobre un elemento el default sigue siendo false,
+    // escribirlo es lo que deja el trato a la vista.
+    nodo.addEventListener('wheel', onWheel, { passive: false });
+    return ()=> nodo.removeEventListener('wheel', onWheel);
+  }, []);
+
+  // El menú contextual no se abre NUNCA sobre el tablero —`preventDefault` siempre—,
+  // pero alternar es otra cosa: en macOS `Ctrl`+click llega como `contextmenu` con
+  // `ctrlKey: true` y ahí el que alterna es el `keyup` de `Ctrl`. Contar los dos daría
+  // neto cero y la reflexión no respondería nunca en una laptop de Apple sin mouse.
+  function handleContextMenu(e: { preventDefault: () => void; ctrlKey: boolean }){
+    e.preventDefault();
+    if (reflejaElContextMenu(e)) setMirror(m=>!m);
   }
 
   // Fantasma: dónde caería la pieza desde la celda bajo el cursor. Las celdas
@@ -229,6 +336,8 @@ export default function App(){
           onCellClick={handleCellClick}
           onCellEnter={setHover}
           onMouseLeave={()=> setHover(null)}
+          onContextMenu={handleContextMenu}
+          boardRef={boardRef}
         />
 
         {/* El orden sale de la misma `secuencia` que alimenta al motor y no de un
