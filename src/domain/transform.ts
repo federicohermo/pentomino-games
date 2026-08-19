@@ -182,7 +182,7 @@ export function pathThroughCells(cells: readonly Cell[], tiebreak: readonly numb
   let maxDist = 0;
   for (const fila of dist) for (const d of fila) if (d > maxDist) maxDist = d;
   const BASE = 1 + n * maxDist;
-  const costo = cells.map((a, i) => cells.map((b, j) => (seTocan(a as Cell, b as Cell) ? 0 : BASE) + dist[i][j]));
+  const costo = cells.map((a, i) => cells.map((b, j) => (seTocan(a, b) ? 0 : BASE) + dist[i][j]));
 
   // g[j][mask] = costo minimo de arrancar en `j` y visitar todo `mask`, con `j` fuera
   // de `mask`. Va HACIA ATRAS por el mismo motivo que `shortestCircuit`: asi el camino

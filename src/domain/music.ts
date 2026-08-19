@@ -140,13 +140,13 @@ export function degreeByCellIndex(cells: readonly Cell[]): number[] {
  * es la posicion (`0..n-1`) de `cells[k]` en el anillo.
  *
  * Es el orden que el spec 007 usaba como mapeo de grados y que desde el 012 solo
- * DESEMPATA caminos de igual calidad (ver arriba). Se exporta aunque
- * `degreeByCellIndex` sea su unico consumidor de `src/`: es una regla del modelo con
- * tres decisiones propias —la excepcion del centroide, el sentido horario y el
- * desempate por indice— y sin export los tests tendrian que reimplementarla para
- * poder ejercerlas, que es exactamente el patron que el spec 005 denuncio. Se conserva entero —incluida la
- * excepcion del centroide y el desempate por indice— porque cambiarlo cambiaria la
- * direccion en la que se recorre cada pieza, que es audible.
+ * DESEMPATA caminos de igual calidad (ver arriba). Se conserva entero —la excepcion
+ * del centroide, el sentido horario y el desempate por indice— porque cambiarlo
+ * cambiaria la direccion en la que se recorre cada pieza, que es audible.
+ *
+ * Se exporta aunque `degreeByCellIndex` sea su unico consumidor de `src/`: sin export
+ * los tests tendrian que reimplementar esas tres decisiones para poder ejercerlas, que
+ * es exactamente el patron que el spec 005 denuncio.
  *
  * Tres reglas, en este orden:
  *
