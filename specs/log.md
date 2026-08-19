@@ -26,6 +26,12 @@ casillas abiertas como próxima tarea.
 | [011](./011-el-recorrido-esquiva-las-piezas/spec.md) | 2026-08-17 | Propuesto | Pisar una celda ocupada deja de ser gratis y pasa a **costar**: el recorrido rodea las piezas cuando le conviene y las cruza cuando rodear sale caro, y el cruce **suena la nota de esa celda** como floritura en vez de un golpe sordo. Medido: hoy pisan entre el 71 % y el 88 % de los tramos. **Cambia la matriz de costos y con ella el orden de visita en el 30-48 % de los tableros**; revisa el modelo del 009 |
 | [012](./012-el-arpegio-camina-la-pieza/spec.md) | 2026-08-19 | Propuesto | El orden de las notas dentro de una pieza deja de ser el anillo angular y pasa a ser un **camino**: cada nota suena en una celda que toca a la anterior, preferentemente por un lado y —en las cuatro piezas que no admiten recorrido ortogonal— por una esquina. Medido: los pasos que **pasaban por encima** de una celda que no había sonado bajan de **4 a 0** y las 12 piezas se recorren enteras. **Revisa el mapeo del 007** —9 de 12 piezas cambian qué nota muestra cada celda, y la lámina deja de ser la referencia— y **mueve las puertas del 009/010**: el 56 % de los tableros cambia el orden de visita |
 
+| [013](./013-control-directo/spec.md) | 2026-08-19 | Propuesto | El instrumento se toca sin ir al panel: rueda y `Shift` rotan, botón derecho y `Ctrl` reflejan, la barra espaciadora es el transporte. **No cambia una nota**. Crea la primera capa de entrada del repo —hoy `src/` no tiene un solo listener de teclado— y fija la tabla de modificadores que el 014 necesita. Los tres choques reales están resueltos: el scroll bajo la rueda, el `Ctrl`+click de Mac que cancelaría la reflexión, y el doble disparo del espacio con el botón enfocado |
+| [014](./014-el-tablero-se-edita-en-el-tablero/spec.md) | 2026-08-19 | Propuesto | Click sobre una pieza colocada la **quita**, `Alt`+click la **mutea**, y `Alt`+click en celda vacía la coloca ya muteada. Una pieza muteada conserva su lugar y su tiempo en el circuito y suena como clicks: se ve con la baldosa **blanca**, conservando nota y `#N`. **Borra `PlacedList.tsx` entero** y con él el único lugar donde se leía el orden del recorrido. Medido: `CELL_PX` 63 → **71**, y la novena columna no le compra nada al tablero |
+| [015](./015-el-click-deja-de-ser-ruido/spec.md) | 2026-08-19 | Propuesto | El click del recorrido deja de ser ruido blanco —centroide medido en **11 260 Hz**— y pasa a ser una campana de altura **fija** a 2 093 Hz (`C7`), 50 ms, centroide **2 645 Hz**. Y arranca **apagado**, dando vuelta D4 del 009. Medido: con 3 piezas el 44 % de los eventos del ciclo son clicks. **Cierra el `T070` del 011 con un "no"**: con el default apagado el botón es la única forma de encenderlos |
+| [016](./016-la-pieza-se-ve-antes-de-colocarse/spec.md) | 2026-08-19 | Propuesto | El botón de la paleta deja de ser una letra y pasa a ser la **forma**, en caja fija de 5×5 y en la orientación actual. La caja fija es lo que lo hace posible: con cajas ajustadas al contenido la `I` pasa de 5×1 a 1×5 y los doce botones reflowean en cada rotación. **No cambia una nota**; consume las columnas del 014 y empuja `CELL_PX` de 71 a **73** |
+| [017](./017-el-regimen-de-rotacion/spec.md) | 2026-08-19 | Propuesto | La rotación pasa a tener **dos regímenes**: `escala` (el de hoy, cuatro fórmulas) y `orden` (pentatónica mayor fija, y la rotación corre cíclicamente el arpegio). A 0° los dos son idénticos, así que la comparación es auditable. Medido: **36 de 48** arpegios cambian, los conjuntos de alturas bajan de 43 a 12, y **ninguna celda conserva su nota al rotar** en `orden` —garantizado, porque 5 es primo— contra 36 de 180 en `escala`. Existe para poder decidir escuchando cuál se queda |
+
 ## Dependencias entre specs
 
 - **001 y 002 son ortogonales.** Uno decide qué nota va en qué celda; el otro, cómo se produce el
@@ -92,6 +98,35 @@ casillas abiertas como próxima tarea.
   el review del 010 encontró (nota del 2026-08-17 en [revisiones.md](./revisiones.md)). Con la cabeza
   marcando qué celda suena en cada instante quedó a la vista que el recorrido pisaba piezas sin costo;
   no hizo falta leer `pathBetween` para notarlo, alcanzó con mirar.
+
+- **013 → 014 → 015 → 016 → 017 es una cadena, y cada eslabón tiene su motivo.** El lote sale de un
+  pedido de nueve features y se cortó en cinco specs: los tres primeros gestos van juntos (013) porque
+  la tabla de modificadores es **una** decisión y no tres, y quitar y mutear van juntos (014) porque
+  los dos redefinen qué hace el click sobre una celda ocupada y el primero mata el panel donde vive el
+  botón del segundo.
+- **013 va primero porque reserva `Alt`.** Es lo único que el 014 le pide, pero sin eso los dos specs
+  estarían decidiendo la misma tabla de teclas por separado.
+- **014 y 016 se pasan las columnas, y está medido.** Al morir `PlacedList` quedan dos columnas libres,
+  y la medición dice que **la novena no le compra un solo píxel al tablero**: a partir de `col-span-8`
+  el que limita `CELL_PX` deja de ser el ancho y pasa a ser el alto. Así que una va al tablero (63 →
+  71) y la otra a la paleta, que es donde el 016 va a meter las doce miniaturas. Y cuando el 016 haga
+  la paleta más alta, `CELL_PX` sube solo a 73 — el techo por ancho.
+- **015 debería escucharse antes de juzgar el 014.** El 014 mergea primero, así que hasta el 015 una
+  pieza muteada suena como cinco ráfagas de ruido blanco de 20 ms, que es el click de hoy. No es un
+  problema de orden: es que el AC del 014 que se verifica a oído queda postergado un spec.
+- **015 y el 011 se contradicen sobre el mismo botón, y el 015 lo resuelve.** El `T070` del 011 quería
+  **borrar** el botón de clicks; el 015 lo deja **más** necesario, porque con el default apagado pasa a
+  ser la única forma de encenderlos. Es la única vez que este lote toca el `tasks.md` de un spec viejo.
+- **017 va último porque es el único que toca `domain/` y cruza el borde de paquete.** `arpeggioFor` y
+  `notesForRotation` cambian de firma, así que `describe_piece` y `simulate_board` dejan de compilar
+  hasta que acepten y **reporten** el régimen. Los otros cuatro no tocan una nota, salvo el 014 —que la
+  cambia sólo donde hay una pieza muteada— y el 015 —que cambia el timbre del click.
+- **El 017 salió distinto de lo previsto, midiendo.** Se escribió esperando que el régimen `orden`
+  fuera "el mismo material con otro orden", y generar los 48 arpegios desmintió dos cosas: el arpegio
+  **deja de subir siempre** —mete un descenso de hasta 9 semitonos donde antes había 3— y el registro
+  del instrumento **se angosta 7 semitonos** por arriba, porque la fórmula fija no tiene la
+  transposición `+7` de la rotación 3. Las dos están escritas como consecuencia del pedido, con la
+  variante que las evitaría anotada al lado.
 
 ## Lo que dejó de vivir acá
 
