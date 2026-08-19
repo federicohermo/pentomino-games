@@ -159,7 +159,6 @@ describe('describe_piece', () => {
     }
   });
 
-
   test('AC12 — la reflexion invierte `notes` y NO invierte `cellMap`', () => {
     // El retrogrado es del ORDEN DE REPRODUCCION. La nota de una celda sale del
     // arpegio ascendente, asi que reflejar mueve la celda de lugar en el tablero
