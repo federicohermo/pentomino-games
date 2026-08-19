@@ -12,3 +12,21 @@
  * handler se saltea el evento, el navegador tiene que quedárselo entero (D4, spec 013).
  */
 export const ACCION = { rotar: 'rotar', reflejar: 'reflejar', transporte: 'transporte' } as const;
+
+/**
+ * Lo que un click sobre una celda le puede pedir al tablero (spec 014).
+ *
+ * Cuatro y no dos: colocar y colocar-muteada son la misma edición del tablero pero
+ * distinto gesto de escucha —la muteada **no** dispara el arpegio de cortesía, porque se
+ * está poniendo justamente para que no suene— y separarlas acá es lo que evita que esa
+ * condición viva como un `if` suelto en el shell.
+ *
+ * La ausencia de acción sigue siendo `null`, igual que en `ACCION`: es el click sobre una
+ * pieza que **no** es la que está en la mano, que no hace nada — como antes de este spec.
+ */
+export const EDICION = {
+  quitar: 'quitar',
+  mutear: 'mutear',
+  colocar: 'colocar',
+  colocarMuteada: 'colocar-muteada',
+} as const;

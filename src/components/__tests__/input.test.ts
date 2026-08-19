@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { rotacionPorRueda, accionDeTecla, abreTapLimpio, reflejaElContextMenu } from '../input.ts';
-import { ACCION } from '../constants/input.constants.ts';
+import {
+  rotacionPorRueda, accionDeTecla, abreTapLimpio, reflejaElContextMenu,
+  accionDeClick, esLaPiezaEnLaMano,
+} from '../input.ts';
+import { ACCION, EDICION } from '../constants/input.constants.ts';
 import type { EventoDeTecla } from '../types/input.types.ts';
+import type { PieceKey } from '../../domain/types/pieces.types.ts';
+import type { PlacedPiece } from '../../domain/types/board.types.ts';
 
 /**
  * Las decisiones de los cinco gestos del spec 013. Lo que NO está acá es el cableado
@@ -139,8 +144,9 @@ describe('las teclas que no son nuestras', () => {
       expect(accionDeTecla(tecla({ key, tipo: 'keydown' })), key).toBeNull();
       expect(accionDeTecla(tecla({ key, tipo: 'keyup' })), key).toBeNull();
     }
-    // `Alt` está en la lista a propósito: el spec 013 lo declara RESERVADO para el 014
-    // y no lo usa. Si algún día empieza a hacer algo, este test lo dice.
+    // `Alt` está en la lista a propósito: el 013 lo declaró reservado y el 014 lo usa
+    // como modificador del CLICK, no como tecla suelta. Si algún día empieza a hacer
+    // algo por su cuenta, este test lo dice.
   });
 });
 
@@ -160,5 +166,76 @@ describe('AC6 — `Ctrl`+click en macOS es el click derecho', () => {
 
   it('un click derecho de verdad sí', () => {
     expect(reflejaElContextMenu({ ctrlKey: false })).toBe(true);
+  });
+});
+
+/**
+ * El click sobre una celda (spec 014). La llave de toda la edición es que la pieza que
+ * está en la mano sea la misma que la del tablero: sin esa condición, cualquier click mal
+ * apuntado borraría.
+ */
+const pieza = (id: string, piece: PieceKey, muted = false): PlacedPiece =>
+  ({ id, piece, rotation: 0, mirror: false, cells: [], muted });
+
+describe('AC1 — el click sobre la pieza que está en la mano la quita', () => {
+  it('con la misma pieza seleccionada, quitar', () => {
+    expect(accionDeClick(pieza('1', 'N'), 'N', false)).toBe(EDICION.quitar);
+  });
+
+  it('la decisión se toma sobre la celda CLICKEADA, así que con dos `N` se edita la tocada', () => {
+    // `occupantAt` devuelve la pieza que cubre esa celda, y esta pura recibe esa. Que la
+    // regla no sea "hay alguna N en el tablero" es lo que hace que con dos colocadas se
+    // edite la que se tocó — el id viaja en el ocupante y el llamador filtra por él.
+    const primera = pieza('1', 'N');
+    const segunda = pieza('2', 'N');
+    expect(accionDeClick(primera, 'N', false)).toBe(EDICION.quitar);
+    expect(accionDeClick(segunda, 'N', false)).toBe(EDICION.quitar);
+    expect(primera.id).not.toBe(segunda.id);
+  });
+});
+
+describe('AC2 — el click sobre OTRA pieza no hace nada', () => {
+  it('sin Alt y con Alt, ninguna de las dos edita', () => {
+    // Es el comportamiento de antes del spec: `isValid` rechazaba el solape y el handler
+    // volvía. La regla NO puede ser "la jugada es inválida", porque eso también es cierto
+    // acá y acá no tiene que pasar nada.
+    expect(accionDeClick(pieza('1', 'L'), 'N', false)).toBeNull();
+    expect(accionDeClick(pieza('1', 'L'), 'N', true)).toBeNull();
+  });
+});
+
+describe('AC3 — `Alt`+click sobre la pieza en la mano alterna el muteo', () => {
+  it('mutea la que suena y desmutea la muteada: es un toggle, no un set', () => {
+    // La pura devuelve la misma acción en los dos casos porque el toggle es del llamador:
+    // la decisión es "alterná esta", y cuál es el valor nuevo lo sabe la pieza.
+    expect(accionDeClick(pieza('1', 'N'), 'N', true)).toBe(EDICION.mutear);
+    expect(accionDeClick(pieza('1', 'N', true), 'N', true)).toBe(EDICION.mutear);
+  });
+});
+
+describe('AC4 — `Alt`+click sobre una celda vacía coloca ya muteada', () => {
+  it('sin Alt coloca normal, con Alt coloca muteada', () => {
+    expect(accionDeClick(null, 'N', false)).toBe(EDICION.colocar);
+    expect(accionDeClick(null, 'N', true)).toBe(EDICION.colocarMuteada);
+  });
+
+  it('las dos son acciones distintas, y esa es la única razón por la que se separan', () => {
+    // Editan el tablero igual; lo que cambia es el arpegio de cortesía, que la muteada no
+    // dispara. Si fueran la misma acción, esa condición tendría que vivir como un `if`
+    // suelto en el shell mirando el `altKey` una segunda vez.
+    expect(EDICION.colocar).not.toBe(EDICION.colocarMuteada);
+  });
+});
+
+describe('la llave de la edición, sola', () => {
+  it('`esLaPiezaEnLaMano` es falsa sin ocupante y con ocupante de otro tipo', () => {
+    expect(esLaPiezaEnLaMano(null, 'N')).toBe(false);
+    expect(esLaPiezaEnLaMano(pieza('1', 'L'), 'N')).toBe(false);
+    expect(esLaPiezaEnLaMano(pieza('1', 'N'), 'N')).toBe(true);
+  });
+
+  it('no mira el muteo: una pieza muteada se puede quitar igual', () => {
+    expect(esLaPiezaEnLaMano(pieza('1', 'N', true), 'N')).toBe(true);
+    expect(accionDeClick(pieza('1', 'N', true), 'N', false)).toBe(EDICION.quitar);
   });
 });

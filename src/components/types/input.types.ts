@@ -1,7 +1,10 @@
-import { ACCION } from '../constants/input.constants.ts';
+import { ACCION, EDICION } from '../constants/input.constants.ts';
 
 /** Las tres acciones de entrada: ver `ACCION` en `input.constants.ts`. */
 export type Accion = (typeof ACCION)[keyof typeof ACCION];
+
+/** Lo que pide un click sobre una celda: ver `EDICION` en `input.constants.ts`. */
+export type Edicion = (typeof EDICION)[keyof typeof EDICION];
 
 /**
  * Los campos de un evento de teclado que la decisión necesita — y ninguno más.

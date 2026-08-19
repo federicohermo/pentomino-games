@@ -6,7 +6,7 @@ import {
 import { DEFAULT_BPM } from "./audio/constants/engine.constants.ts";
 import { rotateN, reflect } from "./domain/transform.ts";
 import { arpeggioFor } from "./domain/music.ts";
-import { cellsAt, isValid } from "./domain/board.ts";
+import { cellsAt, isValid, occupantAt } from "./domain/board.ts";
 import { buildSequence } from "./domain/sequence.ts";
 import { SHAPES, ANCHOR_INDEX } from "./domain/constants/pieces.constants.ts";
 import type { Cell } from "./domain/types/transform.types.ts";
@@ -17,8 +17,11 @@ import Board from "./components/Board.tsx";
 import PlacedList from "./components/PlacedList.tsx";
 import Spectrum from "./components/Spectrum.tsx";
 import { encolar } from "./components/route-source.ts";
-import { rotacionPorRueda, accionDeTecla, abreTapLimpio, reflejaElContextMenu } from "./components/input.ts";
-import { ACCION } from "./components/constants/input.constants.ts";
+import {
+  rotacionPorRueda, accionDeTecla, abreTapLimpio, reflejaElContextMenu,
+  accionDeClick, esLaPiezaEnLaMano,
+} from "./components/input.ts";
+import { ACCION, EDICION } from "./components/constants/input.constants.ts";
 
 /**
  * Pentomino Music — prototipo de instrumento, no un juego con reglas de resolucion.
@@ -91,12 +94,34 @@ export default function App(){
   // sus notas.
   const noteSet = useMemo(()=> arpeggioFor(selected, rotation, mirror), [selected, rotation, mirror]);
 
-  function handleCellClick(x: number, y: number){
+  // El tablero se edita EN el tablero (spec 014): sobre una pieza ya colocada, y solo con
+  // esa misma pieza en la mano, el click la quita y `Alt`+click alterna su muteo. Qué
+  // gesto es lo decide `accionDeClick`, que es una pura y se testea; acá queda el
+  // cableado y las dos consultas al dominio que la pura no puede hacer.
+  function handleCellClick(x: number, y: number, altKey: boolean){
+    const ocupante = occupantAt(placed, x, y);
+    const accion = accionDeClick(ocupante, selected, altKey);
+    if (accion === null) return;   // celda ocupada por OTRA pieza: nada, como antes
+
+    // Las dos ramas de edición van anidadas adentro del `ocupante !== null` y no colgadas
+    // del `accion`: la pura ya garantiza que `quitar` y `mutear` solo salen con ocupante,
+    // y así TypeScript lo sabe sin que haga falta un `!` que afirme lo mismo sin prueba.
+    if (ocupante !== null) {
+      if (accion === EDICION.quitar) setPlaced(arr => arr.filter(p => p.id !== ocupante.id));
+      // Objeto nuevo y no `p.muted = !p.muted`: nunca mutar lo que ya se entregó a React.
+      else setPlaced(arr => arr.map(p => p.id === ocupante.id ? { ...p, muted: !p.muted } : p));
+      return;
+    }
+
     const cells = cellsAt(transformedShape, ANCHOR_INDEX[selected], x, y);
     if (!isValid(cells, placed)) return;
+    // `Alt` significa "muteado" en los dos lados del gesto: colocar así mete una pieza al
+    // circuito por su ESPACIO y su TIEMPO —mueve el orden de visita y agrega distancia—
+    // sin agregar cinco notas. Es la única forma de componer con silencio.
+    const muted = accion === EDICION.colocarMuteada;
     const newPiece: PlacedPiece = {
       id: String(++idRef.current),
-      piece: selected, rotation, mirror, cells, muted: false,
+      piece: selected, rotation, mirror, cells, muted,
     };
     setPlaced(prev => [...prev, newPiece]);
     // Con el transporte corriendo, disparar acá duplicaría el arpegio: con D5
@@ -106,7 +131,10 @@ export default function App(){
     // inmediata de escucharla. Con el transporte en pausa pasa lo mismo por otra
     // razón: no hay reloj corriendo que la vaya a tocar. Sin Web Audio `playing`
     // nunca llega a true, de modo que el caso degradado cae solo del lado que suena.
-    if (!playing) playNow(noteSet);
+    //
+    // Colocar MUTEADA no lo dispara: la pieza se está poniendo justamente para que no
+    // suene, y un arpegio de cortesía contradiría el gesto en el momento de hacerlo.
+    if (!playing && !muted) playNow(noteSet);
   }
 
   // Reset frena el transporte ADEMÁS de vaciar el tablero, y esa segunda mitad no es
@@ -299,11 +327,22 @@ export default function App(){
     if (reflejaElContextMenu(e)) setMirror(m=>!m);
   }
 
+  // Si la celda bajo el cursor está ocupada por la pieza que está en la mano, el click
+  // no coloca: edita. La condición sale de la MISMA pura que decide el click, así que el
+  // cursor no puede prometer una cosa y el gesto hacer otra.
+  const hoverEdita = esLaPiezaEnLaMano(hover ? occupantAt(placed, hover[0], hover[1]) : null, selected);
+
   // Fantasma: dónde caería la pieza desde la celda bajo el cursor. Las celdas
   // fuera del tablero no se pintan, pero sí cuentan para marcar la jugada
   // como inválida.
-  const previewCells = hover? cellsAt(transformedShape, ANCHOR_INDEX[selected], hover[0], hover[1]) : [];
-  const previewValid = hover? isValid(previewCells, placed) : false;
+  //
+  // Sobre una celda propia el fantasma NO se pinta, y esa es la decisión que AC20 pide
+  // escrita: ahí la jugada de colocar es inválida —la pieza se choca consigo misma— así
+  // que el fantasma saldría rosa entero, diciendo "acá no entra" sobre la única celda
+  // donde el click sí hace algo. Lo que se ve es la pieza colocada, que es sobre lo que
+  // el gesto va a actuar.
+  const previewCells = hover && !hoverEdita ? cellsAt(transformedShape, ANCHOR_INDEX[selected], hover[0], hover[1]) : [];
+  const previewValid = hover && !hoverEdita ? isValid(previewCells, placed) : false;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4">
@@ -336,6 +375,7 @@ export default function App(){
           onCellClick={handleCellClick}
           onCellEnter={setHover}
           onMouseLeave={()=> setHover(null)}
+          hoverEdita={hoverEdita}
           onContextMenu={handleContextMenu}
           boardRef={boardRef}
         />

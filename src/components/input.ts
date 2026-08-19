@@ -1,5 +1,7 @@
-import { ACCION } from './constants/input.constants.ts';
-import type { Accion, EventoDeTecla, EventoDeModificador } from './types/input.types.ts';
+import { ACCION, EDICION } from './constants/input.constants.ts';
+import type { Accion, Edicion, EventoDeTecla, EventoDeModificador } from './types/input.types.ts';
+import type { PieceKey } from '../domain/types/pieces.types.ts';
+import type { PlacedPiece } from '../domain/types/board.types.ts';
 
 /**
  * La DECISIÓN de cada gesto de entrada, separada del cableado que la ejecuta.
@@ -107,4 +109,57 @@ export function accionDeTecla(e: EventoDeTecla): Accion | null {
  */
 export function reflejaElContextMenu(e: { ctrlKey: boolean }): boolean {
   return !e.ctrlKey;
+}
+
+/**
+ * Si la celda clickeada está ocupada por una pieza **del mismo tipo que el seleccionado**.
+ *
+ * Es la llave de toda la edición en el tablero (D2 del spec 014), y está escrita una sola
+ * vez porque la usan dos: el handler del click y la derivación del hover, que decide el
+ * cursor y si se pinta el fantasma. Dos copias de esta condición serían dos formas de
+ * discrepar sobre si un click va a borrar — con el cursor prometiendo una cosa y el click
+ * haciendo otra.
+ *
+ * **No** es «la jugada es inválida»: eso también es cierto al chocar contra una pieza
+ * distinta, y ahí no tiene que pasar nada. Y **no** es «hay alguna pieza de ese tipo en el
+ * tablero»: se mide sobre la celda clickeada, así que con dos `N` colocadas se edita la
+ * que se tocó y no la otra.
+ *
+ * Que haya que tener la pieza en la mano para tocarla es lo que evita que editar sea un
+ * accidente: sin esa condición, cualquier click mal apuntado sobre el tablero borraría.
+ */
+export function esLaPiezaEnLaMano(ocupante: PlacedPiece | null, selected: PieceKey): boolean {
+  return ocupante !== null && ocupante.piece === selected;
+}
+
+/**
+ * Qué le pide al tablero un click sobre la celda `(x, y)`, o `null` si no pide nada.
+ *
+ * Las cuatro ramas de la tabla del spec 014, con `Alt` significando "muteado" en los dos
+ * lados del gesto:
+ *
+ * ```
+ * celda ocupada por la pieza que está en la mano
+ *   ├─ sin Alt → quitar esa pieza
+ *   └─ con Alt → alternar su muteo
+ * celda ocupada por OTRA pieza → nada (como antes de este spec)
+ * celda libre
+ *   ├─ sin Alt → colocar
+ *   └─ con Alt → colocar ya muteada
+ * ```
+ *
+ * El reparto —click quita, `Alt`+click mutea— y no al revés: con el contrario, **quitar**
+ * quedaría alcanzable únicamente a través de mutear, o sea que para borrar una pieza que
+ * nadie quiso mutear habría que mutearla primero. Así las dos operaciones cuestan un
+ * gesto, y la destructiva es casi reversible: con la misma pieza y la misma orientación
+ * en la mano, volver a clickear la repone en el mismo lugar.
+ *
+ * `colocar` no promete que la jugada entre: la validez la sigue decidiendo `isValid` del
+ * dominio, en el llamador, porque depende de las otras cuatro celdas de la pieza y no de
+ * la que se clickeó. Esta pura contesta QUÉ gesto es, no si es posible.
+ */
+export function accionDeClick(ocupante: PlacedPiece | null, selected: PieceKey, altKey: boolean): Edicion | null {
+  if (esLaPiezaEnLaMano(ocupante, selected)) return altKey ? EDICION.mutear : EDICION.quitar;
+  if (ocupante !== null) return null;
+  return altKey ? EDICION.colocarMuteada : EDICION.colocar;
 }

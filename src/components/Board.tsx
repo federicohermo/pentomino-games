@@ -109,9 +109,16 @@ interface Props {
   /** La reflexion del fantasma. Solo mueve el `#N`: la nota de una celda no la
       cambia la reflexion, el orden en que suenan si. */
   mirror: boolean;
-  onCellClick: (x: number, y: number) => void;
+  /** El `altKey` cruza porque `Alt`+click MUTEA en vez de colocar o quitar (spec 014):
+      el gesto no se puede decidir sin el, y el `onClick` de la celda no pasaba el evento. */
+  onCellClick: (x: number, y: number, altKey: boolean) => void;
   onCellEnter: (cell: Cell) => void;
   onMouseLeave: () => void;
+  /** La celda bajo el cursor esta ocupada por la pieza que esta en la mano, o sea que el
+      click va a EDITARLA. Llega calculado por la misma pura que decide el click
+      (`esLaPiezaEnLaMano`), y no derivado aca: dos copias de esa condicion serian dos
+      formas de que el cursor prometa una cosa y el click haga otra. */
+  hoverEdita: boolean;
   /** El boton derecho sobre el tablero alterna la reflexion (spec 013). Handler y no
       logica: quien decide si el evento cuenta es `App.tsx` con `reflejaElContextMenu`. */
   onContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
@@ -122,7 +129,7 @@ interface Props {
 
 export default function Board({
   placed, previewCells, previewValid, hover, selected, rotation, mirror,
-  onCellClick, onCellEnter, onMouseLeave, onContextMenu, boardRef,
+  onCellClick, onCellEnter, onMouseLeave, hoverEdita, onContextMenu, boardRef,
 }: Props) {
   // Que celda del fantasma cae en (x,y), POR INDICE: es lo que permite pedirle su
   // texto al mapeo canonico. Se arma una vez por render y no una vez por celda.
@@ -190,6 +197,21 @@ export default function Board({
             let tone: string;
             const style: CSSProperties = {};
             if (occ && ghost) tone = 'bg-rose-500 text-white';   // choque contra pieza colocada
+            // La pieza MUTEADA cae al blanco de una celda libre y conserva su nota y su
+            // `#N` (spec 014). El canal es la AUSENCIA de color y no uno de los dos
+            // obvios, porque los dos estaban tomados: el color es IDENTIDAD de pieza y
+            // esta medido en contraste contra su propio `fg`, y la opacidad la usa
+            // `Playhead` para el velo de "esta celda no se estreno" — si muteado tambien
+            // atenuara, una pieza muteada recien colocada seria indistinguible de una
+            // esperando su turno.
+            //
+            // Sin `style.color`: el texto hereda el gris del tablero. `PIECE_COLOR[p].fg`
+            // esta elegido contra el `bg` de SU pieza, asi que sobre blanco varios son
+            // ilegibles y algunos directamente blancos.
+            //
+            // No se confunde con una celda libre porque una celda libre no tiene texto:
+            // es la misma distincion que ya separa a una libre de una del fantasma.
+            else if (occ && occ.muted) tone = 'bg-white shadow-sm';
             else if (occ) {
               tone = 'shadow-sm';
               // Inline y no `bg-[...]`: Tailwind escanea el fuente y una clase
@@ -205,10 +227,14 @@ export default function Board({
 
             return (
               <div key={i}
-                onClick={() => onCellClick(x, y)}
+                onClick={(e) => onCellClick(x, y, e.altKey)}
                 onMouseEnter={() => onCellEnter([x, y])}
                 style={{ width: CELL_PX, height: CELL_PX }}
-                className={`p-0.5 ${previewValid || !hover ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                /* `hoverEdita` entra al cursor: sobre una celda propia la jugada de
+                   COLOCAR es invalida —la pieza se choca consigo misma— pero el click no
+                   coloca, borra. Sin esto el cursor diria "aca no entra" justo donde el
+                   gesto es destructivo, que es lo contrario de lo que pasa. */
+                className={`p-0.5 ${previewValid || !hover || hoverEdita ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                 /* El title dice las tres cosas de la celda, no solo su coordenada: la
                    nota entra en la baldosa pero el paso va abreviado a `#3`, y sobre
                    el fantasma las dos son lo que decide la jugada. Sale del MISMO
