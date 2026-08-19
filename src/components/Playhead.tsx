@@ -263,7 +263,7 @@ export default function Playhead() {
       <div
         ref={ref}
         aria-hidden="true"
-        className="absolute top-0 left-0 z-10 p-[2px] pointer-events-none"
+        className="absolute top-0 left-0 z-10 p-0.5 pointer-events-none"
         style={{ width: CELL_PX, height: CELL_PX, display: 'none' }}
       >
         {/* Misma caja que la baldosa de `Board.tsx` —2 px de aire y `rounded-lg`— para que
