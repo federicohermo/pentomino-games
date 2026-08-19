@@ -343,3 +343,21 @@ sin spec en [deuda.md](./deuda.md).
   La lección de método: **un lote de specs puede estar compuesto de specs individualmente correctos y
   ser contradictorio igual**, y la contradicción no aparece leyéndolos en orden — aparece cruzando qué
   toca cada uno. Es lo que ahora hace el Paso 2 de `/spec-implement-batch`.
+
+- **2026-08-19 — El 017 confirmó sus cinco mediciones y encontró una sexta que no estaba escrita.**
+  Los números del spec se re-derivaron ejecutando el dominio real y todos dieron: 36 de 48 arpegios
+  cambian, los conjuntos de alturas bajan de 43 a 12, `orden` conserva 0 de 180 celdas al rotar contra
+  36 de 180 de `escala` (con la descomposición 24 / 12 / 0), el descenso de `orden` es de **9 semitonos
+  exactos** y no «hasta 9» —36 de ellos, uno por arpegio movido— y el registro se angosta de `C4`–`D#6`
+  a `C4`–`G#5`. Los cinco están hoy bajo test, no sólo en el `research.md`.
+  Lo que no estaba escrito: **`escala` y `orden` no son disjuntos fuera de la rotación 0.** Al escribir
+  el test de `noteAtCell` bajo los dos regímenes salió que coinciden en 24 de las 60 celdas de la
+  **rotación 3**, y en ninguna de las rotaciones 1 y 2. Tiene explicación exacta y no es ruido: la
+  rotación 3 de `escala` es `PENT_MAJOR` transpuesta `+7` —grados `[7, 9, 11, 14, 16]` sobre la tónica—
+  y la de `orden` es la mayor corrida 3 —`[7, 9, 0, 2, 4]`—, así que los **dos primeros grados son los
+  mismos** en las 12 piezas. El spec afirmaba que los dos regímenes «tienen un origen común y divergen
+  a medida que se rota», que es cierto de los arpegios enteros pero no de sus notas una por una.
+  La lección de método: **el número que un spec no midió es el que aparece al escribir el test que
+  cruza sus dos ramas.** El `research.md` comparó los 48 arpegios de cada régimen como conjuntos y como
+  listas; nadie los había comparado *celda contra celda al mismo ángulo*, que es justo la comparación
+  que hace el consumidor real — `noteAtCell`, o sea la altura que suena al pisar una celda cruzada.

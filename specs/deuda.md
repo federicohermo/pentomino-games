@@ -50,6 +50,14 @@ esta lista y entra como fila en [log.md](./log.md).
   ya está decidido —const-object en `constants/` + union type derivado en `types/`, **nunca un `enum`**,
   que el `erasableSyntaxOnly` del tsconfig rechaza— pero cambia firmas, así que quedó como seguimiento
   del spec 005.
+  **El spec 017 le dio su argumento más fuerte hasta ahora**: el régimen `orden` usa la rotación como
+  índice de corrimiento del arpegio, no sólo como discriminante de una cadena de `if`. Ahí un valor
+  fuera de `0..3` no cae a ningún `else`: `base[j + rot]` daría `undefined`, y `midiName` de eso no
+  explota — devuelve `undefinedNaN` y lo pinta en la celda. La implementación lo tapó con un `%`
+  (`music.ts`, comentado ahí), que es una red y no el arreglo: el arreglo es que el tipo no admita el
+  valor. Ese `%` además le cambia el comportamiento al caso fuera de rango entre los dos regímenes
+  —`escala` cae a la fórmula mayor, `orden` corre `rot % 5`—, que es exactamente la clase de
+  divergencia que el tipo acotado haría imposible de escribir.
 
 Ya resueltos: los archivos huérfanos de las plantillas de CRA y Vite (`src/App.css`, `src/logo.svg`,
 `src/assets/react.svg`, `public/vite.svg`, `src/setupTests.ts`) y la dependencia `web-vitals`, que
