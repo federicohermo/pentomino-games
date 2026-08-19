@@ -96,7 +96,6 @@ src/
     ├── PiecePalette.tsx          # paleta, rotación, reflexión, tempo, transporte, clicks
     ├── Board.tsx                 # grilla 10×6: color por pieza, nota por celda, y el fantasma
     │                             #   diciendo lo mismo antes de colocar
-    ├── PlacedList.tsx            # lista de piezas colocadas
     ├── Spectrum.tsx              # canvas del espectro: rAF + HiDPI, sin props
     ├── Playhead.tsx              # cabeza lectora: rAF + estilo imperativo, sin props (spec 010)
     ├── route-source.ts           # singleton fuera de React (no un componente): espeja active/

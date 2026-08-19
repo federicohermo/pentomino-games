@@ -49,6 +49,24 @@ con nodos que crea y destruye él mismo.
 - **Lo que sale de una constante va por estilo inline, no por clase.** Tailwind escanea el fuente: una
   clase interpolada (`w-[${CELL_PX}px]`) no se generaría.
 
+## El tablero se edita en el tablero
+
+Desde el spec 014 **no hay panel derecho**: `PlacedList` murió y con él la única superficie que
+duplicaba lo que el tablero ya dice. Una pieza colocada se quita clickeándola y se mutea con
+`Alt`+click, y las dos operaciones piden **tener esa misma pieza en la paleta** — la llave se mide sobre
+la celda clickeada con `occupantAt`, no con `isValid`, que también falla al chocar contra una pieza
+distinta y ahí no tiene que pasar nada.
+
+- **La condición «es la pieza que está en la mano» se escribe una sola vez.** La usan el handler del
+  click y la derivación del hover, que decide el cursor y si se pinta el fantasma. Dos copias son dos
+  formas de que el cursor prometa una cosa y el gesto haga otra.
+- **El estado de una pieza no se comunica con su color.** El color es identidad y está medido en
+  contraste; la opacidad la tiene tomada el velo de `Playhead`. El muteo usó el canal que quedaba —la
+  ausencia de color— y el próximo estado tiene que buscarse el suyo. Ver [DESIGN.md](../../DESIGN.md).
+- **Los `col-span` no viven en `App.tsx`**, sino en la tarjeta de cada componente. Y `CELL_PX` es un
+  número **medido**, no elegido: sale de `min(interior / 10, interior / 6)` sobre la tarjeta real, así
+  que mover un `col-span` obliga a remedirlo en el DOM.
+
 ## Los listeners de entrada
 
 El spec 013 fue el primero que agregó uno —hasta ahí el único `addEventListener` de `src/` era un

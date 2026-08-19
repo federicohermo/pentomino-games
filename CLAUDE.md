@@ -8,7 +8,8 @@ se puede averiguar mirando un archivo. El detalle vive en `docs/`, las reglas po
 ## Qué es
 
 Un prototipo de **instrumento musical**, no un juego con reglas de resolución. El usuario coloca
-pentominós en un tablero de 10×6 y cada pieza dispara un arpegio de cinco notas. Desde el spec 009 el
+pentominós en un tablero de 10×6 y cada pieza dispara un arpegio de cinco notas —salvo que esté
+**muteada**, que desde el spec 014 la deja ocupando su lugar y su tiempo sin sonar—. Desde el spec 009 el
 tablero es un **recorrido**, no un compás: un circuito cerrado visita las piezas, y el orden y los
 silencios salen de la geometría. No hay puntaje ni condición de victoria — al evaluar una feature, la
 pregunta es si vuelve al instrumento más expresivo, no más difícil.

@@ -4,7 +4,8 @@
 
 Pentomino Games es un prototipo de instrumento musical. El usuario elige uno de los 12 pentominós, lo
 rota o refleja, y lo coloca en un tablero de 10×6. Cada colocación dispara un arpegio de cinco notas
-cuya identidad depende de la pieza y cuya escala depende de la orientación.
+cuya identidad depende de la pieza y cuya escala depende de la orientación — a menos que la pieza esté
+**muteada** (spec 014), que la deja ocupando su lugar y su tiempo en el circuito sin sonar.
 
 No hay objetivo, puntaje ni condición de victoria: es un instrumento, no un juego con reglas de
 resolución. Esa distinción importa al decidir features — lo que se evalúa es si algo se vuelve más
@@ -27,7 +28,7 @@ expresivo, no más difícil.
 ┌───────▼──────────────────┐  ┌───────▼───────────────────┐
 │  src/components/         │  │  src/audio/               │
 │   PiecePalette · Board   │  │   voice.ts     síntesis   │
-│   PlacedList · Spectrum  │  │   scheduler.ts lookahead  │
+│   Spectrum · Playhead    │  │   scheduler.ts lookahead  │
 │                          │  │   engine.ts    singletons │
 │   presentacionales:      │  │   spectrum.ts  bins→barras│
 │   props, sin estado      │  │                           │

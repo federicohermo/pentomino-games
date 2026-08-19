@@ -126,12 +126,12 @@ comunicaba identidad de pieza, y nunca sobre el canal de estado.*
 |---|---|---|
 | `Board` | celda ocupada = color de pieza | identidad debajo, estado encima |
 | `PiecePalette` | **el fondo del botón no se toca**; el color entra al costado | el fondo ya es el canal de "seleccionado" |
-| `PlacedList` | la letra va **sobre** el color de pieza | texto plano: no hay estado que pisar |
 
-En `PlacedList` la letra va **sobre** el color y no *pintada* del color, y la diferencia no es de gusto:
-como texto sobre el blanco de la tarjeta, el amarillo de `V` da **1,07 de contraste**. Sobre su propio
-fondo vale el par `bg`/`fg` de `PIECE_COLOR`, que es el que el test de la paleta mantiene en AA. Es el
-mismo criterio que en el tablero, donde la celda ocupada también es color de fondo con texto medido.
+*(`PlacedList` era el tercer caso y se fue con el spec 014: la letra iba **sobre** el color de pieza y
+no *pintada* del color, porque como texto sobre el blanco de la tarjeta el amarillo de `V` da **1,07 de
+contraste**. Ese argumento no se pierde — sigue valiendo en el tablero, donde la celda ocupada es color
+de fondo con texto medido por el par `bg`/`fg` de `PIECE_COLOR`— pero la lista ya no existe: el tablero
+se edita en el tablero.)*
 
 *(`PiecePreview` era el cuarto caso y ya no existe: mostraba la pieza aparte, sin notas, mientras el
 fantasma la muestra en el lugar donde va a caer y con la nota de cada celda. Dos vistas del mismo objeto
@@ -142,6 +142,27 @@ Lo que **no** se comunica con el color de pieza, porque el color ya está ocupad
 - **El fantasma de previsualización** (`bg-slate-300`) — dónde caería la pieza que estás por colocar.
 - **El choque** (`bg-rose-500`) y el **fantasma inválido** (`bg-rose-300`) — que ahí no entra.
 - **El hover** — dónde está el cursor.
+- **El muteo** (spec 014) — que la pieza está y no suena.
+
+### El muteo: la ausencia de color
+
+Una pieza **muteada** ocupa su lugar y su tiempo en el circuito y no suena sus notas. El canal es la
+**ausencia de color**: la baldosa cae al blanco de una celda libre y **conserva su nota y su `#N`**, con
+el texto en el gris del tablero.
+
+Los dos canales obvios estaban tomados, y las reglas de arriba los protegen:
+
+- **el color no puede ser**, porque es identidad de pieza y nunca estado — y además los 12 pares
+  `bg`/`fg` están medidos en contraste, así que desaturarlos rompe la medición;
+- **la opacidad tampoco**, porque la usa el velo de `Playhead` para decir «esta celda no se estrenó». Si
+  muteado también atenuara, una pieza muteada recién colocada sería indistinguible de una esperando su
+  turno.
+
+Lo que queda dice exactamente lo que pasó: *esta pieza dejó de afirmar que suena, pero sigue siendo esta
+pieza, en estas celdas, con estas notas y estos pasos.* No se confunde con una celda libre porque una
+celda libre **no tiene texto** — es la misma distinción que ya separa a una libre de una del fantasma. Y
+el texto no puede seguir usando `PIECE_COLOR[p].fg`: ese valor está elegido contra el `bg` de su pieza y
+sobre blanco varios son ilegibles, algunos directamente blancos.
 
 El fantasma es gris y no verde a propósito: verde era un color más compitiendo con los 12 de la lámina.
 Pero **sí dice lo mismo que va a decir la celda una vez colocada** —su nota y su grado, celda por celda,
