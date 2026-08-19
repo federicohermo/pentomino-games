@@ -3,6 +3,10 @@
 Tres pasos. El 1 es puro y no toca ningún `.tsx`; el 2 dibuja; el 3 remide el layout, que es
 **consecuencia** y no objetivo.
 
+**Antes del paso 1: el 014 tiene que estar mergeado.** Los pasos 1 y 2 podrían escribirse sin él
+—son la pura y el dibujo—, pero el paso 3 entero mide contra el reparto 4/8 que el 014 deja, y hoy
+`main` está en 3/7 con `CELL_PX` en 63. Arrancar antes significa remedir el paso 3 dos veces.
+
 ## Paso 1 — `miniCells`, con sus tests
 
 `src/components/piece-mini.ts`, al lado de `cell-text.ts`. Compone las primitivas que ya existen y
@@ -11,6 +15,12 @@ agrega **sólo el centrado**:
 ```
 SHAPES[piece] → rotateN(·, rotation) → reflect si mirror → correr por floor((5 - w)/2), floor((5 - h)/2)
 ```
+
+El lado de la caja (**5**) y el tamaño de la mini-celda en px van a
+`components/constants/layout.constants.ts` y **no** al módulo: la regla del repo es que un `.ts` de
+capa tiene funciones y nada más. Es además donde vivía `PREVIEW_CELL_PX`, así que la lápida del §5
+queda al lado de su reemplazo. El `5` no se toma de `CELLS_PER_PIECE` de `domain/`: son cinco celdas
+por pieza contra cinco casillas de caja, dos números que hoy coinciden por casualidad.
 
 El docblock tiene que decir tres cosas:
 
@@ -72,4 +82,6 @@ Y la lápida de `PREVIEW_CELL_PX` se actualiza para que no parezca que este spec
 | AC11 | El diff no toca `domain/`, `audio/` ni `mcp-server/` |
 | AC12 | `pnpm verify` |
 | AC13 | `[M]` elegir la pieza sin leer la letra, y rotar con la rueda mirando sólo la paleta |
-| AC14 | Por lectura de `DESIGN.md` |
+| AC14 | Por lectura de `DESIGN.md`, en sus **dos** filas: `:128` (la paleta) y `:79` (`CELL_PX`) |
+| AC15 | Por lectura de `docs/architecture/directory-structure.md` |
+| AC16 | Por lectura: las dos constantes están en `layout.constants.ts` |

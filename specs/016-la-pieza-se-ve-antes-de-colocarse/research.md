@@ -30,12 +30,18 @@ Bounding box de cada pieza en sus 8 orientaciones, sobre `SHAPES`:
 | Pieza | Canónica | Rotada 90° |
 |---|---|---|
 | `I` | 5 × 1 | **1 × 5** |
-| `L`, `N`, `Y` | 2 × 4 | 4 × 2 |
-| `F`, `T`, `U`, `V`, `W`, `X`, `Z`, `P` | 3 × 3 o 3 × 2 | idem transpuesto |
+| `L` | 2 × 4 | 4 × 2 |
+| `N`, `Y`, `Z` | 4 × 2 | 2 × 4 |
+| `F`, `T`, `V`, `W`, `X` | 3 × 3 | idem |
+| `P`, `U` | 3 × 2 | 2 × 3 |
 
-El máximo en un eje es **5** (`I`) y el máximo simultáneo es 3 × 3. O sea que **5 × 5 contiene
-cualquier pentominó en cualquier orientación** con margen, y es la caja más chica que lo hace: con 4×4
-la `I` no entra.
+Ojo con la `Z` de este repo: `SHAPES.Z` es `[[0,1],[1,1],[1,0],[2,0],[3,0]]`, o sea **4 × 2** y no la
+`Z` de 3 × 3 del catálogo clásico. Y las canónicas de `N` e `Y` son **4 × 2**, no `2 × 4`: van
+acostadas, no paradas. No cambia la conclusión, pero es el dato que alguien va a rederivar.
+
+El máximo en un eje es **5**, y lo pone sola la `I`; sacando a la `I`, ninguna pasa de 4 × 2 ni de
+3 × 3, así que el máximo simultáneo es 3 × 3. O sea que **5 × 5 contiene cualquier pentominó en
+cualquier orientación** con margen, y es la caja más chica que lo hace: con 4 × 4 la `I` no entra.
 
 Es lo que compra D1: la caja es constante, así que rotar no mueve un pixel de la grilla de botones. Con
 cajas ajustadas al contenido, la `I` sola haría saltar la fila entera entre 5 y 1 celdas de ancho.
@@ -43,11 +49,16 @@ cajas ajustadas al contenido, la `I` sola haría saltar la fila entera entre 5 y
 ## 3. El prototipo, medido
 
 Miniatura de 5×5 inyectada en los 12 botones, con la paleta ya en `col-span-4` (349,3 px de interior,
-que es lo que le deja el spec 014) y el tablero en `col-span-8`:
+que es lo que le deja el spec 014) y el tablero en `col-span-8`.
+
+> **Ninguna fila de esta tabla es `main`.** En `main` la paleta es `md:col-span-3` y `CELL_PX` vale
+> **63**; el reparto 4/8 y el 71 los deja el 014, que todavía está en `Propuesto`. La primera fila —la
+> que no tiene miniatura— es el punto de partida **con el 014 puesto**, no el estado de hoy. Es el
+> prerrequisito duro que el `spec.md` declara arriba de todo.
 
 | Columnas | Mini-celda | Botón | Grilla de botones | Paleta (caja) | Tablero interior | `CELL_PX` | Documento |
 |---|---|---|---|---|---|---|---|
-| — | — (hoy) | 57 × 29,6 | 104,8 | 461,6 | 730,7 × 429,6 | 71 | 698 |
+| — | — (sin miniatura) | 57 × 29,6 | 104,8 | 461,6 | 730,7 × 429,6 | 71 | 698 |
 | 4 | 6 px | 81 × 76 | — | 600 | 730,7 × 568 | **73** | 835 |
 | 4 | 8 px | 81 × 86 | — | 630 | 730,7 × 598 | **73** | 866 |
 | 4 | 10 px | 81 × 96 | — | 660 | 730,7 × 628 | **73** | 895 |
@@ -121,8 +132,19 @@ El comentario se actualiza para que no parezca que este spec deshace aquel retir
 SHAPES[piece]  →  rotateN(·, rotation)  →  reflect si mirror  →  centrar en 5×5
 ```
 
-Las tres primeras ya existen en `domain/transform.ts` y **`components/` puede importarlas**: la
-dirección de dependencia permite que los componentes importen de `domain/` y de `audio/`.
+`rotateN`, `reflect` y `normalize` ya existen en `domain/transform.ts`, y `SHAPES` en
+`domain/constants/pieces.constants.ts`. **`components/` puede importar las dos cosas**: la dirección
+de dependencia permite que los componentes importen de `domain/` y de `audio/`, y `PiecePalette.tsx`
+ya importa `SHAPES` hoy.
+
+El orden de la cadena **no es libre y coincide con el resto del repo**: `App.tsx:64-65`,
+`invariants.ts:49-51` y `describePiece.ts:70-71` hacen los tres `rotateN` **y después** el espejo.
+Invertirlo compila y da la orientación equivocada en 48 de las 96 combinaciones, que es justo lo que
+AC3 promete que la paleta no hace.
+
+Y un apunte para `deuda.md`: `miniCells(piece, rotation: number, mirror)` suma **un consumidor más**
+de la rotación sin acotar. No se arregla acá —el reemplazo cambia firmas de `domain/` y AC11 lo
+prohíbe— pero el que escriba ese spec tiene que contarlo.
 
 El centrado es lo único nuevo, y es donde se puede equivocar en silencio: `normalize` deja la forma
 pegada a `(0,0)`, así que hay que correrla por `floor((5 - ancho) / 2)` y `floor((5 - alto) / 2)`. Con
@@ -141,8 +163,9 @@ docblock lo diga, porque el resto del dominio afirma lo contrario y con razón.
 | `src/components/piece-mini.ts` *(nuevo)* | `miniCells` (§6) |
 | `src/components/__tests__/piece-mini.test.ts` *(nuevo)* | AC4, AC5 sobre las 96 combinaciones |
 | `src/components/PiecePalette.tsx` | El botón: miniatura + letra, sin el punto |
-| `src/components/constants/layout.constants.ts` | `CELL_PX` 71 → 73, el docblock (§4) y la lápida (§5) |
-| `DESIGN.md` | Qué muestra la paleta ahora (AC14) |
+| `src/components/constants/layout.constants.ts` | `CELL_PX` 71 → 73, el docblock (§4), la lápida (§5) y las **dos constantes nuevas**: el lado de la caja y el px de la mini-celda (AC16) |
+| `DESIGN.md` | Qué muestra la paleta ahora, en **dos** filas: `DESIGN.md:128` (la paleta) y `DESIGN.md:79` (`CELL_PX`) — AC14 |
+| `docs/architecture/directory-structure.md` | Los dos archivos nuevos de `components/` (AC15) |
 
 **No se toca** `domain/`, `audio/` ni `mcp-server/`: este spec no puede cambiar una nota, y que la
 lista lo muestre es parte de la verificación (AC11).

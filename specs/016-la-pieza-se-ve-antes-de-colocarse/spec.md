@@ -5,6 +5,12 @@
 > **No cambia una nota.** Toca `PiecePalette.tsx` y una pura nueva de `components/`. Consume las dos
 > columnas que le dejó el [014](../014-el-tablero-se-edita-en-el-tablero/spec.md), y al hacer más alta
 > la paleta **empuja `CELL_PX` de 71 a 73** — medido, ver D6.
+>
+> **Prerrequisito duro: el 014 tiene que estar mergeado antes de arrancar este spec.** Hoy en `main`
+> la paleta es `md:col-span-3` y `CELL_PX` vale **63** (`src/components/PiecePalette.tsx:36`,
+> `src/components/constants/layout.constants.ts:47`); el reparto 4/8 y el 71 los deja el 014, que
+> está en `Propuesto`. Toda la tabla de D6, el objetivo de 470–520 px de caja y el «71 → 73» de AC9
+> están medidos sobre ese reparto: implementar el 016 antes es medir contra otro layout.
 
 ## Problema
 
@@ -52,7 +58,8 @@ el bug que `PiecePalette.tsx` ya documenta para la línea de notas — *"un pane
 acomoda solo cuando lo tocás es el bug: el botón se corre justo cuando vas a apretarlo"*.
 
 Con una caja de 5×5 la objeción desaparece: **cualquier pentominó en cualquiera de sus 8 orientaciones
-entra** —el máximo es 5×1 en un eje y 3×3 en el otro— así que la caja nunca cambia de tamaño y nada se
+entra** —el máximo en un eje es **5** y lo pone sola la `I`; ninguna otra pieza pasa de 4×2 ni de
+3×3 (`research.md` §2)— así que la caja nunca cambia de tamaño y nada se
 mueve. La forma se centra adentro.
 
 **D2 — Muestra la orientación actual y no la canónica.**
@@ -125,16 +132,29 @@ aritmética que se puede equivocar en silencio.
 
 Compone las primitivas que ya existen —`rotateN`, `reflect`— y no las reimplementa.
 
+Las **dos constantes** que aparecen no se declaran en el módulo, que es lo que la regla del repo
+prohíbe: el lado de la caja (5) y el tamaño de la mini-celda en px van a
+`components/constants/layout.constants.ts`, que es exactamente donde vivía `PREVIEW_CELL_PX` antes
+del 007 y donde ya está `CELL_PX`. El 5 va ahí y no en `domain/constants/` —donde vive
+`CELLS_PER_PIECE`, que es otra cosa: cinco celdas por pieza, no cinco casillas de caja— porque AC11
+prohíbe tocar `domain/` y porque el lado de la caja es una decisión de layout.
+
 ## Criterios de Aceptación
 
 - **AC1** — Cada botón de la paleta muestra la forma de su pieza, pintada con `PIECE_COLOR[key].bg`, en
   una caja de 5×5 celdas.
 - **AC2** — **La caja no cambia de tamaño con la rotación ni con la reflexión** (D1), y por lo tanto la
-  grilla de botones no reflowea. Verificado sobre las 8 orientaciones de la `I`, que es el peor caso.
+  grilla de botones no reflowea. La garantía es de implementación y se verifica por lectura: la caja
+  se dibuja con **5 pistas fijas** de `MINI_CELL_PX` y no con `min-content` ni `auto`, así que su
+  tamaño no depende de qué celdas estén ocupadas. Medido además sobre las 8 orientaciones de la `I`,
+  que es el peor caso: el `getBoundingClientRect()` del contenedor de la grilla no cambia.
 - **AC3** — La miniatura muestra la **orientación actual** (D2): rotar o reflejar redibuja las doce.
 - **AC4** — La forma queda **centrada** en la caja, con test de `miniCells` sobre las 96 combinaciones:
   las cinco celdas caen dentro de `0..4` en los dos ejes, y el centrado es determinista.
-- **AC5** — `miniCells` compone `rotateN` y `reflect` y **no reimplementa** la geometría (D8).
+- **AC5** — `miniCells` compone `rotateN` y `reflect` y **no reimplementa** la geometría (D8). Como
+  la función devuelve las celdas **ya centradas**, el test compara
+  `normalize(miniCells(p, r, m))` contra `mirror ? reflect(rotateN(SHAPES[p], r)) : rotateN(SHAPES[p], r)`
+  — no hay un «resultado sin centrar» que la firma exponga, y no hace falta exponerlo.
 - **AC6** — La letra se queda debajo y el botón conserva un **nombre accesible** que incluye la
   orientación (D5).
 - **AC7** — El puntito de color se va (D3), y las celdas de la miniatura heredan su borde, con el
@@ -145,13 +165,24 @@ Compone las primitivas que ya existen —`rotateN`, `reflect`— y no las reimpl
   este número.
 - **AC10** — El layout responsivo sigue andando debajo de `md`, donde la tarjeta es `col-span-12`: la
   cantidad de columnas de la grilla de botones se remide en ese rango como se hizo en el 007, y no se
-  hereda.
+  hereda. «Sigue andando» tiene la métrica que el propio comentario de `PiecePalette.tsx:38-52` ya
+  usa, y es la que se verifica: en **todo** el rango de 375 px a `max-w-6xl` saturado, el padding
+  efectivo del botón más ancho **nunca es negativo** —a 768 llegó a −4,6 px con el esquema viejo— y
+  la tarjeta no gana scroll horizontal.
 - **AC11** — **No cambia una nota**: el diff no toca `domain/`, `audio/` ni `mcp-server/`.
 - **AC12** — `pnpm verify` en verde.
 - **AC13** — `[M]` A ojo: se puede elegir la pieza correcta **sin leer la letra**, y rotar con la rueda
   (spec 013) se ve en la paleta sin bajar la vista al tablero.
-- **AC14** — `DESIGN.md` dice qué muestra la paleta ahora: hoy su tabla de superficies describe el
-  botón con la letra y el punto.
+- **AC14** — `DESIGN.md` dice qué muestra la paleta ahora. Son **dos** lugares, no uno: la fila
+  `PiecePalette` de la tabla de *El color comunica identidad* (`DESIGN.md:128`), que hoy dice «el
+  color entra al costado», y la fila `CELL_PX` de la tabla de *Qué muestra una celda*
+  (`DESIGN.md:79`), que va a quedar mintiendo con el número nuevo.
+- **AC15** — `docs/architecture/directory-structure.md` lista los dos archivos nuevos. Ese doc
+  enumera `components/` archivo por archivo —`cell-text.ts` y su test están ahí, agregados por el
+  012— así que agregar `piece-mini.ts` sin tocarlo lo deja incompleto. Mismo movimiento que el T035
+  del 014.
+- **AC16** — Las constantes nuevas viven en `components/constants/layout.constants.ts` y no en
+  `piece-mini.ts` ni en el `.tsx` (D8).
 
 ## Fuera de Alcance
 
