@@ -24,13 +24,19 @@ Acá se resuelve `route-source.ts` (§5): la decisión por defecto es **(a) la p
 velo**, con el motivo escrito en el código —el velo dice "esto todavía no sonó", y una pieza muteada no
 va a sonar—. Lo que no puede quedar es que el velo desaparezca sin que nadie lo haya decidido (AC9).
 
+Los **dos bordes** van en este mismo paso, porque son el mismo archivo (`research.md` §9): `clickEn`
+deja de ponerle `note` al click de cruce cuando el ocupante está muteado (AC17), y la rama `n === 1`
+—un retorno temprano aparte del bucle— emite los cinco clicks igual que el caso general (AC18). Sin el
+primero, AC7 es falso en uno de cada tres tableros con cruce.
+
 `App.tsx` no necesita cambiar su proyección: los clicks ya viajan y los `Step` que no existen no se
 proyectan (AC7).
 
 ## Paso 3 — El gesto y la baldosa blanca
 
-**El handler**, con las cuatro ramas de la tabla del spec. La rama nueva se decide con `occupantAt` y
-no con `isValid` (D2, `research.md` §1):
+**El handler**, con las cuatro ramas de la tabla del spec. La pura va en `src/components/input.ts` —el
+módulo que crea el **013**—, no en uno paralelo. La rama nueva se decide con `occupantAt`, que devuelve
+`PlacedPiece | null`, y no con `isValid` (D2, `research.md` §1):
 
 ```
 celda ocupada por una pieza con `piece === selected`
@@ -46,6 +52,12 @@ celda libre y jugada válida
 mismo blanco que una celda libre, conservando `cell.note` y `cell.step` con el color de texto del
 tablero (D4, §7).
 
+**El `Alt` tiene que cruzar `Board`.** Hoy `onCellClick` es `(x: number, y: number) => void`
+(`Board.tsx:112`) y el `onClick` de la celda (`:189`) no pasa el evento, así que `e.altKey` no existe
+del lado de `App`: cambia la prop además del handler. Y en el mismo archivo queda el
+`cursor-not-allowed` de `:190`, que sobre una celda propia dice "acá no entra" justo donde el click
+ahora borra (AC20).
+
 Decisión del paso: el muteo **no** entra por `cellTextFor`. Esa pura contesta qué dice la celda —nota y
 paso—, y una pieza muteada dice exactamente lo mismo; lo que cambia es cómo se pinta, que es de
 `Board.tsx`. Meterlo en `cell-text.ts` mezclaría las dos preguntas.
@@ -56,8 +68,10 @@ paso—, y una pieza muteada dice exactamente lo mismo; lo que cambia es cómo s
 `<PlacedList>` y el `orden` que `App.tsx` derivaba para él.
 
 Con la lista afuera, el reparto pasa a paleta `md:col-span-4` / tablero `md:col-span-8` y `CELL_PX` a
-**71** (D6, §3). El docblock de `CELL_PX` se reescribe entero: las dos frases que explican el 63 dejan
-de ser ciertas (§4).
+**71** (D6, §3). Las clases **no están en `App.tsx`**: viven en `PiecePalette.tsx:36` y `Board.tsx:132`.
+Y se reescriben **dos** comentarios, no uno: el docblock de `CELL_PX` —las dos frases que explican el 63
+dejan de ser ciertas (§4)— y el de `Board.tsx:125`, que argumenta el `col-span-7` contra el 6 con los
+mismos números viejos.
 
 > `secuencia.steps.map(s => s.pieceId)` se va con la lista. El `useMemo` de `secuencia` **se queda**:
 > lo consumen el motor y la cabeza lectora.
@@ -75,10 +89,11 @@ nuevo, y por qué no es ni color ni opacidad), `directory-structure.md` (muere u
 
 | Qué | Cómo |
 |---|---|
-| AC5, AC6 | `sequence.test.ts`: dos secuencias, la misma pieza con y sin mutear |
+| AC5, AC6, AC17, AC18 | `sequence.test.ts`: dos secuencias, la misma pieza con y sin mutear; un tablero con cruce sobre la muteada; y el tablero de una sola pieza |
 | AC1, AC2, AC3, AC4 | La decisión del handler se extrae como pura (igual que en el 013) y se testea en `node` |
 | AC7 | Por lectura del efecto de reconciliación |
-| AC8, AC9 | `[M]` navegador + lectura |
+| AC8, AC9, AC20 | `[M]` navegador + lectura |
+| AC19 | `route-source.test.ts`: el `kind` de las celdas de la pieza muteada |
 | AC10 | El borrado en su propio commit, verificable en el log |
 | AC11 | Remedido en el navegador y escrito en el docblock |
 | AC12, AC13 | `pnpm verify` + `check_invariants` |

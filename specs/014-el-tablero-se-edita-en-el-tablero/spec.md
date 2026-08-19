@@ -80,6 +80,17 @@ Consecuencia que hay que resolver, no ignorar: `route-source.ts` arma su velo de
 estrenó" a partir de `s.steps` (`porPieza`), así que una pieza sin `Step` se queda sin velo. Está en
 `research.md` §5 con las dos salidas.
 
+La regla vale también hacia adentro: **un tramo que CRUZA una pieza muteada tampoco suena su nota.**
+`clickEn` (`sequence.ts:129`) le pone `note` al click de cruce leyendo `noteAtCell` del ocupante — es
+la floritura del 011, y sobre una pieza muteada esa floritura es exactamente la nota que el muteo
+apagó. El cruce no desaparece: sigue siendo un click, mudo, igual que sobre una celda vacía. Sin esa
+condición AC7 es falso en el 32 % de los tableros de tres piezas, que es donde el 011 midió que el
+cruce sobrevive (`research.md` §9).
+
+Y hacia el otro borde: `buildSequence` tiene un **retorno temprano para `n === 1`**
+(`sequence.ts:320-326`) que arma su `Step` sin pasar por el bucle. Una implementación que solo toque el
+bucle deja al único tablero enteramente muteado —el de una sola pieza— como el único que suena.
+
 **D4 — La pieza muteada se ve con la baldosa BLANCA, conservando la nota y el `#N`.**
 Los dos canales obvios estaban tomados y las reglas del tablero los protegen:
 
@@ -169,8 +180,10 @@ suene, y un arpegio de cortesía contradiría el gesto en el momento exacto de h
 - **AC10** — `PlacedList.tsx` **borrado**, su import fuera de `App.tsx`, y el borrado en **su propio
   commit** — es la regla del repo, para que revertirlo sea trivial.
 - **AC11** — El layout queda en paleta 4 / tablero 8 y `CELL_PX` en **71**, con el número remedido y su
-  motivo escrito en `layout.constants.ts` (D6). El docblock de `CELL_PX` hoy dice que el techo sale de
-  un `col-span-7`: eso deja de ser cierto.
+  motivo escrito en `layout.constants.ts` (D6). Las clases `md:col-span-*` **no viven en `App.tsx`**
+  sino en `PiecePalette.tsx:36` y `Board.tsx:132`, así que los dos archivos entran al alcance. Y quedan
+  al día los **dos** comentarios que explican el 63 con un `col-span-7`: el docblock de `CELL_PX` y el
+  de `Board.tsx:125`.
 - **AC12** — `PlacedPiece.muted` existe y `mcp-server` compila: `simulate_board` acepta y reporta el
   muteo (D7).
 - **AC13** — `pnpm verify` en verde y `check_invariants` en proceso fresco antes y después.
@@ -178,9 +191,22 @@ suene, y un arpegio de cortesía contradiría el gesto en el momento exacto de h
   momento que antes** — el hueco se escucha como un silencio en su lugar, no como un patrón acortado.
 - **AC15** — `[M]` A ojo: quitar y reponer la misma pieza en la misma casilla con la misma orientación
   devuelve el tablero al estado anterior (D1).
-- **AC16** — La documentación al día: `DESIGN.md` (el canal nuevo y por qué no es color ni opacidad),
-  `docs/architecture/directory-structure.md` (muere un componente),
-  `docs/architecture/modelo-musical.md` (una pieza puede no sonar) y `.claude/rules/ui.md`.
+- **AC16** — La documentación al día: `DESIGN.md` (el canal nuevo y por qué no es color ni opacidad,
+  **y la fila de `PlacedList` de la tabla de contraste con su párrafo**, `DESIGN.md:129-131`),
+  `docs/architecture/directory-structure.md:99` **y `docs/architecture/overview.md:30`** —los dos
+  nombran a `PlacedList` en el árbol de componentes—, `docs/architecture/modelo-musical.md` (una pieza
+  puede no sonar) y `.claude/rules/ui.md`.
+- **AC17** — **Un cruce sobre una pieza muteada no suena**: el `Click` de ese tramo sale **sin `note`**
+  (D3). Con test sobre un tablero donde el cruce existe de verdad, no sobre uno inventado.
+- **AC18** — Con **una sola** pieza colocada y muteada, `buildSequence` devuelve cinco `Click`s sin
+  `note`, cero `Step` y `length === CELLS_PER_PIECE`: es la rama `n === 1`, que es un retorno temprano
+  aparte del bucle (D3). Con test.
+- **AC19** — Las celdas de una pieza muteada pasan a marcarse `MARCA.click` en vez de `MARCA.nota`
+  —`route-source.ts` las arma de `s.clicks` y no de `s.steps`—, o sea que la cabeza lectora las recorre
+  con el borde del click. Queda **decidido y escrito**, no accidental.
+- **AC20** — El hover sobre una celda ocupada por la **misma** pieza seleccionada deja de mostrar
+  `cursor-not-allowed` (`Board.tsx:190`): sobre una celda donde el click ahora **borra**, ese cursor
+  dice lo contrario de lo que pasa. Qué hace el fantasma rosa en ese caso se decide y se escribe.
 
 ## Fuera de Alcance
 
@@ -203,4 +229,5 @@ suene, y un arpegio de cortesía contradiría el gesto en el momento exacto de h
 | `PlacedPiece` gana un campo y rompe `mcp-server`. | Es deseable: `pnpm verify` typechequea cruzando el borde de paquete y lo atrapa (D7, AC12). |
 | Borrar `PlacedList` se lleva por delante el único consumidor de `arpeggioFor` en `components/`. | `arpeggioFor` sigue teniendo consumidores en `domain/sequence.ts` y en el MCP server. Si quedara sin ninguno, se anota — no se borra en el mismo commit. |
 | `CELL_PX` es un número medido y su docblock arrastra dos mediciones viejas que dejan de valer. | AC11: se remide y se reescribe el docblock, incluida la parte que dice que el techo sale de un `col-span-7`. El piso de 60 px no cambia, porque depende de la fuente y no del ancho. |
+| **El muteo no se escucha al instante.** `setSequence` no interrumpe el ciclo en curso (D5 del 009), así que alternar el muteo tarda hasta un ciclo entero —7,5 s con 8 piezas a 110 bpm— en oírse. Sobre un gesto que se hace *tocando*, eso se lee como que no funcionó. | No lo abre este spec: es el precio del 009 y lo paga igual quitar una pieza. Queda declarado para que AC14 se escuche sabiéndolo, y para que si molesta se abra como spec propio y no como bug del 014. |
 | El blanco de una celda muteada se puede confundir con una celda libre. | Una celda libre no tiene texto: la muteada conserva nota y `#N` (D4). Es la misma distinción que ya separa a una celda libre de una del fantasma. |

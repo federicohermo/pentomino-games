@@ -26,7 +26,7 @@ chocar contra una pieza distinta. Tiene que ser una pregunta sobre **la celda cl
 que la contesta ya existe:
 
 ```ts
-occupantAt(placed, x, y): PlacedPiece | undefined
+occupantAt(placed, x, y): PlacedPiece | null   // board.ts:59 — null, NO undefined
 ```
 
 Con dos piezas del mismo tipo colocadas, devuelve la que cubre esa celda. Eso es exactamente lo que
@@ -47,7 +47,8 @@ Los dos que se pierden de verdad son la orientación y el orden. La orientación
 igual **se lee del tablero**: el `#0..#4` de sus celdas dice por dónde entra y sale, que es la
 consecuencia audible de la orientación. El orden se pierde y D5 lo acepta.
 
-`PlacedList.tsx` son 100 líneas y es el único consumidor de `arpeggioFor` dentro de `components/`.
+`PlacedList.tsx` son 93 líneas y es el único consumidor de `arpeggioFor` dentro de `components/`
+(`App.tsx:81` también la llama, para el `noteSet` de la paleta, así que el borrado no la deja sola).
 `arpeggioFor` conserva consumidores en `domain/sequence.ts` y en el MCP server, así que borrarlo no
 deja una pura huérfana.
 
@@ -127,6 +128,12 @@ Las **marcas** de la cabeza lectora sí siguen andando sin tocar nada: se arman 
 la cabeza sigue recorriendo la pieza muteada celda por celda, que es lo correcto — está ocupando ese
 tiempo.
 
+Lo que sí cambia, y no es gratis: entrar por la segunda rama les cambia el `kind`. `route-source.ts:183`
+marca las celdas de un `Step` como `MARCA.nota` y `:199` las de un `Click` como `MARCA.click`, y
+`Playhead.tsx:118` le da a cada `kind` un borde distinto. O sea que la cabeza recorre la pieza muteada
+con el borde del click y no con el de la nota — que es lo coherente, pero sale de un `if` que nadie
+escribió pensando en esto. Por eso AC19 lo pide decidido y escrito.
+
 ## 6. `PlacedPiece` cruza el borde de paquete
 
 ```
@@ -167,11 +174,31 @@ Sí hay que verificar que `LC_EXCEPCIONES` no se toque: `L` e `Y` están ahí po
 | `src/domain/types/board.types.ts` | `muted: boolean` en `PlacedPiece`, con su docblock (D7) |
 | `src/domain/sequence.ts` | La pieza muteada emite 5 `Click`s y ningún `Step` (D3) |
 | `src/domain/__tests__/sequence.test.ts` | AC5, AC6 |
-| `src/App.tsx` | El handler del click con las cuatro ramas, `col-span` de las tarjetas, borrar el `<PlacedList>` |
-| `src/components/Board.tsx` | La baldosa blanca y el color de texto (D4) |
+| `src/App.tsx` | El handler del click con las cuatro ramas y borrar el `<PlacedList>`. **Los `col-span` NO están acá**: viven en `PiecePalette.tsx` y `Board.tsx` |
+| `src/components/Board.tsx` | La baldosa blanca y el color de texto (D4); el `md:col-span-7` de `:132` y el comentario de `:125`; el `altKey`, que hoy no cruza —`onCellClick` es `(x, y) => void` (`:112`) y el `onClick` de `:189` no pasa el evento—; y el `cursor-not-allowed` de `:190` (AC20) |
+| `src/components/PiecePalette.tsx` | El `md:col-span-3` vive acá (`:36`), no en `App.tsx` (AC11) |
+| `src/components/input.ts` + `types/input.types.ts` | La pura del gesto va en el módulo que crea el **013**, no en uno paralelo |
+| `src/components/__tests__/input.test.ts` | AC1–AC4 |
+| `src/components/__tests__/route-source.test.ts` | Su helper `colocar` (`:37`) construye una `PlacedPiece`: sin `muted: false` el paso 1 no typechequea. AC19 |
 | `src/components/cell-text.ts` | Si el muteo entra por acá o por `Board.tsx` — se decide en el plan |
 | `src/components/PlacedList.tsx` | **Borrado**, en su propio commit (AC10) |
 | `src/components/constants/layout.constants.ts` | `CELL_PX` 63 → 71 y el docblock reescrito (AC11) |
 | `src/components/route-source.ts` | Lo que decida §5 |
 | `mcp-server/src/tools/simulateBoard.ts` | Acepta y reporta `muted` (AC12) |
 | `DESIGN.md`, `docs/`, `.claude/rules/ui.md` | AC16 |
+
+## 9. Los dos bordes de D3 que el dominio ya tiene escritos
+
+Leído de `src/domain/sequence.ts`, no supuesto:
+
+- **`clickEn` (`:129-133`) le pone altura al cruce.** Pregunta `occupantAt` por la celda del camino y,
+  si hay ocupante, le pide `noteAtCell`. Es la floritura del spec 011 (`Click.note`), y sobre una pieza
+  muteada devuelve exactamente la nota que el muteo apagó. El 011 midió que el cruce sobrevive en el
+  **32 %** de los tableros de tres piezas, así que no es un caso raro: con `clickEn` sin tocar, AC7 es
+  falso en uno de cada tres tableros que tengan una pieza muteada cruzada. La salida es una condición
+  en `clickEn` —ocupante muteado ⇒ click sin `note`— y **no** mueve ni el costo ni los pasos del tramo,
+  así que AC5 sigue valiendo sin cambios. Lo único que cambia es el `kind` de esa marca: pasa de
+  `MARCA.cruce` a `MARCA.click`, que es lo que corresponde.
+- **`buildSequence` tiene un retorno temprano para `n === 1` (`:320-326`)** que arma el `Step` sin pasar
+  por el bucle de `:341`. Una implementación que solo toque el bucle deja el caso de una sola pieza
+  muteada sonando entero. El `length` de esa rama es `CELLS_PER_PIECE` y no cambia (AC18).
