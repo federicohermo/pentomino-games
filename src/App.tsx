@@ -17,7 +17,7 @@ import Board from "./components/Board.tsx";
 import PlacedList from "./components/PlacedList.tsx";
 import Spectrum from "./components/Spectrum.tsx";
 import { encolar } from "./components/route-source.ts";
-import { rotacionPorRueda, accionDeTecla, abreTapLimpio, reflejaElContextMenu } from "./components/input.ts";
+import { rotacionPorRueda, accionDeTecla, frenaElDefault, abreTapLimpio, reflejaElContextMenu } from "./components/input.ts";
 import { ACCION } from "./components/constants/input.constants.ts";
 
 /**
@@ -226,16 +226,19 @@ export default function App(){
       t instanceof HTMLButtonElement || t instanceof HTMLInputElement;
 
     const despachar = (e: KeyboardEvent, tipo: 'keydown' | 'keyup') => {
-      const accion = accionDeTecla({
+      const evento = {
         key: e.key, tipo, repeat: e.repeat,
         targetEsControl: esControl(e.target),
         tapLimpio: tapLimpio.current,
-      });
-      // `preventDefault` SOLO cuando la acción no es null: si el handler se saltea el
-      // evento, el navegador tiene que quedárselo entero — es lo que deja que la barra
+      };
+      // El `preventDefault` va por su PROPIA pregunta y no por «hay acción»: la barra
+      // con auto-repeat no alterna el transporte pero su default sigue siendo scrollear,
+      // y cada `keydown` repetido trae el suyo. Cuando el evento no es nuestro, en
+      // cambio, el navegador tiene que quedárselo entero — es lo que deja que la barra
       // active el botón que tiene el foco en vez de alternar el transporte dos veces.
+      if (frenaElDefault(evento)) e.preventDefault();
+      const accion = accionDeTecla(evento);
       if (accion === null) return;
-      e.preventDefault();
       if (accion === ACCION.rotar) setRotation((rotation + 1) % 4);
       else if (accion === ACCION.reflejar) setMirror(!mirror);
       // El transporte pasa por `togglePlay` y no por `startClock`/`stopClock` sueltos:
@@ -274,13 +277,23 @@ export default function App(){
     const nodo = boardRef.current;
     if (!nodo) return;
     const onWheel = (e: WheelEvent) => {
+      // La rueda ensucia el tap SIEMPRE, y va ANTES de las dos guardas de abajo a
+      // propósito: la rueda que tiene que ensuciarlo es justamente la que sale por la
+      // primera. Con esta línea después del `return` por `ctrlKey`, el `keyup` del
+      // `Ctrl` encontraba el tap limpio y reflejaba la pieza al soltar — o sea que el
+      // gesto que D10 nombra por su nombre («`Ctrl`+rueda hace zoom y no refleja») era
+      // el único que se le escapaba.
+      tapLimpio.current = false;
       // `Ctrl`+rueda es el zoom del navegador, que es una afordancia de accesibilidad y
       // no un atajo de conveniencia: el evento se saltea ENTERO, `preventDefault`
       // incluido, y el navegador hace lo suyo. Un gesto del sistema le gana a uno nuestro.
       if (e.ctrlKey) return;
+      // Un `deltaY` de 0 es un scroll horizontal puro, que no rota (lo dice también
+      // `rotacionPorRueda`). Sale antes del `preventDefault` porque este nodo es el
+      // `overflow-x-auto` con el que se recorre la grilla debajo de `md`: frenarle el
+      // default sería dejar sin scroll horizontal al único elemento que lo tiene.
+      if (e.deltaY === 0) return;
       e.preventDefault();
-      // La rueda ensucia el tap: `Ctrl`+rueda no puede reflejar al soltar el `Ctrl`.
-      tapLimpio.current = false;
       setRotation(r => rotacionPorRueda(r, e.deltaY));
     };
     // `{ passive: false }` explícito: Chrome asume `passive: true` para `wheel` sobre
