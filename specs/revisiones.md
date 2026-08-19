@@ -292,3 +292,25 @@ sin spec en [deuda.md](./deuda.md).
   falso**: son 4,1 µs un tablero entero con 12 piezas. La razón real —contesta sobre el tablero de ahora
   y no sobre la ruta que suena— ya estaba escrita al lado; el costo inventado la tapaba. Un comentario
   que da dos razones y sólo una es cierta es peor que uno que da una sola.
+
+- **2026-08-19 — El 012 dijo «el grado 0 es la puerta de entrada» y era cierto en la mitad del espacio
+  de colocación.** El pedido fue un reporte de uso, no de código: *el punto de entrada a la pieza
+  siempre debe ser el cuadrado número 0 y mantener el orden ascendente*. Reproducido con
+  `L`/0/reflejada en `(1,1)`, la cabeza lectora entraba por `[0,0]` —que la celda rotulaba `#4`— y
+  contaba hacia atrás. El comportamiento **no era el bug**: el retrógrado del 009/010 estaba bien y el
+  012 lo declaró explícitamente fuera de alcance. El bug era el **rótulo**, y una afirmación falsa en
+  D3 que se propagó a cuatro archivos —`music.ts`, `modelo-musical.md`, `DESIGN.md` y
+  `.claude/rules/domain.md`— sin que nada se pusiera en rojo, porque el grado y el paso **son el mismo
+  número en las 48 orientaciones al derecho**.
+  La lección es sobre qué pregunta contesta un número en pantalla. El `#N` de la celda nació en el 007
+  como el grado —qué lugar ocupa la nota en el arpegio ascendente—, y era la lectura correcta mientras
+  el tablero era un compás. Desde el 010 hay una cabeza lectora encima, y entonces la pregunta que la
+  celda contesta de hecho pasó a ser *cuándo suena esta*, que es el paso. **Un dibujo nuevo puede
+  cambiar qué pregunta hace un dato viejo**, y eso no lo detecta ningún test: los 243 estaban en verde,
+  y ninguno miraba la relación entre el rótulo y la puerta.
+  El arreglo introduce `playOrderByCellIndex(forma, mirror)` como **única** derivación del retrógrado
+  sobre celdas: `cellsByPlayOrder` tenía su propio `reverse` y era la segunda copia. Que la regla que
+  se pinta en pantalla y la que arma el circuito salgan del mismo lugar es el mismo movimiento con el
+  que el 010 unificó `gates`, y por el mismo motivo. Ni una nota cambia: el grado sigue diciendo qué
+  altura tiene cada celda, y las dos numeraciones conviven documentadas porque cruzarlas compila
+  —`ascendente[paso]` da la nota espejada en las 48 reflejadas— y ahora hay tests que lo ejercen.

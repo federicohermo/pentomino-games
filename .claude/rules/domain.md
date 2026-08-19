@@ -34,7 +34,7 @@ en pantalla. No está mal — es la clase de cosa que alguien "arregla" por erro
 |---|---|
 | Qué pieza | La tónica (`BASE_MAP`: F→C, I→C#, … Z→B) |
 | Rotación | La fórmula de escala (mayor → menor → blues → mayor +7) |
-| Reflexión | El orden de las notas (retrógrado) y, con él, la puerta de entrada/salida del recorrido (`gates`, spec 010) |
+| Reflexión | El orden de las notas (retrógrado) y, con él, el **paso** de cada celda y la puerta de entrada/salida del recorrido (`playOrderByCellIndex` → `gates`, spec 010) |
 | La posición en el tablero | El orden de reproducción y el silencio entre piezas (`buildSequence`, spec 009) |
 | **La forma** | **El camino que recorre el arpegio, y con él qué celda tiene qué nota** (`degreeByCellIndex`, specs 007 y 012) |
 
@@ -53,8 +53,20 @@ diagonal vale 2), que es lo que hace que la diagonal se tolere sin preferirse. *
 adentro de la pieza** — `routeBetween` sigue moviéndose en cruz.
 
 Dos consecuencias que muerden a otras capas: el grado 0 dejó de ser el centro geométrico de `I` y `X`
-—es la puerta de entrada—, y con eso la `X` dejó de tener una puerta rodeada por sus propios brazos, que
+—es una punta del camino—, y con eso la `X` dejó de tener una puerta rodeada por sus propios brazos, que
 es la propiedad sobre la que el 011 apoyaba su caso estructural del cruce.
+
+## Dos numeraciones por celda, y no se cruzan
+
+`degreeByCellIndex(forma)` da el **grado**: qué nota tiene la celda, `notesForRotation(...)[grado]`. La
+reflexión **no** lo mueve. `playOrderByCellIndex(forma, mirror)` da el **paso**: cuándo suena, o sea su
+lugar en el orden de reproducción. La reflexión sí lo mueve — es `4 - grado`.
+
+El paso es la única derivación del retrógrado sobre celdas: de él salen `cellsByPlayOrder`, las puertas
+del circuito (`gates`) y el número que `Board.tsx` pinta en la esquina, así que **el `#0` es siempre la
+puerta de entrada y el `#4` la de salida**, reflejada o no. Las dos parejas correctas son
+`ascendente[grado]` y `arpeggioFor(...)[paso]`; `ascendente[paso]` compila y da la nota espejada en las
+48 orientaciones reflejadas.
 
 ## Lo que decide la forma y lo que decide el tablero
 

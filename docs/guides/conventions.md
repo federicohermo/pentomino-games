@@ -159,8 +159,8 @@ del índice `k` sigue siendo la misma celda lógica después de transformar.**
 
 De eso depende `ANCHOR_INDEX`, que guarda la celda de agarre como índice en vez de coordenada; de eso
 depende el mapeo celda↔nota que `degreeByCellIndex` calcula sobre la forma canónica y arrastra por
-índice (spec 007); y de eso dependen las puertas del recorrido, que leen la celda del grado 0 y la del
-grado 4 por índice sobre `PlacedPiece.cells` (spec 009). Cualquier cambio que filtre, ordene o reagrupe
+índice (spec 007); y de eso dependen las puertas del recorrido, que leen la celda del paso 0 y la del
+paso 4 por índice sobre `PlacedPiece.cells` (specs 009 y 010). Cualquier cambio que filtre, ordene o reagrupe
 celdas dentro de esas funciones rompe la colocación de piezas **en silencio**.
 
 Hoy hay una red: `checkArrayOrder()` de `domain/invariants.ts` lo verifica sobre las 96 combinaciones, y
