@@ -4,7 +4,7 @@ import { cellsAt, isValid, routeBetween } from '../board.ts';
 import { degreeByCellIndex, notesForRotation, playOrderByCellIndex } from '../music.ts';
 import { rotateN, reflect } from '../transform.ts';
 import { SHAPES, ANCHOR_INDEX, CELLS_PER_PIECE } from '../constants/pieces.constants.ts';
-import { BASE_MAP, DEFAULT_OCTAVE } from '../constants/music.constants.ts';
+import { BASE_MAP, DEFAULT_OCTAVE, REGIMEN } from '../constants/music.constants.ts';
 import { CROSS_COST } from '../constants/board.constants.ts';
 import type { Cell } from '../types/transform.types.ts';
 import type { PieceKey } from '../types/pieces.types.ts';
@@ -40,7 +40,7 @@ const colocar = (piece: PieceKey, rot: number, mirror: boolean, x: number, y: nu
  * llama — si la llamara, los tests de las notas de cada paso serian tautologias.
  */
 const notasDe = (p: PlacedPiece): number[] => {
-  const asc = notesForRotation(BASE_MAP[p.piece], DEFAULT_OCTAVE, p.rotation);
+  const asc = notesForRotation(BASE_MAP[p.piece], DEFAULT_OCTAVE, p.rotation, REGIMEN.escala);
   return p.mirror ? [...asc].reverse() : asc;
 };
 
@@ -123,7 +123,7 @@ describe('el teselado que usan los tests', () => {
 
 describe('bordes', () => {
   it('un tablero vacio no suena y su ciclo mide cero', () => {
-    expect(buildSequence([])).toEqual({ steps: [], clicks: [], length: 0 });
+    expect(buildSequence([], REGIMEN.escala)).toEqual({ steps: [], clicks: [], length: 0 });
   });
 
   it('con una sola pieza no hay clicks: el recorrido existe ENTRE piezas', () => {
@@ -140,7 +140,7 @@ describe('bordes', () => {
     // recorrido existe ENTRE piezas.
     for (const [pieza, rot] of [['F', 0], ['Z', 0], ['I', 1], ['X', 0]] as const) {
       const sola = colocar(pieza, rot, false, 4, 2);
-      const seq = buildSequence([sola]);
+      const seq = buildSequence([sola], REGIMEN.escala);
       expect(seq.clicks).toEqual([]);
       expect(seq.steps).toEqual([{ pieceId: pieza, offset: 0, notes: notasDe(sola) }]);
       expect(seq.length).toBe(CELLS_PER_PIECE);
@@ -152,7 +152,7 @@ describe('bordes', () => {
     // ultima nota de una vuelta y la primera de la siguiente caerian en el mismo
     // instante. Con 5 la repeticion cae un intervalo despues de la ultima nota, que
     // es exactamente la regla que AC3 le da a dos piezas adyacentes.
-    const seq = buildSequence([colocar('F', 0, false, 1, 1)]);
+    const seq = buildSequence([colocar('F', 0, false, 1, 1)], REGIMEN.escala);
     const ultimaNota = seq.steps[0].offset + CELLS_PER_PIECE - 1;
     expect(seq.length - ultimaNota).toBe(1);
   });
@@ -177,7 +177,7 @@ describe('las puertas de una pieza', () => {
     // no en su entrada ni en su ancla. Con una pieza sola no hay tramo —el
     // recorrido existe entre piezas—, asi que hace falta una segunda.
     const otra = colocar('P', 0, false, 7, 1);
-    const seq = buildSequence([f, otra]);
+    const seq = buildSequence([f, otra], REGIMEN.escala);
     const primero = seq.steps[0].pieceId === 'F' ? f : otra;
     const segundo = primero === f ? otra : f;
     const tramo = rutaEntre(primero, segundo, [f, otra]);
@@ -240,7 +240,7 @@ describe('las puertas de una pieza', () => {
  */
 const notaPintadaEn = (p: PlacedPiece, c: Cell): number => {
   const grados = degreeByCellIndex(SHAPES[p.piece]);
-  const asc = notesForRotation(BASE_MAP[p.piece], DEFAULT_OCTAVE, p.rotation);
+  const asc = notesForRotation(BASE_MAP[p.piece], DEFAULT_OCTAVE, p.rotation, REGIMEN.escala);
   const k = p.cells.findIndex((q) => q[0] === c[0] && q[1] === c[1]);
   return asc[grados[k]];
 };
@@ -308,7 +308,7 @@ describe('AC3 — `noteAtCell`: que nota hay en una celda', () => {
         for (const mirror of [false, true]) {
           const p = colocar(k, rot, mirror, 5, 3);
           for (const c of p.cells) {
-            expect(noteAtCell(p, c), `${k}/${rot}/${mirror} ${c}`).toBe(notaPintadaEn(p, c));
+            expect(noteAtCell(p, c, REGIMEN.escala), `${k}/${rot}/${mirror} ${c}`).toBe(notaPintadaEn(p, c));
           }
         }
       }
@@ -319,9 +319,9 @@ describe('AC3 — `noteAtCell`: que nota hay en una celda', () => {
     // No es un borde decorativo: es lo que deja que `buildSequence` pregunte por
     // cualquier celda del camino sin averiguar antes si hay algo abajo.
     const f = colocar('F', 0, false, 1, 1);
-    expect(noteAtCell(f, [9, 5])).toBeNull();
-    expect(noteAtCell(f, [0, 0])).toBeNull();
-    for (const c of f.cells) expect(noteAtCell(f, c)).not.toBeNull();
+    expect(noteAtCell(f, [9, 5], REGIMEN.escala)).toBeNull();
+    expect(noteAtCell(f, [0, 0], REGIMEN.escala)).toBeNull();
+    for (const c of f.cells) expect(noteAtCell(f, c, REGIMEN.escala)).not.toBeNull();
   });
 
   it('sale del arpegio ASCENDENTE y no del que ya trae el retrogrado', () => {
@@ -332,11 +332,48 @@ describe('AC3 — `noteAtCell`: que nota hay en una celda', () => {
     // que es su propio espejo.
     const l = colocar('L', 0, true, 1, 1);
     const grados = degreeByCellIndex(SHAPES.L);
-    const ascendente = notesForRotation(BASE_MAP.L, DEFAULT_OCTAVE, 0);
-    const real = l.cells.map((c) => noteAtCell(l, c));
+    const ascendente = notesForRotation(BASE_MAP.L, DEFAULT_OCTAVE, 0, REGIMEN.escala);
+    const real = l.cells.map((c) => noteAtCell(l, c, REGIMEN.escala));
     expect(real).toEqual(l.cells.map((_, k) => ascendente[grados[k]]));
     const espejado = l.cells.map((_, k) => notasDe(l)[grados[k]]);
     expect(real.filter((n, k) => n !== espejado[k])).toHaveLength(4);
+  });
+
+  it('AC16 (spec 017) — bajo `orden` devuelve la nota del regimen de la pieza, no la de `escala`', () => {
+    // De `noteAtCell` sale el `Click.note` de un cruce: la altura que suena al PISAR una
+    // celda ocupada. Si se quedara en `escala` mientras el tablero toca `orden`, la
+    // celda diria una altura y pisarla sonaria otra — el bug que el docblock de la pura
+    // existe para prevenir, ahora con dos regimenes en vez de con dos arpegios.
+    //
+    // El oraculo es la misma cadena replicada a mano, con el regimen adentro: no una
+    // llamada a la pura que se verifica.
+    const notaPintadaBajo = (p: PlacedPiece, c: Cell): number => {
+      const grados = degreeByCellIndex(SHAPES[p.piece]);
+      const asc = notesForRotation(BASE_MAP[p.piece], DEFAULT_OCTAVE, p.rotation, REGIMEN.orden);
+      const k = p.cells.findIndex((q) => q[0] === c[0] && q[1] === c[1]);
+      return asc[grados[k]];
+    };
+
+    let distintas = 0;
+    for (const k of PIECES) {
+      for (let rot = 0; rot < 4; rot++) {
+        for (const mirror of [false, true]) {
+          const p = colocar(k, rot, mirror, 5, 3);
+          for (const c of p.cells) {
+            expect(noteAtCell(p, c, REGIMEN.orden), `${k}/${rot}/${mirror} ${c}`).toBe(notaPintadaBajo(p, c));
+            if (noteAtCell(p, c, REGIMEN.orden) !== noteAtCell(p, c, REGIMEN.escala)) distintas++;
+          }
+        }
+      }
+    }
+    // Y que las dos ramas NO devuelvan siempre lo mismo, o el test de arriba pasaria
+    // igual con el regimen ignorado. Sobre las 480 celdas del espacio —12 piezas x 4
+    // rotaciones x 5 celdas x 2 reflexiones— difieren 312, y las 168 que coinciden
+    // estan explicadas: las 120 de rotacion 0 por D2 (los dos regimenes son identicos
+    // ahi), y 48 mas en la rotacion 3, donde `PENT_MAJOR` transpuesta +7 y la mayor
+    // corrida 3 arrancan las dos por la quinta y la sexta —dos grados por pieza, 12
+    // piezas, 2 reflexiones—. Las rotaciones 1 y 2 no comparten ni una.
+    expect(distintas).toBe(312);
   });
 });
 
@@ -440,7 +477,7 @@ const pasosDelCircuito = (orden: number[], board: PlacedPiece[]): number =>
   orden.reduce((s, _, t) => s + pasosEntre(board[orden[t]], board[orden[(t + 1) % orden.length]], board), 0);
 
 const ordenDe = (board: PlacedPiece[]): number[] =>
-  buildSequence(board).steps.map((s) => board.findIndex((p) => p.id === s.pieceId));
+  buildSequence(board, REGIMEN.escala).steps.map((s) => board.findIndex((p) => p.id === s.pieceId));
 
 /**
  * AC1 — cuatro piezas donde el circuito mas corto NO es el orden de colocacion.
@@ -476,7 +513,7 @@ describe('AC1 — el orden es el del circuito mas corto, no el de colocacion', (
     expect(costoDelCircuito([0, 1, 3, 2], CUATRO)).toBe(21);
     expect(pasosDelCircuito([0, 1, 3, 2], CUATRO)).toBe(17);
     expect(pasosDelCircuito([0, 3, 2, 1], CUATRO)).toBe(19);
-    expect(buildSequence(CUATRO).length).toBe(4 * (CELLS_PER_PIECE - 1) + 19);
+    expect(buildSequence(CUATRO, REGIMEN.escala).length).toBe(4 * (CELLS_PER_PIECE - 1) + 19);
   });
 
   it('ningun otro circuito es mas corto, verificado por fuerza bruta hasta 7 piezas', () => {
@@ -490,7 +527,7 @@ describe('AC1 — el orden es el del circuito mas corto, no el de colocacion', (
       // El largo del ciclo se mide con los PASOS y no con el costo que acaba de
       // compararse: lo que ordena el circuito y lo que dura son dos numeros distintos
       // desde el 011, y confundirlos estiraria el ciclo por cada celda pisada.
-      expect(buildSequence(board).length).toBe(board.length * (CELLS_PER_PIECE - 1) + pasosDelCircuito(ordenDe(board), board));
+      expect(buildSequence(board, REGIMEN.escala).length).toBe(board.length * (CELLS_PER_PIECE - 1) + pasosDelCircuito(ordenDe(board), board));
     }
   });
 });
@@ -515,7 +552,7 @@ describe('AC3 — dos piezas adyacentes quedan contiguas', () => {
     expect(costoEntre(f, p, [f, p])).toBe(0);
     expect(costoEntre(p, f, [f, p])).toBe(0);
 
-    const seq = buildSequence([f, p]);
+    const seq = buildSequence([f, p], REGIMEN.escala);
     expect(seq.clicks).toEqual([]);
     expect(seq.steps.map((s) => s.offset)).toEqual([0, CELLS_PER_PIECE]);
     // La ultima nota de `F` suena en el intervalo 4 y la primera de `P` en el 5.
@@ -527,7 +564,7 @@ describe('AC3 — dos piezas adyacentes quedan contiguas', () => {
 describe('los offsets y los clicks', () => {
   it('cada pieza abarca 4 intervalos y encima se suma el salto a la siguiente', () => {
     for (const board of PREFIJOS) {
-      const seq = buildSequence(board);
+      const seq = buildSequence(board, REGIMEN.escala);
       const orden = ordenDe(board);
       expect(seq.steps[0].offset).toBe(0);
       for (let t = 1; t < board.length; t++) {
@@ -545,7 +582,7 @@ describe('los offsets y los clicks', () => {
     // Desde `PREFIJOS[1]`: con UNA pieza no hay tramo de vuelta, porque el recorrido
     // existe entre piezas. Ese caso lo cubren los dos tests de `bordes`.
     for (const board of PREFIJOS.slice(1)) {
-      const seq = buildSequence(board);
+      const seq = buildSequence(board, REGIMEN.escala);
       const orden = ordenDe(board);
       const vuelta = pasosEntre(board[orden[board.length - 1]], board[orden[0]], board);
       expect(seq.length).toBe(seq.steps[board.length - 1].offset + CELLS_PER_PIECE - 1 + vuelta);
@@ -560,7 +597,7 @@ describe('los offsets y los clicks', () => {
     // Desde `PREFIJOS[1]` por lo mismo que el test de arriba: con una pieza sola no
     // hay saltos, y por lo tanto tampoco clicks.
     for (const board of PREFIJOS.slice(1)) {
-      const seq = buildSequence(board);
+      const seq = buildSequence(board, REGIMEN.escala);
       const orden = ordenDe(board);
       const esperados: Cell[] = [];
       for (let t = 0; t < board.length; t++) {
@@ -578,7 +615,7 @@ describe('los offsets y los clicks', () => {
     // 62 % de una nota y rompe justamente lo que D4 pide. La celda no le hace falta al
     // motor para sonar, pero es lo que permite que la garantia se verifique ACA.
     for (const board of PREFIJOS) {
-      const seq = buildSequence(board);
+      const seq = buildSequence(board, REGIMEN.escala);
       const notas = new Set<number>();
       for (const s of seq.steps) for (let i = 0; i < CELLS_PER_PIECE; i++) notas.add(s.offset + i);
 
@@ -628,7 +665,7 @@ describe('AC3 — el cruce lleva la altura de la celda que pisa', () => {
     // Las puertas de la `X` son dos brazos OPUESTOS, no su centro (spec 012, D3).
     expect(gates(equis)).toEqual({ entrada: [2, 1], salida: [1, 0] });
 
-    const seq = buildSequence(CON_X);
+    const seq = buildSequence(CON_X, REGIMEN.escala);
     const cruce = seq.clicks.filter((c) => equis.cells.some((q) => misma(q, c.cell)));
 
     // TRES cruces, y el del medio es la celda central: el tramo entra por un brazo,
@@ -654,7 +691,7 @@ describe('AC3 — el cruce lleva la altura de la celda que pisa', () => {
     // La garantia entera: ningun click inventa una altura sobre una celda vacia, y
     // ninguno se calla sobre una ocupada.
     for (const board of PREFIJOS) {
-      for (const click of buildSequence(board).clicks) {
+      for (const click of buildSequence(board, REGIMEN.escala).clicks) {
         const duenio = board.find((p) => p.cells.some((q) => misma(q, click.cell)));
         const donde = `${board.length} piezas, click en ${click.cell}`;
         if (duenio === undefined) expect(click.note, donde).toBeUndefined();
@@ -667,7 +704,7 @@ describe('AC3 — el cruce lleva la altura de la celda que pisa', () => {
     // El caso limite del modelo. Con las 60 celdas ocupadas el peso no puede evitar nada
     // y todo click pisa: el recorrido no se apaga cuando no puede esquivar, sigue
     // sonando y ahora dice sobre que.
-    const seq = buildSequence(DOCE);
+    const seq = buildSequence(DOCE, REGIMEN.escala);
     expect(seq.clicks).toHaveLength(13);
     expect(seq.clicks.every((c) => c.note !== undefined)).toBe(true);
   });
@@ -678,8 +715,8 @@ describe('las notas de cada paso', () => {
     // Reflejar invierte el ORDEN EN QUE SUENAN las notas, y eso lo aplica `arpeggioFor`.
     // Volver a invertir aca desharia la reflexion.
     const v = colocar('V', 0, true, 2, 2);
-    const ascendente = notesForRotation(BASE_MAP.V, DEFAULT_OCTAVE, 0);
-    expect(buildSequence([v]).steps[0].notes).toEqual([...ascendente].reverse());
+    const ascendente = notesForRotation(BASE_MAP.V, DEFAULT_OCTAVE, 0, REGIMEN.escala);
+    expect(buildSequence([v], REGIMEN.escala).steps[0].notes).toEqual([...ascendente].reverse());
   });
 
   it('cada llamada devuelve arrays propios: mutar una secuencia no toca la siguiente', () => {
@@ -687,9 +724,9 @@ describe('las notas de cada paso', () => {
     // habia que proteger era el tablero; ahora que se derivan, lo que hay que garantizar
     // es que dos secuencias del MISMO tablero no compartan el array.
     const f = colocar('F', 0, false, 1, 1);
-    const primera = buildSequence([f]);
+    const primera = buildSequence([f], REGIMEN.escala);
     primera.steps[0].notes[0] = -1;
-    expect(buildSequence([f]).steps[0].notes[0]).not.toBe(-1);
+    expect(buildSequence([f], REGIMEN.escala).steps[0].notes[0]).not.toBe(-1);
   });
 });
 
@@ -699,8 +736,8 @@ describe('determinismo', () => {
     // JS recorrio el `for`. No hay `Math.random`, ni fecha, ni flotantes: la cuenta
     // entera es lo que lo garantiza.
     for (const board of PREFIJOS) {
-      expect(buildSequence(board)).toEqual(buildSequence(board));
-      expect(buildSequence([...board])).toEqual(buildSequence(board));
+      expect(buildSequence(board, REGIMEN.escala)).toEqual(buildSequence(board, REGIMEN.escala));
+      expect(buildSequence([...board], REGIMEN.escala)).toEqual(buildSequence(board, REGIMEN.escala));
     }
   });
 
@@ -770,7 +807,7 @@ describe('determinismo', () => {
     const vistos = new Set<string>();
     const largos = new Set<number>();
     for (const orden of ordenes) {
-      const seq = buildSequence(armar(orden));
+      const seq = buildSequence(armar(orden), REGIMEN.escala);
       const ids = seq.steps.map((st) => st.pieceId);
       const k = ids.indexOf('N');
       vistos.add([...ids.slice(k), ...ids.slice(0, k)].join('>'));
@@ -806,13 +843,13 @@ describe('AC10 — el tablero lleno', () => {
     //
     // 12 es el peor caso POSIBLE, no el tipico: hay 12 pentominos libres y no se
     // repiten, asi que `O(n^2 * 2^n)` esta acotado por las reglas del juego.
-    const seq = buildSequence(DOCE);
+    const seq = buildSequence(DOCE, REGIMEN.escala);
     expect(seq.steps).toHaveLength(12);
 
     const corridas: number[] = [];
     for (let i = 0; i < 21; i++) {
       const t0 = performance.now();
-      buildSequence(DOCE);
+      buildSequence(DOCE, REGIMEN.escala);
       corridas.push(performance.now() - t0);
     }
     corridas.sort((a, b) => a - b);

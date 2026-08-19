@@ -3,7 +3,8 @@ import type { PieceKey } from './types/pieces.types.ts';
 import { rotate90, normalize, rotateN, reflect } from './transform.ts';
 import { notesForRotation } from './music.ts';
 import { SHAPES, ANCHOR_INDEX, CELLS_PER_PIECE } from './constants/pieces.constants.ts';
-import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE, NOTES_PER_PIECE } from './constants/music.constants.ts';
+import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE, NOTES_PER_PIECE, REGIMEN } from './constants/music.constants.ts';
+import type { RegimenDeRotacion } from './types/music.types.ts';
 
 /**
  * Los cinco chequeos del modelo.
@@ -11,7 +12,8 @@ import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE, NOTES_PER_PIECE } from './constant
  * El espacio son las 96 combinaciones de pieza x rotacion x reflexion, pero cada
  * chequeo recorre lo que le corresponde y no las 96 por inercia: `checkArrayOrder`
  * y `checkAnchors` si —son los geometricos, y la orientacion es justo lo que
- * pueden romper—, `checkNotes` 48 porque el espejo solo invierte el orden,
+ * pueden romper—, `checkNotes` 96 desde el spec 017 (12 piezas x 4 rotaciones x 2
+ * REGIMENES; el espejo sigue afuera porque solo invierte el orden),
  * `checkShapes` las 12 formas canonicas porque rotar no cambia ni la cantidad de
  * celdas ni la conexidad, y `checkBaseMap` el conjunto una sola vez.
  *
@@ -32,6 +34,9 @@ export interface CheckResult {
 
 const PIECES = Object.keys(SHAPES) as PieceKey[];
 const ROTATIONS = [0, 1, 2, 3];
+// Los dos regimenes salen de `REGIMEN` y no se listan a mano: agregar un tercero lo
+// mete solo en `checkNotes` en vez de dejarlo sin invariante que lo mire.
+const REGIMENES: RegimenDeRotacion[] = Object.values(REGIMEN);
 
 /**
  * Comparacion de celdas que no distingue `-0` de `0`.
@@ -192,15 +197,33 @@ export function checkBaseMap(): CheckResult {
 }
 
 /**
- * 5. Notas — 5 distintas y estrictamente ascendentes ANTES del retrogrado, y
- *    tantas como celdas tiene una pieza.
+ * 5. Notas — 5 distintas ANTES del retrogrado, tantas como celdas tiene una pieza, y
+ *    en el orden que su REGIMEN garantiza.
  *
- * Lo ultimo es del spec 007 y hasta ahora vivia solo en un comentario: desde que
+ * Lo del medio es del spec 007 y hasta el 006 vivia solo en un comentario: desde que
  * `degreeByCellIndex` empareja las dos listas por indice, `NOTES_PER_PIECE` y
  * `CELLS_PER_PIECE` pasaron de coincidir a TENER que coincidir. Sin este chequeo
  * una formula de 4 notas con `NOTES_PER_PIECE = 4` pasaba los cinco invariantes
  * y todos los tests, y la celda de grado 4 renderizaba `undefinedNaN` —
  * `midiName(undefined)` no explota, devuelve basura.
+ *
+ * ## Por que el chequeo de orden esta PARTIDO por regimen (spec 017, AC12)
+ *
+ * Hasta el 017 este chequeo exigia ascendente estricto sobre las 48 combinaciones, y
+ * eso resulto ser una propiedad de `escala` y no del modelo: las cuatro formulas son
+ * crecientes, pero correr el arpegio ciclicamente mete un descenso por diseno. Medido,
+ * el ascendente estricto falla en **36 de las 48** combinaciones de `orden`, asi que
+ * extenderlo entero a las 96 dejaria `check_invariants` en rojo POR DISENO — y un
+ * invariante que falla por diseno se termina apagando entero, que es peor que no
+ * tenerlo.
+ *
+ * En `orden` el chequeo equivalente y mas fuerte es que el arpegio SEA una permutacion
+ * ciclica del de rotacion 0: implica lo mismo que implicaba el ascendente —las cinco
+ * notas, ninguna repetida— y ata ademas el corrimiento, que es lo que este regimen
+ * introduce. Sigue atrapando el caso que el invariante existe para atrapar: un
+ * corrimiento mal escrito que deja un hueco y lo pinta como `undefinedNaN`.
+ *
+ * Lo que vale en los dos —`length` y "sin repetidas"— se queda compartido.
  */
 export function checkNotes(): CheckResult {
   const failures: string[] = [];
@@ -211,15 +234,44 @@ export function checkNotes(): CheckResult {
     );
   }
   for (const p of PIECES) {
-    for (const rot of ROTATIONS) {
-      const ns = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot);
-      if (ns.length !== NOTES_PER_PIECE) {
-        failures.push(`${p} rot${rot}: ${ns.length} notas y deberian ser ${NOTES_PER_PIECE}`);
-      }
-      if (new Set(ns).size !== ns.length) failures.push(`${p} rot${rot}: tiene notas repetidas`);
-      for (let i = 1; i < ns.length; i++) {
-        if (ns[i] <= ns[i - 1]) {
-          failures.push(`${p} rot${rot}: la nota ${i} (${ns[i]}) no supera a la anterior (${ns[i - 1]})`);
+    for (const regimen of REGIMENES) {
+      // El arpegio de rotacion 0, que en `orden` es la referencia del corrimiento. Se
+      // pide una vez por pieza y no una por rotacion: es el mismo en las cuatro.
+      const referencia = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 0, regimen);
+      for (const rot of ROTATIONS) {
+        const ns = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, regimen);
+        if (ns.length !== NOTES_PER_PIECE) {
+          failures.push(`${p} rot${rot} [${regimen}]: ${ns.length} notas y deberian ser ${NOTES_PER_PIECE}`);
+        }
+        if (new Set(ns).size !== ns.length) failures.push(`${p} rot${rot} [${regimen}]: tiene notas repetidas`);
+
+        if (regimen === REGIMEN.escala) {
+          for (let i = 1; i < ns.length; i++) {
+            if (ns[i] <= ns[i - 1]) {
+              failures.push(`${p} rot${rot} [${regimen}]: la nota ${i} (${ns[i]}) no supera a la anterior (${ns[i - 1]})`);
+            }
+          }
+        } else {
+          // Se BUSCA el desplazamiento en vez de darlo por sabido, y despues se lo
+          // compara contra `rot`: asi el chequeo verifica las dos cosas por separado
+          // —que sea una permutacion ciclica, y que el corrimiento sea el pedido— en
+          // vez de recalcular el arpegio y compararlo consigo mismo, que no verifica
+          // nada.
+          const desplazamiento = referencia.indexOf(ns[0]);
+          if (desplazamiento < 0) {
+            failures.push(`${p} rot${rot} [${regimen}]: arranca en ${ns[0]}, que no esta en el arpegio de rotacion 0`);
+          } else {
+            for (let i = 0; i < ns.length; i++) {
+              const esperada = referencia[(desplazamiento + i) % referencia.length];
+              if (ns[i] !== esperada) {
+                failures.push(`${p} rot${rot} [${regimen}]: la nota ${i} (${ns[i]}) rompe la permutacion ciclica, deberia ser ${esperada}`);
+              }
+            }
+            const pedido = rot % referencia.length;
+            if (desplazamiento !== pedido) {
+              failures.push(`${p} rot${rot} [${regimen}]: corrido ${desplazamiento} posiciones y deberian ser ${pedido}`);
+            }
+          }
         }
       }
     }

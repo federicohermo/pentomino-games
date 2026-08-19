@@ -4,7 +4,7 @@ import {
   arpeggioFor, degreeByCellIndex, midiName, notesForRotation, playOrderByCellIndex,
 } from '../../domain/music.ts';
 import { SHAPES, CELLS_PER_PIECE } from '../../domain/constants/pieces.constants.ts';
-import { BASE_MAP, DEFAULT_OCTAVE } from '../../domain/constants/music.constants.ts';
+import { BASE_MAP, DEFAULT_OCTAVE, REGIMEN } from '../../domain/constants/music.constants.ts';
 import type { PieceKey } from '../../domain/types/pieces.types.ts';
 
 const PIECES = Object.keys(SHAPES) as PieceKey[];
@@ -31,7 +31,7 @@ describe('cellTextFor — el texto de una celda, en las 96 orientaciones', () =>
     for (const p of PIECES) {
       for (let rot = 0; rot < 4; rot++) {
         for (const mirror of [false, true]) {
-          const pasos = cellTextFor(p, rot, mirror).map(c => c.step);
+          const pasos = cellTextFor(p, rot, mirror, REGIMEN.escala).map(c => c.step);
           expect(pasos, `${p}/${rot}/${mirror}`)
             .toEqual(playOrderByCellIndex(SHAPES[p], mirror));
         }
@@ -45,10 +45,10 @@ describe('cellTextFor — el texto de una celda, en las 96 orientaciones', () =>
     // las 5 notas donde estaban es lo que dice que la celda pinta el ascendente.
     for (const p of PIECES) {
       for (let rot = 0; rot < 4; rot++) {
-        const asc = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot);
+        const asc = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, REGIMEN.escala);
         const esperadas = degreeByCellIndex(SHAPES[p]).map(g => midiName(asc[g]));
-        expect(cellTextFor(p, rot, false).map(c => c.note), `${p}/${rot}`).toEqual(esperadas);
-        expect(cellTextFor(p, rot, true).map(c => c.note), `${p}/${rot} mirror`).toEqual(esperadas);
+        expect(cellTextFor(p, rot, false, REGIMEN.escala).map(c => c.note), `${p}/${rot}`).toEqual(esperadas);
+        expect(cellTextFor(p, rot, true, REGIMEN.escala).map(c => c.note), `${p}/${rot} mirror`).toEqual(esperadas);
       }
     }
   });
@@ -60,8 +60,8 @@ describe('cellTextFor — el texto de una celda, en las 96 orientaciones', () =>
     for (const p of PIECES) {
       for (let rot = 0; rot < 4; rot++) {
         for (const mirror of [false, true]) {
-          const texto = cellTextFor(p, rot, mirror);
-          const enOrden = arpeggioFor(p, rot, mirror).map(midiName);
+          const texto = cellTextFor(p, rot, mirror, REGIMEN.escala);
+          const enOrden = arpeggioFor(p, rot, mirror, REGIMEN.escala).map(midiName);
           for (let paso = 0; paso < CELLS_PER_PIECE; paso++) {
             const celda = texto.find(c => c.step === paso);
             expect(celda?.note, `${p}/${rot}/${mirror} paso ${paso}`).toBe(enOrden[paso]);
@@ -75,9 +75,29 @@ describe('cellTextFor — el texto de una celda, en las 96 orientaciones', () =>
     // Sin `mirror` en la clave la primera orientacion renderizada le quedaria pegada a
     // la otra, y el fantasma prometeria una numeracion que la pieza colocada no cumple.
     // Se ejerce con la `L`, que no es simetrica bajo reflexion en ninguna rotacion.
-    expect(cellTextFor('L', 0, false).map(c => c.step))
-      .not.toEqual(cellTextFor('L', 0, true).map(c => c.step));
-    expect(cellTextFor('L', 0, false)).toBe(cellTextFor('L', 0, false));
+    expect(cellTextFor('L', 0, false, REGIMEN.escala).map(c => c.step))
+      .not.toEqual(cellTextFor('L', 0, true, REGIMEN.escala).map(c => c.step));
+    expect(cellTextFor('L', 0, false, REGIMEN.escala)).toBe(cellTextFor('L', 0, false, REGIMEN.escala));
+  });
+
+  it('AC15 (spec 017) — el memo tampoco cruza REGIMENES: el regimen esta en la clave', () => {
+    // El `Map` es de modulo, sobrevive al render y no lo mira ningun linter: sin el
+    // regimen en la clave, cambiarlo re-derivaria el audio y dejaria las celdas
+    // mostrando las notas del regimen anterior para siempre. Es AC7 verde en el audio y
+    // falso en la pantalla, y el unico lugar donde se puede atrapar es este.
+    //
+    // Se ejerce a rotacion 1 y no a 0: a 0 los dos regimenes son identicos por D2, asi
+    // que el test pasaria con la clave rota.
+    expect(cellTextFor('L', 1, false, REGIMEN.escala).map(c => c.note))
+      .not.toEqual(cellTextFor('L', 1, false, REGIMEN.orden).map(c => c.note));
+
+    // Y el PASO no cambia con el regimen: la rotacion mueve las notas o su orden dentro
+    // del arpegio, nunca el camino que el arpegio hace por la forma (D1).
+    expect(cellTextFor('L', 1, false, REGIMEN.escala).map(c => c.step))
+      .toEqual(cellTextFor('L', 1, false, REGIMEN.orden).map(c => c.step));
+
+    // Y cada rama se sigue memoizando por su lado.
+    expect(cellTextFor('L', 1, false, REGIMEN.orden)).toBe(cellTextFor('L', 1, false, REGIMEN.orden));
   });
 
   it('el caso del reporte: la `L` reflejada entra por el `#0` en B4', () => {
@@ -85,7 +105,7 @@ describe('cellTextFor — el texto de una celda, en las 96 orientaciones', () =>
     // en [1,0] [1,1] [1,2] [1,3] [0,0], y la ultima —la que la cabeza pisa primero—
     // decia `#4`. Es el unico test del archivo que fija numeros a mano: los otros
     // cuatro son propiedades, y una propiedad no muestra como se veia el error.
-    expect(cellTextFor('L', 0, true)).toEqual([
+    expect(cellTextFor('L', 0, true, REGIMEN.escala)).toEqual([
       { step: 1, note: 'A4' },
       { step: 2, note: 'F#4' },
       { step: 3, note: 'E4' },

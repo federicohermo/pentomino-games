@@ -4,6 +4,7 @@ import { GRID_W, GRID_H } from '../domain/constants/board.constants.ts';
 import type { Cell } from '../domain/types/transform.types.ts';
 import type { PieceKey } from '../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../domain/types/board.types.ts';
+import type { RegimenDeRotacion } from '../domain/types/music.types.ts';
 import { cellTextFor } from './cell-text.ts';
 import type { CellText } from './types/cell-text.types.ts';
 import { CELL_PX } from './constants/layout.constants.ts';
@@ -109,13 +110,18 @@ interface Props {
   /** La reflexion del fantasma. Solo mueve el `#N`: la nota de una celda no la
       cambia la reflexion, el orden en que suenan si. */
   mirror: boolean;
+  /** Que hace la rotacion (spec 017). Baja como prop porque `cellTextFor` se llama
+      ACA y no en `App.tsx`, y sin el las celdas mostrarian las notas del otro regimen:
+      la mitad visible de AC7. Vale para las dos llamadas —la pieza colocada y el
+      fantasma—, que es lo que hace que el fantasma prometa lo que la pieza va a decir. */
+  regimen: RegimenDeRotacion;
   onCellClick: (x: number, y: number) => void;
   onCellEnter: (cell: Cell) => void;
   onMouseLeave: () => void;
 }
 
 export default function Board({
-  placed, previewCells, previewValid, hover, selected, rotation, mirror,
+  placed, previewCells, previewValid, hover, selected, rotation, mirror, regimen,
   onCellClick, onCellEnter, onMouseLeave,
 }: Props) {
   // Que celda del fantasma cae en (x,y), POR INDICE: es lo que permite pedirle su
@@ -160,8 +166,8 @@ export default function Board({
             // asi que el indice nunca es -1— y la del fantasma la trae puesta, que
             // es para lo que `previewCells` llega ordenado.
             let cell: CellText | null = null;
-            if (occ) cell = cellTextFor(occ.piece, occ.rotation, occ.mirror)[occupantCellIndex(occ, x, y)];
-            else if (ghostIndex !== undefined) cell = cellTextFor(selected, rotation, mirror)[ghostIndex];
+            if (occ) cell = cellTextFor(occ.piece, occ.rotation, occ.mirror, regimen)[occupantCellIndex(occ, x, y)];
+            else if (ghostIndex !== undefined) cell = cellTextFor(selected, rotation, mirror, regimen)[ghostIndex];
 
             // El color de pieza es IDENTIDAD y pierde contra cualquier ESTADO: el
             // choque, el fantasma y el hover se pintan igual que antes. Por eso el

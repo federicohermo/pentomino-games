@@ -8,6 +8,43 @@ export const PENT_MINOR: number[] = [0,3,5,7,10];
 export const PENT_BLUES5: number[] = [0,3,5,6,7];
 
 /**
+ * Los dos regimenes de rotacion del spec 017: QUE cambia la rotacion.
+ *
+ * - `escala` — el de siempre: elige entre las cuatro formulas de arriba, o sea que
+ *   rotar cambia QUE NOTAS suena la pieza y no toca el orden.
+ * - `orden` — la pentatonica mayor SIEMPRE, corrida `rot` posiciones: rotar cambia
+ *   POR DONDE ARRANCA el arpegio y no toca el material.
+ *
+ * Existen los dos a la vez porque la pregunta —cual de las dos reglas vuelve al
+ * instrumento mas expresivo— no se contesta en el papel: el spec construye la
+ * comparacion para poder decidirla escuchando, y sacar el que pierda es borrar una
+ * rama de `notesForRotation`.
+ *
+ * La formula fija de `orden` es la pentatonica mayor y no otra, y eso es lo que hace
+ * la comparacion AUDITABLE (D2): es la formula de la rotacion 0 en `escala`, asi que
+ * a 0° los dos regimenes suenan identicos y divergen a medida que se rota. Con
+ * cualquier otra formula fija los dos sistemas no se tocarian en ningun punto y
+ * comparar seria comparar dos instrumentos distintos.
+ *
+ * Const-object y no `enum`: `erasableSyntaxOnly` los rechaza, y es la misma opcion que
+ * permite que node cargue `src/domain/` sin compilar —de lo que viven el MCP server y
+ * las mediciones del research—. El union type derivado vive en `types/music.types.ts`.
+ */
+export const REGIMEN = { escala: 'escala', orden: 'orden' } as const;
+
+/**
+ * El regimen con el que abre la app (AC11): `escala`, o sea que sin tocar nada el
+ * instrumento suena como sonaba.
+ *
+ * Es el default del ESTADO de `App.tsx` y nunca un default de parametro: las funciones
+ * del dominio piden el regimen sin valor por omision a proposito, para que un llamador
+ * que se lo olvide falle en el typecheck en vez de recibir el regimen viejo en silencio
+ * —son 36 de las 48 combinaciones las que difieren—. Mismo criterio que `dur` y `rel`
+ * en `scheduleVoice`.
+ */
+export const DEFAULT_REGIMEN = REGIMEN.escala;
+
+/**
  * Notas que dispara una pieza: las cuatro formulas son pentatonicas.
  *
  * Coincide con `CELLS_PER_PIECE` y **ya no es una coincidencia**: son 5 notas

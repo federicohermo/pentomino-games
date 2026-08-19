@@ -1,5 +1,6 @@
 import { midiName, arpeggioFor } from '../domain/music.ts';
 import type { PlacedPiece } from '../domain/types/board.types.ts';
+import type { RegimenDeRotacion } from '../domain/types/music.types.ts';
 import { PIECE_COLOR } from './constants/palette.constants.ts';
 
 /**
@@ -40,10 +41,14 @@ interface Props {
   placed: readonly PlacedPiece[];
   /** Los `pieceId` en el orden en que el circuito los visita, tal cual sale de `buildSequence`. */
   orden: readonly string[];
+  /** Que hace la rotacion (spec 017): la lista deriva su arpegio con la misma
+      `arpeggioFor` que el motor, asi que sin el regimen diria un arpegio y sonaria
+      otro en 36 de las 48 combinaciones. */
+  regimen: RegimenDeRotacion;
   onRemove: (id: string) => void;
 }
 
-export default function PlacedList({ placed, orden, onRemove }: Props) {
+export default function PlacedList({ placed, orden, regimen, onRemove }: Props) {
   // `buildSequence` emite un Step por cada pieza colocada, asi que en los hechos
   // `orden` siempre cubre a `placed` entero. Aun asi no se descarta en silencio
   // ninguna pieza ausente de `orden` -eso seria un fallo mudo y el repo lo trata
@@ -82,7 +87,7 @@ export default function PlacedList({ placed, orden, onRemove }: Props) {
                 misma `arpeggioFor` que alimenta al motor a traves de `buildSequence`, asi
                 que la lista no puede decir un arpegio distinto del que suena. Van en
                 orden de reproduccion, con el retrogrado ya aplicado si hay reflexion. */}
-            <div className="text-xs text-slate-600">Notas: {arpeggioFor(p.piece, p.rotation, p.mirror).map(m=>midiName(m)).join(' · ')}</div>
+            <div className="text-xs text-slate-600">Notas: {arpeggioFor(p.piece, p.rotation, p.mirror, regimen).map(m=>midiName(m)).join(' · ')}</div>
             <div className="text-[10px] text-slate-500 mt-1">Celdas: {p.cells.map(([x,y])=>`(${x},${y})`).join(' ')}</div>
           </div>
           );

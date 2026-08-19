@@ -2,6 +2,8 @@ import { midiName } from '../domain/music.ts';
 import { SHAPES } from '../domain/constants/pieces.constants.ts';
 import { CHROMATIC, BASE_MAP } from '../domain/constants/music.constants.ts';
 import type { PieceKey } from '../domain/types/pieces.types.ts';
+import type { RegimenDeRotacion } from '../domain/types/music.types.ts';
+import { REGIMEN } from '../domain/constants/music.constants.ts';
 import { TEMPO_MIN, TEMPO_MAX } from './constants/layout.constants.ts';
 import { PIECE_COLOR } from './constants/palette.constants.ts';
 
@@ -18,6 +20,8 @@ interface Props {
   tempo: number;
   playing: boolean;
   clicks: boolean;
+  /** Que hace la rotacion (spec 017): completa la frase de su propia fila. */
+  regimen: RegimenDeRotacion;
   noteSet: readonly number[];
   onSelect: (piece: PieceKey) => void;
   onRotate: (rotation: number) => void;
@@ -25,12 +29,13 @@ interface Props {
   onTempo: (bpm: number) => void;
   onTogglePlay: () => void;
   onToggleClicks: () => void;
+  onRegimen: (regimen: RegimenDeRotacion) => void;
   onReset: () => void;
 }
 
 export default function PiecePalette({
-  selected, rotation, mirror, tempo, playing, clicks, noteSet,
-  onSelect, onRotate, onMirror, onTempo, onTogglePlay, onToggleClicks, onReset,
+  selected, rotation, mirror, tempo, playing, clicks, regimen, noteSet,
+  onSelect, onRotate, onMirror, onTempo, onTogglePlay, onToggleClicks, onRegimen, onReset,
 }: Props) {
   return (
     <div className="col-span-12 md:col-span-3 bg-white rounded-2xl shadow p-3">
@@ -70,12 +75,34 @@ export default function PiecePalette({
         ))}
       </div>
       <div className="mt-4 space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="font-medium">Rotación</span>
-          <div className="flex gap-1">
-            {[0,1,2,3].map(r=> (
-              <button key={r} onClick={()=> onRotate(r)} className={`px-2 py-1 rounded ${rotation===r?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{r*90}°</button>
-            ))}
+        {/* La fila de Rotación son DOS líneas y no dos filas: la segunda dice QUÉ cambia
+            la de arriba, así que se lee como una oración —«Rotación … cambia escala /
+            orden»— y el interruptor no necesita glosa. No agrega una fila, completa una
+            (AC10 del spec 017): sin rotar, el régimen no hace nada, así que no es un
+            control independiente.
+
+            Dos botones y no un ON/OFF como Reflexión o Clicks: los dos valores son
+            simétricos y ninguno es la ausencia del otro. Un ON/OFF diría que hay un
+            régimen y una desviación, que es justo la lectura que D4 rechaza — no son
+            dificultades, son dos reglas. El idioma visual sí es el mismo que el resto de
+            la tarjeta usa para lo activo: fondo oscuro. */}
+        <div>
+          <div className="flex items-center justify-between">
+            <span className="font-medium">Rotación</span>
+            <div className="flex gap-1">
+              {[0,1,2,3].map(r=> (
+                <button key={r} onClick={()=> onRotate(r)} className={`px-2 py-1 rounded ${rotation===r?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{r*90}°</button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-1 mt-1">
+            <span className="text-xs text-slate-600">cambia</span>
+            <div className="flex gap-1">
+              {([REGIMEN.escala, REGIMEN.orden] as const).map(r=> (
+                <button key={r} onClick={()=> onRegimen(r)}
+                        className={`px-2 py-0.5 rounded text-xs ${regimen===r?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{r}</button>
+              ))}
+            </div>
           </div>
         </div>
         <div className="flex items-center justify-between">
