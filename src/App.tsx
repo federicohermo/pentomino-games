@@ -14,7 +14,6 @@ import type { PieceKey } from "./domain/types/pieces.types.ts";
 import type { PlacedPiece } from "./domain/types/board.types.ts";
 import PiecePalette from "./components/PiecePalette.tsx";
 import Board from "./components/Board.tsx";
-import PlacedList from "./components/PlacedList.tsx";
 import Spectrum from "./components/Spectrum.tsx";
 import { encolar } from "./components/route-source.ts";
 import {
@@ -80,18 +79,17 @@ export default function App(){
     return c; // normalized
   }, [selected, rotation, mirror]);
 
-  // El recorrido, calculado UNA vez por tablero y consumido por tres: el motor (por la
-  // proyeccion sin celdas), la cabeza lectora (por `encolar`) y la lista lateral (por el
-  // orden del circuito). Recalcularlo en cada consumidor abriria la puerta a que dos de
-  // ellos miren circuitos distintos, que es la clase de discrepancia que D5 del 009
-  // existe para cerrar.
+  // El recorrido, calculado UNA vez por tablero y consumido por dos: el motor (por la
+  // proyeccion sin celdas) y la cabeza lectora (por `encolar`). Eran tres hasta que el
+  // spec 014 borro la lista lateral, que lo leia por el orden del circuito.
+  // Recalcularlo en cada consumidor abriria la puerta a que dos de ellos miren circuitos
+  // distintos, que es la clase de discrepancia que D5 del 009 existe para cerrar.
   const secuencia = useMemo(()=> buildSequence(placed), [placed]);
 
   // El arpegio de la pieza SELECCIONADA, para el panel y para el click de colocacion.
   // La derivacion vive en `domain/music.ts` y no aca: las piezas ya colocadas la piden
-  // por su cuenta —`buildSequence` para el motor, `PlacedList` para el panel— y tener
-  // dos copias de la regla era justo lo que hacia falta cuando `PlacedPiece` guardaba
-  // sus notas.
+  // por su cuenta —`buildSequence`, para el motor— y tener dos copias de la regla era
+  // justo lo que hacia falta cuando `PlacedPiece` guardaba sus notas.
   const noteSet = useMemo(()=> arpeggioFor(selected, rotation, mirror), [selected, rotation, mirror]);
 
   // El tablero se edita EN el tablero (spec 014): sobre una pieza ya colocada, y solo con
@@ -378,14 +376,6 @@ export default function App(){
           hoverEdita={hoverEdita}
           onContextMenu={handleContextMenu}
           boardRef={boardRef}
-        />
-
-        {/* El orden sale de la misma `secuencia` que alimenta al motor y no de un
-            `buildSequence` propio: la lista dice el orden que se escucha, no otro. */}
-        <PlacedList
-          placed={placed}
-          orden={secuencia.steps.map(s=> s.pieceId)}
-          onRemove={id=> setPlaced(arr=> arr.filter(q=> q.id!==id))}
         />
 
         {/* Bottom: señal que sale por el master. No recibe props: lee del motor
