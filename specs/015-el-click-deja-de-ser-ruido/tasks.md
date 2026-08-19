@@ -81,9 +81,17 @@ una persona y no bloquea el cierre.
 ## Paso 3 — Verificación y documentación
 
 - [ ] T018 `pnpm verify` en verde y `check_invariants` en proceso fresco — **AC12**
-- [ ] T019 [P] **AC11** — verificar que la pieza muteada del 014 suena con esta campana **sin código
-      propio**: es el mismo `Click` sin `note` (`research.md` §6). **Sólo con el 014 mergeado**; si el
-      015 llega antes, la tarea se deja abierta y la cierra el 014 — no se marca como cumplida
+- [ ] T019 [P] **AC11** — verificar **las dos mitades**: con el default de AC6 la pieza muteada del 014
+      **no suena**, y con el botón encendido suena con esta campana **sin código propio**. Las dos
+      salen de lo mismo —es el mismo `Click` sin `note` (`research.md` §6), y `engine.ts` lo despacha
+      por la rama que mira `clicksAudible`—, así que verificar una sola deja la otra sin evidencia.
+      **Sólo con el 014 mergeado**; si el 015 llega antes, la tarea se deja abierta y la cierra el 014
+      — no se marca como cumplida
+- [ ] T037 [P] Docblock en la rama de `engine.ts` que despacha el click: **por qué el silencio total de
+      la pieza muteada con los clicks apagados es la respuesta y no un caso sin cubrir**. Es la pregunta
+      que se hace quien lea el 014 y el 015 juntos, y la respuesta —mutear es sacarla del sonido, y
+      separar los dos significados costaría un cuarto `HIT` y un discriminante en `Click`— no está
+      escrita en ninguno de los dos specs por separado
 - [ ] T020 [P] `docs/architecture/audio.md`: el timbre nuevo, con la tabla de los dos centroides. Son
       cuatro los lugares: las tres afirmaciones de que el click "no tiene altura" y el toggle, que ahí
       figura como «Clicks» y ya estaba viejo antes de este spec

@@ -321,3 +321,25 @@ sin spec en [deuda.md](./deuda.md).
   por el que el dominio salió de `App.tsx` en su momento. Por eso el encadenado se fue a
   `components/cell-text.ts` con su test al lado: **un test del dominio no cubre la decisión de qué le
   pide el componente al dominio**, y era justo ahí donde no había ninguno.
+
+- **2026-08-19 — El 014 y el 015 se contradecían sobre si una pieza muteada suena, y ninguno de los dos
+  podía verlo solo.** El 014 hace que la pieza muteada emita cinco `Click` **sin `note`** (T007, D3:
+  reusar `Click` en vez de un `Step` con bandera). El 015 pone `clicks` en `false` por default (T013 y
+  T035, AC6). Pero el gate de `engine.ts` es `else if (clicksAudible)` sobre la rama muda —la del
+  `Click` sin altura—, así que con los dos mergeados **una pieza muteada es silencio total al abrir la
+  app**, y el AC11 del 015 pedía verificar exactamente lo contrario: que sonara con la campana nueva.
+  Ninguna de las dos ramas habría fallado un test. El 014 no menciona `clicksAudible` y el 015 no
+  menciona el muteo; cada spec por separado es consistente, y la contradicción vive **entre** los dos.
+  Salió de derivar el grafo del lote 013–017 para `/spec-implement-batch`, cruzando qué archivo y qué
+  constante toca cada spec — no de leer ninguno de los dos.
+  **La decisión fue el silencio**, y conviene por qué y no sólo qué: mutear una pieza es sacarla del
+  sonido, así que silencio es la lectura correcta del gesto. La alternativa era separar los dos
+  significados que el 014 le encima al mismo `Click` sin `note` —«celda vacía» y «celda de pieza
+  muteada»—, y eso cuesta un cuarto `HIT` y un discriminante en `Click`, que es justo lo que el
+  docblock de `sequence.types.ts` evita al afirmar que «sin `note` significa exactamente que esa celda
+  estaba vacía». Se corrigieron el AC11 y el T019 del 015, que ahora piden verificar las **dos**
+  mitades —apagado no suena, encendido suena—, y entró un T037 para que el porqué quede escrito en la
+  rama de `engine.ts` donde se lo va a preguntar quien lea los dos specs juntos.
+  La lección de método: **un lote de specs puede estar compuesto de specs individualmente correctos y
+  ser contradictorio igual**, y la contradicción no aparece leyéndolos en orden — aparece cruzando qué
+  toca cada uno. Es lo que ahora hace el Paso 2 de `/spec-implement-batch`.

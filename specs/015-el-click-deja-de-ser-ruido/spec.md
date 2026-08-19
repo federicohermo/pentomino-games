@@ -166,9 +166,13 @@ Este spec cambia la tercera clase de evento y sólo esa.
   clases—, que es donde cae quien se pregunte por qué no hay una cuarta.
 - **AC10** — `GRACE_*` sin tocar y el cruce con altura sonando igual (D8), verificado por el test del
   011 que ya existe.
-- **AC11** — La pieza muteada del spec 014 suena con **esta** campana, sin código propio: es el mismo
-  `Click` sin `note`. **Sólo verificable con el 014 mergeado**; si el 015 llega antes, el AC queda
-  diferido y se verifica desde el 014, no se da por cumplido.
+- **AC11** — La pieza muteada del spec 014 pasa por **el mismo gate que el resto de los clicks**,
+  porque es el mismo `Click` sin `note`: con el default de AC6 **no suena**, y suena con esta campana
+  —sin código propio— recién cuando el botón enciende los clicks. Que muteada más apagado dé silencio
+  total es la consecuencia buscada y no un agujero: mutear una pieza es sacarla del sonido, y `Click`
+  conserva un solo significado, así que `engine.ts` no gana una cuarta rama ni `Click` un
+  discriminante. **Sólo verificable con el 014 mergeado**; si el 015 llega antes, el AC queda diferido
+  y se verifica desde el 014, no se da por cumplido.
 - **AC12** — `pnpm verify` en verde. `check_invariants` no cubre el timbre, pero se corre igual porque
   el spec toca `audio/`.
 - **AC13** — `[M]` A oído, y es el AC que decide dos cosas que ningún render offline contesta: si la
