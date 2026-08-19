@@ -14,8 +14,19 @@ El buffer se arma **por click** y no se cachea, con dos motivos escritos: los m�
 declaran constantes, y un caché dependería del `sampleRate` del contexto, que entra por parámetro
 justamente para poder renderizar offline.
 
-Con la campana esto se simplifica: un oscilador no necesita buffer, así que la mitad de ese docblock
-—el `createBuffer`, el `sampleRate`, el "no se cachea"— deja de aplicar y se va con el código.
+Y **hoy no llama a `stop()`**, con el motivo escrito: el buffer dura exactamente `CLICK_SECONDS` y se
+termina solo, así que un `stop()` en ese instante sería un segundo lugar donde vive la duración del
+click. La limpieza cuelga de `src.onended`.
+
+Con la campana esto se simplifica de un lado y se complica del otro. Se simplifica: un oscilador no
+necesita buffer, así que la mitad de ese docblock —el `createBuffer`, el `sampleRate`, el "no se
+cachea"— deja de aplicar y se va con el código. Se complica: **un `OscillatorNode` no se termina
+solo**, así que el `stop()` pasa de innecesario a obligatorio y el argumento del docblock se da vuelta
+con él. Sin `stop()` el nodo nunca dispara `onended`, los `disconnect()` no corren y quedan ~12
+osciladores vivos por ciclo; y además la caída exponencial se apaga en un epsilon y no en cero, así que
+los dos tests que exigen silencio **absoluto** después del click —`peakNear(..., at + CLICK_SECONDS +
+0.03)` en `voice.test.ts` y en `integration.test.ts`— fallarían. El `stop()` va exactamente en
+`at + CLICK_SECONDS`, que es donde `scheduleVoice` ya pone el suyo (más `RELEASE_TAIL`).
 
 ## 2. Medición de los dos timbres
 
@@ -148,11 +159,17 @@ igual, porque el 016 va a meter 12 miniaturas en esa misma tarjeta.
 |---|---|
 | `src/audio/voice.ts` | `scheduleClick` deja de armar un buffer y pasa a oscilador (§1) |
 | `src/audio/constants/voice.constants.ts` | `CLICK_SECONDS` 0,02 → 0,05 y la altura nueva, con sus docblocks |
-| `src/audio/__tests__/voice.test.ts` | AC5: render offline con el contenido espectral |
+| `src/audio/__tests__/voice.test.ts` | AC5 y **AC15**: el test que hoy afirma que el click *no tiene altura* pasa a afirmar la contraria (con `zeroCrossHz`, el helper que ya existe), y el que exige silencio absoluto se conserva — es el que obliga al `stop()` (§1) |
+| `src/audio/__tests__/integration.test.ts` | AC15: su comentario dice "50 ms despues ya es silencio" contando `CLICK_SECONDS + 0,03`. Con 50 ms el número pasa a 80 |
+| `src/audio/engine.ts` | AC6: `let clicksAudible = true` es el **segundo** default. Y AC9: la rama del despacho es donde va escrito por qué no hay acento |
 | `src/App.tsx` | El default de `clicks` a `false`, y el comentario que hoy argumenta lo contrario |
 | `src/components/PiecePalette.tsx` | La etiqueta (§7) |
 | `specs/011-.../tasks.md` | `T070` cerrado con "no" y su motivo (AC7) |
-| `docs/architecture/audio.md`, `DESIGN.md` | AC14 |
+| `docs/architecture/audio.md`, `docs/architecture/modelo-musical.md`, `DESIGN.md` | AC14. `modelo-musical.md` afirma en presente que sobre celda vacía "suena un click sin altura", y `audio.md` lo repite en tres lugares además de llamar «Clicks» al toggle |
 
 **No se toca** `domain/`: el click ya existe en el modelo desde el 009 y este spec sólo cambia cómo
 suena.
+
+**Y no cruza el borde de paquete.** `mcp-server/` importa un solo símbolo de `audio/` —`midiToHz`, en
+`tools/simulateBoard.ts`— y este spec no le toca la firma: `scheduleClick`, `CLICK_SECONDS` y
+`CLICK_MIDI` no los ve nadie fuera de `src/audio/`. Verificado, no supuesto.

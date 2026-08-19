@@ -15,12 +15,20 @@ osc.type = 'sine'
 osc.frequency.setValueAtTime(midiToHz(CLICK_MIDI), at)
 env.gain.setValueAtTime(vel, at)                       ← sin rampa de ataque, como hoy
 env.gain.exponentialRampToValueAtTime(ε, at + CLICK_SECONDS)
+osc.start(at); osc.stop(at + CLICK_SECONDS)            ← NUEVO: hoy no hay stop()
 ```
 
 **Exponencial y no lineal**, al revés que en `scheduleVoice`: allá la lineal es obligada porque la
 exponencial no admite llegar a 0 y la envolvente de una nota tiene que cerrar en silencio; acá la
 caída **es** el timbre —es lo que hace campana en vez de golpe— y una exponencial a un epsilon es lo
-que suena a resonancia que se apaga. El corte en el epsilon lo tapa el `stop()`, que ya existe.
+que suena a resonancia que se apaga.
+
+**El `stop()` es nuevo y no opcional** (`research.md` §1). Hoy `scheduleClick` no tiene ninguno y el
+docblock explica por qué: el buffer se termina solo, y un `stop()` sería un segundo lugar donde vive la
+duración. Con un oscilador ese argumento se da vuelta —no se termina nunca— y encima hace falta para
+dos cosas: cortar el epsilon en el que muere la exponencial, y disparar el `onended` del que cuelgan
+los `disconnect()`. Sin él quedan ~12 osciladores vivos por ciclo y fallan los dos tests que exigen
+silencio absoluto después del click. Ese medio docblock no se borra: se reescribe al revés.
 
 Dos constantes en `voice.constants.ts`:
 
@@ -32,12 +40,25 @@ Dos constantes en `voice.constants.ts`:
 El docblock de `scheduleClick` se reescribe entero: hoy argumenta el ruido, y el argumento no se borra
 —se acota (D1). Lo que produce una línea melódica es tener alturas **distintas**.
 
-**El test (AC5)** renderiza offline y afirma sobre el **contenido espectral**, no sobre las muestras:
-que la energía esté concentrada alrededor de la fundamental y no repartida hasta Nyquist. Es la única
-forma de verificar un timbre sin escucharlo, y es lo que atrapa que alguien vuelva a poner ruido sin
-querer.
+**El test (AC5) no se escribe de cero: se da vuelta el que ya existe.** `voice.test.ts` tiene hoy
+*"NO tiene altura: cruza el cero a una tasa de ruido, no de nota"*, que exige `zeroCrossHz > 4000` — o
+sea, afirma exactamente lo que este spec revierte, y con la campana **falla**: `zeroCrossHz` devuelve
+Hz reales (divide por dos, ver su docblock en `test-context.ts`) y la senoidal da ~2 093. Se reescribe
+en su lugar: la tasa de cruces tiene que dar la fundamental ± 2 %.
+
+Y se mide así, y no por **centroide**, aunque el centroide sea el número del problema: `spectrum.ts`
+documenta que un `AnalyserNode` no rinde nada offline —`getByteFrequencyData` devuelve el último bloque
+procesado— y el repo no tiene DFT, así que un test de centroide empieza por escribir uno. La tasa de
+cruces separa senoidal de ruido por un factor de cinco con un helper que ya está, y atrapa igual que
+alguien vuelva a poner ruido sin querer. El centroide se queda en el `research.md`, que es donde vive
+la medición que justificó la decisión.
 
 ## Paso 2 — El default y la etiqueta
+
+Son **dos** los defaults, no uno: además del `useState` de `App.tsx` está el `let clicksAudible = true`
+de `engine.ts`. Hoy no se ve porque el efecto de montaje lo pisa, pero dejarlos discrepando es tener el
+mismo valor declarado dos veces en desacuerdo — que es lo que `App.tsx` evita con el tempo tomando
+`DEFAULT_BPM` del motor. Los dos pasan a `false`.
 
 `App.tsx`: `useState<boolean>(true)` → `false`, y el comentario de arriba **reescrito** — hoy dice que
 los clicks arrancan encendidos porque sin ellos el recorrido se vuelve inaudible, citando D4 del 009.
@@ -69,11 +90,12 @@ etiqueta nueva toca el lenguaje del panel.
 | Qué | Cómo |
 |---|---|
 | AC1, AC2, AC3 | Por lectura de las constantes y sus docblocks |
+| AC15 | Los tests del click que ya existen: uno reescrito, los otros dos en verde sin tocar |
 | AC4 | La tabla de §4 en el docblock, contrastada contra `TEMPO_MAX` |
-| AC5 | Test de render offline sobre el contenido espectral |
+| AC5 | Test de render offline: `zeroCrossHz` sobre la campana da la fundamental ± 2 % |
 | AC6, AC7, AC8 | Por lectura de los tres archivos |
 | AC9 | Por lectura: no hay rama que distinga el primer click de los demás |
 | AC10 | Los tests del 011 sobre el cruce, sin tocar |
-| AC11 | Sale gratis: la pieza muteada del 014 es un `Click` sin `note` (§6). Se verifica que no haya código propio |
+| AC11 | Sale gratis: la pieza muteada del 014 es un `Click` sin `note` (§6). Se verifica que no haya código propio — **con el 014 mergeado**; si no lo está, queda diferido y lo cierra el 014 |
 | AC12 | `pnpm verify` + `check_invariants` |
 | AC13, AC14 | `[M]` y lectura |

@@ -18,32 +18,59 @@ una persona y no bloquea el cierre.
       20 % / 37 % / 53 % del intervalo a 60 / 110 / 160, y la caída de 40 dB a los 29,5 ms, que es el
       número que decide si dos clicks se pisan — **AC4**
 - [ ] T006 El docblock conserva **por qué sigue en segundos y no en intervalos** (D4): la identidad del
-      transitorio es la brevedad absoluta. A 60 bpm en intervalos duraría 133 ms y tendría cuerpo
+      transitorio es la brevedad absoluta. A 60 bpm en intervalos duraría **92 ms** y tendría cuerpo —
+      el número sale del mismo ancla que usa hoy el docblock para decir 37 ms, que es `DEFAULT_BPM`
+      (110 bpm, intervalo de 136,4 ms). Anclado en 160 daría 133; dos anclas en un párrafo es lo que
+      lo vuelve ilegible
 - [ ] T007 `voice.ts`: `scheduleClick` pasa a oscilador senoidal. Se van `createBuffer`, el bucle de
       muestras y el `sampleRate`
 - [ ] T008 La caída va **exponencial** a un epsilon y no lineal, al revés que `scheduleVoice`. Con
       comentario: allá la lineal es obligada porque la envolvente tiene que cerrar en 0; acá la caída
       **es** el timbre
+- [ ] T032 `voice.ts`: **agregar `osc.stop(at + CLICK_SECONDS)`**, que hoy no existe. Un oscilador no
+      se termina solo: sin `stop()` no dispara `onended`, no corren los `disconnect()` y quedan ~12
+      nodos vivos por ciclo; y el epsilon de la exponencial sigue sonando, que es lo que rompe los dos
+      tests de silencio absoluto. El medio docblock que hoy argumenta "sin stop()" se reescribe al
+      revés (`research.md` §1)
 - [ ] T009 Reescribir el docblock de `scheduleClick`, que hoy argumenta el ruido. El argumento no se
       borra: se **acota** (D1) — lo que dibuja una línea melódica es tener alturas *distintas*, no
       tener altura. Y se va la mitad que justificaba el buffer y el no-cacheo, con el código
-- [ ] T010 **AC5** — test de render offline afirmando sobre el **contenido espectral**: energía
-      concentrada alrededor de la fundamental y no repartida hasta Nyquist. Es lo que atrapa que alguien
-      vuelva a poner ruido sin querer
-- [ ] T011 [P] **AC9** — verificar por lectura que no hay ninguna rama que distinga el primer click del
-      ciclo, y dejar escrito **por qué no la va a haber** (D6): el circuito es cerrado y no tiene
+- [ ] T010 **AC5 y AC15** — `voice.test.ts`: **reescribir** el test que hoy dice *"NO tiene altura:
+      cruza el cero a una tasa de ruido, no de nota"*. Afirma lo contrario de este spec y **falla** con
+      la campana: exige `zeroCrossHz > 4000` y la senoidal da ~2 093, porque el helper devuelve Hz
+      reales. Pasa a exigir la fundamental ± 2 %. No se agrega un test al lado: es el mismo test dado
+      vuelta
+- [ ] T033 **AC15** — los otros dos tests del click **no se tocan y tienen que quedar verdes**: el que
+      exige silencio absoluto en `at + CLICK_SECONDS + 0,03` (`voice.test.ts` e `integration.test.ts`)
+      es el que verifica el `stop()` de T032. Sí se actualiza el comentario de `integration.test.ts`,
+      que dice "50 ms despues ya es silencio" y con `CLICK_SECONDS` en 0,05 pasa a 80
+- [ ] T011 [P] **AC9** — `engine.ts`: verificar por lectura que no hay ninguna rama que distinga el
+      primer click del ciclo, y dejar escrito **por qué no la va a haber** (D6) en el comentario de las
+      tres clases que ya está sobre el `for` del despacho — que es donde cae quien se pregunte por qué
+      no hay una cuarta. Va en `engine.ts` y no en el docblock de `scheduleClick` justamente para que
+      el `[P]` no mienta: T007–T010 tienen tomado `voice.ts`. El circuito es cerrado y no tiene
       principio; acentuar le inventaría uno, y eso es una decisión del modelo
 - [ ] T012 [P] **AC10** — `GRACE_INTERVALS` y `GRACE_VELOCITY` sin tocar, con los tests del 011 en verde
+- [ ] T034 `voice.constants.ts`: los **dos docblocks vecinos que este spec deja falsos**. El de
+      `GRACE_INTERVALS` dice que la excepción del click "está justificada en que NO tiene altura" — con
+      la campana es falso, y lo que la sostiene pasa a ser la brevedad absoluta sola. El de
+      `CLICK_VELOCITY` cita "el click dura `CLICK_SECONDS` (20 ms)" y cierra con una cuenta contra los
+      ~136 ms de una nota
 
 ## Paso 2 — El default y la etiqueta
 
 - [ ] T013 `App.tsx`: `clicks` arranca en **`false`** — **AC6**
+- [ ] T035 `engine.ts`: `let clicksAudible = true` → **`false`** — es el **segundo** default y también
+      es **AC6**. Hoy no se ve porque el efecto de montaje de `App.tsx` lo pisa, pero dejar el mismo
+      valor declarado dos veces en desacuerdo es lo que el repo evita cuando `App.tsx` toma el tempo de
+      `DEFAULT_BPM`
 - [ ] T014 Reescribir el comentario de arriba, que hoy argumenta lo contrario citando D4 del 009. El
       argumento no se borra: pasa a decir por qué el default se dio vuelta igual y por qué eso hace al
       botón **más** necesario (D5), con el 44 % medido
 - [ ] T015 `PiecePalette.tsx`: etiqueta nueva — **AC8**. Tres restricciones: dice qué se oye cuando está
-      encendido, **no** promete apagar el cruce por celda ocupada, y entra en la tarjeta (349,3 px de
-      interior con el 014 puesto)
+      encendido, **no** promete apagar el cruce por celda ocupada, y entra en la tarjeta. El ancho se
+      mide contra **el más chico de los dos**: 252 px hoy, 349,3 px con el 014 puesto. Medir contra el
+      que va a haber deja la etiqueta rota mientras el 014 no esté
 - [ ] T016 Actualizar el comentario largo del botón, que explica el nombre viejo y el motivo por el que
       nació —tapar los golpes sordos que el 011 arregló—. Esa historia se conserva; lo que cambia es la
       conclusión
@@ -55,8 +82,14 @@ una persona y no bloquea el cierre.
 
 - [ ] T018 `pnpm verify` en verde y `check_invariants` en proceso fresco — **AC12**
 - [ ] T019 [P] **AC11** — verificar que la pieza muteada del 014 suena con esta campana **sin código
-      propio**: es el mismo `Click` sin `note` (`research.md` §6)
-- [ ] T020 [P] `docs/architecture/audio.md`: el timbre nuevo, con la tabla de los dos centroides
+      propio**: es el mismo `Click` sin `note` (`research.md` §6). **Sólo con el 014 mergeado**; si el
+      015 llega antes, la tarea se deja abierta y la cierra el 014 — no se marca como cumplida
+- [ ] T020 [P] `docs/architecture/audio.md`: el timbre nuevo, con la tabla de los dos centroides. Son
+      cuatro los lugares: las tres afirmaciones de que el click "no tiene altura" y el toggle, que ahí
+      figura como «Clicks» y ya estaba viejo antes de este spec
+- [ ] T036 [P] `docs/architecture/modelo-musical.md`: dice en presente que sobre celda vacía "suena un
+      click sin altura". Es la afirmación que este spec falsifica, y es exactamente el caso de los
+      commits `d936597` y `eb154a0` — el spec viejo no se reescribe, `docs/` sí
 - [ ] T021 [P] `DESIGN.md`, si la etiqueta nueva toca el lenguaje del panel
 - [ ] T022 [M] **AC13 — a oído, y decide dos cosas**: (1) si la campana es agradable a 60, 110 y 160
       bpm; (2) **si el default vuelve a encendido**. Con la campana puesta el argumento de D5 se

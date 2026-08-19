@@ -7,6 +7,10 @@
 > con un "no" el `T070` del [011](../011-el-recorrido-esquiva-las-piezas/tasks.md), que proponía borrar
 > el botón.
 >
+> **Depende del [014](../014-el-tablero-se-edita-en-el-tablero/spec.md)** para AC8 y AC11, y sólo
+> para esos dos: el ancho de la tarjeta (349,3 px) y la pieza muteada son suyos. Si el 015 mergeara
+> primero, los dos quedan diferidos — el resto del spec no lo necesita.
+>
 > **Cambia lo que suena en todo tablero.**
 
 ## Problema
@@ -83,7 +87,12 @@ contra 0,0167 del ruido**, o sea un 15 % menos. Se oye mejor con menos señal.
 **D4 — Dura 50 ms, y se sigue midiendo en SEGUNDOS y no en intervalos.**
 La excepción que `CLICK_SECONDS` ya declara se conserva con el mismo argumento: el click es un
 transitorio y su identidad perceptual es la brevedad **absoluta**, no la proporción con el pulso. Si se
-estirara con el tempo, a 60 bpm duraría 133 ms y empezaría a tener cuerpo.
+estirara con el tempo, a 60 bpm duraría 92 ms y empezaría a tener cuerpo.
+
+El número, con el ancla dicha: el docblock de hoy calcula el contrafáctico a **110 bpm**
+(`DEFAULT_BPM`, intervalo de 136,4 ms) y por eso dice que los 20 ms serían 37 ms a 60. Con el mismo
+ancla, 50 ms son 0,367 intervalos y a 60 bpm dan **92 ms**. Los 133 ms saldrían de anclar en 160, y
+mezclar dos anclas en el mismo docblock es lo que lo vuelve ilegible.
 
 50 y no 20: con 20 ms de senoidal a 2 093 Hz son 42 ciclos, que alcanzan para que se oiga la altura,
 pero la caída queda tan abrupta que el evento vuelve a leerse como un golpe. Con 50 ms la campana
@@ -135,29 +144,48 @@ Este spec cambia la tercera clase de evento y sólo esa.
   intacto (D4).
 - **AC4** — **No se pisa con el evento siguiente a ningún tempo**: verificado contra el intervalo a
   `TEMPO_MAX` (93,8 ms), con el número en el docblock.
-- **AC5** — **Renderizado offline con test**, no afirmado: el click sale con energía concentrada
-  alrededor de 2 kHz y no en 11 kHz. Es la misma técnica con la que el 011 midió su envolvente, y es lo
-  que permite verificar un timbre sin escucharlo.
-- **AC6** — El default de `clicks` en `App.tsx` pasa a **`false`**, con el comentario reescrito: hoy
-  argumenta lo contrario, citando D4 del 009 (D5).
+- **AC5** — **Renderizado offline con test**, no afirmado, y medido con `zeroCrossHz` —el helper que
+  `test-context.ts` ya tiene— y no con una FFT: el click renderizado cruza el cero a **2 093 Hz ± 2 %**
+  donde el ruido daba más de 10 000. No se afirma sobre el **centroide**, que es número del
+  `research.md` y no del test: `spectrum.ts` documenta que un `AnalyserNode` no rinde nada offline
+  (`getByteFrequencyData` devuelve el último bloque procesado) y el repo no tiene DFT, así que pedirle
+  al test un centroide es pedirle que escriba uno. La tasa de cruces separa senoidal de ruido por un
+  factor de cinco y es la misma técnica con la que el 011 verificó la altura del cruce.
+- **AC6** — El default de `clicks` pasa a **`false`** en **los dos lugares donde hoy vive**: el
+  `useState` de `App.tsx` y el `let clicksAudible = true` de `engine.ts`, que es un segundo default que
+  hoy nadie ve porque el efecto de montaje lo pisa. Dos declaraciones del mismo valor que puedan
+  discrepar es exactamente lo que el repo evita cuando `App.tsx` toma el tempo de `DEFAULT_BPM`. El
+  comentario de `App.tsx` se reescribe: hoy argumenta lo contrario, citando D4 del 009 (D5).
 - **AC7** — **El botón se queda**, y el `T070` del spec 011 queda cerrado con su motivo escrito ahí
   (D5).
 - **AC8** — La etiqueta del botón se lee sin explicación (D7), y entra en el ancho de la tarjeta —que
-  el 014 dejó en 349,3 px de interior.
+  el 014 dejó en 349,3 px de interior. Con el 014 todavía sin mergear el interior son 252 px, así que
+  la etiqueta se mide contra **el más chico de los dos** y no contra el que va a haber.
 - **AC9** — **Sin acento en el primero** (D6): todos los clicks del ciclo son idénticos, y el motivo
-  queda escrito donde alguien lo vaya a buscar.
+  queda escrito en la rama del despacho de `engine.ts` —donde ya está el comentario de las tres
+  clases—, que es donde cae quien se pregunte por qué no hay una cuarta.
 - **AC10** — `GRACE_*` sin tocar y el cruce con altura sonando igual (D8), verificado por el test del
   011 que ya existe.
 - **AC11** — La pieza muteada del spec 014 suena con **esta** campana, sin código propio: es el mismo
-  `Click` sin `note`.
+  `Click` sin `note`. **Sólo verificable con el 014 mergeado**; si el 015 llega antes, el AC queda
+  diferido y se verifica desde el 014, no se da por cumplido.
 - **AC12** — `pnpm verify` en verde. `check_invariants` no cubre el timbre, pero se corre igual porque
   el spec toca `audio/`.
 - **AC13** — `[M]` A oído, y es el AC que decide dos cosas que ningún render offline contesta: si la
   campana es agradable a los tres tempos, y **si con la campana puesta el default debería volver a
   encendido**. Si vuelve, es un booleano.
-- **AC14** — Documentación: `docs/architecture/audio.md` (el timbre y por qué), `DESIGN.md` si el
-  cambio de etiqueta toca el lenguaje del panel, y el docblock de `scheduleClick`, que hoy argumenta
-  el ruido.
+- **AC14** — Documentación: `docs/architecture/audio.md` (el timbre y por qué, y el toggle, que ahí
+  figura como «Clicks» y ya estaba viejo), **`docs/architecture/modelo-musical.md`, que afirma en
+  presente que sobre celda vacía «suena un click sin altura»** —es la afirmación que este spec
+  falsifica, y dejarla es el caso de los commits `d936597` y `eb154a0`—, `DESIGN.md` si el cambio de
+  etiqueta toca el lenguaje del panel, y el docblock de `scheduleClick`, que hoy argumenta el ruido.
+
+- **AC15** — **Los tests del click que hoy existen quedan verdes o reescritos, ninguno borrado en
+  silencio.** Son tres los que este spec toca y hay que nombrarlos: el que afirma que el click **no
+  tiene altura** (`voice.test.ts`) pasa a afirmar la contraria con el mismo helper; el que exige
+  silencio **absoluto** después del click (`voice.test.ts` e `integration.test.ts`) sigue exigiéndolo,
+  y por eso el oscilador lleva `stop()`; y los comentarios que citan «20 ms» o «50 ms después» se
+  actualizan con el número nuevo.
 
 ## Fuera de Alcance
 
