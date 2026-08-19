@@ -1,0 +1,3 @@
+# Los .sh se checkoutean con LF aunque core.autocrlf sea true: con CRLF el shebang se lee
+# con un retorno de carro pegado al nombre del interprete y falla con "bad interpreter".
+*.sh text eol=lf
