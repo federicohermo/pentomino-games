@@ -79,3 +79,144 @@ export function angleFromCentroid(cell: Cell, cent: readonly [number, number]): 
   const norm = a + twoPi;
   return norm < twoPi ? norm : twoPi * (1 - Number.EPSILON);
 }
+
+/**
+ * Distancia Manhattan entre dos celdas: cuantos pasos ortogonales hay de una a la
+ * otra. Vale 1 exactamente cuando son vecinas por arriba, abajo, izquierda o
+ * derecha, que es la relacion que `pathThroughCells` intenta encadenar.
+ */
+function manhattan(a: Cell, b: Cell): number { return Math.abs(a[0]-b[0]) + Math.abs(a[1]-b[1]); }
+
+/** Compara dos secuencias posicion por posicion. Negativo si `a` va antes. */
+function lex(a: readonly number[], b: readonly number[]): number {
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] - b[i];
+  return 0;
+}
+
+/**
+ * El recorrido que visita todas las celdas de una forma moviendose lo mas posible a
+ * una celda VECINA. Devuelve el ORDEN DE VISITA POR POSICION: el elemento `g` es el
+ * indice de la celda que el camino pisa en el paso `g`.
+ *
+ * Ojo con la direccion de lectura, porque es la inversa de la que devuelve
+ * `degreeByCellIndex` —que es "el grado de la celda `k`"— y las dos son permutaciones
+ * de `0..n-1`, asi que confundirlas compila y da otra musica. La asimetria es
+ * deliberada: un camino es una SECUENCIA de celdas, un mapeo de grados es una TABLA
+ * por celda. La vuelta la da `music.ts` en una linea.
+ *
+ * `tiebreak[k]` es el rango de la celda `k` para desempatar, menor gana. Entra por
+ * parametro y no se calcula aca porque el criterio es musical —hoy es el orden
+ * angular del spec 007— y `music.ts` esta aguas abajo: esta capa no puede importarlo
+ * y no tiene por que saber que existe un grado.
+ *
+ * ## Los cuatro criterios, en orden
+ *
+ * 1. **La mayor cantidad de pasos a una celda vecina.** Es el pedido: el arpegio
+ *    recorre la pieza en vez de saltar por adentro de su propia forma.
+ * 2. **A igualdad, la menor suma de distancias**: si un salto es inevitable, que sea
+ *    el mas corto.
+ * 3. **A igualdad, los saltos LO MAS AL PRINCIPIO posible** (secuencia de distancias
+ *    lexicograficamente mayor). Con las 12 piezas eso deja las distancias no
+ *    crecientes: el arpegio paga al entrar y despues ya no se corta.
+ * 4. **A igualdad, el `tiebreak` lexicograficamente menor.** Se ejerce SIEMPRE, y no
+ *    es un detalle: un camino y su inverso son igual de buenos en los tres criterios
+ *    anteriores, asi que sin este el orden de las notas dependeria de por donde el
+ *    `for` empezo a mirar.
+ *
+ * Los criterios 1 y 2 se empaquetan en un entero —`(vecina ? 0 : BASE) + distancia`—
+ * y los resuelve la programacion dinamica, que suma y compara sumas. `BASE` sale de
+ * la forma y no es un numero fijo: con `1 + n * maxDistancia` es mayor que cualquier
+ * camino posible, asi que el campo de la distancia no puede acarrear al de los
+ * saltos. Es la misma tecnica que `claveDeTramo` en `sequence.ts`, con la misma
+ * trampa: achicar `BASE` no falla en rojo, reordena las notas en silencio.
+ *
+ * Los criterios 3 y 4 no son aditivos —dependen de la POSICION del paso, no solo del
+ * paso— asi que se resuelven despues, recorriendo unicamente las ramas que alcanzan
+ * el optimo.
+ *
+ * ## Costo
+ *
+ * Held-Karp de camino abierto, `O(n^2 * 2^n)`: con `n = 5` son 160 estados y 4 µs por
+ * llamada, contra 0,57 del orden angular que reemplaza. El recorrido posterior visita
+ * solo caminos optimos —72 en el peor caso de las 12 piezas, que es la `X`—. El
+ * argumento es el mismo con el que `shortestCircuit` justifica el TSP exacto: `n` esta
+ * acotado por las reglas del juego, y aca mas fuerte todavia, porque `CELLS_PER_PIECE`
+ * es la definicion de la familia de piezas y no un parametro. Con una forma de 12
+ * celdas serian 590 mil operaciones; con 20, no termina.
+ */
+export function pathThroughCells(cells: readonly Cell[], tiebreak: readonly number[]): number[] {
+  const n = cells.length;
+  // Con 0, 1 o 2 celdas no hay nada que optimizar y decide el desempate solo. Sale
+  // aparte porque el bucle de abajo asume que hay al menos un paso que elegir.
+  if (n <= 2) return cells.map((_, k) => k).sort((a, b) => tiebreak[a] - tiebreak[b]);
+
+  const dist = cells.map(a => cells.map(b => manhattan(a, b)));
+  let maxDist = 0;
+  for (const fila of dist) for (const d of fila) if (d > maxDist) maxDist = d;
+  const BASE = 1 + n * maxDist;
+  const costo = dist.map(fila => fila.map(d => (d === 1 ? 0 : BASE) + d));
+
+  // g[j][mask] = costo minimo de arrancar en `j` y visitar todo `mask`, con `j` fuera
+  // de `mask`. Va HACIA ATRAS por el mismo motivo que `shortestCircuit`: asi el camino
+  // se reconstruye hacia ADELANTE y el desempate se puede aplicar en el orden en que
+  // las decisiones se toman, que es lo que los criterios 3 y 4 necesitan.
+  const size = 1 << n;
+  const g = new Array<number>(n * size).fill(0);
+  for (let mask = 1; mask < size; mask++) {
+    for (let j = 0; j < n; j++) {
+      if ((mask >> j) & 1) continue;
+      let best = Infinity;
+      for (let k = 0; k < n; k++) {
+        const bit = 1 << k;
+        if (!(mask & bit)) continue;
+        // `mask ^ bit` es menor que `mask`, asi que ya esta calculado. No hace falta
+        // centinela de inalcanzable: el grafo es completo, todo estado tiene camino.
+        const c = costo[j][k] + g[k * size + (mask ^ bit)];
+        if (c < best) best = c;
+      }
+      g[j * size + mask] = best;
+    }
+  }
+
+  const full = size - 1;
+  let optimo = Infinity;
+  for (let j = 0; j < n; j++) {
+    const c = g[j * size + (full ^ (1 << j))];
+    if (c < optimo) optimo = c;
+  }
+
+  // Entre los caminos que alcanzan el optimo gana el de distancias lexicograficamente
+  // MAYORES (criterio 3, los saltos primero) y a igualdad el de `tiebreak` menores
+  // (criterio 4). Solo se baja por las ramas que todavia alcanzan el optimo, asi que
+  // el recorrido no es una fuerza bruta sobre las n! permutaciones.
+  let mejor: number[] = [], mejorDist: number[] = [], mejorRango: number[] = [];
+  const camino: number[] = [], dists: number[] = [];
+
+  function bajar(cur: number, mask: number): void {
+    if (mask === 0) {
+      const rango = camino.map(k => tiebreak[k]);
+      const porDist = mejor.length === 0 ? 1 : lex(dists, mejorDist);
+      if (porDist > 0 || (porDist === 0 && lex(rango, mejorRango) < 0)) {
+        mejor = [...camino]; mejorDist = [...dists]; mejorRango = rango;
+      }
+      return;
+    }
+    const objetivo = g[cur * size + mask];
+    for (let k = 0; k < n; k++) {
+      const bit = 1 << k;
+      if (!(mask & bit)) continue;
+      if (costo[cur][k] + g[k * size + (mask ^ bit)] !== objetivo) continue;
+      camino.push(k); dists.push(dist[cur][k]);
+      bajar(k, mask ^ bit);
+      camino.pop(); dists.pop();
+    }
+  }
+
+  for (let j = 0; j < n; j++) {
+    if (g[j * size + (full ^ (1 << j))] !== optimo) continue;
+    camino.push(j);
+    bajar(j, full ^ (1 << j));
+    camino.pop();
+  }
+  return mejor;
+}
