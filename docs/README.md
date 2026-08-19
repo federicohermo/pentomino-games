@@ -8,7 +8,7 @@ secuencia de cinco notas derivada de su identidad y su orientación.
 ### Arquitectura
 - [Visión General](./architecture/overview.md) — Las cuatro capas, su dirección de dependencia y el stack
 - [Estructura de Directorios](./architecture/directory-structure.md) — Qué hay y qué está muerto
-- [Modelo Musical](./architecture/modelo-musical.md) — Pieza → tónica, rotación → escala, reflexión → retrógrado
+- [Modelo Musical](./architecture/modelo-musical.md) — Pieza → tónica, rotación → escala **o** orden según el régimen, reflexión → retrógrado
 - [Capa de Audio](./architecture/audio.md) — Grafo Web Audio, envolvente ADSR, scheduler con lookahead
 
 ### Guías de Desarrollo
