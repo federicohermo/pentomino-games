@@ -56,10 +56,11 @@ src/
 │   └── index.css                 # @import "tailwindcss" + estilos globales de body/code
 ├── domain/                       # puro: sin React, sin Web Audio, sin DOM
 │   ├── transform.ts              # rotate90 · normalize · rotateN · reflect · centroid ·
-│   │                             #   angleFromCentroid
+│   │                             #   angleFromCentroid · pathThroughCells
 │   ├── board.ts                  # cellsAt · isValid · routeBetween · occupantAt ·
 │   │                             #   occupantCellIndex
-│   ├── music.ts                  # midiFor · midiName · notesForRotation · arpeggioFor · degreeByCellIndex
+│   ├── music.ts                  # midiFor · midiName · notesForRotation · arpeggioFor ·
+│   │                             #   degreeByCellIndex · angularRank
 │   ├── sequence.ts               # buildSequence — el circuito (Held-Karp) y los offsets del ciclo —,
 │   │                             #   cellsByPlayOrder, gates —las dos puertas, las usa simulate_board—
 │   │                             #   y noteAtCell, qué nota hay en una celda
