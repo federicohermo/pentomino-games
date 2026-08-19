@@ -114,24 +114,26 @@ describe('describe_piece', () => {
   });
 
   test('AC9 — `cellMap` le pone grado y nota a cada celda, sin tocar `cells`', () => {
-    // Los dos casos del AC: en X la tonica cae en la celda central, y F es la
-    // pieza donde el desempate por indice decide (G4 ↔ A4 contra la referencia).
+    // Los dos casos del AC, releidos con el camino del spec 012: en la X la tonica cae
+    // en un brazo y no en el centro —el centro tiene cuatro vecinos, y arrancar ahi
+    // obligaria a tres saltos en vez de dos—, y la F es la unica pieza cuyo camino
+    // coincide con el orden en que estan tipeadas sus celdas en `SHAPES`.
     const x = call(describePiece, { piece: 'X' });
     assert.deepEqual(x.cellMap, [
       { cell: [1, 0], degree: 4, note: 'F#5' },
-      { cell: [0, 1], degree: 3, note: 'E5' },
-      { cell: [1, 1], degree: 0, note: 'A4' },
-      { cell: [2, 1], degree: 1, note: 'B4' },
-      { cell: [1, 2], degree: 2, note: 'C#5' },
+      { cell: [0, 1], degree: 2, note: 'C#5' },
+      { cell: [1, 1], degree: 3, note: 'E5' },
+      { cell: [2, 1], degree: 0, note: 'A4' },
+      { cell: [1, 2], degree: 1, note: 'B4' },
     ]);
 
     const f = call(describePiece, { piece: 'F' });
     assert.deepEqual(f.cellMap, [
-      { cell: [0, 1], degree: 2, note: 'E4' },
-      { cell: [1, 0], degree: 3, note: 'G4' },
-      { cell: [1, 1], degree: 4, note: 'A4' },
-      { cell: [1, 2], degree: 1, note: 'D4' },
-      { cell: [2, 2], degree: 0, note: 'C4' },
+      { cell: [0, 1], degree: 0, note: 'C4' },
+      { cell: [1, 0], degree: 1, note: 'D4' },
+      { cell: [1, 1], degree: 2, note: 'E4' },
+      { cell: [1, 2], degree: 3, note: 'G4' },
+      { cell: [2, 2], degree: 4, note: 'A4' },
     ]);
 
     // `cells` sigue siendo la lista de coordenadas de siempre: el campo se agrego
@@ -219,6 +221,19 @@ describe('simulate_board', () => {
     { piece: 'I', rotation: 1, at: [5, 2] },
   ];
 
+  /**
+   * Un tablero cuyo recorrido SI pisa piezas: rodear la `X` de (1,1) cuesta mas que
+   * atravesarla. `BASE` no sirve para eso desde el spec 012 —sus tramos dejaron de rozar
+   * nada cuando las puertas se movieron— y es el mismo tablero que usan los tests del
+   * cruce en `src/domain/` y en `src/components/`, a proposito: si el dia de mañana deja
+   * de cruzar, los tres fallan juntos y no queda uno verde afirmando lo contrario.
+   */
+  const CON_CRUCE = [
+    { piece: 'X', at: [1, 1] },
+    { piece: 'F', at: [3, 2] },
+    { piece: 'N', at: [2, 4] },
+  ];
+
   test('AC1 — el orden es el del circuito, no el de colocacion', () => {
     // Tres `I` verticales en las columnas 0, 9 y 5, colocadas en ESE orden: el
     // recorrido las visita de izquierda a derecha (1, 3, 2) y vuelve por la
@@ -232,51 +247,48 @@ describe('simulate_board', () => {
       ],
     });
     assert.deepEqual(ruta(r).order, ['1', '3', '2']);
-    assert.equal(ciclo(r).intervals, 32);
-    // 17 cruces por ciclo, por los dos ciclos, y `onsets` los parte en MUDOS y CON
-    // ALTURA: 16 + 1. Antes del spec 011 esta cuenta decia 34 clicks a secas, y uno de
-    // cada 17 era en realidad una nota de la pieza que el tramo pisa — la tool los
-    // reportaba como golpes sordos y la app ya los sonaba.
+    assert.equal(ciclo(r).intervals, 31);
+    // 16 clicks por ciclo, por los dos ciclos, y NINGUNO cruza: `onsets` los parte en
+    // MUDOS y CON ALTURA, y aca la segunda mitad queda en cero. Con el mapeo del 007
+    // este mismo tablero pagaba un cruce por ciclo, porque la `I` entraba por su celda
+    // del MEDIO y el recorrido tenia que meterse en la columna; desde el spec 012 la
+    // `I` se recorre de punta a punta, asi que se entra y se sale por los extremos.
     assert.equal(cuentas(r).clicks, 32);
-    assert.equal(cuentas(r).crosses, 2);
-    assert.equal(cuentas(r).clicks + cuentas(r).crosses, 34);
+    assert.equal(cuentas(r).crosses, 0);
+    assert.equal(cuentas(r).clicks + cuentas(r).crosses, 32);
     // El tramo de vuelta cruza la costura: `(9,5)` y `(0,0)` son adyacentes, asi que de
-    // la columna 9 a la 0 se pasa por ahi y no dando la vuelta entera.
-    //
-    // `crossed` es el subconjunto de `path` que pisa una pieza (T046), y aca queda UNA
-    // sola celda: `(0,0)` es la punta de la costura Y a la vez la cola de la `I` de la
-    // columna 0, asi que cruzarla es el peaje que el atajo cobra. Con `CROSS_COST = 5`
-    // el recorrido paga los 4 pasos extra de bajar por la columna 8 —libre— antes que
-    // rozar la columna 9, y solo cede en la celda que no tiene alternativa.
+    // la columna 9 a la 0 se pasa por ahi y no dando la vuelta entera. Con las puertas
+    // del 012 el atajo ademas sale GRATIS —la salida de una `I` es su punta de abajo y
+    // la entrada de la otra su punta de arriba, o sea las dos bocas de la costura—, asi
+    // que el tramo mide 2 y `crossed` queda vacio. Antes costaba un rodeo de 9 pasos
+    // por la columna 8 mas el peaje de pisar `(0,0)`.
     assert.deepEqual(ruta(r).hops[2], {
-      from: '2', to: '1', exit: [9, 3], entry: [0, 2], distance: 9,
-      path: [[8, 3], [8, 4], [8, 5], [9, 5], [0, 0], [1, 0], [1, 1], [1, 2]],
-      crossed: [
-        { cell: [0, 0], note: 'F#4' },
-      ],
+      from: '2', to: '1', exit: [9, 4], entry: [0, 0], distance: 2,
+      path: [[9, 5]],
+      crossed: [],
     });
   });
 
   test('AC7 — un salto de d celdas da d-1 clicks equiespaciados, cada uno con su celda', () => {
     const r = call(simulateBoard, { pieces: BASE });
     const hops = ruta(r).hops;
-    assert.deepEqual(hops.map(h => h.distance), [6, 5, 4]);
+    assert.deepEqual(hops.map(h => h.distance), [5, 1, 4]);
     for (const h of hops) {
       assert.equal(h.path.length, h.distance - 1, `${h.from}->${h.to}`);
     }
 
     // El primer salto en la linea de tiempo: las 5 notas de la pieza 1, despues
-    // sus 5 clicks, despues la primera nota de la pieza 2. Los clicks son
+    // sus 4 clicks, despues la primera nota de la pieza 2. Los clicks son
     // consecutivos y estan separados por un intervalo exacto — el mismo que separa
     // a las notas del arpegio.
     const eventos = linea(r);
     const clicks = eventos.slice(CELLS_PER_PIECE, CELLS_PER_PIECE + hops[0].path.length);
-    // El primero es un CRUCE y no un click: el tramo sale de la pieza 1 rozando su
-    // propia celda vecina, que esta ocupada. Es la distincion que el spec 011 agrega —
-    // con la etiqueta vieja los cinco se veian iguales y solo uno de ellos tiene altura.
-    assert.deepEqual(clicks.map(e => e.kind), ['cross', 'click', 'click', 'click', 'click']);
-    assert.ok(clicks[0].note, 'el cruce lleva su nota; el click mudo no');
-    assert.equal(clicks[1].note, undefined);
+    // Los cuatro son clicks MUDOS: desde el spec 012 este tramo no roza ninguna pieza.
+    // Antes el primero era un cruce, porque la `F` salia por su celda del medio y el
+    // tramo arrancaba rozando su propia vecina. La distincion cross/click la ejerce
+    // ahora `T046`, con un tablero elegido para eso.
+    assert.deepEqual(clicks.map(e => e.kind), ['click', 'click', 'click', 'click']);
+    for (const c of clicks) assert.equal(c.note, undefined, 'el click mudo no lleva altura');
     assert.equal(eventos[CELLS_PER_PIECE + hops[0].path.length].kind, 'note');
     for (let i = 1; i < clicks.length; i++) {
       assert.ok(
@@ -353,7 +365,7 @@ describe('simulate_board', () => {
     // cruzar sigue siendo el camino mas barato en algunos tramos, y ahi el click cae
     // sobre una pieza igual. Que esas celdas salgan en la respuesta —hoy con su nota,
     // en `hops[].crossed`— es lo que permite verlo sin escuchar.
-    const r = call(simulateBoard, { pieces: BASE });
+    const r = call(simulateBoard, { pieces: CON_CRUCE });
     const ocupadas = new Set(
       (r.placements as { cells: Cell[] }[]).flatMap(p => p.cells).map(([x, y]) => `${x},${y}`),
     );
@@ -362,30 +374,27 @@ describe('simulate_board', () => {
   });
 
   test('T046 — el cruce sobre una pieza trae la nota que suena al pisarla', () => {
-    // El caso ESTRUCTURAL del spec 011, y no su caso testigo. La celda central de la `X`
-    // esta rodeada por sus propios cuatro brazos y es siempre una de sus dos puertas
-    // (`research.md` §4), asi que entrar a ella cruza una celda ocupada **por mucho que
-    // suba `CROSS_COST`**: es el unico tablero donde este test no puede volverse vacio en
-    // silencio. El testigo `P`/`Y` no sirve aca — con peso 5 rodea y no cruza nada, o sea
-    // que un test apoyado en el dejaria de probar el caso real en cuanto alguien mueve la
-    // constante, que es justo lo que AC11 invita a hacer.
+    // El tablero esta elegido para que cruzar sea lo BARATO, no lo inevitable: rodear la
+    // `X` existe y cuesta mas que pagar sus tres celdas. Hasta el spec 012 este test se
+    // apoyaba en otra cosa —que la celda central de la `X` fuera siempre una de sus dos
+    // puertas, o sea que entrar a ella cruzara por mucho que subiera `CROSS_COST`— y esa
+    // propiedad se fue con el camino: hoy la `X` entra por un brazo y sale por el
+    // opuesto, y su tablero viejo no cruza ni una celda.
+    //
+    // Por eso la guarda cuenta los cruces exactos: si alguien mueve `CROSS_COST` y el
+    // recorrido pasa a rodear, el test falla en rojo en vez de quedarse sin nada que
+    // contrastar.
     //
     // `crossed` tiene que leerse de la MISMA `noteAtCell` que pinta el tablero, no de una
     // nota recalculada aca.
-    const r = call(simulateBoard, {
-      pieces: [
-        { piece: 'X', at: [4, 2] },
-        { piece: 'F', at: [3, 4] },
-        { piece: 'I', at: [5, 0] },
-      ],
-    });
+    const r = call(simulateBoard, { pieces: CON_CRUCE });
     const hops = ruta(r).hops;
-    // Los dos tramos que TOCAN la `X` cruzan uno de sus brazos cada uno —el de arriba al
-    // salir del centro, el de abajo al volver a el— y el tramo que no la toca no cruza
-    // nada. Las dos celdas son vecinas del centro (4,2), que es la puerta rodeada.
-    assert.deepEqual(hops.map(h => h.crossed.length), [0, 1, 1]);
-    assert.deepEqual(hops[1].crossed, [{ cell: [4, 1], note: 'F#5' }]);
-    assert.deepEqual(hops[2].crossed, [{ cell: [4, 3], note: 'C#5' }]);
+    // El tramo que entra a la `X` la atraviesa entera —brazo, centro— y el que sale roza
+    // un brazo: uno de los cruces es la celda central, que es lo que la hace la pieza
+    // mas cara de pisar.
+    assert.deepEqual(hops.map(h => h.crossed.length), [1, 0, 2]);
+    assert.deepEqual(hops[0].crossed, [{ cell: [2, 1], note: 'A4' }]);
+    assert.deepEqual(hops[2].crossed, [{ cell: [1, 2], note: 'B4' }, { cell: [1, 1], note: 'E5' }]);
   });
 
   test('T046 — sin cruces la lista sale vacia, nunca ausente', () => {
@@ -476,8 +485,8 @@ describe('simulate_board', () => {
     const una = call(simulateBoard, { pieces: [{ piece: 'X', at: [5, 2] }] });
     const tres = call(simulateBoard, { pieces: BASE });
     assert.equal(ciclo(una).intervals, 5);
-    assert.equal(ciclo(tres).intervals, 27);
-    assert.equal(ciclo(tres).seconds, 3.6818);
+    assert.equal(ciclo(tres).intervals, 22);
+    assert.equal(ciclo(tres).seconds, 3);
   });
 
   test('ningun onset se emite dos veces pese al solape de ventanas', () => {

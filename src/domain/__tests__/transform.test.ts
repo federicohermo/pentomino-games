@@ -277,28 +277,23 @@ function conSemilla(seed: number) {
   };
 }
 
-/** El desempate real de la app: el orden angular. Se replica para no importar `music.ts`. */
-const rangoAngular = (cells: readonly Cell[]): number[] => {
-  const cent = centroid(cells);
-  const indices = cells.map((_, k) => k);
-  const anillo = indices
-    .filter(k => Math.hypot(cells[k][0] - cent[0], cells[k][1] - cent[1]) >= DEGREE_EPSILON)
-    .sort((a, b) => {
-      const ba = Math.round(angleFromCentroid(cells[a], cent) / DEGREE_EPSILON);
-      const bb = Math.round(angleFromCentroid(cells[b], cent) / DEGREE_EPSILON);
-      return ba === bb ? a - b : ba - bb;
-    });
-  const centro = indices.filter(k => !anillo.includes(k));
-  const rank = new Array<number>(cells.length);
-  [...centro, ...anillo].forEach((k, i) => { rank[k] = i; });
-  return rank;
-};
+/**
+ * Los desempates con los que se ejerce la funcion. Son sinteticos a proposito: el que
+ * usa la app es el orden angular, pero eso es una decision MUSICAL y esta capa no la
+ * conoce —por eso `tiebreak` entra por parametro—. Con la identidad y su inversa se
+ * cubren las dos direcciones posibles de cada camino, que es lo unico que el desempate
+ * puede cambiar.
+ */
+const porIndice = (cells: readonly Cell[]) => cells.map((_, k) => k);
+const alReves = (cells: readonly Cell[]) => cells.map((_, k) => cells.length - 1 - k);
 
 describe('pathThroughCells', () => {
   it('AC2 — coincide con la fuerza bruta sobre las 12 piezas', () => {
     for (const p of PIECES) {
-      const rank = rangoAngular(SHAPES[p]);
-      expect(pathThroughCells(SHAPES[p], rank)).toEqual(caminoPorFuerzaBruta(SHAPES[p], rank));
+      for (const desempate of [porIndice, alReves]) {
+        const rank = desempate(SHAPES[p]);
+        expect(pathThroughCells(SHAPES[p], rank)).toEqual(caminoPorFuerzaBruta(SHAPES[p], rank));
+      }
     }
   });
 
@@ -316,14 +311,14 @@ describe('pathThroughCells', () => {
         vistas.add(c.join());
         cells.push(c);
       }
-      const rank = rangoAngular(cells);
+      const rank = porIndice(cells);
       expect(pathThroughCells(cells, rank)).toEqual(caminoPorFuerzaBruta(cells, rank));
     }
   });
 
   it('devuelve una permutacion de 0..n-1', () => {
     for (const p of PIECES) {
-      const orden = pathThroughCells(SHAPES[p], rangoAngular(SHAPES[p]));
+      const orden = pathThroughCells(SHAPES[p], porIndice(SHAPES[p]));
       expect([...orden].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
     }
   });
@@ -333,7 +328,7 @@ describe('pathThroughCells', () => {
     // posible, asi que una vez que el arpegio da un paso a una celda vecina ya no
     // vuelve a cortarse.
     for (const p of PIECES) {
-      const d = distancias(SHAPES[p], pathThroughCells(SHAPES[p], rangoAngular(SHAPES[p])));
+      const d = distancias(SHAPES[p], pathThroughCells(SHAPES[p], porIndice(SHAPES[p])));
       for (let i = 1; i < d.length; i++) expect(d[i]).toBeLessThanOrEqual(d[i - 1]);
     }
   });
@@ -346,7 +341,7 @@ describe('pathThroughCells', () => {
       F: 1, I: 0, L: 0, N: 0, P: 0, T: 1, U: 0, V: 0, W: 0, X: 2, Y: 1, Z: 0,
     };
     for (const p of PIECES) {
-      const d = distancias(SHAPES[p], pathThroughCells(SHAPES[p], rangoAngular(SHAPES[p])));
+      const d = distancias(SHAPES[p], pathThroughCells(SHAPES[p], porIndice(SHAPES[p])));
       expect(d.filter(x => x > 1)).toHaveLength(saltosEsperados[p]);
     }
   });
@@ -356,17 +351,15 @@ describe('pathThroughCells', () => {
     // sobreviven a los tres primeros criterios. Un test sobre una pieza de camino unico
     // pasaria sin ejercer nada.
     for (const p of ['Y', 'X'] as PieceKey[]) {
-      const rank = rangoAngular(SHAPES[p]);
+      const rank = porIndice(SHAPES[p]);
       const primero = pathThroughCells(SHAPES[p], rank);
       for (let i = 0; i < 5; i++) expect(pathThroughCells(SHAPES[p], rank)).toEqual(primero);
     }
 
     // Y que el desempate REALMENTE decide: con el rango invertido, la `I` —cuyo camino
     // es unico salvo por la direccion— se recorre al reves.
-    const rankI = rangoAngular(SHAPES.I);
-    const alReves = rankI.map(r => 4 - r);
-    expect(pathThroughCells(SHAPES.I, rankI)).toEqual([4, 3, 2, 1, 0]);
-    expect(pathThroughCells(SHAPES.I, alReves)).toEqual([0, 1, 2, 3, 4]);
+    expect(pathThroughCells(SHAPES.I, porIndice(SHAPES.I))).toEqual([0, 1, 2, 3, 4]);
+    expect(pathThroughCells(SHAPES.I, alReves(SHAPES.I))).toEqual([4, 3, 2, 1, 0]);
   });
 
   it('casos borde: 0, 1 y 2 celdas', () => {

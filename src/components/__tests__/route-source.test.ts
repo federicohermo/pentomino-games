@@ -59,21 +59,27 @@ const UNA = [colocar('F', 0, false, 2, 2)];
 const DOS = [colocar('F', 0, false, 2, 2), colocar('L', 0, true, 7, 1)];
 
 /**
- * El caso ESTRUCTURAL del spec 011, y no el caso testigo: su recorrido cruza una celda
- * OCUPADA —[4,1] y [4,3], los dos brazos de la `X` pegados a su centro— que no es el
- * turno de esa pieza, y esos cruces suenan una floritura (`Click.note`, 78 = F#5 y
- * 73 = C#5). Verificado corriendo `buildSequence` sobre este mismo tablero: son los
- * UNICOS dos de los 11 clicks que traen `note`.
+ * Un tablero cuyo recorrido cruza celdas OCUPADAS fuera del turno de su pieza —[2,1],
+ * [1,2] y [1,1] de la `X`, siendo [1,1] su centro— y esos cruces suenan una floritura
+ * (`Click.note`, 69 = A4, 71 = B4 y 76 = E5). Verificado corriendo `buildSequence`
+ * sobre este mismo tablero: son tres de sus cuatro clicks, y el cuarto cae en una celda
+ * vacia.
  *
- * Es la `X` y no el par `P`/`Y` del caso testigo **a proposito**. El testigo depende del
- * valor de `CROSS_COST`: con 2 cruzaba y con 5 rodea, asi que un test apoyado en el deja
- * de probar el caso real en cuanto alguien mueve la constante — que es justamente lo que
- * `research.md` §8 y AC11 invitan a hacer. La `X` no depende del peso: su celda central
- * esta rodeada por sus propios cuatro brazos y es siempre una de sus dos puertas
- * (research.md §4), asi que entrar a ella cruza una celda ocupada por mucho que suba el
- * peso. Es el unico tablero donde este test no puede volverse vacio en silencio.
+ * ## Por que cambio de tablero en el spec 012
+ *
+ * El que estaba —`X`(4,2) + `F`(3,4) + `I`(5,0)— se eligio porque la `X` era el caso
+ * ESTRUCTURAL: su celda central estaba rodeada por sus cuatro brazos y era siempre una
+ * de sus dos puertas, asi que entrar a ella cruzaba si o si, por mucho que subiera
+ * `CROSS_COST`. Esa propiedad venia del mapeo del 007 —el centro se llevaba el grado 0—
+ * y el **spec 012 se la saca**: con el arpegio recorriendo la pieza, la `X` entra por un
+ * brazo y sale por el opuesto. Ese tablero pasa a tener CERO cruces y este test se
+ * habria quedado vacio en silencio, que es exactamente contra lo que su guarda existe.
+ *
+ * El de ahora depende de `CROSS_COST`: rodear la `X` es posible y cuesta mas. Si alguien
+ * mueve la constante, la guarda de abajo —"exactamente tres clicks traen `note`"— falla
+ * en rojo en vez de dejar el test sin nada que recorrer.
  */
-const CON_CRUCE = [colocar('X', 0, false, 4, 2), colocar('F', 0, false, 3, 4), colocar('I', 0, false, 5, 0)];
+const CON_CRUCE = [colocar('X', 0, false, 1, 1), colocar('F', 0, false, 3, 2), colocar('N', 0, false, 2, 4)];
 
 describe('AC9 — la ruta activa es la que suena, no la encolada', () => {
   it('encolar no cambia lo que la cabeza dibuja: hace falta que el motor cierre el ciclo', () => {
@@ -181,12 +187,12 @@ describe('la tabla por offset', () => {
     const marcas = rs.rutaActiva();
     const s = buildSequence(CON_CRUCE);
 
-    // Guarda del propio test: exactamente DOS de los clicks traen `note` (los dos brazos
-    // de la `X` pegados a su centro) y el resto no. Si esto dejara de ser cierto, los dos
-    // `for` de abajo podrian quedarse sin nada que recorrer y el test pasaria vacio.
+    // Guarda del propio test: exactamente TRES de los clicks traen `note` (dos brazos de
+    // la `X` y su centro) y el resto no. Si esto dejara de ser cierto, los dos `for` de
+    // abajo podrian quedarse sin nada que recorrer y el test pasaria vacio.
     const conNota = s.clicks.filter((c) => c.note !== undefined);
     const sinNota = s.clicks.filter((c) => c.note === undefined);
-    expect(conNota).toHaveLength(2);
+    expect(conNota).toHaveLength(3);
     expect(sinNota.length).toBeGreaterThan(0);
 
     for (const c of conNota) expect(marcas[c.offset]).toEqual({ cell: c.cell, kind: MARCA.cruce });
