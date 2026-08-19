@@ -89,7 +89,7 @@ import Playhead from './Playhead.tsx';
  *
  * ## La celda es una baldosa, no un casillero
  *
- * Cada celda de 63 px contiene una BALDOSA redondeada con 2 px de aire alrededor,
+ * Cada celda de `CELL_PX` contiene una BALDOSA redondeada con 2 px de aire alrededor,
  * en vez de ser un rectangulo con borde compartido (`-m-px`, que es lo que habia).
  * Es el lenguaje de la lamina de referencia: las piezas se leen como fichas
  * apoyadas sobre la grilla y no como celdas de una tabla. La separacion la hace el
@@ -135,16 +135,26 @@ export default function Board({
   // texto al mapeo canonico. Se arma una vez por render y no una vez por celda.
   const ghostIndexAt = new Map(previewCells.map(([x, y], k) => [`${x},${y}`, k]));
 
-  // `md:col-span-7` y no 6: con seis columnas la tarjeta mide 536 × 380 de interior
-  // y la grilla 520 × 312, o sea llena a lo ancho y le sobran 68 px de alto — el
-  // tablero es 10 × 6 y la tarjeta no tenia esa proporcion. Con siete columnas el
-  // interior pasa a 633 × 380, y 10 × 6 celdas de 63 px dan 630 × 378: entra con
-  // ~2 px por lado y el padding queda parejo en los cuatro. La columna sale de
-  // `PlacedList`, que es texto que reflowea y tenia aire de sobra.
+  // `md:col-span-8` desde el spec 014, cuando murio `PlacedList` y quedaron dos columnas
+  // libres. El reparto —una para el tablero y otra para la paleta— esta MEDIDO en el DOM
+  // y no elegido, y lo que lo decide es que a partir de ocho columnas cambia quien limita:
+  //
+  //   reparto   interior del tablero   por ancho   por alto   CELL_PX
+  //   3 / 7        633,3 × 429,6          63,3       71,6       63  (lo limita el ancho)
+  //   4 / 8        730,7 × 429,6          73,1       71,6       71  (lo limita el ALTO)
+  //   3 / 9        828,0 × 429,6          82,8       71,6       71  (lo limita el ALTO)
+  //
+  // O sea que la novena columna no le compra al tablero un solo pixel: los dos repartos
+  // que la incluyen dan 71. Por eso la segunda columna va a la paleta, que la necesita
+  // para el spec 016 — su interior pasa de 252 a 349,3 px.
+  //
+  // El alto de la tarjeta lo fija la PALETA, que es la mas alta de la fila; el tablero se
+  // estira con ella. Medido: 80 px mas de paleta suben `CELL_PX` a 73, que es el techo
+  // por ancho de este reparto.
   return (
-    <div className="col-span-12 md:col-span-7 bg-white rounded-2xl shadow p-4">
-      {/* `overflow-x-auto` y no un `CELL_PX` mas chico: la grilla mide 10 × 63 =
-          630 px FIJOS y no se encoge, y abajo del breakpoint `md` el panel util
+    <div className="col-span-12 md:col-span-8 bg-white rounded-2xl shadow p-4">
+      {/* `overflow-x-auto` y no un `CELL_PX` mas chico: la grilla mide 10 × 71 =
+          710 px FIJOS y no se encoge, y abajo del breakpoint `md` el panel util
           queda en ~311 px. Sin esto la grilla se sale del borde derecho y —toda la
           cadena de ancestros es `overflow-x: visible`— empuja scroll horizontal a
           la PAGINA entera. Scrollea el tablero, que es lo que sobra, en vez de

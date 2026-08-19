@@ -32,8 +32,14 @@ export default function PiecePalette({
   selected, rotation, mirror, tempo, playing, clicks, noteSet,
   onSelect, onRotate, onMirror, onTempo, onTogglePlay, onToggleClicks, onReset,
 }: Props) {
+  // `md:col-span-4` desde el spec 014: al morir `PlacedList` quedaron dos columnas libres
+  // y esta es una de las dos. La otra va al tablero, y el reparto sale MEDIDO y no
+  // elegido: a partir de `md:col-span-8` el tablero deja de estar limitado por el ancho y
+  // pasa a estarlo por el alto, asi que la novena columna no le compraria un solo pixel
+  // (la tabla esta en `Board.tsx`). El interior de esta tarjeta pasa de 252 a 349,3 px,
+  // que es donde el spec 016 va a meter las doce miniaturas.
   return (
-    <div className="col-span-12 md:col-span-3 bg-white rounded-2xl shadow p-3">
+    <div className="col-span-12 md:col-span-4 bg-white rounded-2xl shadow p-3">
       <h2 className="text-lg font-semibold mb-2">Piezas</h2>
       {/* Las columnas bajan de 6 a partir de `md`, y eso es consecuencia del punto:
           medido en el DOM, el boton mas ancho (`W`) pide 42,7 px de min-content —
