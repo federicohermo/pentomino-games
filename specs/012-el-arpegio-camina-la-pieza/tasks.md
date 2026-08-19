@@ -80,6 +80,20 @@ Formato en [`specs/README.md`](../README.md): `[P]` se puede hacer en paralelo d
       tableros reordenados (D8)
 - [x] T052 PR a `main` con el resumen del cambio y los números de `research.md` §8 — [#12](https://github.com/federicohermo/pentomino-games/pull/12)
 
+## Revisión de la premisa (después de la primera implementación)
+
+- [x] T070 La diagonal se **tolera** adentro de la pieza y no afuera (D10): `pathThroughCells` decide con
+      «se tocan» y mide con Manhattan. Cambia solo la `T`, que dejaba de sonar una celda propia para
+      volver a ella dos pasos después
+- [x] T071 AC3 y AC4 reescritos: la propiedad que se compra es «ninguna pieza pasa por encima de una
+      celda», y la diagonal se tolera sin preferirse — solo la usan las cuatro que no pueden evitarla
+- [x] T072 El criterio del paso largo al principio **se queda** aunque ya no separe continuo de cortado:
+      es lo único que separa las dos versiones de la `Y`, y la referencia del pedido eligió una. Con test
+      propio, porque el que lo cubría (distancias no crecientes) dejó de valer en la `T`
+- [x] T073 D11 escrita y elevada a regla del instrumento en `.claude/rules/domain.md`: **la forma decide
+      todo lo que pasa adentro de una pieza**, incluida la punta de entrada. La alternativa —que la
+      eligiera el tablero— queda medida y descartada: −10,4 % de ciclo contra la predecibilidad
+
 ## Seguimiento (no bloquea)
 
 - [ ] T060 El desempate angular quedó reducido a elegir la dirección del camino. Si en algún momento el

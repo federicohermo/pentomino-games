@@ -119,16 +119,21 @@ describe('degreeByCellIndex', () => {
     }
   });
 
-  it('AC1 — el arpegio recorre la pieza: 8 de las 12 sin un solo salto', () => {
-    // El pedido del spec 012, medido: de una nota a la siguiente se llega moviendose
-    // arriba, abajo, izquierda o derecha. `F`, `T`, `Y` y `X` no pueden —su grafo de
-    // celdas es un arbol con un nodo de 3 o 4 vecinos— y quedan en su minimo, que
-    // `transform.test.ts` prueba contra fuerza bruta.
-    const saltos: Record<string, number> = {
+  it('AC1 — el arpegio recorre las 12 piezas enteras, sin pasar por encima de ninguna celda', () => {
+    // El pedido del spec 012: de una nota a la siguiente se llega a una celda que se
+    // TOCA con la anterior. Ortogonal donde la forma da; en diagonal en las cuatro que
+    // no pueden —`F`, `T`, `Y` y `X`, cuyo grafo de celdas es un arbol con un nodo de
+    // 3 o 4 vecinos—. Que la diagonal sea la excepcion y no la regla lo prueba
+    // `transform.test.ts` contra fuerza bruta; aca se verifica lo que se compra.
+    const diagonales: Record<string, number> = {
       F: 1, I: 0, L: 0, N: 0, P: 0, T: 1, U: 0, V: 0, W: 0, X: 2, Y: 1, Z: 0,
     };
     for (const p of PIECES) {
-      expect(distanciasDelArpegio(p).filter(d => d > 1)).toHaveLength(saltos[p]);
+      const d = distanciasDelArpegio(p);
+      // Manhattan 2 con celdas que se tocan es exactamente un paso en diagonal; 3 o mas
+      // seria pasar por encima de algo, que es lo que ya no puede pasar.
+      expect(d.filter(x => x > 1), p).toHaveLength(diagonales[p]);
+      expect(d.filter(x => x > 2), p).toHaveLength(0);
     }
   });
 
@@ -161,10 +166,15 @@ describe('D1 — que decide hoy el orden angular', () => {
     // criterios los dejan empatados SIEMPRE. Lo que rompe el empate es el rango
     // angular: gana el recorrido que arranca por la celda de rango mas chico. Con el
     // rango invertido, las 12 se recorren al reves.
-    for (const p of PIECES) {
+    // Se mide sobre las once piezas cuyo recorrido optimo es unico salvo por la
+    // direccion. La `T` queda afuera y no por comodidad: tiene DOS recorridos optimos
+    // distintos —no uno y su inverso—, asi que dar vuelta el rango no la espeja, le
+    // cambia el camino. Es la unica, y es la misma pieza que el criterio de la diagonal
+    // movio.
+    for (const p of PIECES.filter(k => k !== 'T')) {
       const derecho = degreeByCellIndex(SHAPES[p]);
       const alReves = pathThroughCells(SHAPES[p], angularRank(SHAPES[p]).map(r => 4 - r));
-      expect(alReves[0]).not.toBe(derecho.indexOf(0));
+      expect(alReves[0], p).not.toBe(derecho.indexOf(0));
     }
   });
 
@@ -307,7 +317,7 @@ const REFERENCIA: Record<PieceKey, [Cell, string][]> = {
   L: [[[0, 0], 'A4'],  [[0, 1], 'F#4'], [[0, 2], 'E4'],  [[0, 3], 'D4'],  [[1, 0], 'B4']],
   N: [[[0, 0], 'C5'],  [[1, 0], 'A#4'], [[1, 1], 'G4'],  [[2, 1], 'F4'],  [[3, 1], 'D#4']],
   P: [[[0, 0], 'G#4'], [[0, 1], 'F#4'], [[1, 0], 'B4'],  [[1, 1], 'E4'],  [[2, 0], 'C#5']],
-  T: [[[0, 0], 'F4'],  [[1, 0], 'A4'],  [[2, 0], 'G4'],  [[1, 1], 'C5'],  [[1, 2], 'D5']],
+  T: [[[0, 0], 'A4'],  [[1, 0], 'C5'],  [[2, 0], 'D5'],  [[1, 1], 'G4'],  [[1, 2], 'F4']],
   U: [[[0, 0], 'C#5'], [[0, 1], 'D#5'], [[1, 0], 'A#4'], [[2, 0], 'G#4'], [[2, 1], 'F#4']],
   V: [[[0, 0], 'B4'],  [[0, 1], 'A4'],  [[0, 2], 'G4'],  [[1, 0], 'D5'],  [[2, 0], 'E5']],
   W: [[[0, 0], 'F5'],  [[1, 0], 'D#5'], [[1, 1], 'C5'],  [[2, 1], 'A#4'], [[2, 2], 'G#4']],
@@ -318,7 +328,7 @@ const REFERENCIA: Record<PieceKey, [Cell, string][]> = {
 
 /** La celda que lleva la tonica: la del grado 0, o sea por donde entra el recorrido. */
 const TONICA_EN: Record<PieceKey, number> = {
-  F: 0, I: 4, L: 3, N: 4, P: 3, T: 0, U: 4, V: 2, W: 4, X: 3, Y: 4, Z: 0,
+  F: 0, I: 4, L: 3, N: 4, P: 3, T: 4, U: 4, V: 2, W: 4, X: 3, Y: 4, Z: 0,
 };
 
 describe('AC8 — la referencia congelada', () => {

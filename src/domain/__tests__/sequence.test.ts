@@ -642,12 +642,12 @@ describe('AC3 — el cruce lleva la altura de la celda que pisa', () => {
     }
   });
 
-  it('el teselado lleno: sin una sola celda vacia, los 15 clicks llevan altura', () => {
+  it('el teselado lleno: sin una sola celda vacia, los 13 clicks llevan altura', () => {
     // El caso limite del modelo. Con las 60 celdas ocupadas el peso no puede evitar nada
     // y todo click pisa: el recorrido no se apaga cuando no puede esquivar, sigue
     // sonando y ahora dice sobre que.
     const seq = buildSequence(DOCE);
-    expect(seq.clicks).toHaveLength(15);
+    expect(seq.clicks).toHaveLength(13);
     expect(seq.clicks.every((c) => c.note !== undefined)).toBe(true);
   });
 });

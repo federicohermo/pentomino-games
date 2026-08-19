@@ -75,13 +75,22 @@ export function arpeggioFor(piece: PieceKey, rotation: number, mirror: boolean):
  * el elemento `k` es el grado (`0..n-1`) de `cells[k]`, no al reves.
  *
  * **El grado `g` va a la celda que el camino de `pathThroughCells` visita en el paso
- * `g`** (spec 012): el arpegio RECORRE la pieza, moviendose a una celda vecina por
- * arriba, abajo, izquierda o derecha. Hasta el spec 012 el orden lo daba el anillo angular del 007
- * alrededor del centroide, que no sabe nada de adyacencia: 13 de los 48 pasos de las
- * 12 piezas caian en una celda que no tocaba a la anterior, y solo `L`, `P` y `V` se
- * recorrian enteras. Hoy son 5 de 48 y 8 de 12, y los 5 que quedan son el minimo que
- * la forma permite — `F`, `T`, `Y` y `X` no admiten recorrido completo porque su grafo
- * de celdas es un arbol con un nodo de 3 o 4 vecinos.
+ * `g`** (spec 012): el arpegio RECORRE la pieza, sin pasar nunca por encima de una
+ * celda propia. El paso preferido es en cruz; en las cuatro piezas que no admiten
+ * recorrido ortogonal —`F`, `T`, `Y` y `X`, cuyo grafo de celdas es un arbol con un
+ * nodo de 3 o 4 vecinos— se tolera uno en diagonal, que al menos llega a una celda que
+ * se toca con la anterior.
+ *
+ * Hasta el spec 012 el orden lo daba el anillo angular del 007 alrededor del centroide,
+ * que no sabe nada de adyacencia: de los 48 pasos de las 12 piezas, **cuatro pasaban por
+ * encima** de una celda que todavia no habia sonado —en `I`, `T`, `U` e `Y`— y nueve
+ * iban en diagonal. Hoy son 0 y 5.
+ *
+ * La diagonal se tolera SOLO adentro de la pieza: el recorrido entre piezas
+ * (`routeBetween`) se sigue moviendo en cruz. Es asimetrico a proposito y esta
+ * justificado en D10 del spec — adentro de la pieza la alternativa es pasar por encima
+ * de una celda, afuera no existe ese problema porque el recorrido pisa y suena todas
+ * las celdas por las que pasa.
  *
  * Recibe la forma y no la `PieceKey` a proposito: es lo que la hace testeable
  * sobre formas arbitrarias y lo que evita que `music.ts` conozca `SHAPES`.
@@ -109,6 +118,13 @@ export function arpeggioFor(piece: PieceKey, rotation: number, mirror: boolean):
  * DESEMPATA, y nada mas — pero se ejerce en las 12 piezas, asi que no es decorativo:
  * un camino y su inverso son igual de buenos, y el rango angular es lo que elige la
  * direccion. `angularRank` es el algoritmo que hasta el 012 decidia el orden entero.
+ *
+ * Que la direccion la decida la FORMA y no el tablero es una regla del instrumento y no
+ * una comodidad de implementacion (D11 del spec 012). Se midio la alternativa —entrar
+ * por la punta mas cercana a la pieza anterior del circuito—: acortaria el ciclo en el
+ * 79 % de los tableros, un 10,4 % en promedio. Se descarta igual, porque haria que mover
+ * una pieza cambiara el arpegio de sus vecinas: **una pieza tiene que sonar igual este
+ * donde este.**
  */
 export function degreeByCellIndex(cells: readonly Cell[]): number[] {
   const orden = pathThroughCells(cells, angularRank(cells));

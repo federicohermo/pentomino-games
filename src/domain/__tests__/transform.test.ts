@@ -233,6 +233,9 @@ describe('angleFromCentroid', () => {
  */
 const manhattan = (a: Cell, b: Cell) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
 
+/** Se tocan: comparten un lado o una esquina. Es con lo que se decide, no con lo que se mide. */
+const seTocan = (a: Cell, b: Cell) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1])) === 1;
+
 /** Las distancias de un recorrido, paso por paso. Su largo es `orden.length - 1`. */
 const distancias = (cells: readonly Cell[], orden: readonly number[]) =>
   orden.slice(1).map((k, i) => manhattan(cells[orden[i]], cells[k]));
@@ -256,7 +259,10 @@ function permutaciones(xs: number[]): number[][] {
 function caminoPorFuerzaBruta(cells: readonly Cell[], tiebreak: readonly number[]): number[] {
   const todos = permutaciones(cells.map((_, k) => k)).map(orden => {
     const d = distancias(cells, orden);
-    return { orden, d, vecinos: d.filter(x => x === 1).length, suma: d.reduce((a, b) => a + b, 0) };
+    // Los vecinos se cuentan con `seTocan` y la suma con Manhattan, a proposito: es lo
+    // que hace que la diagonal se tolere (cuenta como paso) sin preferirse (cuesta 2).
+    const vecinos = orden.slice(1).filter((k, i) => seTocan(cells[orden[i]], cells[k])).length;
+    return { orden, d, vecinos, suma: d.reduce((a, b) => a + b, 0) };
   });
   const maxVecinos = Math.max(...todos.map(t => t.vecinos));
   const c1 = todos.filter(t => t.vecinos === maxVecinos);
@@ -323,27 +329,40 @@ describe('pathThroughCells', () => {
     }
   });
 
-  it('AC3 — las 12 piezas tienen distancias no crecientes: se salta al entrar y despues no', () => {
-    // El criterio 3 con nombre: si un salto es inevitable va lo mas al principio
-    // posible, asi que una vez que el arpegio da un paso a una celda vecina ya no
-    // vuelve a cortarse.
+  it('AC3 — las 12 piezas se recorren enteras: ningun paso pasa por encima de una celda', () => {
+    // La propiedad que compra tolerar la diagonal. Antes eran 8 de 12 y las otras
+    // cuatro pasaban POR ENCIMA de una celda propia que todavia no habia sonado.
     for (const p of PIECES) {
-      const d = distancias(SHAPES[p], pathThroughCells(SHAPES[p], porIndice(SHAPES[p])));
-      for (let i = 1; i < d.length; i++) expect(d[i]).toBeLessThanOrEqual(d[i - 1]);
+      const orden = pathThroughCells(SHAPES[p], porIndice(SHAPES[p]));
+      for (let i = 1; i < orden.length; i++) {
+        expect(seTocan(SHAPES[p][orden[i - 1]], SHAPES[p][orden[i]]), p).toBe(true);
+      }
     }
   });
 
-  it('AC4 — ocho piezas se recorren enteras y las otras cuatro quedan en su minimo', () => {
-    // Los numeros no son una eleccion: `F`, `T`, `Y` y `X` tienen un nodo con 3 o 4
-    // vecinos y su grafo es un arbol, y un arbol solo admite recorrido completo si es
-    // un camino. El test de fuerza bruta de arriba es el que prueba que son minimos.
-    const saltosEsperados: Record<string, number> = {
+  it('AC4 — la diagonal se tolera pero no se prefiere: solo cuatro piezas la usan', () => {
+    // Un paso diagonal mide 2 en Manhattan, o sea el doble que uno recto, asi que el
+    // segundo criterio lo evita donde la forma permite ir en cruz. Las cuatro que la
+    // usan son las que no admiten recorrido ortogonal: tienen un nodo con 3 o 4 vecinos
+    // y su grafo es un arbol, y un arbol solo se recorre entero si es un camino. Los
+    // numeros no son una eleccion — los prueba la fuerza bruta de arriba.
+    const diagonalesEsperadas: Record<string, number> = {
       F: 1, I: 0, L: 0, N: 0, P: 0, T: 1, U: 0, V: 0, W: 0, X: 2, Y: 1, Z: 0,
     };
     for (const p of PIECES) {
       const d = distancias(SHAPES[p], pathThroughCells(SHAPES[p], porIndice(SHAPES[p])));
-      expect(d.filter(x => x > 1)).toHaveLength(saltosEsperados[p]);
+      expect(d.filter(x => x > 1), p).toHaveLength(diagonalesEsperadas[p]);
     }
+  });
+
+  it('el criterio del paso largo al principio sigue decidiendo: la Y', () => {
+    // Con la diagonal aceptada, el tercer criterio ya no separa "continuo" de
+    // "cortado" — todos los pasos llegan a una celda que se toca. Se queda porque es lo
+    // unico que separa las dos versiones de la `Y`, las dos con un solo paso diagonal y
+    // la misma suma: la elegida lo pone PRIMERO. Es la que trajo el pedido, dibujada a
+    // mano, y la unica evidencia que existe sobre ese criterio.
+    const d = distancias(SHAPES.Y, pathThroughCells(SHAPES.Y, porIndice(SHAPES.Y)));
+    expect(d).toEqual([2, 1, 1, 1]);
   });
 
   it('AC6 — el desempate decide, y decide siempre lo mismo', () => {

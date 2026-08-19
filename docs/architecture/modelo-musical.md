@@ -194,22 +194,24 @@ derecho lo verifican con un test. Historia completa en la nota de revisión del 
 
 Cada celda de una pieza es **dueña de un grado de la escala**, y quién es dueña de cuál lo decide la
 forma. Desde el [spec 012](../../specs/012-el-arpegio-camina-la-pieza/spec.md) el arpegio **recorre** la
-pieza: de una nota a la siguiente se llega moviéndose **arriba, abajo, izquierda o derecha**.
+pieza: de una nota a la siguiente se llega a una celda que **se toca** con la anterior, preferentemente
+por un lado y si la forma no da, por una esquina.
 `degreeByCellIndex` (`domain/music.ts`) compone dos cosas —`pathThroughCells` de `domain/transform.ts`,
 que es geometría pura, y `angularRank`, que es el orden angular del 007 reducido a desempate— y devuelve
 el grado **por índice de celda**:
 
 ```
-camino que encadena la mayor cantidad de pasos a una celda vecina → grados 0..4 en orden de visita
+camino que encadena la mayor cantidad de pasos a una celda que se toca → grados 0..4 en orden de visita
 ```
 
 Cuatro cosas que definen la regla, y por qué son así:
 
-- **Ocho piezas se recorren enteras y cuatro no pueden.** `F`, `T`, `Y` y `X` tienen una celda con 3 o 4
-  vecinos, y su grafo de celdas es un árbol: un árbol solo admite recorrido completo si es un camino. En
-  ellas la regla es *lo más continuo posible* —mínimo de saltos, el salto más corto, y **al principio**,
-  de modo que una vez que el arpegio empieza a caminar ya no se corta—. Medido: los pasos que no van a
-  una celda vecina bajaron de **13 a 5 sobre 48**.
+- **Las 12 se recorren enteras, y cuatro pagan una diagonal.** `F`, `T`, `Y` y `X` tienen una celda con
+  3 o 4 vecinos, y su grafo de celdas es un árbol: un árbol solo admite recorrido **ortogonal** completo
+  si es un camino. En ellas se tolera un paso en diagonal, que al menos llega a una celda que se toca.
+  Medido sobre los 48 pasos: los que **pasaban por encima** de una celda que todavía no había sonado
+  bajaron de **4 a 0**, y los diagonales de 9 a 5. La tolerancia vale **solo adentro de la pieza**: el
+  recorrido entre piezas se sigue moviendo en cruz.
 - **El orden angular alrededor del centroide sigue vivo, como desempate.** Un camino y su inverso son
   igual de buenos, así que hace falta algo que elija **por qué punta se entra**: eso hace `angularRank`,
   y se ejerce en las 12 piezas. Conserva sus tres reglas —la celda parada sobre el centroide sale del
@@ -218,6 +220,10 @@ Cuatro cosas que definen la regla, y por qué son así:
   del centroide (`I` y `X`); el 012 lo revierte, porque en la `I` arrancar por el centro obliga a un
   salto de 4 celdas que la forma no necesita. El grado 0 es por donde el recorrido **entra** a la pieza
   (`gates`), que es la lectura que el instrumento le da de hecho desde que el tablero es un circuito.
+  Y **cuál de las dos puntas es la entrada lo decide la forma, no el tablero**: se midió la alternativa
+  —entrar por la punta más cercana a la pieza anterior, que acortaría el ciclo un 10,4 %— y se descartó,
+  porque haría que mover una pieza cambiara el arpegio de sus vecinas. Una pieza suena igual esté donde
+  esté.
 - **Se calcula sobre la forma canónica y viaja por índice.** Rotar **no** reordena el mapeo: se corre una
   vez sobre `SHAPES[pieza]` sin transformar, apoyado en el invariante de orden del array. Rotar ya cambia
   la escala; si además reordenara el mapeo espacial, dos cosas ortogonales cambiarían a la vez. Queda:

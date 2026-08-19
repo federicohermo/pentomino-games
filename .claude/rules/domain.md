@@ -43,14 +43,29 @@ Correrla sobre una forma ya rotada compila igual y devuelve otro mapeo en **53 d
 orientaciones, porque rotar corre el origen del ángulo y el ángulo es lo que desempata. La rotación
 elige *qué* notas; la forma, *dónde* está cada una.
 
-**Desde el spec 012 el arpegio RECORRE la pieza**: de una nota a la siguiente se llega moviéndose
-arriba, abajo, izquierda o derecha. El orden lo da `pathThroughCells` (`domain/transform.ts`, Held-Karp
-de camino abierto) y el orden angular del 007 —hoy `angularRank`— quedó como desempate: elige por qué
-punta se entra. Cuatro piezas no admiten recorrido completo (`F`, `T`, `Y`, `X`: su grafo de celdas es
-un árbol con un nodo de 3 o 4 vecinos) y en ellas el salto va **al principio**. Dos consecuencias que
-muerden a otras capas: el grado 0 dejó de ser el centro geométrico de `I` y `X` —es la puerta de
-entrada—, y con eso la `X` dejó de tener una puerta rodeada por sus propios brazos, que es la propiedad
-sobre la que el 011 apoyaba su caso estructural del cruce.
+**Desde el spec 012 el arpegio RECORRE la pieza**, sin pasar nunca por encima de una celda propia. El
+orden lo da `pathThroughCells` (`domain/transform.ts`, Held-Karp de camino abierto) y el orden angular
+del 007 —hoy `angularRank`— quedó como desempate: elige por qué punta se entra. El paso preferido es en
+cruz; en las cuatro piezas que no admiten recorrido ortogonal (`F`, `T`, `Y`, `X`: su grafo de celdas es
+un árbol con un nodo de 3 o 4 vecinos) se **tolera** uno en diagonal. La implementación usa **dos
+métricas y eso no es redundancia**: decide con «se tocan» (lado o esquina) y mide con Manhattan (la
+diagonal vale 2), que es lo que hace que la diagonal se tolere sin preferirse. **La diagonal vale solo
+adentro de la pieza** — `routeBetween` sigue moviéndose en cruz.
+
+Dos consecuencias que muerden a otras capas: el grado 0 dejó de ser el centro geométrico de `I` y `X`
+—es la puerta de entrada—, y con eso la `X` dejó de tener una puerta rodeada por sus propios brazos, que
+es la propiedad sobre la que el 011 apoyaba su caso estructural del cruce.
+
+## Lo que decide la forma y lo que decide el tablero
+
+**El circuito decide el orden entre piezas y el silencio; la forma decide todo lo que pasa adentro de
+una.** Incluida la punta por la que el recorrido entra a la pieza.
+
+Es la regla con la que hay que contrastar cualquier idea que empiece con «y si el tablero también
+decidiera…», y no es gratis: se midió dejarle al tablero elegir la punta de entrada y acortaría el ciclo
+en el **79 % de los tableros, un 10,4 % en promedio** (spec 012, D11). Se descarta igual, porque haría
+que mover una pieza cambiara el arpegio de sus vecinas. **Una pieza tiene que sonar igual esté donde
+esté**: el instrumento se toca de memoria o no se toca.
 
 **El tablero se repliega sobre sí mismo**: `(0,0)` y `(9,5)` son adyacentes (una costura extra sobre la
 grilla, spec 009), y el orden de reproducción sale de un circuito exacto (Held-Karp) sobre esas
