@@ -24,6 +24,7 @@ casillas abiertas como próxima tarea.
 | [009](./009-el-tablero-como-recorrido/spec.md) | 2026-08-16 | Implementado | El tablero deja de ser un compás y pasa a ser un circuito cerrado: el orden y los silencios salen de la geometría, `(0,0)` y `(9,5)` se repliegan, las celdas recorridas suenan. Muere `phaseFor` y **supera al 004** |
 | [010](./010-cabeza-lectora-por-celda/spec.md) | 2026-08-16 | Implementado | Cabeza lectora celda por celda, fuera del estado de React: cierra la limitación que el 004 dejó anotada y da señal visual a la espera de un ciclo que introduce el 009 |
 | [011](./011-el-recorrido-esquiva-las-piezas/spec.md) | 2026-08-17 | Propuesto | Pisar una celda ocupada deja de ser gratis y pasa a **costar**: el recorrido rodea las piezas cuando le conviene y las cruza cuando rodear sale caro, y el cruce **suena la nota de esa celda** como floritura en vez de un golpe sordo. Medido: hoy pisan entre el 71 % y el 88 % de los tramos. **Cambia la matriz de costos y con ella el orden de visita en el 30-48 % de los tableros**; revisa el modelo del 009 |
+| [012](./012-el-arpegio-camina-la-pieza/spec.md) | 2026-08-19 | Propuesto | El orden de las notas dentro de una pieza deja de ser el anillo angular y pasa a ser un **camino**: cada nota suena en una celda vecina de la anterior, arriba, abajo, izquierda o derecha. Medido: los saltos bajan de **13 a 5 sobre 48 pasos** y las piezas continuas de 3 a 8 de 12; las cuatro que siguen saltando no admiten camino y está probado. **Revisa el mapeo del 007** —9 de 12 piezas cambian qué nota muestra cada celda, y la lámina deja de ser la referencia— y **mueve las puertas del 009/010**: el 56 % de los tableros cambia el orden de visita |
 
 ## Dependencias entre specs
 
@@ -75,6 +76,15 @@ casillas abiertas como próxima tarea.
   el orden lo da el recorrido entre piezas. El 004 no se reescribe —es historia— pero su estado pasa a
   `Superado`, y con él se van `phaseFor`, sus tests, el campo `phase` de `Job` y la mitad de
   `simulate_board` que lo reporta.
+- **El 012 y el 011 son ortogonales, y los dos cambian el circuito.** El 011 cambia la **matriz de
+  costos** —cuánto cuesta ir de una puerta a otra—; el 012 cambia **cuáles son las puertas**. Ninguno
+  necesita al otro y se pueden implementar en cualquier orden, pero el segundo que se mergee va a
+  reordenar tableros que el primero ya había reordenado: los porcentajes de cada uno están medidos
+  contra `main`, no contra el otro, y no se suman.
+- **El 012 sale del mismo lugar que el 011: mirar la cabeza lectora del 010.** Es el tercer hallazgo de
+  esa fuente. El 011 vio que el recorrido pisaba piezas sin costo; el 012, que adentro de la pieza el
+  recorrido no camina sino que se teletransporta. Los dos son cosas que el modelo decía desde el 007 y
+  que nadie había visto hasta que hubo algo que las mostrara moviéndose.
 - **El 011 salió de mirar la cabeza lectora del 010 recorriendo el tablero, no de leer código.** Es el
   segundo hallazgo que sale del mismo lugar — el primero fue el bug de reflexión invertida del 009 que
   el review del 010 encontró (nota del 2026-08-17 en [revisiones.md](./revisiones.md)). Con la cabeza
