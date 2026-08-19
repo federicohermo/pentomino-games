@@ -1,7 +1,7 @@
 import type { VoiceOpts } from './types/voice.types.ts';
 import {
   DEFAULT_VOICE, DEFAULT_VELOCITY, RELEASE_TAIL,
-  CLICK_VELOCITY, CLICK_SECONDS,
+  CLICK_VELOCITY, CLICK_SECONDS, CLICK_MIDI, CLICK_EPSILON,
 } from './constants/voice.constants.ts';
 
 /**
@@ -72,21 +72,32 @@ export function scheduleVoice(
  * Agenda UN click: el recorrido cruzando una celda vacia (D4 del spec 009). `at`
  * es tiempo absoluto del reloj del contexto, igual que en scheduleVoice.
  *
- * **Ruido y no un oscilador corto.** El click no tiene altura, y un oscilador
- * SIEMPRE la tiene: 20 ms de una onda de 1 kHz son 20 ciclos completos, suficientes
- * para que el oido le ponga nota y para que el recorrido empiece a sonar como una
- * linea melodica que compite con las piezas. El ruido blanco no tiene fundamental
- * que perseguir, asi que el cruce se lee como percusion. Es un `AudioBufferSourceNode`
- * con muestras aleatorias, un nodo que esta capa nunca habia creado; el research del
- * spec verifico que `node-web-audio-api` lo renderiza offline, que es lo que permite
- * testearlo en vez de escucharlo.
+ * **Una campana de altura fija, y no ruido** (spec 015). Hasta el 015 esto era un
+ * `AudioBufferSourceNode` lleno de muestras aleatorias, con un argumento que NO se
+ * borra porque sigue siendo cierto a medias: un oscilador SIEMPRE tiene altura, y una
+ * altura que se mueve hace que el recorrido dibuje una linea melodica que compite con
+ * las piezas. Lo que ese argumento no vio es que hay una tercera opcion entre "sin
+ * altura" y "una altura que se mueve": **lo que dibuja una linea melodica es tener
+ * alturas DISTINTAS**, y esta —`CLICK_MIDI`— nunca cambia. Un metronomo tiene altura y
+ * no toca nada; no es una nota, es una marca.
  *
- * El buffer se arma por click y no se cachea a nivel de modulo: **los modulos de capa
- * no declaran constantes**, y un cache tampoco podria vivir aca porque dependeria del
- * `sampleRate` del contexto, que este modulo recibe por parametro justamente para que
- * el mismo codigo corra contra el singleton y contra un OfflineAudioContext. Son ~880
- * muestras por click y ~15 clicks por ciclo de 7,5 s: no es un costo que valga la pena
- * pagar con una constante que mienta sobre el contexto.
+ * El riesgo que quedaba —que se lea como una nota mas del arpegio— se elimina por el
+ * REGISTRO y no por la brevedad: `CLICK_MIDI` esta nueve semitonos por encima del techo
+ * del instrumento, asi que ninguna pieza puede llegar ahi. El motivo estaba en el
+ * ruido, ahora esta en la altura elegida, y esta escrito donde vive el numero.
+ *
+ * Y era el evento equivocado para dejar en ruido: medido, el centroide espectral del
+ * click viejo caia en 11 260 Hz —casi dos octavas por encima del techo del
+ * instrumento— y en un tablero de 3 piezas el 44 % de lo que suena en un ciclo son
+ * clicks. Casi la mitad del instrumento era siseo.
+ *
+ * **El `stop()` no es opcional, y es el argumento viejo dado vuelta.** Antes no habia
+ * ninguno, con el motivo escrito: el buffer duraba exactamente `CLICK_SECONDS` y se
+ * terminaba solo, asi que un `stop()` habria sido un segundo lugar donde vive la
+ * duracion. Un `OscillatorNode` no se termina nunca, asi que hace falta para dos cosas:
+ * cortar el `CLICK_EPSILON` en el que muere la exponencial —que si no sigue sonando— y
+ * disparar el `onended` del que cuelgan los `disconnect()`, sin el cual quedan ~12
+ * osciladores vivos por ciclo.
  */
 export function scheduleClick(
   ctx: BaseAudioContext,
@@ -94,27 +105,27 @@ export function scheduleClick(
   at: number,
   vel = CLICK_VELOCITY,
 ): void {
-  const frames = Math.max(1, Math.round(CLICK_SECONDS * ctx.sampleRate));
-  const buf = ctx.createBuffer(1, frames, ctx.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
-
-  const src = ctx.createBufferSource();
-  src.buffer = buf;
+  const osc = ctx.createOscillator();
   const env = ctx.createGain();
+
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(midiToHz(CLICK_MIDI), at);
 
   // Sin rampa de ataque, al reves que scheduleVoice: alla el escalon se oye como un
   // click y hay que anclarlo en 0; aca el click ES lo que se busca, y una rampa de
-  // ataque le sacaria justo el transitorio que lo hace percusivo. La caida lineal a 0
-  // en CLICK_SECONDS es lo que lo cierra: sin ella el buffer termina de golpe y el
-  // corte suena como un segundo click.
+  // ataque le sacaria justo el transitorio que lo hace percusivo.
+  //
+  // Pero la caida SI cambia de forma: exponencial y no lineal, tambien al reves que
+  // scheduleVoice. Alla la lineal es obligada porque la envolvente de una nota tiene
+  // que cerrar en silencio y la exponencial no admite llegar a 0; aca la caida ES el
+  // timbre —es lo que hace campana en vez de golpe— y una exponencial a CLICK_EPSILON
+  // es lo que suena a resonancia que se apaga. El precio de esa forma es el stop().
   env.gain.setValueAtTime(vel, at);
-  env.gain.linearRampToValueAtTime(0, at + CLICK_SECONDS);
+  env.gain.exponentialRampToValueAtTime(CLICK_EPSILON, at + CLICK_SECONDS);
 
-  src.connect(env);
+  osc.connect(env);
   env.connect(dest);
-  src.start(at);
-  // Sin stop(): el buffer dura exactamente CLICK_SECONDS y se termina solo. Un stop()
-  // en ese mismo instante seria un segundo lugar donde vive la duracion del click.
-  src.onended = () => { src.disconnect(); env.disconnect(); };
+  osc.start(at);
+  osc.stop(at + CLICK_SECONDS);
+  osc.onended = () => { osc.disconnect(); env.disconnect(); };
 }

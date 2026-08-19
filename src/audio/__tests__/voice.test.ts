@@ -3,7 +3,7 @@ import { midiToHz, scheduleVoice, scheduleClick } from '../voice.ts';
 import { intervalDuration } from '../scheduler.ts';
 import {
   DEFAULT_VOICE, NOTE_INTERVALS, RELEASE_INTERVALS, DEFAULT_VELOCITY,
-  CLICK_VELOCITY, CLICK_SECONDS,
+  CLICK_VELOCITY, CLICK_SECONDS, CLICK_MIDI,
 } from '../constants/voice.constants.ts';
 import { offline, peakNear, zeroCrossHz, firstAudible } from './test-context.ts';
 
@@ -153,15 +153,24 @@ describe('scheduleClick — el cruce por una celda vacia (spec 009, D4)', () => 
     expect(peakNear(d, at + 0.002)).toBeGreaterThan(CLICK_VELOCITY * 0.75);
   });
 
-  it('NO tiene altura: cruza el cero a una tasa de ruido, no de nota', async () => {
+  it('TIENE altura, y es CLICK_MIDI: cruza el cero a la tasa de una nota, no de ruido', async () => {
     const at = 0.1;
     const d = await renderClick(at);
-    // El ruido blanco cambia de signo cerca de la mitad de las muestras: medido,
-    // 10.815 Hz a 44,1 kHz de muestreo. Cualquier oscilador a una altura del
-    // instrumento —el tablero no pasa de unos 1500 Hz— daria un orden de magnitud
-    // menos. Es la diferencia entre un click y una nota corta, y es lo unico que se
-    // puede medir sin escuchar.
-    expect(zeroCrossHz(d, at + 0.002, at + 0.015)).toBeGreaterThan(4000);
+    // Este test decia lo contrario hasta el spec 015 —exigia `> 4000`, que es la tasa
+    // del ruido blanco: medido, 10.815 Hz a 44,1 kHz de muestreo—. Se da vuelta y no se
+    // agrega uno al lado, porque la afirmacion vieja es exactamente la que el spec
+    // falsifica. La tasa de cruces separa senoidal de ruido por un factor de cinco, y
+    // eso alcanza para que vuelva a rojo si alguien repone el ruido sin querer.
+    //
+    // Se mide asi y NO por centroide, aunque el centroide sea el numero del problema
+    // (~11 000 Hz el ruido contra ~2 100 la campana): `spectrum.ts` documenta que un
+    // AnalyserNode no rinde nada offline y el repo no tiene DFT, asi que un test de
+    // centroide empezaria por escribir una. Y ademas seria fragil: el centroide de la
+    // campana da 2 643 Hz con ventana rectangular y 2 093 —la fundamental exacta— con
+    // Hann, o sea que el 2 645 del research mide el borde de la ventana y no el timbre.
+    // La tasa de cruces no depende de eso. El centroide se queda en el research.
+    const hz = zeroCrossHz(d, at + 0.002, at + 0.015);
+    expect(Math.abs(hz - midiToHz(CLICK_MIDI)) / midiToHz(CLICK_MIDI)).toBeLessThan(0.02);
   });
 
   it('suena mas bajo que una nota: acompana el recorrido, no compite', async () => {

@@ -68,8 +68,11 @@ describe('scheduler + sintesis integrados', () => {
     expect(onsets).toHaveLength(2);
     onsets.forEach((t, i) => expect(Math.abs(t - hits[i].at)).toBeLessThan(0.006));
 
-    // El click no invade el intervalo que sigue: 50 ms despues ya es silencio, donde
-    // una nota del mismo instante todavia estaria sonando (0,136 s mas el release).
+    // El click no invade el intervalo que sigue: 80 ms despues ya es silencio
+    // absoluto (`CLICK_SECONDS` 0,05 mas 0,03), donde una nota del mismo instante
+    // todavia estaria sonando (0,136 s mas el release). Desde el spec 015 el click es
+    // un oscilador y no un buffer, asi que ese cero lo garantiza su `stop()`: sin el,
+    // el epsilon en el que muere la caida exponencial seguiria sonando aca.
     const click = hits[1].at;
     expect(peakNear(d, click + 0.002)).toBeGreaterThan(0.1);
     expect(peakNear(d, click + CLICK_SECONDS + 0.03)).toBe(0);
@@ -104,8 +107,10 @@ describe('scheduler + sintesis integrados', () => {
 
     const [nota, cruce] = [hits[0].at, hits[1].at];
 
-    // TIENE altura, y es la de la celda: es lo que lo separa del click, que es ruido
-    // justamente para no tenerla. Se mide en el sostenido, despues del transitorio.
+    // TIENE altura, y es la de la CELDA: eso es lo que lo separa del click. Desde el
+    // spec 015 el click tambien tiene altura, pero es una sola y siempre la misma
+    // —una marca—, mientras que esta sale del modelo y cambia con lo que se piso. Se
+    // mide en el sostenido, despues del transitorio.
     const hz = zeroCrossHz(d, cruce + 0.02, cruce + GRACE_INTERVALS * interval);
     expect(Math.abs(hz - midiToHz(77)) / midiToHz(77)).toBeLessThan(0.02);
 
