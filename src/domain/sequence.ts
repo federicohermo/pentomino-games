@@ -2,7 +2,7 @@ import type { Cell } from './types/transform.types.ts';
 import type { PlacedPiece } from './types/board.types.ts';
 import type { Step, Click, Sequence } from './types/sequence.types.ts';
 import { routeBetween, occupantAt, occupantCellIndex } from './board.ts';
-import { degreeByCellIndex, arpeggioFor, notesForRotation } from './music.ts';
+import { degreeByCellIndex, playOrderByCellIndex, arpeggioFor, notesForRotation } from './music.ts';
 import { SHAPES, CELLS_PER_PIECE } from './constants/pieces.constants.ts';
 import { BASE_MAP, DEFAULT_OCTAVE } from './constants/music.constants.ts';
 
@@ -21,18 +21,25 @@ import { BASE_MAP, DEFAULT_OCTAVE } from './constants/music.constants.ts';
  * Las celdas de la pieza en ORDEN DE REPRODUCCION: `[j]` es la celda donde suena la
  * nota `j` de `arpeggioFor(p.piece, p.rotation, p.mirror)`.
  *
- * El grado sale de la forma CANONICA y se lee POR INDICE:
- * `degreeByCellIndex(SHAPES[p.piece])[k]` es el grado de `p.cells[k]`, porque rotar,
- * reflejar y trasladar son `map` y la celda `k` sigue siendo la celda `k`. Correrla
- * sobre `p.cells` compila igual y devuelve otro mapeo en 74 de las 96 orientaciones,
- * porque rotar corre el origen del angulo — es la trampa mas cara de esta capa.
+ * El paso sale de la forma CANONICA y se lee POR INDICE:
+ * `playOrderByCellIndex(SHAPES[p.piece], p.mirror)[k]` es el paso de `p.cells[k]`,
+ * porque rotar, reflejar y trasladar son `map` y la celda `k` sigue siendo la celda
+ * `k`. Correrla sobre `p.cells` compila igual y devuelve otro mapeo en 74 de las 96
+ * orientaciones, porque rotar corre el origen del angulo — es la trampa mas cara de
+ * esta capa.
  *
  * El retrogrado YA VIENE APLICADO, con el mismo criterio que `arpeggioFor`: la
  * reflexion invierte el orden EN EL TIEMPO sin mover que nota le toca a que celda,
- * asi que con `mirror` la primera nota que suena es la del grado 4. Que la inversion
- * viva aca y no en el consumidor es lo que hace que `[j]` case con `notes[j]` sin que
- * nadie vuelva a invertir — es la regla que `sequence.types.ts` ya declara para
- * `Step.notes`, ahora sostenida por las dos puntas.
+ * asi que con `mirror` la primera nota que suena es la del grado 4. La inversion no se
+ * hace aca: la hace `playOrderByCellIndex`, que es la unica derivacion del retrogrado
+ * sobre celdas del dominio y la misma que alimenta el numero que se ve en el tablero.
+ * Esta funcion tenia su propio `reverse` y era la segunda copia — dos copias de una
+ * regla que ademas se PINTA en pantalla es exactamente la forma de que la celda que se
+ * ilumina y la que se lee digan cosas distintas.
+ *
+ * Que la inversion viva en el dominio y no en el consumidor es lo que hace que `[j]`
+ * case con `notes[j]` sin que nadie vuelva a invertir — es la regla que
+ * `sequence.types.ts` ya declara para `Step.notes`, sostenida por las dos puntas.
  *
  * Existe porque `Step` no lleva celdas: ir de la nota `j` a la celda donde se ve era
  * una derivacion que solo estaba adentro de `gates`, y para los grados 0 y 4 nada
@@ -40,11 +47,12 @@ import { BASE_MAP, DEFAULT_OCTAVE } from './constants/music.constants.ts';
  * mapeo grado->celda no es un camino ni una distancia.
  */
 export function cellsByPlayOrder(p: PlacedPiece): Cell[] {
-  const grados = degreeByCellIndex(SHAPES[p.piece]);
-  // Por GRADO y no por indice del array: `grados[k]` es el grado de `p.cells[k]`,
-  // asi que el inverso —la celda del grado g— es `p.cells[grados.indexOf(g)]`.
-  const porGrado = grados.map((_, g) => p.cells[grados.indexOf(g)]);
-  return p.mirror ? porGrado.reverse() : porGrado;
+  const pasos = playOrderByCellIndex(SHAPES[p.piece], p.mirror);
+  // La tabla inversa: `pasos[k]` es el paso de la celda `k`, y esto es la celda de
+  // cada paso. Las dos son permutaciones de `0..n-1` y confundirlas compila.
+  const porPaso = new Array<Cell>(pasos.length);
+  pasos.forEach((paso, k) => { porPaso[paso] = p.cells[k]; });
+  return porPaso;
 }
 
 /**

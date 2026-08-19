@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { angularRank, degreeByCellIndex, midiFor, midiName, notesForRotation } from '../music.ts';
+import { angularRank, arpeggioFor, degreeByCellIndex, midiFor, midiName, notesForRotation, playOrderByCellIndex } from '../music.ts';
 import { centroid, normalize, pathThroughCells, reflect, rotateN } from '../transform.ts';
 import { cellsAt } from '../board.ts';
 import {
@@ -195,6 +195,59 @@ describe('D1 — que decide hoy el orden angular', () => {
     expect(angularRank(SHAPES.F)[1]).toBeLessThan(angularRank(SHAPES.F)[2]);
     expect(angularRank(SHAPES.I)[3]).toBeLessThan(angularRank(SHAPES.I)[4]);
     expect(angularRank(SHAPES.T)[3]).toBeLessThan(angularRank(SHAPES.T)[4]);
+  });
+});
+
+describe('playOrderByCellIndex — el paso de cada celda', () => {
+  it('sin reflexion es el grado, y con reflexion su inverso exacto', () => {
+    // Es la definicion entera de la funcion, y es tambien la unica diferencia entre
+    // los dos numeros por celda del modelo: el grado dice QUE nota, el paso dice
+    // CUANDO. La reflexion mueve el segundo y no el primero.
+    for (const p of PIECES) {
+      const grados = degreeByCellIndex(SHAPES[p]);
+      expect(playOrderByCellIndex(SHAPES[p], false), p).toEqual(grados);
+      expect(playOrderByCellIndex(SHAPES[p], true), p).toEqual(grados.map(g => 4 - g));
+    }
+  });
+
+  it('el paso 0 existe una sola vez y es una permutacion de 0..4, reflejada o no', () => {
+    for (const p of PIECES) {
+      for (const mirror of [false, true]) {
+        const pasos = playOrderByCellIndex(SHAPES[p], mirror);
+        expect([...pasos].sort(), `${p}/${mirror}`).toEqual([0, 1, 2, 3, 4]);
+      }
+    }
+  });
+
+  it('`arpeggioFor` indexado por PASO da la misma nota que el ascendente por GRADO', () => {
+    // Las dos parejas correctas, y la razon de que no se puedan cruzar: en una pieza
+    // reflejada `ascendente[paso]` daria la nota espejada. `Board.tsx` usa la segunda
+    // pareja para la nota y el paso solo para el numero de la esquina; esto es lo que
+    // dice que la primera habria servido igual, y que la mezcla no.
+    for (const p of PIECES) {
+      for (const mirror of [false, true]) {
+        const grados = degreeByCellIndex(SHAPES[p]);
+        const pasos = playOrderByCellIndex(SHAPES[p], mirror);
+        const asc = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 0);
+        const enOrden = arpeggioFor(p, 0, mirror);
+        for (let k = 0; k < 5; k++) {
+          expect(enOrden[pasos[k]], `${p}/${mirror} celda ${k}`).toBe(asc[grados[k]]);
+        }
+      }
+    }
+  });
+
+  it('acepta formas arbitrarias, igual que `degreeByCellIndex`', () => {
+    // Recibe celdas y no una `PieceKey`, y el largo sale del array: el inverso es
+    // `n-1-grado` y no `4-grado`, asi que una forma de dos celdas tambien se espeja.
+    // Cual de las dos es el grado 0 lo decide el anillo angular y no se hardcodea:
+    // lo que esta funcion agrega es la INVERSION, y eso es lo que se mide.
+    const dos: Cell[] = [[0, 0], [1, 0]];
+    const g = degreeByCellIndex(dos);
+    expect(playOrderByCellIndex(dos, false)).toEqual(g);
+    expect(playOrderByCellIndex(dos, true)).toEqual(g.map(d => 1 - d));
+    expect(playOrderByCellIndex([], false)).toEqual([]);
+    expect(playOrderByCellIndex([], true)).toEqual([]);
   });
 });
 

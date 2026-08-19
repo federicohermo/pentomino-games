@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildSequence, cellsByPlayOrder, gates, noteAtCell } from '../sequence.ts';
 import { cellsAt, isValid, routeBetween } from '../board.ts';
-import { degreeByCellIndex, notesForRotation } from '../music.ts';
+import { degreeByCellIndex, notesForRotation, playOrderByCellIndex } from '../music.ts';
 import { rotateN, reflect } from '../transform.ts';
 import { SHAPES, ANCHOR_INDEX, CELLS_PER_PIECE } from '../constants/pieces.constants.ts';
 import { BASE_MAP, DEFAULT_OCTAVE } from '../constants/music.constants.ts';
@@ -376,6 +376,27 @@ describe('AC12 — las puertas siguen la melodia, tambien con reflexion (D9)', (
         const g = degreeByCellIndex(SHAPES[k]);
         const viejo = { entrada: p.cells[g.indexOf(0)], salida: p.cells[g.indexOf(CELLS_PER_PIECE - 1)] };
         expect(gates(p), `${k}/${rot}`).toEqual({ entrada: viejo.salida, salida: viejo.entrada });
+      }
+    }
+  });
+
+  it('la entrada es SIEMPRE el paso 0 y la salida el paso 4, en las 96', () => {
+    // Es lo que el numero de la esquina de la celda promete en pantalla desde que
+    // `Board.tsx` pinta el paso y no el grado: la cabeza lectora entra por el `#0` y
+    // cuenta hacia arriba. Con el grado la promesa valia solo en las 48 al derecho —en
+    // las reflejadas se entraba por el `#4` y se contaba hacia atras—, que es el bug
+    // que este test impide que vuelva.
+    for (const k of PIECES) {
+      for (let rot = 0; rot < 4; rot++) {
+        for (const mirror of [false, true]) {
+          const p = colocar(k, rot, mirror, 5, 3);
+          const pasos = playOrderByCellIndex(SHAPES[k], mirror);
+          const celdaDelPaso = (n: number) => p.cells[pasos.indexOf(n)];
+          expect(gates(p), `${k}/${rot}/${mirror}`).toEqual({
+            entrada: celdaDelPaso(0),
+            salida: celdaDelPaso(CELLS_PER_PIECE - 1),
+          });
+        }
       }
     }
   });
