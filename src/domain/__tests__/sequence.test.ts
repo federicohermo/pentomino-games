@@ -124,7 +124,7 @@ describe('el teselado que usan los tests', () => {
 
 describe('bordes', () => {
   it('un tablero vacio no suena y su ciclo mide cero', () => {
-    expect(buildSequence([])).toEqual({ steps: [], clicks: [], length: 0 });
+    expect(buildSequence([])).toEqual({ steps: [], clicks: [], order: [], length: 0 });
   });
 
   it('con una sola pieza no hay clicks: el recorrido existe ENTRE piezas', () => {
@@ -879,5 +879,147 @@ describe('AC10 — el tablero lleno', () => {
     // corrida, que es lo que permite ver una regresion mucho antes de que toque el tope.
     console.log(`AC8 — matriz de 144 rutas con 12 piezas: ${corridas[10].toFixed(3)} ms`);
     expect(corridas[10]).toBeLessThan(4);
+  });
+});
+
+/**
+ * El muteo del spec 014: una pieza que ocupa su lugar y su tiempo en el circuito y no
+ * suena sus notas.
+ *
+ * Lo que estos tests fijan no es que el muteo "funcione" sino que **no cambie nada mas**.
+ * El circuito se elige con `puertas`, `rutas` y Held-Karp, y ninguno de los tres mira
+ * `muted`: si alguna vez lo miraran, mutear reordenaria la musica y el gesto dejaria de
+ * poder contestar la pregunta para la que existe —"como suena esto sin la N"—, porque la
+ * pregunta cambiaria la respuesta.
+ */
+const mutando = (board: readonly PlacedPiece[], i: number): PlacedPiece[] =>
+  board.map((p, k) => k === i ? { ...p, muted: true } : p);
+
+describe('AC5 — mutear no mueve el circuito', () => {
+  it('mismo orden de visita, mismos offsets y mismo largo del ciclo', () => {
+    const normal = buildSequence(CUATRO);
+    for (let i = 0; i < CUATRO.length; i++) {
+      const muteada = buildSequence(mutando(CUATRO, i));
+      expect(muteada.order, `pieza ${i}`).toEqual(normal.order);
+      expect(muteada.length, `pieza ${i}`).toBe(normal.length);
+    }
+  });
+
+  it('los pasos de las demas piezas quedan identicos', () => {
+    const normal = buildSequence(CUATRO);
+    const muteada = buildSequence(mutando(CUATRO, 0));
+    const id = CUATRO[0].id;
+    expect(muteada.steps).toEqual(normal.steps.filter((s) => s.pieceId !== id));
+  });
+
+  it('los clicks del RECORRIDO caen en los mismos offsets y las mismas celdas', () => {
+    const normal = buildSequence(CUATRO);
+    const muteada = buildSequence(mutando(CUATRO, 0));
+    // Los offsets que la pieza muteada pasa a ocupar son exactamente los de su arpegio.
+    const suyos = new Set(normal.steps.filter((s) => s.pieceId === CUATRO[0].id)
+      .flatMap((s) => Array.from({ length: CELLS_PER_PIECE }, (_, j) => s.offset + j)));
+    const delRecorrido = muteada.clicks.filter((c) => !suyos.has(c.offset));
+    // Offsets y celdas identicos: el camino no se movio ni un paso.
+    expect(delRecorrido.map(({ offset, cell }) => ({ offset, cell })))
+      .toEqual(normal.clicks.map(({ offset, cell }) => ({ offset, cell })));
+    expect(muteada.clicks).toHaveLength(normal.clicks.length + CELLS_PER_PIECE);
+    // Lo unico que pueden perder es la ALTURA, y solo los que pisan la pieza muteada:
+    // es AC17 visto desde el otro lado. En este tablero el recorrido cruza la `W`, asi
+    // que el caso existe de verdad y no hay que inventarlo.
+    const celdasW = new Set(CUATRO[0].cells.map((c) => `${c[0]},${c[1]}`));
+    const perdieron = normal.clicks.filter((c, k) => c.note !== undefined && delRecorrido[k].note === undefined);
+    expect(perdieron.length).toBeGreaterThan(0);
+    expect(perdieron.every((c) => celdasW.has(`${c.cell[0]},${c.cell[1]}`))).toBe(true);
+  });
+});
+
+describe('AC6 — la pieza muteada emite cinco clicks mudos y ningun paso', () => {
+  it('los cinco caen donde estaban sus notas, celda por celda', () => {
+    const normal = buildSequence(CUATRO);
+    const muteada = buildSequence(mutando(CUATRO, 0));
+    const paso = normal.steps.find((s) => s.pieceId === CUATRO[0].id)!;
+    const celdas = cellsByPlayOrder(CUATRO[0]);
+
+    // Cero `Step` para esa pieza.
+    expect(muteada.steps.some((s) => s.pieceId === CUATRO[0].id)).toBe(false);
+
+    // Y cinco clicks SIN `note`, en el mismo orden de reproduccion: la celda del click
+    // `j` es la celda donde habria sonado la nota `j`.
+    for (let j = 0; j < CELLS_PER_PIECE; j++) {
+      const c = muteada.clicks.find((k) => k.offset === paso.offset + j);
+      expect(c, `nota ${j}`).toBeDefined();
+      expect(c!.cell, `nota ${j}`).toEqual(celdas[j]);
+      // La AUSENCIA del campo y no un `undefined` explicito: es lo que el docblock de
+      // `Click` distingue, y lo que la proyeccion de `App.tsx` cuida con un ternario.
+      expect('note' in c!, `nota ${j}`).toBe(false);
+    }
+  });
+});
+
+describe('AC18 — una sola pieza muteada va por el retorno temprano y tampoco suena', () => {
+  it('cinco clicks mudos, cero pasos y el ciclo del arpegio', () => {
+    // `n === 1` arma su `Step` sin pasar por el bucle (`sequence.ts`), asi que una
+    // implementacion que solo tocara el bucle dejaria a este —el unico tablero que se
+    // puede mutear entero— como el unico que suena.
+    const s = buildSequence([colocar('F', 0, false, 2, 2, true)]);
+    expect(s.steps).toEqual([]);
+    expect(s.clicks).toHaveLength(CELLS_PER_PIECE);
+    expect(s.clicks.every((c) => !('note' in c))).toBe(true);
+    expect(s.clicks.map((c) => c.offset)).toEqual([0, 1, 2, 3, 4]);
+    expect(s.length).toBe(CELLS_PER_PIECE);
+    // Y sigue estando en el circuito: mutear no la saca del recorrido.
+    expect(s.order).toEqual([{ pieceId: 'F', offset: 0 }]);
+  });
+});
+
+describe('AC17 — un cruce sobre una pieza muteada no suena', () => {
+  it('los cruces sobre la X pierden su altura al mutearla', () => {
+    // `CON_X` es el tablero donde el recorrido PISA la `X`, y esos cruces suenan la
+    // floritura del spec 011 — que es exactamente la nota que el muteo apaga.
+    const normal = buildSequence(CON_X);
+    const conNota = normal.clicks.filter((c) => c.note !== undefined);
+    // Guarda del propio test: si el tablero dejara de cruzar, los `expect` de abajo se
+    // quedarian sin nada que recorrer y esto pasaria vacio.
+    expect(conNota.length).toBeGreaterThan(0);
+    const celdasX = new Set(CON_X[0].cells.map((c) => `${c[0]},${c[1]}`));
+    expect(conNota.every((c) => celdasX.has(`${c.cell[0]},${c.cell[1]}`))).toBe(true);
+
+    const muteada = buildSequence(mutando(CON_X, 0));
+    for (const c of conNota) {
+      const k = muteada.clicks.find((q) => q.offset === c.offset)!;
+      expect(k.cell).toEqual(c.cell);
+      expect('note' in k, `cruce en ${c.offset}`).toBe(false);
+    }
+    // El cruce no desaparece —sigue costando y sigue durando— asi que el circuito no
+    // se mueve: es la otra mitad de AC5.
+    expect(muteada.order).toEqual(normal.order);
+    expect(muteada.length).toBe(normal.length);
+  });
+});
+
+describe('D4 del spec 009 — dos eventos no caen nunca en el mismo instante, tampoco con muteo', () => {
+  it('ningun offset se repite entre clicks ni choca con una nota', () => {
+    // La garantia es del 009 y este spec mete una clase nueva de click adentro del
+    // intervalo que antes ocupaba un arpegio. Si dos coincidieran, el motor agendaria
+    // los dos y las amplitudes se sumarian.
+    for (const board of [CUATRO, CON_X]) {
+      for (let i = 0; i < board.length; i++) {
+        const s = buildSequence(mutando(board, i));
+        const ocupados = new Map<number, string>();
+        for (const st of s.steps) {
+          for (let j = 0; j < st.notes.length; j++) {
+            expect(ocupados.has(st.offset + j)).toBe(false);
+            ocupados.set(st.offset + j, `nota ${st.pieceId}`);
+          }
+        }
+        for (const c of s.clicks) {
+          expect(ocupados.get(c.offset), `offset ${c.offset} con la pieza ${i} muteada`).toBeUndefined();
+          ocupados.set(c.offset, 'click');
+        }
+        // Y el ciclo queda cubierto entero, sin agujeros: es lo que hace que un hueco
+        // de la pieza muteada se escuche en su lugar y no como un patron acortado.
+        expect(ocupados.size).toBe(s.length);
+      }
+    }
   });
 });
