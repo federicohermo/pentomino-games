@@ -104,14 +104,21 @@ export function arpeggioFor(piece: PieceKey, rotation: number, mirror: boolean):
  * desempate angular SI depende de la orientacion, y el arrastre por indice es lo que
  * sostiene a `ANCHOR_INDEX` y a las puertas del circuito.
  *
- * ## El grado 0 es la puerta de entrada, no el centro de la figura
+ * ## El grado 0 es la punta del camino, no el centro de la figura
  *
  * El spec 007 sacaba del anillo a la celda parada sobre el centroide y le daba la
  * tonica, con el argumento de que el centro de la figura es su raiz. Eso alcanzaba a
  * `I` y `X`, y en la `I` es incompatible con recorrer la pieza: arrancar por el centro
  * de una linea de cinco obliga a un salto de 4 celdas que la forma no necesita. Desde
- * el 012 el grado 0 es **por donde el recorrido entra a la pieza** (`gates`), que es
- * la lectura que el instrumento le da de hecho desde que el tablero es un circuito.
+ * el 012 el grado 0 es **la punta por la que se empieza a caminar la forma**.
+ *
+ * El 012 dijo ademas que el grado 0 es la celda por donde el recorrido ENTRA a la
+ * pieza (`gates`). Eso es cierto solo sin reflexion: con `mirror` el retrogrado
+ * invierte el orden en el tiempo, asi que la primera nota que suena —y por lo tanto la
+ * puerta de entrada— es la del grado `n-1`. Quien quiera la posicion de una celda en
+ * el ORDEN EN QUE SUENA tiene que pedir `playOrderByCellIndex`, que es lo unico que
+ * conoce la reflexion; el grado se queda contestando que NOTA le toca a la celda, que
+ * es una pregunta que la reflexion no mueve.
  *
  * ## Que hace el orden angular hoy
  *
@@ -133,6 +140,38 @@ export function degreeByCellIndex(cells: readonly Cell[]): number[] {
   // grado de cada celda. Las dos son permutaciones de `0..n-1` y confundirlas compila.
   orden.forEach((k, degree) => { grados[k] = degree; });
   return grados;
+}
+
+/**
+ * En que PASO DEL ORDEN DE REPRODUCCION suena cada celda de una forma. DEVUELVE POR
+ * INDICE, igual que `degreeByCellIndex`: el elemento `k` es el paso (`0..n-1`) de
+ * `cells[k]`.
+ *
+ * Es el grado con el retrogrado ya aplicado, y por lo tanto **lo unico del mapeo
+ * celda-a-nota que la reflexion mueve**: sin `mirror` el paso ES el grado; con
+ * `mirror` es `n-1-grado`, porque la reflexion invierte el orden EN EL TIEMPO sin
+ * mover que nota le toca a que celda (la misma regla que `arpeggioFor` aplica sobre
+ * las notas, aca aplicada sobre las celdas).
+ *
+ * De aca salen las dos cosas que el instrumento muestra y usa en orden de sonido:
+ *
+ * - `cellsByPlayOrder` —y con ella las PUERTAS del circuito (`gates`)—, que antes
+ *   hacia su propio `reverse` y era la segunda copia de esta regla.
+ * - El numero que `Board.tsx` pinta en la esquina de cada celda. **El paso 0 es
+ *   siempre la celda por donde el recorrido entra**, y de ahi la numeracion sube
+ *   hasta `n-1`, que es siempre la salida — en las 12 piezas y en las dos
+ *   reflexiones. Con el grado eso valia solo sin reflejar: la mitad reflejada del
+ *   espacio de colocacion se entraba por el `#4` y se contaba hacia atras.
+ *
+ * La nota de una celda NO se pide con esto: se pide con el grado contra el arpegio
+ * ASCENDENTE (`notesForRotation`). Las dos parejas son correctas y cruzarlas compila:
+ * `ascendente[grado]` y `arpeggioFor(...)[paso]` dan la MISMA nota, pero
+ * `ascendente[paso]` da la nota espejada en toda pieza reflejada.
+ */
+export function playOrderByCellIndex(cells: readonly Cell[], mirror: boolean): number[] {
+  const grados = degreeByCellIndex(cells);
+  const ultimo = cells.length - 1;
+  return mirror ? grados.map(g => ultimo - g) : grados;
 }
 
 /**

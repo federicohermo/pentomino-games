@@ -82,12 +82,19 @@ texto blanco **sin oscurecer ni un color de la lámina** — bajo 2.1 las dos co
 | Aire de la baldosa | **2 px** por lado | separa las fichas sin sumar un segundo número al ancho |
 | Borde de la baldosa | **1 px `slate-900`** | el tablero se define reforzando la celda, no rellenando el fondo |
 
-Una celda ocupada muestra **el nombre de su nota** como contenido principal (`C4`, `D#5`, …) y **el grado
+Una celda ocupada muestra **el nombre de su nota** como contenido principal (`C4`, `D#5`, …) y **su paso
 como número chico en la esquina inferior derecha**, con `#`. Son dos lecturas del mismo dato: la nota es
-lo que se oye, el grado es la posición dentro del arpegio y es lo que deja ver la forma —la celda de
-grado 0 es la tónica, y el recorrido 0→4 dibuja el camino con que el arpegio recorre la pieza: cada
-número está pegado al anterior, por un lado o —en `F`, `T`, `Y` y `X`, las cuatro que no admiten
-recorrido ortogonal— por una esquina.
+lo que se oye, el paso es **cuándo** se oye —su lugar en el orden de reproducción— y es lo que deja ver
+la forma. El recorrido 0→4 dibuja el camino con que el arpegio recorre la pieza: cada número está pegado
+al anterior, por un lado o —en `F`, `T`, `Y` y `X`, las cuatro que no admiten recorrido ortogonal— por
+una esquina.
+
+**El `#0` es siempre la celda por donde la cabeza lectora entra, y el `#4` por donde sale.** Esa es la
+razón de que el número sea el paso y no el grado: el grado dice qué lugar ocupa la nota en el arpegio
+ascendente, y en una pieza **reflejada** el retrógrado hace que la cabeza entre por el grado 4 y cuente
+hacia atrás. El número que se ve tiene que seguir a lo que se ve moverse. La tónica sigue estando en la
+celda de grado 0, pero eso ya no se lee del número: se lee de la nota, que es el dato que la reflexión
+no mueve.
 
 **Cada celda es una baldosa redondeada, no un casillero.** Los 63 px son la pista; adentro va una ficha
 `rounded-lg` con 2 px de aire alrededor. Es el lenguaje de la lámina: una pieza colocada se lee como

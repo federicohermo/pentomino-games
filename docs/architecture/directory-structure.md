@@ -101,12 +101,19 @@ src/
     ├── Playhead.tsx              # cabeza lectora: rAF + estilo imperativo, sin props (spec 010)
     ├── route-source.ts           # singleton fuera de React (no un componente): espeja active/
     │                             #   pending del motor con la Sequence del dominio, con celdas
+    ├── cell-text.ts              # qué dice cada celda: su nota (por grado) y su #N (por paso).
+    │                             #   Fuera del .tsx para poder testearla (spec 012, fix del #N)
     ├── constants/
     │   ├── layout.constants.ts   # CELL_PX · TEMPO_MIN · TEMPO_MAX
-    │   └── palette.constants.ts  # los 12 colores y su color de texto (ver DESIGN.md)
+    │   ├── palette.constants.ts  # los 12 colores y su color de texto (ver DESIGN.md)
+    │   └── route.constants.ts    # MARCA: los estados de una celda bajo la cabeza lectora
+    ├── types/
+    │   ├── cell-text.types.ts    # CellText: lo que una celda muestra
+    │   └── route.types.ts        # Marca · CeldaPorEstrenar
     └── __tests__/
         ├── palette.test.ts       # contraste WCAG recalculado desde el fondo; puro, sin jsdom
-        └── route-source.test.ts  # el par activa/pendiente y el velo, con el motor mockeado
+        ├── route-source.test.ts  # el par activa/pendiente y el velo, con el motor mockeado
+        └── cell-text.test.ts     # el #N es el paso y la nota es el grado, en las 96
 ```
 
 ## La dirección de dependencia
@@ -151,8 +158,14 @@ los de audio. Las `@testing-library/*` siguen en el árbol esperando eso.
 `components/__tests__/palette.test.ts` es el primer test de la carpeta y **no** cambia lo anterior: es de
 constantes, corre en `environment: 'node'` y no monta nada. La otra mitad de la respuesta es que la
 lógica no vive en los componentes — la derivación de `(x, y)` al nombre de nota que muestra `Board` está
-en `domain/` (`occupantCellIndex` · `degreeByCellIndex` · `notesForRotation` · `midiName`), y el
-componente solo las encadena.
+en `domain/` (`occupantCellIndex` · `degreeByCellIndex` · `playOrderByCellIndex` · `notesForRotation` ·
+`midiName`), y el `.tsx` solo indexa el resultado.
+
+**Encadenarlas tampoco es gratis, y por eso el encadenado salió del `.tsx`.** Vive en `cell-text.ts`
+desde el fix del `#N`: elegir *cuál* de las dos numeraciones por celda alimenta el número y cuál la nota
+es una decisión, y adentro de un componente no se podía testear —`react-refresh/only-export-components`
+le prohíbe al archivo exportar algo que no sea el componente—, así que el bug convivió con 238 tests en
+verde. Las puras del dominio estaban bien; lo que no había era un test entre la pura y el píxel.
 
 `route-source.test.ts` (spec 010) es el segundo, y es el que muestra dónde queda la costura: **no** es un
 componente, es el singleton de módulo que espeja el par activa/pendiente del motor, así que tiene lógica

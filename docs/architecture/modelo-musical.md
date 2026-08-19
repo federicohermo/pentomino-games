@@ -53,8 +53,9 @@ arpegio y la celda donde suena la última, según `cellsByPlayOrder` — no un g
 coincide con la celda de grado 0 (la tónica) y la de grado 4, según el mapeo de
 [arriba](#forma--qué-celda-tiene-qué-nota); con reflexión el retrógrado invierte el orden de reproducción
 sin mover qué nota le toca a qué celda, así que las puertas se invierten también — entra por la celda de
-grado 4 y sale por la de grado 0. Detalle y el bug que esto corrigió en
-[Reflexión → retrógrado](#reflexión--retrógrado). El silencio entre la pieza `i` y la `j`, en
+grado 4 y sale por la de grado 0. En términos de **paso** —la otra numeración por celda, la que el
+tablero pinta— la regla no tiene excepción: **la entrada es siempre el paso 0 y la salida el paso 4**.
+Detalle y el bug que esto corrigió en [Reflexión → retrógrado](#reflexión--retrógrado). El silencio entre la pieza `i` y la `j`, en
 intervalos, son los pasos que devuelve `routeBetween(salida(i), entrada(j), placed)` (spec 011,
 reemplaza a `cellDistance`) — asimétrico, porque volver usa otro par de celdas: la puerta de salida y
 la de entrada no son la misma.
@@ -190,6 +191,25 @@ intervalos; todo tablero **sin** reflexión suena exactamente igual que antes, y
 derecho lo verifican con un test. Historia completa en la nota de revisión del 009 en
 [revisiones.md](../../specs/revisiones.md).
 
+### El paso: el número que se ve en la celda
+
+Cada celda tiene **dos** numeraciones y no una, y confundirlas es el error que este modelo invita:
+
+| | qué contesta | de dónde sale | ¿la mueve la reflexión? |
+|---|---|---|---|
+| **grado** | qué **nota** tiene la celda: `notesForRotation(...)[grado]` | `degreeByCellIndex(forma)` | **no** |
+| **paso** | **cuándo** suena, o sea su lugar en el orden de reproducción | `playOrderByCellIndex(forma, mirror)` | **sí**: es `4 - grado` |
+
+El **paso** es lo que `Board.tsx` pinta en la esquina de cada celda y lo que dibuja el `asciiPlayOrder`
+de `describe_piece`, porque es el número que responde a la pregunta que la cabeza lectora hace en
+pantalla: **el `#0` es siempre la celda por donde el recorrido entra, y de ahí sube hasta el `#4`, que es
+siempre la salida** — en las 12 piezas y en las dos reflexiones. Hasta que se pintó el paso se pintaba
+el grado, y esa promesa valía sólo en la mitad no reflejada del espacio de colocación: con `mirror` la
+cabeza entraba por el `#4` y contaba hacia atrás.
+
+Las dos parejas correctas son `ascendente[grado]` y `arpeggioFor(...)[paso]`, y dan la misma nota.
+Cruzarlas compila: `ascendente[paso]` devuelve la nota **espejada** en toda pieza reflejada.
+
 ## Forma → qué celda tiene qué nota
 
 Cada celda de una pieza es **dueña de un grado de la escala**, y quién es dueña de cuál lo decide la
@@ -216,10 +236,12 @@ Cuatro cosas que definen la regla, y por qué son así:
   igual de buenos, así que hace falta algo que elija **por qué punta se entra**: eso hace `angularRank`,
   y se ejerce en las 12 piezas. Conserva sus tres reglas —la celda parada sobre el centroide sale del
   anillo, el sentido horario, y a igual ángulo gana el índice menor—; lo que perdió es decidir el orden.
-- **El grado 0 es la puerta de entrada, no el centro de la figura.** El 007 le daba la tónica a la celda
+- **El grado 0 es la punta del camino, no el centro de la figura.** El 007 le daba la tónica a la celda
   del centroide (`I` y `X`); el 012 lo revierte, porque en la `I` arrancar por el centro obliga a un
-  salto de 4 celdas que la forma no necesita. El grado 0 es por donde el recorrido **entra** a la pieza
-  (`gates`), que es la lectura que el instrumento le da de hecho desde que el tablero es un circuito.
+  salto de 4 celdas que la forma no necesita. El grado 0 es la punta por la que se empieza a **caminar**
+  la forma — y, **sin reflexión**, por donde el recorrido entra a la pieza (`gates`). Con `mirror` no:
+  ahí la puerta de entrada es el grado 4, y quien quiera el orden en que suenan las celdas tiene que
+  pedir `playOrderByCellIndex`, no el grado (ver [El paso](#el-paso-el-número-que-se-ve-en-la-celda)).
   Y **cuál de las dos puntas es la entrada lo decide la forma, no el tablero**: se midió la alternativa
   —entrar por la punta más cercana a la pieza anterior, que acortaría el ciclo un 10,4 %— y se descartó,
   porque haría que mover una pieza cambiara el arpegio de sus vecinas. Una pieza suena igual esté donde

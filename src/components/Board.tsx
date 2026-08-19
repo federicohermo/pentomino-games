@@ -1,12 +1,11 @@
 import type { CSSProperties } from 'react';
 import { occupantAt, occupantCellIndex } from '../domain/board.ts';
-import { degreeByCellIndex, notesForRotation, midiName } from '../domain/music.ts';
 import { GRID_W, GRID_H } from '../domain/constants/board.constants.ts';
-import { SHAPES } from '../domain/constants/pieces.constants.ts';
-import { BASE_MAP, DEFAULT_OCTAVE } from '../domain/constants/music.constants.ts';
 import type { Cell } from '../domain/types/transform.types.ts';
 import type { PieceKey } from '../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../domain/types/board.types.ts';
+import { cellTextFor } from './cell-text.ts';
+import type { CellText } from './types/cell-text.types.ts';
 import { CELL_PX } from './constants/layout.constants.ts';
 import { PIECE_COLOR } from './constants/palette.constants.ts';
 import Playhead from './Playhead.tsx';
@@ -30,36 +29,46 @@ import Playhead from './Playhead.tsx';
  * ## Que dice cada celda ocupada — y cada celda del fantasma
  *
  * La identidad de la pieza pasa al COLOR de fondo, y el texto de la celda pasa a ser
- * SU nota —la que le toca por su lugar en la forma—, con el grado en chico en la
- * esquina. La letra de la pieza, que era lo unico que se veia, deja de repetirse 5
- * veces.
+ * SU nota —la que le toca por su lugar en la forma—, con el PASO en chico en la
+ * esquina (ver mas abajo: es el orden en que suena, no el grado). La letra de la
+ * pieza, que era lo unico que se veia, deja de repetirse 5 veces.
  *
- * La nota sale de encadenar cuatro puras del dominio, y ninguno de los cuatro pasos
- * esta reimplementado aca:
+ * Las dos cosas que dice —la nota y el `#N`— las deriva `cell-text.ts`. Este archivo
+ * no reimplementa ni un paso de esa cadena: la indexa.
  *
  * ```
- * occupantCellIndex → degreeByCellIndex → notesForRotation → midiName
+ * occupantCellIndex → cellTextFor → { note, step }
  * ```
  *
- * Dos cosas de esa cadena no son de estilo:
+ * La derivacion vive AFUERA y no en una funcion de este archivo porque es donde vivio
+ * el bug del `#N`, y adentro de un `.tsx` no se podia testear:
+ * `react-refresh/only-export-components` prohibe exportar algo que no sea el
+ * componente. Sus dos reglas —el paso decide el NUMERO y el grado decide la NOTA, y
+ * las dos se leen sobre la forma CANONICA por indice— estan escritas ahi, con sus
+ * tests al lado. Repetirlas aca seria la segunda copia, que es el error que este
+ * mismo arreglo saco de `cellsByPlayOrder`.
  *
- * - `degreeByCellIndex` recibe `SHAPES[occ.piece]`, la forma CANONICA, y no las
- *   celdas ya colocadas: el grado se arrastra por indice —rotar y reflejar son
- *   `map`— y recalcularlo sobre la forma transformada daria otro mapeo, porque
- *   rotar corre el origen del angulo.
- * - El arpegio sale de `notesForRotation` y NO de `arpeggioFor`. `arpeggioFor` es la
- *   derivacion completa y devuelve las notas EN ORDEN DE REPRODUCCION, con el
- *   retrogrado ya aplicado si la pieza se coloco reflejada, asi que indexarlo con el
- *   grado leeria la forma al derecho contra un arpegio al reves. La reflexion invierte
- *   el ORDEN EN EL TIEMPO, no que nota le toca a que celda. Quien pinta UNA celda
- *   quiere el arpegio ASCENDENTE, que es lo que `notesForRotation` da y lo que la
- *   propia firma de `arpeggioFor` remite aca.
+ * ## El numero de la esquina es el PASO, no el grado
+ *
+ * Lo que se pinta abajo a la derecha es la posicion de la celda en el ORDEN DE
+ * REPRODUCCION (`playOrderByCellIndex`), asi que **el `#0` es siempre la celda por
+ * donde el recorrido entra a la pieza y la numeracion sube hasta el `#4`, que es
+ * siempre por donde sale** — en las 12 piezas y en las dos reflexiones.
+ *
+ * Antes se pintaba el GRADO, que es el mismo numero solo mientras no haya reflexion:
+ * con `mirror` la primera nota que suena es la del grado 4, asi que la cabeza lectora
+ * entraba por el `#4` y contaba hacia atras. Medido sobre `L`/0/reflejada en (1,1):
+ * entraba por [0,0], que decia `#4`. El numero no mentia —era el grado— pero la
+ * pregunta que la celda contesta de hecho, desde que el 010 puso una cabeza lectora
+ * encima, es "cuando suena esta", no "que lugar ocupa en la escala".
  *
  * El fantasma dice EXACTAMENTE lo mismo que va a decir la celda una vez colocada:
- * misma nota, mismo grado, misma cadena de puras — la unica diferencia es de donde
- * salen la pieza y la rotacion (`selected`/`rotation` en vez de `occ`). Mostrar ahi
- * la letra repetida cinco veces, que es lo que hacia antes, dejaba al fantasma
- * hablando el idioma que este tablero dejo de hablar.
+ * misma nota, mismo paso, misma llamada a `cellTextFor` — la unica diferencia es de
+ * donde salen la pieza, la rotacion y la reflexion (`selected`/`rotation`/`mirror` en vez
+ * de `occ`). La reflexion tiene que llegar hasta aca justamente por el paso: sin ella
+ * el fantasma prometeria una numeracion y la pieza colocada mostraria la inversa.
+ * Mostrar ahi la letra repetida cinco veces, que es lo que hacia antes, dejaba al
+ * fantasma hablando el idioma que este tablero dejo de hablar.
  *
  * Su fondo es GRIS y no el color de la pieza: el fantasma es ESTADO —donde caeria
  * la pieza que todavia no colocaste— y el color es identidad. El rosa del caso
@@ -97,34 +106,21 @@ interface Props {
   hover: Cell | null;
   selected: PieceKey;
   rotation: number;
+  /** La reflexion del fantasma. Solo mueve el `#N`: la nota de una celda no la
+      cambia la reflexion, el orden en que suenan si. */
+  mirror: boolean;
   onCellClick: (x: number, y: number) => void;
   onCellEnter: (cell: Cell) => void;
   onMouseLeave: () => void;
 }
 
 export default function Board({
-  placed, previewCells, previewValid, hover, selected, rotation,
+  placed, previewCells, previewValid, hover, selected, rotation, mirror,
   onCellClick, onCellEnter, onMouseLeave,
 }: Props) {
   // Que celda del fantasma cae en (x,y), POR INDICE: es lo que permite pedirle su
-  // grado al mapeo canonico. Se arma una vez por render y no una vez por celda.
+  // texto al mapeo canonico. Se arma una vez por render y no una vez por celda.
   const ghostIndexAt = new Map(previewCells.map(([x, y], k) => [`${x},${y}`, k]));
-
-  // El texto de las celdas de una (pieza, rotacion), calculado UNA vez y no una por
-  // celda: `degreeByCellIndex` ordena, hay hasta 60 celdas por render y hay un
-  // render por movimiento del cursor. Es el mismo argumento con el que
-  // `palette.constants.ts` guarda `fg` en vez de recalcular la luminancia.
-  const textCache = new Map<string, { degree: number; note: string }[]>();
-  function cellText(piece: PieceKey, rot: number) {
-    const key = `${piece}${rot}`;
-    const hit = textCache.get(key);
-    if (hit) return hit;
-    const arp = notesForRotation(BASE_MAP[piece], DEFAULT_OCTAVE, rot);
-    const fresh = degreeByCellIndex(SHAPES[piece])
-      .map(degree => ({ degree, note: midiName(arp[degree]) }));
-    textCache.set(key, fresh);
-    return fresh;
-  }
 
   // `md:col-span-7` y no 6: con seis columnas la tarjeta mide 536 × 380 de interior
   // y la grilla 520 × 312, o sea llena a lo ancho y le sobran 68 px de alto — el
@@ -163,9 +159,9 @@ export default function Board({
             // `occupantCellIndex` —`occupantAt` ya garantizo que la pieza la cubre,
             // asi que el indice nunca es -1— y la del fantasma la trae puesta, que
             // es para lo que `previewCells` llega ordenado.
-            let cell: { degree: number; note: string } | null = null;
-            if (occ) cell = cellText(occ.piece, occ.rotation)[occupantCellIndex(occ, x, y)];
-            else if (ghostIndex !== undefined) cell = cellText(selected, rotation)[ghostIndex];
+            let cell: CellText | null = null;
+            if (occ) cell = cellTextFor(occ.piece, occ.rotation, occ.mirror)[occupantCellIndex(occ, x, y)];
+            else if (ghostIndex !== undefined) cell = cellTextFor(selected, rotation, mirror)[ghostIndex];
 
             // El color de pieza es IDENTIDAD y pierde contra cualquier ESTADO: el
             // choque, el fantasma y el hover se pintan igual que antes. Por eso el
@@ -195,7 +191,7 @@ export default function Board({
                 style={{ width: CELL_PX, height: CELL_PX }}
                 className={`p-0.5 ${previewValid || !hover ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                 /* El title dice las tres cosas de la celda, no solo su coordenada: la
-                   nota entra en la baldosa pero el grado va abreviado a `#3`, y sobre
+                   nota entra en la baldosa pero el paso va abreviado a `#3`, y sobre
                    el fantasma las dos son lo que decide la jugada. Sale del MISMO
                    `cell` que se pinta, asi que no puede decir una nota y mostrar otra.
                    NO es accesibilidad: la celda es un `div` con `onClick` y sin
@@ -204,7 +200,7 @@ export default function Board({
                    pantalla — es un tooltip de mouse y nada mas. El hueco real (la
                    celda no se alcanza con el teclado) esta en Deuda conocida de
                    `specs/log.md`; darlo por cubierto con esto lo dejaba invisible. */
-                title={cell ? `(${x},${y}) · ${cell.note} · grado ${cell.degree}` : `(${x},${y})`}
+                title={cell ? `(${x},${y}) · ${cell.note} · paso ${cell.step}` : `(${x},${y})`}
               >
                 {/* La baldosa: el padding del contenedor hace la separacion y el
                     redondeo la forma. La celda ocupada se lee como una ficha y no
@@ -227,11 +223,11 @@ export default function Board({
                     de PADDING del contenedor, asi que el padding no lo empuja. */}
                 <div style={style}
                   className={`relative w-full h-full rounded-lg border border-slate-900 flex items-center justify-center pb-2 text-[19px] leading-none font-semibold tabular-nums ${tone}`}>
-                  {/* El grado va como el indice que devuelve el dominio (0..4) y sin
+                  {/* El paso va como el indice que devuelve el dominio (0..4) y sin
                       renumerar: lo que se lee en la celda es exactamente lo que
-                      responden los tests y el MCP server. El `#` y la esquina
-                      inferior derecha son de la lamina. */}
-                  {cell && <span className="absolute bottom-0.5 right-1.5 text-[13px] font-normal leading-tight opacity-70">#{cell.degree}</span>}
+                      responden los tests y el `playOrder` del MCP server. El `#` y la
+                      esquina inferior derecha son de la lamina. */}
+                  {cell && <span className="absolute bottom-0.5 right-1.5 text-[13px] font-normal leading-tight opacity-70">#{cell.step}</span>}
                   {cell?.note ?? ''}
                 </div>
               </div>

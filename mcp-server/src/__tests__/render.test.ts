@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { renderAscii, renderDegrees, sizeOf } from '../render.ts';
+import { renderAscii, renderCellNumbers, sizeOf } from '../render.ts';
 import { rotateN, reflect } from '../../../src/domain/transform.ts';
 import { degreeByCellIndex } from '../../../src/domain/music.ts';
 import { SHAPES, ANCHOR_INDEX, CELLS_PER_PIECE } from '../../../src/domain/constants/pieces.constants.ts';
@@ -62,7 +62,7 @@ describe('renderAscii', () => {
   });
 });
 
-describe('renderDegrees', () => {
+describe('renderCellNumbers', () => {
   test('pone el grado de cada celda, en el mismo bounding box que renderAscii', () => {
     // La X: desde el spec 012 el arpegio la RECORRE, y es la unica pieza que no puede
     // recorrerse con menos de dos saltos, porque su centro tiene cuatro vecinos. Se entra
@@ -70,11 +70,11 @@ describe('renderDegrees', () => {
     // recien ahi se camina centro → arriba. Es la forma donde el mapeo se lee de un
     // vistazo, y el dibujo lo muestra sin que haya que cruzar `cellMap` a mano.
     const grados = degreeByCellIndex(SHAPES.X);
-    assert.equal(renderDegrees(SHAPES.X, grados), '.4.\n230\n.1.');
+    assert.equal(renderCellNumbers(SHAPES.X, grados), '.4.\n230\n.1.');
     // Mismo dibujo, distinto contenido: las dos vistas tienen que alinear.
     const conAncla = renderAscii(SHAPES.X, ANCHOR_INDEX.X);
     assert.deepEqual(
-      renderDegrees(SHAPES.X, grados).split('\n').map(f => f.length),
+      renderCellNumbers(SHAPES.X, grados).split('\n').map(f => f.length),
       conAncla.split('\n').map(f => f.length),
     );
   });
@@ -89,7 +89,7 @@ describe('renderDegrees', () => {
         for (const mirror of [false, true]) {
           const base = rotateN(SHAPES[p], rot);
           const cells = mirror ? reflect(base) : base;
-          const dibujo = renderDegrees(cells, grados);
+          const dibujo = renderCellNumbers(cells, grados);
           const digitos = [...dibujo].filter(c => c >= '0' && c <= '9').sort().join('');
           assert.equal(digitos, '01234', `${p} rot${rot}${mirror ? ' mirror' : ''}`);
         }
@@ -98,6 +98,6 @@ describe('renderDegrees', () => {
   });
 
   test('sin celdas devuelve el string vacio', () => {
-    assert.equal(renderDegrees([], []), '');
+    assert.equal(renderCellNumbers([], []), '');
   });
 });
