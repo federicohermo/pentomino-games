@@ -225,6 +225,7 @@ export default function App(){
           hover={hover}
           selected={selected}
           rotation={rotation}
+          mirror={mirror}
           onCellClick={handleCellClick}
           onCellEnter={setHover}
           onMouseLeave={()=> setHover(null)}
