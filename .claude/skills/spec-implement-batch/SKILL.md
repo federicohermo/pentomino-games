@@ -69,18 +69,26 @@ Lo que ningún `/spec-implement` suelto puede ver, porque mira un spec. Corré l
    primero lo usa.
 2. **Un spec produce el dato que otro apaga.** Medido: el 014 hace que la pieza muteada emita `Click`
    sin `note`, y el 015 pone `clicks` en `false` — pero `engine.ts:325` (`else if (clicksAudible)`)
-   apaga exactamente la rama muda. Con los dos puestos la pieza muteada es silencio total, y el AC11
-   del 015 pide verificar lo contrario.
+   apaga exactamente la rama muda. Con los dos puestos la pieza muteada es **silencio total**.
 3. **Un número que dos specs mueven.** Confirmá que el segundo parte del valor que deja el primero y no
    del de `main`.
 4. **Un spec que cierra una tarea de otro.** Es el único archivo que se escribe fuera de su propio
    spec: anotalo para que dos carriles no lo pisen.
 
-Lo que salga es una decisión de diseño que le falta al spec. **Reportala y frená con
-`AskUserQuestion`**: arreglar un spec cuesta un párrafo, arreglar dos carriles cuesta un rebase. Con la
-respuesta en mano, escribila en el `tasks.md` que corresponda antes de lanzar.
+Un cruce encontrado **no es todavía un hallazgo**: el grafo dice que dos specs se tocan, no que nadie
+lo haya decidido. **Andá al AC antes de escalar.** Medido sobre el cruce 014/015 de arriba: el AC11 del
+015 ya declaraba el silencio total «la consecuencia buscada y no un agujero», pedía verificar **las dos
+mitades** y encargaba el docblock que lo explica — no faltaba ninguna decisión, y frenar habría costado
+una ronda de ida y vuelta por algo ya resuelto. Ojo con la otra mitad de la trampa: el spec pudo
+haberse arreglado **después** de que este skill anotara el cruce, así que el `tasks.md` de hoy manda
+sobre el ejemplo de acá.
 
-**Terminado cuando** las cuatro preguntas tienen respuesta escrita, incluidas las que dieron que no.
+Si el AC no lo cubre, entonces sí es una decisión de diseño que le falta al spec: **reportala y frená
+con `AskUserQuestion`**, porque arreglar un spec cuesta un párrafo y arreglar dos carriles cuesta un
+rebase. Con la respuesta en mano, escribila en el `tasks.md` que corresponda antes de lanzar.
+
+**Terminado cuando** las cuatro preguntas tienen respuesta escrita, incluidas las que dieron que no —
+y las que dieron que sí dicen **quién ya lo decidió**, con el AC citado.
 
 ---
 
