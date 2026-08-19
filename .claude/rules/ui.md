@@ -6,7 +6,7 @@ paths:
 
 # UI: el shell y los componentes
 
-`App.tsx` es el shell: estado con `useState` local, derivados, handlers, los cuatro efectos y la
+`App.tsx` es el shell: estado con `useState` local, derivados, handlers, los seis efectos y la
 composición. **Ninguna función pura y ningún literal de dominio** — eso vive en `domain/`, que es lo
 único que puede testearse.
 
@@ -48,5 +48,31 @@ con nodos que crea y destruye él mismo.
   quedan inline y sin exportar. Es la misma regla que mantuvo al dominio sin tests mientras vivía acá.
 - **Lo que sale de una constante va por estilo inline, no por clase.** Tailwind escanea el fuente: una
   clase interpolada (`w-[${CELL_PX}px]`) no se generaría.
+
+## Los listeners de entrada
+
+El spec 013 fue el primero que agregó uno —hasta ahí el único `addEventListener` de `src/` era un
+`matchMedia` en `Spectrum.tsx`—, así que la regla la escribió él y la próxima se copia de esta.
+
+- **El listener global vive en `App.tsx`, en un efecto propio**, y el componente sobre el que escucha
+  no gana ni estado ni efectos. `App.tsx` es quien tiene los setters, así que es quien puede despachar.
+- **Las dependencias del efecto son las reales.** Un `[]` con un ref del estado para suscribir una sola
+  vez es la optimización que este repo no necesita —son dos `addEventListener` sobre `window`— y
+  esconde de dónde sale cada valor. Si el handler no lee ningún valor (setter funcional), ahí sí `[]`.
+- **La DECISIÓN del gesto se extrae como pura a `components/`**, recibiendo los campos del evento que
+  importan y no el evento. El repo corre en `environment: 'node'` sin jsdom: una pura que reciba un
+  `KeyboardEvent` no se puede testear, y en `App.tsx` ni siquiera se puede exportar. El precedente son
+  `input.ts`, `cell-text.ts` y `route-source.ts`. Lo que queda en el `.tsx` es cableado, y es lo que
+  las tareas `[M]` verifican en el navegador.
+- **`wheel` no puede ir por prop de JSX si hace falta `preventDefault`.** React registra sus listeners
+  en el contenedor raíz y a `touchstart`, `touchmove` y `wheel` los registra **pasivos** (react-dom
+  19.1.1), donde `preventDefault()` es un no-op que el navegador solo avisa por consola. Va por
+  `addEventListener(nodo, 'wheel', h, { passive: false })` con el nodo por un `ref` creado en
+  `App.tsx`. Es la falla más cara posible: el handler corre, así que parece que anda.
+- **El handler global se saltea `<button>` e `<input>`**, y hace `preventDefault` **solo** cuando va a
+  actuar. Si se saltea el evento, el navegador tiene que quedárselo entero — es lo que evita el doble
+  disparo con un control enfocado sin recurrir a un `blur()` a mano.
+- **Limpieza sincrónica en el retorno del efecto, para todos los listeners que registró.** StrictMode
+  monta dos veces en dev: sin el `removeEventListener` quedan dos.
 
 Detalle en [docs/guides/conventions.md](../../docs/guides/conventions.md).

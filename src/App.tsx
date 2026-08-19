@@ -356,7 +356,16 @@ export default function App(){
         </div>
       </div>
 
-      <footer className="text-center text-xs text-slate-500 pt-4">Pentomino Music — prototipo. Rotación cambia la fórmula de escala; Reflexión invierte el orden (retrogrado). Click en tablero para colocar y escuchar.</footer>
+      {/* El footer explicaba el modelo y no mencionaba un solo gesto, que es lo que hacía
+          invisibles a los atajos del spec 013. Ahora dice las dos cosas: qué cambia cada
+          transformación, y con qué mano se llega a ella sin soltar el tablero. */}
+      <footer className="text-center text-xs text-slate-500 pt-4">
+        Pentomino Music — prototipo. Rotación cambia la fórmula de escala; Reflexión invierte el orden (retrógrado).
+        {' '}Click en tablero para colocar y escuchar.
+        {' '}<span className="whitespace-nowrap">Rueda sobre el tablero o <kbd>Shift</kbd> rota</span>;
+        {' '}<span className="whitespace-nowrap">botón derecho o <kbd>Ctrl</kbd> refleja</span>;
+        {' '}<span className="whitespace-nowrap"><kbd>Espacio</kbd> arranca y para</span>.
+      </footer>
     </div>
   );
 }
