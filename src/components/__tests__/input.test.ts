@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  rotacionPorRueda, accionDeTecla, abreTapLimpio, reflejaElContextMenu,
+  rotacionPorRueda, accionDeTecla, frenaElDefault, abreTapLimpio, reflejaElContextMenu,
   accionDeClick, esLaPiezaEnLaMano,
 } from '../input.ts';
 import { ACCION, EDICION } from '../constants/input.constants.ts';
@@ -98,6 +98,44 @@ describe('AC7 y AC8 — la barra espaciadora', () => {
     // Escribir en el slider de tempo con Shift no tiene por qué rotar la pieza.
     expect(accionDeTecla(tecla({ key: 'Shift', tipo: 'keyup', targetEsControl: true }))).toBeNull();
     expect(accionDeTecla(tecla({ key: 'Control', tipo: 'keyup', targetEsControl: true }))).toBeNull();
+  });
+});
+
+describe('AC7 — frenar el default es otra pregunta que producir una acción', () => {
+  it('la barra repetida NO alterna el transporte pero SÍ frena el scroll', () => {
+    // Es el caso que separa a las dos funciones, y el que las tenía fundidas dejaba
+    // roto: con `preventDefault` atado a «hay acción», un tap un poco largo de la barra
+    // arrancaba el transporte una vez y después scrolleaba la página a la cadencia de
+    // repetición del sistema, porque cada `keydown` repetido trae su propio default.
+    const repetida = tecla({ key: ' ', tipo: 'keydown', repeat: true });
+    expect(accionDeTecla(repetida)).toBeNull();
+    expect(frenaElDefault(repetida)).toBe(true);
+  });
+
+  it('la barra del primer `keydown` frena el default', () => {
+    expect(frenaElDefault(tecla({ key: ' ', tipo: 'keydown' }))).toBe(true);
+  });
+
+  it('con el foco sobre un control no frena nada', () => {
+    // D4: el evento es del navegador ENTERO y no a medias, o la barra dejaría de
+    // activar el botón que tiene el foco.
+    expect(frenaElDefault(tecla({ key: ' ', tipo: 'keydown', targetEsControl: true }))).toBe(false);
+  });
+
+  it('el `keyup` de la barra y los modificadores no frenan nada', () => {
+    // Ninguno de los tres tiene un default que valga la pena frenar: la barra scrollea
+    // en `keydown`, y `Shift` y `Control` sueltos no hacen nada en el navegador.
+    expect(frenaElDefault(tecla({ key: ' ', tipo: 'keyup' }))).toBe(false);
+    for (const key of ['Shift', 'Control']) {
+      expect(frenaElDefault(tecla({ key, tipo: 'keydown' })), key).toBe(false);
+      expect(frenaElDefault(tecla({ key, tipo: 'keyup' })), key).toBe(false);
+    }
+  });
+
+  it('una tecla que no es nuestra tampoco', () => {
+    for (const key of ['a', 'Enter', 'Alt', 'ArrowDown', 'PageDown']) {
+      expect(frenaElDefault(tecla({ key, tipo: 'keydown' })), key).toBe(false);
+    }
   });
 });
 

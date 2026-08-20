@@ -137,7 +137,10 @@ export default function Board({
 
   // `md:col-span-8` desde el spec 014, cuando murio `PlacedList` y quedaron dos columnas
   // libres. El reparto —una para el tablero y otra para la paleta— esta MEDIDO en el DOM
-  // y no elegido, y lo que lo decide es que a partir de ocho columnas cambia quien limita:
+  // y no elegido, y lo que lo decide es que a partir de ocho columnas cambia quien limita.
+  // La tabla es la medicion que DECIDIO el reparto, tomada con la paleta de ENTONCES
+  // (429,6 px de alto): su ultima columna no es el `CELL_PX` de hoy, que es 73 y sale
+  // del parrafo de abajo.
   //
   //   reparto   interior del tablero   por ancho   por alto   CELL_PX
   //   3 / 7        633,3 × 429,6          63,3       71,6       63  (lo limita el ancho)
@@ -149,8 +152,11 @@ export default function Board({
   // para el spec 016 — su interior pasa de 252 a 349,3 px.
   //
   // El alto de la tarjeta lo fija la PALETA, que es la mas alta de la fila; el tablero se
-  // estira con ella. Medido: 80 px mas de paleta suben `CELL_PX` a 73, que es el techo
-  // por ancho de este reparto.
+  // estira con ella — y el spec 016 lo EJERCIO. Con las doce miniaturas la paleta paso de
+  // 461,6 a 496 px de caja, el interior del tablero a 730,7 × 464 y `CELL_PX` a **73**,
+  // que es el techo por ancho de este reparto (730,7 / 10). Ahi se detiene: pasado ese
+  // punto lo que la paleta crezca ya no agranda el tablero, le deja aire muerto. El
+  // detalle de la cadena entera esta en el docblock de `CELL_PX`.
   return (
     <div className="col-span-12 md:col-span-8 bg-white rounded-2xl shadow p-4">
       {/* `overflow-x-auto` y no un `CELL_PX` mas chico: la grilla mide 10 × 73 =
