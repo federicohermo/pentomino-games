@@ -215,10 +215,10 @@ export const simulateBoard = defineTool({
     'celda ocupada cuesta más (pisar la pieza), y cuando ese cruce es inevitable el click cae sobre esa ' +
     'celda con la MISMA nota que suena al pisarla. Cada salto trae esos cruces aparte, con su celda y ' +
     'su nota, para comparar el costo de pisar sin escucharlo. En el teselado de 12 piezas —sin ninguna ' +
+    'celda vacía, el peso no puede evitar nada— los 14 clicks caen todos sobre celdas con pieza.\n' +
     'Desde el spec 017 la respuesta trae también el `regimen`: la rotación cambia las notas ' +
     '(`escala`) o el arranque del arpegio (`orden`), y sin decirlo la línea de tiempo es ambigua en ' +
-    '36 de las 48 combinaciones. El circuito no cambia con el régimen — solo las alturas. ' +
-    'celda vacía, el peso no puede evitar nada— los 14 clicks caen todos sobre celdas con pieza.',
+    '36 de las 48 combinaciones. El circuito no cambia con el régimen — solo las alturas.',
   inputSchema,
   run: ({ pieces, bpm, cycles, regimen }) => {
     const { resolved, placed } = resolve(pieces);
