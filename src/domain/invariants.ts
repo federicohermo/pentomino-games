@@ -3,6 +3,7 @@ import type { PieceKey } from './types/pieces.types.ts';
 import { rotate90, normalize, rotateN, reflect } from './transform.ts';
 import { notesForRotation } from './music.ts';
 import { SHAPES, ANCHOR_INDEX, CELLS_PER_PIECE } from './constants/pieces.constants.ts';
+import { ROTATIONS } from './constants/invariants.constants.ts';
 import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE, NOTES_PER_PIECE, REGIMEN } from './constants/music.constants.ts';
 import type { RegimenDeRotacion } from './types/music.types.ts';
 
@@ -33,7 +34,6 @@ export interface CheckResult {
 }
 
 const PIECES = Object.keys(SHAPES) as PieceKey[];
-const ROTATIONS = [0, 1, 2, 3];
 // Los dos regimenes salen de `REGIMEN` y no se listan a mano: agregar un tercero lo
 // mete solo en `checkNotes` en vez de dejarlo sin invariante que lo mire.
 const REGIMENES: RegimenDeRotacion[] = Object.values(REGIMEN);
@@ -227,9 +227,18 @@ export function checkBaseMap(): CheckResult {
  */
 export function checkNotes(): CheckResult {
   const failures: string[] = [];
-  if (NOTES_PER_PIECE !== CELLS_PER_PIECE) {
+  // Los dos son literales (`5`), asi que TypeScript sabe que la comparacion es falsa y
+  // adentro del `if` los estrecha a `never`. El chequeo NO sobra —existe para el dia en
+  // que alguien cambie uno de los dos, que es cuando el modelo se rompe sin ruido— pero
+  // interpolar un `never` es lo unico que `restrict-template-expressions` no perdona, con
+  // razon: dice que ese texto no se puede producir nunca. Leerlos por una variable
+  // `number` devuelve el `if` a ser una comparacion de numeros y el mensaje a ser
+  // alcanzable.
+  const notas: number = NOTES_PER_PIECE;
+  const celdas: number = CELLS_PER_PIECE;
+  if (notas !== celdas) {
     failures.push(
-      `NOTES_PER_PIECE (${NOTES_PER_PIECE}) y CELLS_PER_PIECE (${CELLS_PER_PIECE}) ` +
+      `NOTES_PER_PIECE (${notas}) y CELLS_PER_PIECE (${celdas}) ` +
       'tienen que ser iguales: cada celda dispara su nota',
     );
   }

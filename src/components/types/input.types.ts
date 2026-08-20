@@ -1,4 +1,4 @@
-import { ACCION, EDICION } from '../constants/input.constants.ts';
+import type { ACCION, EDICION } from '../constants/input.constants.ts';
 
 /** Las tres acciones de entrada: ver `ACCION` en `input.constants.ts`. */
 export type Accion = (typeof ACCION)[keyof typeof ACCION];
