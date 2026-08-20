@@ -83,7 +83,12 @@ describe('AC2/AC3 — proyectarAlMotor deja caer lo que el motor no puede ver', 
 
     for (const { c, i } of conNota) {
       const destino = proyectada.clicks[i];
-      expect(destino).toEqual({ offset: c.offset, note: c.note });
+      // Campo por campo y no con un literal igual al de la proyeccion: el oraculo de AC1
+      // del spec 022 es `grep` de ese literal sobre `src/`, y tiene que devolver UNA
+      // linea. Un test que lo reprodujera textualmente lo volveria inutil.
+      expect(destino.offset).toBe(c.offset);
+      expect(destino.note).toBe(c.note);
+      expect(Object.keys(destino).sort()).toEqual(['note', 'offset']);
       // `cell` se cae porque `audio/` no puede importar `Cell`, ni como `import type`:
       // si la proyeccion la dejara pasar, el tipo del motor tendria que nombrar algo
       // que su capa no puede ver. Es la mitad de D7/D8 del 009 que no tenia test.
