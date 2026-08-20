@@ -153,7 +153,15 @@ Tres cosas que hacen que eso sea posible sin romper nada de lo de arriba:
 - **El fondo del botón sigue sin tocarse**, porque sigue siendo el único canal de «seleccionada».
 - **El punto de color se fue** y su borde se quedó, en cada celda de la miniatura: varios de los 12
   colores (el amarillo de `V`, el lima de `F`) casi no se ven contra el gris claro del botón sin
-  apoyarse. Es el mismo motivo por el que las baldosas del tablero llevan borde desde el 007.
+  apoyarse. Es el mismo motivo por el que las baldosas del tablero llevan borde desde el 007. Lo que
+  **no** se heredó es su color fijo, y ahí hay un número que conviene tener a mano: **el borde se
+  invierte con el estado del botón**, porque en cada estado falla un conjunto distinto de piezas y los
+  dos son disjuntos. Medido en razón WCAG 2.1 —acá aplica 1.4.11, *objeto gráfico*, piso **3:1**, y no
+  el APCA con el que se elige el color de texto—: contra el botón sin seleccionar (`slate-100`) hay
+  **7 de 12** bajo el piso, la peor `V` con **1,02**; contra el seleccionado (`slate-900`) hay **una**,
+  `W` con **2,08**. Un borde `slate-900` da 16,30 sobre el claro pero **1,00** sobre el oscuro —es el
+  mismo color del fondo—, así que sobre el botón seleccionado el borde pasa a `slate-400`, que ahí da
+  6,96. Fijarlo en uno solo no alcanza: `slate-400` sobre el claro da 2,34, también bajo el piso.
 
 Y una que no cambia: **la miniatura no dice notas ni pasos**. Eso lo dice el tablero a 73 px por celda;
 en una mini-celda de 8 px no entra un `D#5`, y meterlo es lo que hacía que la previsualización del 007

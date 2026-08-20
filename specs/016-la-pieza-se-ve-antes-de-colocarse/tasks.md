@@ -44,6 +44,13 @@ una persona y no bloquea el cierre.
 - [x] T011 Cada celda de la miniatura lleva **borde**, heredado del que tenía el punto de color — sin él
       el amarillo de `V` y el lima de `F` casi no se ven contra el gris del botón. Es además el idioma
       del tablero desde el 007
+- [x] T040 **El borde se invierte con el estado del botón**, y sale del `/pr-review`: T011 se implementó
+      con `slate-900` fijo —el idioma del tablero— y ese color, sobre el botón **seleccionado**, es el
+      mismo que su fondo, o sea razón **1,00**: el borde deja de existir justo donde `W` (`#0000FF`)
+      queda a **2,08** contra `slate-900`, bajo el piso de 3:1 de WCAG 1.4.11. Medido: los conjuntos que
+      fallan en cada estado son **disjuntos** —7 de 12 contra el botón claro, peor `V` con 1,02; una
+      sola contra el seleccionado— así que ningún color fijo cubre los dos, `slate-400` incluido (2,34
+      sobre el claro). Sin seleccionar `slate-900`, seleccionado `slate-400`
 - [x] T012 **AC7** — sacar el `<span>` del punto de color, con el motivo escrito: con la forma pintada,
       decía lo mismo dos veces
 - [x] T013 **AC8** — el fondo del botón no se toca: sigue siendo el único canal de "seleccionada", en el
@@ -95,7 +102,8 @@ una persona y no bloquea el cierre.
       `md:col-span-4`. Si están en 63 y `col-span-3`, el paso 3 mide contra otro layout y hay que
       remedirlo entero después
 - [x] T029 Rama `feature/016-la-pieza-se-ve-antes-de-colocarse` desde `main`
-- [ ] T030 [M] `/pr-review` antes de pedir revisión
+- [x] T030 [M] `/pr-review` antes de pedir revisión — un hallazgo, el borde de la miniatura sobre el
+      botón seleccionado, corregido en T040
 - [x] T031 `specs/log.md`: estado del 016
 
 ## Seguimiento (no bloquea)

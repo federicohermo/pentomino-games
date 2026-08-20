@@ -86,7 +86,10 @@ export default function PiecePalette({
             (el amarillo de `V`, el lima de `F`) casi no se ven contra el gris claro
             del boton sin apoyarse, asi que las celdas de la miniatura lo llevan — que
             ademas es el idioma del tablero desde el 007, donde todas las baldosas
-            tienen borde por el mismo motivo.
+            tienen borde por el mismo motivo. Lo que NO se hereda es su color fijo:
+            el punto vivia con `slate-400` porque tenia que verse sobre los dos fondos
+            del boton, y la miniatura resuelve eso invirtiendo el borde con el estado.
+            Los numeros estan abajo, en la celda.
 
             La letra se queda abajo y en chico. No es decoracion: es el vocabulario con
             el que se habla de las piezas en `describe_piece`, en el `title` del tablero
@@ -97,12 +100,15 @@ export default function PiecePalette({
         {(Object.keys(SHAPES) as PieceKey[]).map(key=> {
           const celdas = miniCells(key, rotation, mirror);
           const ocupada = new Set(celdas.map(([x, y]) => `${x},${y}`));
+          // Una sola copia de "es la que esta en la mano": la leen el fondo del boton
+          // y el borde de la miniatura, y tienen que invertirse en el mismo momento.
+          const activo = selected === key;
           return (
             <button
               key={key}
               onClick={()=> onSelect(key)}
               aria-label={`${key}, rotación ${rotation * 90}°${mirror ? ', reflejada' : ''}`}
-              className={`px-2 py-1 rounded-lg border text-sm flex flex-col items-center justify-center gap-1 ${selected===key? 'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}
+              className={`px-2 py-1 rounded-lg border text-sm flex flex-col items-center justify-center gap-1 ${activo? 'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}
             >
               {/* CINCO pistas fijas y no `min-content` ni `auto`: es lo que hace que el
                   tamano de la caja no dependa de que celdas esten ocupadas, y por lo
@@ -125,9 +131,27 @@ export default function PiecePalette({
                   // Inline y no `bg-[...]`: una clase interpolada desde `PIECE_COLOR`
                   // no la generaria Tailwind. La celda vacia queda transparente para
                   // que se vea el fondo del boton, que es quien dice "seleccionada".
+                  //
+                  // El BORDE se INVIERTE con el estado del boton, y no es cosmetica:
+                  // en cada estado falla un conjunto distinto de piezas, y los dos
+                  // conjuntos son DISJUNTOS. Razon WCAG 2.1 medida contra los dos
+                  // fondos — aca aplica 1.4.11, objeto grafico con piso 3:1, y no el
+                  // APCA con el que `palette.constants.ts` elige el color de TEXTO:
+                  //
+                  //   contra `slate-100` (sin seleccionar): 7 de 12 bajo el piso, peor
+                  //     `V` con 1,02 — el amarillo sobre el gris claro no se ve
+                  //   contra `slate-900` (seleccionado): 1 de 12, `W` con 2,08 — el
+                  //     azul puro sobre el casi negro
+                  //
+                  // `slate-900` da 16,30 sobre el boton claro y rescata a las siete,
+                  // pero sobre el seleccionado da 1,00: es el MISMO color del fondo, o
+                  // sea que ahi el borde no existe y `W` se queda sola. Invertido a
+                  // `slate-400` da 6,96 sobre el oscuro. Un solo color no cubre los dos
+                  // estados: fijo en `slate-400` serian 2,34 sobre el claro, o sea las
+                  // siete apoyadas en un borde que tampoco llega al piso.
                   return (
                     <div key={i}
-                      className={llena ? 'border border-slate-900' : ''}
+                      className={llena ? (activo ? 'border border-slate-400' : 'border border-slate-900') : ''}
                       style={llena ? { background: PIECE_COLOR[key].bg } : undefined}
                     />
                   );
