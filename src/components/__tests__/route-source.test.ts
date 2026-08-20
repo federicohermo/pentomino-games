@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { buildSequence, cellsByPlayOrder } from '../../domain/sequence.ts';
 import { cellsAt } from '../../domain/board.ts';
 import { rotateN, reflect } from '../../domain/transform.ts';
-import { SHAPES, ANCHOR_INDEX } from '../../domain/constants/pieces.constants.ts';
+import { SHAPES, ANCHOR_INDEX, CELLS_PER_PIECE } from '../../domain/constants/pieces.constants.ts';
 import { REGIMEN } from '../../domain/constants/music.constants.ts';
 import { MARCA } from '../constants/route.constants.ts';
 import type { PieceKey } from '../../domain/types/pieces.types.ts';
@@ -282,5 +282,52 @@ describe('AC19 — la cabeza recorre la pieza muteada, con el borde del click', 
     cerrarCiclo();
     rs.rutaActiva();
     expect(new Set(rs.velo().map((e) => e.id))).toEqual(new Set(['L']));
+  });
+});
+
+/**
+ * El unico camino por el que `construir` puede recibir un paso sin pieza, y el unico por
+ * el que `porPieza` puede no tener una entrada que `ids` si tiene.
+ *
+ * Su comentario en el fuente dice «no puede pasar», y con el shell de hoy es cierto: el
+ * `useMemo` deriva la secuencia de `placed` y el hook entrega las dos juntas en el mismo
+ * efecto. Pero la guarda no es decorativa y su comportamiento esta ELEGIDO —«el silencio
+ * es preferible a la mentira, porque una celda equivocada se lee como que el modelo esta
+ * mal»—, asi que la eleccion se verifica en vez de darse por buena: se llama a `encolar`
+ * con las dos cosas desfasadas, que es exactamente lo que un refactor del shell podria
+ * producir sin avisar.
+ *
+ * Los tres caminos que abre son el mismo desfasaje visto desde tres lugares: el `continue`
+ * de `construir`, y los dos `?? []` de `recomputarVelo` —uno del lado de lo pendiente y
+ * otro del lado de lo activo, porque el velo se recalcula en los dos bordes—.
+ */
+describe('un paso cuya pieza no esta en el tablero', () => {
+  it('queda a oscuras en vez de dibujar una celda inventada, y no arrastra al resto', () => {
+    // La secuencia conoce a las dos piezas; el tablero que se entrega, a una sola.
+    const seq = buildSequence(DOS, REGIMEN.escala);
+    const pasoF = seq.steps.find((st) => st.pieceId === 'F')!;
+    const pasoL = seq.steps.find((st) => st.pieceId === 'L')!;
+    rs.encolar(seq, [DOS[0]]);
+
+    // Borde 1 — el velo de lo ENCOLADO no inventa celdas para la pieza ausente.
+    expect(rs.velo().some((e) => e.id === 'L')).toBe(false);
+    expect(rs.velo().some((e) => e.id === 'F')).toBe(true);
+
+    cerrarCiclo();
+    const marcas = rs.rutaActiva();
+
+    // Los cinco offsets de la pieza que falta quedan en null: la cabeza los cruza a
+    // oscuras. Es el silencio del docblock, y es observable.
+    for (let j = 0; j < CELLS_PER_PIECE; j++) {
+      expect(marcas[pasoL.offset + j], `offset ${pasoL.offset + j}`).toBeNull();
+    }
+    // Y la pieza que si estaba se dibuja entera: el desfasaje no la contagia.
+    for (let j = 0; j < CELLS_PER_PIECE; j++) {
+      expect(marcas[pasoF.offset + j]?.kind, `offset ${pasoF.offset + j}`).toBe(MARCA.nota);
+    }
+
+    // Borde 2 — despues del swap, la pieza ausente entra a `estrenando` porque `ids` la
+    // lista, y aun asi no aporta una sola celda al velo.
+    expect(new Set(rs.velo().map((e) => e.id))).toEqual(new Set(['F']));
   });
 });

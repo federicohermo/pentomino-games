@@ -25,19 +25,19 @@ persona y no bloquea el cierre.
 
 ### `domain/invariants.ts` — de 83,33 % a 100 % de ramas
 
-- [ ] T012 [P] Cubrir 99-103, 124-126, 133-137 y 150-151: los caminos de violación de los invariantes de geometría
-- [ ] T013 [P] Cubrir 187-188 y 193-194: los del modelo musical
-- [ ] T014 [P] Cubrir 231-235, 251-255, 261-262, 268-269, 279 y 284-290: el resto de los reportes de violación
-- [ ] T015 Confirmar que cada invariante tiene **un test que lo hace fallar** y no sólo uno que lo hace pasar — AC7
+- [x] T012 [P] Cubrir 99-103, 124-126, 133-137 y 150-151: los caminos de violación de los invariantes de geometría
+- [x] T013 [P] Cubrir 187-188 y 193-194: los del modelo musical
+- [x] T014 [P] Cubrir 231-235, 251-255, 261-262, 268-269, 279 y 284-290: el resto de los reportes de violación
+- [x] T015 Confirmar que cada invariante tiene **un test que lo hace fallar** y no sólo uno que lo hace pasar — AC7
 
 ### `components/route-source.ts` — de 81,25 % a 100 % de ramas
 
-- [ ] T016 [P] Cubrir la rama de `:141` y el bloque `:148-181` — AC8
-- [ ] T017 Si alguna de esas ramas es genuinamente inalcanzable: borrarla o volverla alcanzable (D4), y anotar en `research.md` cuál fue y qué se hizo. **Nunca un `v8 ignore`**
+- [x] T016 [P] Cubrir la rama de `:141` y el bloque `:148-181` — AC8
+- [x] T017 Si alguna de esas ramas es genuinamente inalcanzable: borrarla o volverla alcanzable (D4), y anotar en `research.md` cuál fue y qué se hizo. **Nunca un `v8 ignore`**
 
 ### `domain/` — las ramas sueltas
 
-- [ ] T018 [P] Cerrar el 96,77 % de ramas de `music.ts` y el 93,88 % de `sequence.ts`
+- [x] T018 [P] Cerrar el 96,77 % de ramas de `music.ts` y el 93,88 % de `sequence.ts`
 
 ### `mcp-server` — de 92,38 % a 100 %
 
