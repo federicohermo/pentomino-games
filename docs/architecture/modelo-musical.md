@@ -123,7 +123,7 @@ resultado teórico: hay 12 pentominós libres y 12 semitonos.
 > Cuidado con la colisión de nombres: la **pieza `F`** tiene por tónica la **nota C**, y la **nota F**
 > le corresponde a la **pieza `T`**. La letra del pentominó describe su forma, no su sonido.
 
-La octava está fija en `4` en la llamada actual (`notesForRotation(basePc, 4, rotation)`).
+La octava está fija en `4` en la llamada actual (`notesForRotation(basePc, 4, rotation, regimen)`).
 
 ## Rotación → escala **o** orden: los dos regímenes
 
@@ -310,7 +310,7 @@ Cuatro cosas que definen la regla, y por qué son así:
 - **La reflexión no cambia qué nota muestra una celda.** El retrógrado es del *orden de reproducción*: la
   celda de grado `g` muestra siempre `notesForRotation(...)[g]`, o sea la nota `g` del arpegio
   **ascendente**. Ojo con la fuente de datos, porque la lectura contraria suena igual y pinta otro
-  tablero: `arpeggioFor(pieza, rotación, reflexión)` —la que alimenta a `buildSequence`— y el campo
+  tablero: `arpeggioFor(pieza, rotación, reflexión, régimen)` —la que alimenta a `buildSequence`— y el campo
   `notes` de `describe_piece` vienen **ya invertidos**.
 
 El mapeo completo de las 12 piezas —grado por índice y nota por celda— está medido en

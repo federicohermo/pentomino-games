@@ -20,7 +20,7 @@ import { BASE_MAP, DEFAULT_OCTAVE } from './constants/music.constants.ts';
 
 /**
  * Las celdas de la pieza en ORDEN DE REPRODUCCION: `[j]` es la celda donde suena la
- * nota `j` de `arpeggioFor(p.piece, p.rotation, p.mirror)`.
+ * nota `j` de `arpeggioFor(p.piece, p.rotation, p.mirror, regimen)`.
  *
  * El paso sale de la forma CANONICA y se lee POR INDICE:
  * `playOrderByCellIndex(SHAPES[p.piece], p.mirror)[k]` es el paso de `p.cells[k]`,

@@ -183,7 +183,7 @@ export default function App(){
   // Al desmontar, frenar el reloj y vaciar la secuencia del motor. La limpieza
   // sigue siendo sincrónica: si fuera asincrónica, en StrictMode podría
   // ejecutarse después de que el efecto de arriba ya volvió a agendar, y
-  // pisaría la secuencia nueva con una vacía. Se proyecta `buildSequence([])`
+  // pisaría la secuencia nueva con una vacía. Se proyecta `buildSequence([], …)`
   // en vez de escribir el literal vacío a mano, para no meter la forma de un
   // dato de dominio en el shell.
   //
