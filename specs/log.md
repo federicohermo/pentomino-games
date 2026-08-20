@@ -37,6 +37,8 @@ casillas abiertas como próxima tarea.
 | [021](./021-el-tablero-es-la-pantalla/spec.md) | 2026-08-20 | Propuesto | Muere el `max-w-6xl grid-cols-12`: el tablero llena el viewport y los paneles de piezas y señal flotan encima, plegables. `CELL_PX` deja de ser constante y pasa a `max(73, min(vw/10, vh/6))` con tipografía proporcional — en escritorio la celda va de 73 a **120–180 px**, o sea entre 2,7× y 6× de área. Medido: el tablero ocupa hoy el **15 %** de una pantalla de 1920×1080; los dos flotantes tapan **11 de 60** celdas y **ninguna de la costura**. El piso salió **73 y no 60**: los 60 valían con la fuente clavada. **No cambia una nota** |
 | [022](./022-el-puente-con-el-motor-sale-del-shell/spec.md) | 2026-08-20 | Propuesto | **`App.tsx` pierde los seis efectos** y baja de 455 líneas a 312; `PiecePalette` pasa de dieciséis props a **dos**, partida en `OrientationPanel` y `TransportPanel`; se borra la única duplicación real de `src/` —la proyección al motor, escrita dos veces—; y los comentarios que cuentan *cómo se llegó* se mudan a `revisiones.md`. Cierra los **tres ítems de dependencias huérfanas de `deuda.md`** —las siete `devDependencies`— y le saca al de «No hay tests de UI» la parte de AC10 del 008, que esperaba desde hace catorce specs y pedía testing-library: se cierra por la otra vía que el propio registro nombra, **sin jsdom**. Medido: se mudan **166 líneas** de efectos y el **75 % son comentario**; el precio son **31 tareas** de 018–021 que cambian de destino. **No cambia una nota, ni un píxel** |
 
+| [028](./028-lo-que-no-se-cubre-no-se-mergea/spec.md) | 2026-08-20 | Propuesto | `pnpm verify` gana un **quinto nodo**, `coverage`, con umbral **100** en las cuatro métricas, y `mcp:test` gana los suyos. Medido: el repo tiene 407 tests y **ningún proveedor de coverage instalado**, así que el número no se había mirado nunca — **61,97 % de statements en `src/`** y 92,38 % de líneas en el server, con **1 393 líneas en cero absoluto** repartidas entre `engine.ts` (374, y no es UI), los seis `.tsx`, `App.tsx` y los dos hooks del 022. **Consume el 024** en vez de re-decidir la herramienta, y **revisa su AC2**: cuatro nodos pasan a cinco, porque los dos presupuestos de performance del 009 miden **11,3 ms contra un techo de 5** bajo instrumentación y hay que correrlos sin ella. **No cambia una nota, ni un píxel** |
+
 ## Dependencias entre specs
 
 - **001 y 002 son ortogonales.** Uno decide qué nota va en qué celda; el otro, cómo se produce el
@@ -204,6 +206,16 @@ casillas abiertas como próxima tarea.
   con su dueño al lado. Se amplió a los seis con el costo a la vista, y por eso `deuda.md` **pierde tres
   ítems y no gana ninguno**. Lo que queda abierto ahí es lo que el 022 no toca: los tests de UI y el
   `manifest.json`.
+
+- **028 depende del 024, y en parte del 023.** El 024 trae el proyecto de navegador, que es la única
+  forma de cubrir `Spectrum.tsx` —canvas, `ResizeObserver`, `matchMedia` y `getBoundingClientRect`
+  reales— y `audio/engine.ts`, que usa `new AudioContext()` y `window.setInterval`. Sin él, el 60 %
+  del 028 igual se puede hacer —la configuración, el `mcp-server`, `invariants.ts`, `route-source.ts`
+  y los presupuestos—; el 40 % restante no se puede ni empezar. Del 023 hereda que la CI corra el nodo
+  nuevo y que Chromium esté instalado antes.
+- **028 revisa AC2 del 024.** Ese spec fija que `verify` sigue teniendo cuatro nodos; el 028 lo lleva a
+  cinco. El motivo está medido y es del 009: sus dos presupuestos de performance no sobreviven la
+  instrumentación, así que `test` y `coverage` tienen que ser nodos distintos.
 
 ## Lo que dejó de vivir acá
 
