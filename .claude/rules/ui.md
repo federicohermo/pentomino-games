@@ -87,9 +87,14 @@ El spec 013 fue el primero que agregó uno —hasta ahí el único `addEventList
   19.1.1), donde `preventDefault()` es un no-op que el navegador solo avisa por consola. Va por
   `addEventListener(nodo, 'wheel', h, { passive: false })` con el nodo por un `ref` creado en
   `App.tsx`. Es la falla más cara posible: el handler corre, así que parece que anda.
-- **El handler global se saltea `<button>` e `<input>`**, y hace `preventDefault` **solo** cuando va a
-  actuar. Si se saltea el evento, el navegador tiene que quedárselo entero — es lo que evita el doble
-  disparo con un control enfocado sin recurrir a un `blur()` a mano.
+- **El handler global se saltea `<button>` e `<input>`**: si se saltea el evento, el navegador tiene
+  que quedárselo entero — es lo que evita el doble disparo con un control enfocado sin recurrir a un
+  `blur()` a mano.
+- **«¿Hay acción?» y «¿hay que frenar el default?» son dos preguntas y van en dos puras.** Parecen la
+  misma hasta que aparece el auto-repeat: la barra mantenida **no** tiene que alternar el transporte a
+  30 Hz, pero **sí** tiene que seguir frenando el scroll, porque cada `keydown` repetido trae su propio
+  default. Atado a «hay acción», un tap largo arrancaba el transporte una vez y después scrolleaba la
+  página.
 - **Limpieza sincrónica en el retorno del efecto, para todos los listeners que registró.** StrictMode
   monta dos veces en dev: sin el `removeEventListener` quedan dos.
 

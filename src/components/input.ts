@@ -22,7 +22,7 @@ import type { PlacedPiece } from '../domain/types/board.types.ts';
  * por lo tanto no se puede testear. Es el mismo movimiento con el que `cell-text.ts`
  * salió de `Board.tsx` en el spec 012, y por el mismo motivo: ahí vivía el bug.
  *
- * De los seis criterios que estas tres funciones cubren, el que justifica el archivo es
+ * De los seis criterios que estas puras cubren, el que justifica el archivo es
  * AC6: en macOS `Ctrl`+click ES el click derecho, y este repo se desarrolla en Windows,
  * donde ese cruce no se puede ver a ojo. El test es la única forma de atraparlo.
  */
@@ -34,7 +34,11 @@ import type { PlacedPiece } from '../domain/types/board.types.ts';
  * arriba desde `0` devolvería `-1` y `rotateN` recibiría un índice que no existe.
  *
  * Un `deltaY` de 0 no rota. Llega de verdad —un scroll horizontal puro con `deltaX`
- * deja `deltaY` en 0— y girar ahí sería rotar sin que nadie lo haya pedido.
+ * deja `deltaY` en 0— y girar ahí sería rotar sin que nadie lo haya pedido. El cableado
+ * de `App.tsx` además **sale antes** en ese caso, por un motivo que esta pura no puede
+ * ver: el nodo que escucha la rueda es el `overflow-x-auto` con el que se recorre la
+ * grilla debajo de `md`, así que hacerle `preventDefault` a un gesto horizontal sería
+ * dejar sin scroll al único elemento que lo tiene.
  */
 export function rotacionPorRueda(rotation: number, deltaY: number): number {
   const delta = deltaY > 0 ? 1 : deltaY < 0 ? -1 : 0;
@@ -82,6 +86,9 @@ export function abreTapLimpio(e: EventoDeModificador): boolean {
  *    porque el `Ctrl`+click de macOS necesita que el `keyup` sea el que alterna (D2).
  * 4. **La barra sigue en `keydown`** — es donde el navegador scrollea, así que es el
  *    único momento en que un `preventDefault` sirve de algo.
+ *
+ * Lo que esta función NO contesta es si hay que hacer `preventDefault`: son dos
+ * preguntas distintas y las separa la guarda 2. Ver `frenaElDefault`.
  */
 export function accionDeTecla(e: EventoDeTecla): Accion | null {
   if (e.targetEsControl) return null;
@@ -92,6 +99,29 @@ export function accionDeTecla(e: EventoDeTecla): Accion | null {
   if (e.key === ' ') return e.tipo === 'keydown' ? ACCION.transporte : null;
 
   return null;
+}
+
+/**
+ * Si el navegador **no** puede quedarse el evento entero.
+ *
+ * Es una pregunta distinta de la de `accionDeTecla` aunque parezca la misma, y las
+ * separa un solo caso: la barra con auto-repeat. Ahí `accionDeTecla` devuelve `null`
+ * —mantenerla apretada no tiene que alternar el transporte treinta veces por segundo—
+ * pero el default sigue vivo, porque **cada `keydown` repetido trae el suyo** y el de
+ * la barra es scrollear. Fundidas en una sola pregunta, un tap un poco largo arrancaba
+ * el transporte una vez y después scrolleaba la página a la cadencia de repetición del
+ * sistema, que es justo lo que AC7 dice que no pasa.
+ *
+ * `targetEsControl` la veta igual que a la acción, y por el mismo motivo de D4: si el
+ * foco está sobre un `<button>` o un `<input>`, el evento es del navegador entero y no
+ * a medias — es lo que deja que la barra active el control armado sin un `blur()` a
+ * mano.
+ *
+ * Los modificadores no aparecen acá: `Shift` y `Control` sueltos no tienen ningún
+ * default que frenar, ni al bajar ni al soltar.
+ */
+export function frenaElDefault(e: EventoDeTecla): boolean {
+  return !e.targetEsControl && e.key === ' ' && e.tipo === 'keydown';
 }
 
 /**
