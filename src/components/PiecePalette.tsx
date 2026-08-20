@@ -92,32 +92,22 @@ export default function PiecePalette({ orientacion, transporte }: Props) {
           <button onClick={onMirror} className={`px-3 py-1 rounded ${mirror?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{mirror? 'ON':'OFF'}</button>
         </div>
         {/* El click MUDO del recorrido, con el mismo idioma que Reflexion: activo en
-            oscuro. Es un interruptor de MEZCLA y no del modelo — el recorrido
-            sigue siendo el mismo con los clicks apagados, solo que no se oye. El
-            spec 009 lo previo asi en su tabla de riesgos ("es un parametro suelto:
-            si molesta, se baja o se apaga sin tocar el modelo").
+            oscuro. Es un interruptor de MEZCLA y no del modelo — el recorrido sigue
+            siendo el mismo con los clicks apagados, solo que no se oye.
 
-            Dijo "Clicks mudos" desde el spec 011 y hasta el 015, y el motivo de la
-            palabra "mudos" SIGUE VALIENDO aunque la palabra se haya ido: el recorrido
-            tiene DOS clases de cruce y este boton apaga solo una. El cruce sobre una
-            celda ocupada suena su nota y no se apaga, porque es modelo y no mezcla
-            (D6) — apagarlo seria silenciar parte de lo que el tablero dice. La
-            etiqueta nueva tampoco puede prometer eso.
+            **Apaga solo una de las dos clases de cruce.** El cruce sobre una celda
+            ocupada suena su nota y no se apaga, porque es modelo y no mezcla (D6):
+            apagarlo seria silenciar parte de lo que el tablero dice. Por eso la etiqueta
+            dice QUE SE OYE cuando esta encendido —el recorrido, y la parte de el que pasa
+            por celdas vacias— y no nombra al click: desde el 015 no es un click sino una
+            campana de altura fija, y con el default en OFF un "Clicks mudos: OFF" no
+            dejaria saber si apaga el click o apaga el mute.
 
-            Cambia por el default (D7 del 015). "Clicks mudos" con ON/OFF ya era
-            retorcido —un click *mudo* que esta *encendido*— y con el default en OFF lo
-            primero que se ve del control es un apagado que no se sabe si apaga el click
-            o apaga el mute. La etiqueta nueva dice QUE SE OYE cuando esta encendido, en
-            el idioma que el instrumento ya usa desde el 009: el recorrido, y la parte
-            de el que pasa por celdas vacias. Y ademas ya no dice "click", que desde el
-            015 tampoco es cierto: es una campana de altura fija.
-
-            Y ojo con el motivo por el que nacio: existia para tapar los golpes sordos
-            que produce cruzar una pieza, o sea el problema que el 011 arregla. Su
-            `T070` propuso borrarlo por eso y quedo cerrado con un "no" en el 015: con
-            el default apagado este boton es la unica forma de ENCENDER el recorrido,
-            asi que borrarlo lo dejaria inalcanzable. La historia se conserva; lo que
-            cambio es la conclusion.
+            **Y no se puede borrar**: con el default apagado este boton es la unica forma
+            de ENCENDER el recorrido, asi que borrarlo lo dejaria inalcanzable. La
+            propuesta de borrarlo existio y quedo cerrada con un "no"; la cronica de las
+            tres etiquetas y de esa decision esta en `specs/revisiones.md`, pase de
+            comentarios del 022.
 
             Es del TRANSPORTE y sin embargo lo renderiza este archivo: cae entre dos
             bloques de orientacion, asi que llevarselo a `PanelDeTransporte` reordenaria

@@ -419,3 +419,87 @@ sin spec en [deuda.md](./deuda.md).
   partición: **la decisión vive en el archivo sin `use-` y el cableado en el que lo tiene**, y mandar
   el segundo a otra carpeta parte cada par en dos lugares por una convención de nombre. `hooks/` queda
   reservado para un hook que no sea el cableado de ningún módulo — y sigue sin existir.
+
+## 2026-08-20 — El pase de comentarios del spec 022
+
+Lo que sale de acá para abajo **estaba en `src/`** y se mudó, no se borró: es la crónica de cómo se
+llegó a cada decisión, separada de la restricción que hoy obliga al código a ser así — que se quedó
+donde estaba, con un puntero a esta entrada. El criterio está en
+[`docs/guides/conventions.md`](../docs/guides/conventions.md#el-eje-del-tiempo-restricción-vigente-contra-crónica).
+Sin objetivo porcentual y con la regla de que ante la duda se queda: de los seis bloques que se
+miraron, cuatro se partieron en dos y dos se dejaron intactos.
+
+### El default de los clicks del recorrido, y sus tres etiquetas (`App.tsx` y `PiecePalette.tsx`)
+
+El flag `clicks` **pasó por los dos estados** y el argumento del que venía sigue siendo bueno, así que
+conviene que quede escrito.
+
+Hasta el spec 015 venía **encendido**, por D4 del 009: sin clicks un salto largo por celdas vacías es un
+silencio mudo y el recorrido se vuelve inaudible. Ese argumento no se negó nunca — está medido y es
+grande: en un tablero de 3 piezas el **44 %** de los eventos del ciclo son clicks, así que apagarlos
+apaga casi la mitad de lo que el tablero dice. Lo que cambió es **quién decide**: el default lo elige
+quien escucha el instrumento, y con el click en ruido blanco molestaba. Con la campana del 015 puede
+volver a `true`.
+
+La etiqueta del botón cambió dos veces por el mismo movimiento. Dijo **«Clicks mudos»** desde el spec
+011 hasta el 015, y el motivo de la palabra «mudos» sigue valiendo aunque la palabra se haya ido: el
+recorrido tiene dos clases de cruce y el botón apaga sólo una. Con el default dado vuelta a `false`,
+«Clicks mudos» con un ON/OFF quedaba retorcido dos veces —un click *mudo* que está *encendido*, y un
+apagado del que no se sabe si apaga el click o apaga el mute—, así que pasó a **«Recorrido en el
+vacío»**, que dice qué se oye cuando está encendido en el idioma que el instrumento usa desde el 009. Y
+además ya no dice «click», que desde el 015 tampoco es cierto: es una campana de altura fija.
+
+Y el botón nació para tapar los golpes sordos de cruzar una pieza, o sea **el problema que el 011
+arregla**. Su `T070` propuso borrarlo por eso, y el 015 lo cerró con un «no»: con el default apagado el
+botón es la única forma de **encender** el recorrido, así que borrarlo lo dejaría inalcanzable. La
+historia se conserva; lo que cambió es la conclusión.
+
+### El ciclo de una sola pieza (`domain/sequence.ts`)
+
+El plan del spec 009 decía que el ciclo de una pieza sola era «el salto de la pieza a sí misma», de la
+salida (grado 4) a la entrada (grado 0). **Se cambió después de escucharlo**: con la `Z` en
+`(0,1)(1,1)(1,0)(2,0)(3,0)` ese salto mide 3 y su camino era `[[2,0],[1,0]]`, o sea que los dos clicks
+caían **sobre la propia pieza que acababa de sonar**. No se oía un recorrido —no hay a dónde ir— sino
+dos golpes encima del arpegio.
+
+El spec 011 le sacó el síntoma y no el motivo: `routeBetween` rodea la pieza en vez de pisarla, así que
+hoy esos clicks caerían en celdas vacías. Siguen sobrando, y el que se queda en el código es el motivo:
+el recorrido existe **entre** piezas.
+
+### El esquema de columnas de la paleta (`PanelDeOrientacion.tsx`)
+
+El esquema **se remidió entero para el spec 016 y no se heredó**: la cuenta anterior estaba hecha sobre
+la letra más el punto de color, y ninguno de los dos gobierna ya el ancho — hoy manda la caja de la
+miniatura, que no depende ni de la pieza ni de la orientación, así que el peor caso dejó de ser el `W` y
+pasó a ser el mismo para las doce.
+
+Lo que sí se heredó es la **métrica**, que es la que atrapó el bug la vez pasada: con el esquema viejo el
+padding efectivo llegaba a **-4,6 px a 768**, o sea la letra cruzando su propio borde. Y a `md` el punto
+más apretado del rango era el mismo entonces que ahora, que es lo que hace que la tabla de viewports se
+tenga que leer completa y no en su extremo ancho.
+
+### El punto de color de los botones de pieza (`PanelDeOrientacion.tsx`)
+
+Hasta el spec 016 la identidad de la pieza entraba en el botón como un **punto de 8 px al costado de la
+letra**. Con la forma pintada del color de la pieza, el punto decía lo mismo dos veces y se fue. De él
+se heredó el **borde** de las celdas de la miniatura, y lo que **no** se heredó es su color fijo: el
+punto vivía con `slate-400` porque tenía que verse sobre los dos fondos del botón, y la miniatura
+resuelve eso invirtiendo el borde con el estado — que es la parte que se quedó en el código, con sus
+números de contraste.
+
+### El transporte antes de ser un botón (`PanelDeTransporte.tsx`)
+
+Antes del spec 008 el transporte eran **dos controles**: un checkbox que decidía si sonaba y un botón que
+arrancaba el reloj, y ninguno de los dos mostraba si el reloj estaba corriendo. Los dos se fundieron en
+un play/pausa con estado, y de ahí sale la regla que se quedó: el icono **es** el estado.
+
+### Los dos bloques que se dejaron intactos, y por qué
+
+- El docblock de `audio/types/scheduler.types.ts` sobre por qué la celda no cruza el borde de capa. Se
+  lee como historia —«de las dos razones que había sobrevive una sola»— pero las dos mitades son
+  restricciones de hoy: una es el override de eslint, y la otra explica por qué el número MIDI **sí**
+  cruza. Y las dos salidas fáciles que descarta (duplicar `Cell`, aflojar el linter) siguen siendo las
+  dos que alguien va a volver a proponer.
+- El docblock de `components/route-source.ts` sobre por qué se guarda la tabla por offset y no la
+  `Sequence` cruda. Nombra el spec 010 y el spec 014, pero cada párrafo justifica una línea de código
+  que hoy tiene que ser así.

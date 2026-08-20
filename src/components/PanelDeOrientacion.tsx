@@ -19,19 +19,16 @@ import type { PropsDeOrientacion } from './types/panel.types.ts';
 export default function PanelDeOrientacion({ orientacion }: { orientacion: PropsDeOrientacion }) {
   const { selected, rotation, mirror, onSelect } = orientacion;
   return (
-    /* El esquema de columnas se REMIDIO entero para el spec 016 y no se hereda: la
-       cuenta anterior estaba hecha sobre la letra mas el punto de color, y ninguno
-       de los dos gobierna ya el ancho. Hoy el que manda es la caja de la miniatura,
-       que mide 5 × `MINI_CELL_PX` = 40 px y **no depende ni de la pieza ni de la
-       orientacion** — asi que el peor caso dejo de ser el `W` y pasa a ser el mismo
+    /* El ancho lo gobierna la caja de la miniatura, que mide 5 × `MINI_CELL_PX` = 40 px
+       y **no depende ni de la pieza ni de la orientacion**: el peor caso es el mismo
        para las doce.
 
-       Lo que si se hereda es la METRICA, que es la que atrapo el bug la vez pasada:
-       el `1fr` no produce scroll —el contenido se sale del PADDING del boton, que
-       tiene `overflow: visible`— asi que lo que hay que mirar es el **padding
-       efectivo**, `(pista - 42) / 2` con los 40 de la caja mas 2 de borde. Con el
-       esquema viejo llegaba a **-4,6 px a 768**, o sea la letra cruzando su propio
-       borde, y eso no se ve como desborde sino como aire que desaparece.
+       La METRICA a mirar es el **padding efectivo**, `(pista - 42) / 2` con los 40 de la
+       caja mas 2 de borde, y no el scroll: el `1fr` no produce scroll —el contenido se
+       sale del PADDING del boton, que tiene `overflow: visible`— asi que un desborde no
+       se ve como desborde sino como aire que desaparece. Es la metrica que atrapo el bug
+       del esquema anterior; la cronica esta en `specs/revisiones.md`, pase de
+       comentarios del 022.
 
        La premisa de la tabla es el INTERIOR de la tarjeta, que lo fija su
        `md:col-span-4` — el reparto de columnas esta argumentado en `PiecePalette.tsx`,
@@ -45,11 +42,10 @@ export default function PanelDeOrientacion({ orientacion }: { orientacion: Props
          1280+       4/12      349,3        6        51,5      4,8
 
        **Seis columnas NO andan a `md`**: ahi la tarjeta cae a 210,7 px de interior
-       —es el punto mas apretado de todo el rango, igual que la vez pasada— y la
-       pista queda en 28,4, o sea **-6,8 px de padding efectivo**. Por eso el
-       esquema vuelve a ser escalonado, con el ultimo escalon en `xl` y no en `lg`:
-       a 1024 la tarjeta todavia mide 296 y seis columnas dejarian 0,35 px, que es
-       positivo por casualidad y no por margen.
+       —el punto mas apretado de todo el rango— y la pista queda en 28,4, o sea
+       **-6,8 px de padding efectivo**. Por eso el esquema es escalonado, con el
+       ultimo escalon en `xl` y no en `lg`: a 1024 la tarjeta todavia mide 296 y seis
+       columnas dejarian 0,35 px, que es positivo por casualidad y no por margen.
 
        Y seis arriba de todo tambien por el ALTO, que es lo que decide el layout de
        la fila entera: seis columnas son dos filas de botones en vez de tres, y la
@@ -57,19 +53,16 @@ export default function PanelDeOrientacion({ orientacion }: { orientacion: Props
        le deja aire muerto. Ver el docblock de `MINI_CELL_PX`. */
     <div className="grid grid-cols-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
       {/* El fondo del boton NO toma el color de pieza: ese fondo es el canal de
-          "seleccionada" y pintarlo dejaria a la paleta sin decir cual esta activa.
-          Eso no cambia — lo que cambia es donde entra la identidad.
+          "seleccionada" y pintarlo dejaria a la paleta sin decir cual esta activa. La
+          identidad entra por la FORMA, pintada del color de la pieza.
 
-          Hasta el spec 016 entraba como un punto de 8 px al costado de la letra.
-          Con la forma pintada del color de la pieza, el punto decia lo mismo dos
-          veces y se fue. Lo que SI se hereda es su borde: varios de los 12 colores
-          (el amarillo de `V`, el lima de `F`) casi no se ven contra el gris claro
-          del boton sin apoyarse, asi que las celdas de la miniatura lo llevan — que
-          ademas es el idioma del tablero desde el 007, donde todas las baldosas
-          tienen borde por el mismo motivo. Lo que NO se hereda es su color fijo:
-          el punto vivia con `slate-400` porque tenia que verse sobre los dos fondos
-          del boton, y la miniatura resuelve eso invirtiendo el borde con el estado.
-          Los numeros estan abajo, en la celda.
+          Las celdas de la miniatura llevan borde: varios de los 12 colores (el amarillo
+          de `V`, el lima de `F`) casi no se ven contra el gris claro del boton sin
+          apoyarse, y ademas es el idioma del tablero desde el 007, donde todas las
+          baldosas tienen borde por el mismo motivo. El color del borde se INVIERTE con el
+          estado, y los numeros estan abajo, en la celda. Como se llego a esta forma —el
+          punto de color que habia antes del 016— esta en `specs/revisiones.md`, pase de
+          comentarios del 022.
 
           La letra se queda abajo y en chico. No es decoracion: es el vocabulario con
           el que se habla de las piezas en `describe_piece`, en el `title` del tablero

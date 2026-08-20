@@ -27,28 +27,25 @@ export default function PanelDeTransporte({ transporte }: { transporte: PropsDeT
             al arrastrar, que es para lo que estaba el ancho fijo. */}
         <span className="tabular-nums w-16 text-right whitespace-nowrap">{tempo} <span className="text-slate-500">bpm</span></span>
       </div>
-      {/* Un solo boton para el transporte: antes el checkbox decidia si sonaba y
-          este boton arrancaba el reloj, y ninguno de los dos mostraba si el reloj
-          corria. El icono es el estado —lo que se ve es lo que pasa al apretar— y
-          el color lo repite para que se lea de un vistazo.
+      {/* Un solo boton para el transporte, y **el icono ES el estado**: lo que se ve es
+          lo que pasa al apretar, y el color lo repite para que se lea de un vistazo.
 
           Solo el icono, sin la palabra: ▶ y ⏸ son el vocabulario universal del
-          transporte y no necesitan glosa. Medido, la etiqueta ademas no entraba:
-          con "▶ Reproducir" el boton pedia 119 px de min-content contra los 148
-          del interior de la tarjeta a 768 —el ancho mas apretado, el mismo que
-          gobierna la grilla de piezas de arriba—, asi que junto a Reset (62 px +
-          8 de gap) la fila desbordaba 23 px y el texto envolvia a dos lineas.
-          Con el icono solo el boton mide 37,8 px, asi que en esos 148 sobran 40.
+          transporte y no necesitan glosa. Y medido, la etiqueta no entra: con
+          "▶ Reproducir" el boton pide 119 px de min-content contra los 148 del interior
+          de la tarjeta a 768 —el ancho mas apretado, el mismo que gobierna la grilla de
+          piezas— asi que junto a Reset (62 px + 8 de gap) la fila desborda 23 px y el
+          texto envuelve a dos lineas. Con el icono solo mide 37,8 px y en esos 148 sobran
+          40.
 
-          `aria-label` porque al sacar el texto el boton se queda sin nombre
-          accesible: el glifo no lo es. `title` para que el puntero tambien lo diga.
+          `aria-label` porque al sacar el texto el boton se queda sin nombre accesible: el
+          glifo no lo es. `title` para que el puntero tambien lo diga.
 
-          Corriendo usa el `bg-slate-900 text-white` con el que la tarjeta marca lo
-          activo en Rotacion y Reflexion: es el mismo idioma, aplicado al mismo
-          concepto. En pausa NO cae a `bg-slate-100`, que es el "apagado" de esos
-          dos, porque al lado tiene a Reset en `bg-slate-200`: el boton principal
-          del instrumento quedaria indistinguible del secundario. Se queda con el
-          verde que ya tenia, que ademas es lo que un transporte pide leer como
+          Corriendo usa el `bg-slate-900 text-white` con el que la tarjeta marca lo activo
+          en Rotacion y Reflexion: es el mismo idioma, aplicado al mismo concepto. En
+          pausa NO cae a `bg-slate-100`, que es el "apagado" de esos dos, porque al lado
+          tiene a Reset en `bg-slate-200`: el boton principal del instrumento quedaria
+          indistinguible del secundario. El verde es lo que un transporte pide leer como
           "apreta esto para que suene". */}
       <div className="flex gap-2">
         <button
