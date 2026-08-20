@@ -220,7 +220,13 @@
       Queda sin marcar solo porque conviene mirarlo en la revisión: es cambio de contrato de la tool
 
 ## Seguimiento (no bloquea)
-- [ ] T070 **Borrar el botón de Clicks** (D6). Nació para tapar los golpes sordos que este spec arregla; si
-      con `P` y floritura el recorrido deja de molestar, se queda sin razón de ser. Commit propio
+- [x] T070 **Borrar el botón de Clicks** (D6). Nació para tapar los golpes sordos que este spec arregla; si
+      con `P` y floritura el recorrido deja de molestar, se queda sin razón de ser. Commit propio.
+      **Cerrada con un "no" por el spec 015** (D5 y AC7): el botón se queda. El 015 dio vuelta el
+      default —los clicks nacen apagados—, así que el botón pasó a ser la única forma de **encender**
+      el recorrido en vez de la única forma de apagarlo, y borrarlo lo dejaría inalcanzable. Está
+      medido lo que se perdería: en un tablero de 3 piezas el 44 % de los eventos del ciclo son
+      clicks. La premisa de la tarea además quedó vieja por otro lado — el 015 cambió el timbre, así
+      que el botón ya no apaga los golpes sordos que la motivaron sino una campana de altura fija
 - [ ] T071 Los tramos de ida y vuelta se pisan entre sí (`research.md` §1). Con pesos pasa menos, no
       desaparece
