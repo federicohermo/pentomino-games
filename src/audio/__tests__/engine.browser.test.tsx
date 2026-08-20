@@ -214,18 +214,33 @@ describe('los accesores del motor', () => {
 
 describe('el reloj', () => {
   it('startClock es idempotente y stopClock tambien', async () => {
+    // Se cuentan los `setInterval` y no solo `clockRunning()`: con la guarda borrada el
+    // reloj SIGUE diciendo que corre —porque `timer` no es null— y lo que queda roto es
+    // un segundo timer huerfano que agenda cada onset dos veces contra el mismo
+    // `scheduledUntil`. Un pase de mutacion lo confirmo: sin este conteo, borrar
+    // `if (timer !== null) return` dejaba el test en verde.
+    const intervalos = vi.spyOn(window, 'setInterval');
     const e = await conReloj();
+
     e.startClock();
     expect(e.clockRunning()).toBe(true);
-    // La segunda llamada NO abre un segundo `setInterval`: dos ticks contra el mismo
-    // `scheduledUntil` agendarian cada onset dos veces.
+    expect(intervalos).toHaveBeenCalledTimes(1);
+
     e.startClock();
     expect(e.clockRunning()).toBe(true);
+    expect(intervalos, 'la segunda llamada no puede abrir un segundo timer').toHaveBeenCalledTimes(1);
+
+    const limpiados = vi.spyOn(window, 'clearInterval');
+    e.stopClock();
+    expect(e.clockRunning()).toBe(false);
+    expect(limpiados).toHaveBeenCalledTimes(1);
 
     e.stopClock();
     expect(e.clockRunning()).toBe(false);
-    e.stopClock();
-    expect(e.clockRunning()).toBe(false);
+    expect(limpiados, 'parar dos veces no limpia dos veces').toHaveBeenCalledTimes(1);
+
+    intervalos.mockRestore();
+    limpiados.mockRestore();
   });
 
   it('reanuda el contexto suspendido al arrancar', async () => {

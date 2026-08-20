@@ -239,6 +239,13 @@ describe('Playhead — el velo', () => {
     const capa = capas(container)[0];
     expect((capa.firstElementChild as HTMLElement).style.display).toBe('none');
 
+    // La cabeza se corre ANTES de rearmar, y eso no es decorado: con la cabeza todavia
+    // parada en la celda, el bucle de estreno la vuelve a destapar en el mismo cuadro y
+    // el test pasaria aunque el rearmado no recordara nada. Lo verifico un pase de
+    // mutacion — borrar la linea de `estrenadas` sobrevivia sin este paso.
+    fuente.offset = null;
+    await cuadro();
+
     // Entra otra pieza: el velo se rearma con las dos.
     fuente.velo = [tapada('F', 1, 0, 0), tapada('L', 8, 4, 6)];
     await cuadro();

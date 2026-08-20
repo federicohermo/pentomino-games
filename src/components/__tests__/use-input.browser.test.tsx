@@ -143,10 +143,28 @@ describe('useRuedaRota', () => {
 
     const e = rueda(el, { deltaY: 120 });
     expect(alRotar).toHaveBeenCalledWith(120);
-    // La linea que separa "anda" de "parece que anda": con `wheel` registrado por una
-    // prop de JSX el listener seria PASIVO y esto seria `false`, con la pagina
-    // scrolleando debajo de la pieza que rota.
+    // La linea que separa "anda" de "parece que anda", y que **si** distingue las dos:
+    // verificado con un pase de mutacion —cambiar el registro a `{ passive: true }`
+    // pone este `expect` en rojo—, porque Chromium respeta la semantica `passive`
+    // tambien para un evento sintetico. Con `wheel` registrado por una prop de JSX el
+    // listener seria pasivo, `preventDefault()` un no-op, y la pagina scrollearia
+    // debajo de la pieza que rota.
     expect(e.defaultPrevented).toBe(true);
+  });
+
+  it('y el registro lo dice explicito, que es lo que hace el trato visible', async () => {
+    // La afirmacion de arriba es la del COMPORTAMIENTO; esta es la de la FORMA, y las
+    // dos valen la pena porque fallan por motivos distintos: si algun dia alguien mueve
+    // la rueda a una prop `onWheel`, la de arriba falla con un `defaultPrevented` en
+    // false —que no dice por que— y esta falla diciendo que ya no hay `addEventListener`.
+    const el = tablero();
+    const registro = vi.spyOn(el, 'addEventListener');
+    await renderHook(() => useRuedaRota({ current: el }, vi.fn(), tap()));
+
+    const wheel = registro.mock.calls.find(([tipo]) => tipo === 'wheel');
+    expect(wheel, 'la rueda tiene que ir por addEventListener y no por una prop').toBeDefined();
+    expect(wheel![2]).toEqual({ passive: false });
+    registro.mockRestore();
   });
 
   it('Ctrl+rueda es el zoom del navegador: no rota, no frena el default', async () => {

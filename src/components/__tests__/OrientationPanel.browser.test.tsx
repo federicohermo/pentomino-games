@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { page } from 'vitest/browser';
 import OrientationPanel from '../OrientationPanel.tsx';
-import { MINI_BOX } from '../constants/layout.constants.ts';
+import { MINI_BOX, MINI_CELL_PX } from '../constants/layout.constants.ts';
 import { PIECE_COLOR } from '../constants/palette.constants.ts';
 import { SHAPES } from '../../domain/constants/pieces.constants.ts';
 import { REGIMEN } from '../../domain/constants/music.constants.ts';
@@ -85,14 +85,22 @@ describe('OrientationPanel', () => {
     }
   });
 
-  it('la caja es de 5×5 pistas siempre, ocupe lo que ocupe la pieza', async () => {
+  it('la caja mide 5 × MINI_CELL_PX, y no lo que ocupe la pieza', async () => {
+    // Se afirma el TAMANO y no solo la cantidad de pistas: con `min-content` las cinco
+    // pistas siguen existiendo pero colapsan a cero, y el test de "rotar no mueve nada"
+    // sigue pasando porque colapsan todas igual. Lo verifico un pase de mutacion — ese
+    // cambio sobrevivia sin esta linea.
     const { container } = await render(<OrientationPanel orientacion={orientacion()} />);
     for (const boton of container.querySelectorAll('button')) {
-      const caja = boton.querySelector('div.grid')!;
+      const caja = boton.querySelector('div.grid')! as HTMLElement;
       // 25 celdas dibujadas, llenas o no: es lo que hace que el tamano no dependa de
       // que celdas esten ocupadas.
       expect(caja.children.length).toBe(MINI_BOX * MINI_BOX);
-      expect(getComputedStyle(caja).gridTemplateColumns.split(' ').length).toBe(MINI_BOX);
+
+      const pistas = getComputedStyle(caja).gridTemplateColumns.split(' ');
+      expect(pistas.length).toBe(MINI_BOX);
+      for (const p of pistas) expect(Math.round(parseFloat(p))).toBe(MINI_CELL_PX);
+      expect(Math.round(caja.getBoundingClientRect().width)).toBe(MINI_BOX * MINI_CELL_PX);
     }
   });
 
