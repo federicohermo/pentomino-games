@@ -1,4 +1,4 @@
-# Spec 028 — Lo que no se cubre no se mergea
+# Spec 029 — Lo que no se cubre no se mergea
 
 > Sin ticket: este repo no tiene tablero de Jira. Ver `specs/README.md`.
 >

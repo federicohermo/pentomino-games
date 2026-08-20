@@ -1,4 +1,4 @@
-# Research — 028
+# Research — 029
 
 Todo lo de acá está **medido** el 2026-08-20 en Windows 11, Node v22.18.0, pnpm 10.33.0, con la
 caché de vitest caliente. Nada está estimado.

@@ -1,4 +1,4 @@
-# Tasks — 028
+# Tasks — 029
 
 Formato en [../README.md](../README.md). `[P]` = paralelizable dentro de su bloque · `[M]` = pide una
 persona y no bloquea el cierre.
@@ -79,7 +79,7 @@ persona y no bloquea el cierre.
 - [ ] T054 `CLAUDE.md`: `verify` pasa a cinco nodos, con la medición nueva de serie contra paralelo y el segundo motivo del ancla `$` — AC12
 - [ ] T055 `docs/guides/quickstart.md`: el paso de `playwright install chromium` antes del primer `verify`
 - [ ] T056 `specs/deuda.md`: volver a mirar el ítem de tests de UI que el 024 dejó reescrito — con el 100 % la mitad abierta cambia de forma otra vez
-- [ ] T057 `specs/log.md`: mover el 028 a `Implementado` y anotar la dependencia con el 023 y el 024
+- [ ] T057 `specs/log.md`: mover el 029 a `Implementado` y anotar la dependencia con el 023 y el 024
 - [ ] T058 `specs/revisiones.md`: anotar qué salió distinto de lo previsto
 - [ ] T059 [M] Abrir la app y confirmar que suena igual — el spec no toca comportamiento salvo si T017 obliga a borrar una rama muerta
 
