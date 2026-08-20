@@ -90,8 +90,11 @@ Las de cada capa se cargan solas al tocar sus archivos (`.claude/rules/`). Estas
 porqué de cada una está en [docs/guides/conventions.md](./docs/guides/conventions.md). En
 `.claude/skills/` viven además las especializaciones de `/spec-review` y `/spec-implement`: esos
 skills globales son el piso genérico, y las locales cablean las rutas de `specs/` y el formato de
-tarea del repo. `/spec-implement-batch` no tiene contraparte global y es de acá: reparte un **lote** de
-specs en carriles —uno por cadena de dependencias— y corre cada carril en su worktree.
+tarea del repo. Los dos `-batch` no tienen contraparte global y son de acá:
+`/spec-review-batch` revisa un **lote** en paralelo —un agente por spec, sin worktrees, más uno de
+coherencia que mira el lote entero y caza las contradicciones entre specs—; `/spec-implement-batch` reparte el lote en carriles —uno
+por cadena de dependencias— y corre cada carril en su worktree. En ese orden: un cruce detectado como
+texto cuesta un párrafo y detectado en dos carriles cuesta un rebase.
 
 Estas son las reglas:
 
