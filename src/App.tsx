@@ -1,8 +1,5 @@
-import { useMemo, useState, useEffect, useRef, useCallback } from "react";
-import {
-  playNow, setSequence, setBpm, setClicksAudible,
-  startClock, stopClock, clockRunning,
-} from "./audio/engine.ts";
+import { useMemo, useState, useRef, useCallback } from "react";
+import { playNow } from "./audio/engine.ts";
 import { DEFAULT_BPM } from "./audio/constants/engine.constants.ts";
 import { rotateN, reflect } from "./domain/transform.ts";
 import { arpeggioFor } from "./domain/music.ts";
@@ -17,12 +14,13 @@ import type { RegimenDeRotacion } from "./domain/types/music.types.ts";
 import PiecePalette from "./components/PiecePalette.tsx";
 import Board from "./components/Board.tsx";
 import Spectrum from "./components/Spectrum.tsx";
-import { encolar } from "./components/route-source.ts";
+import { alternarTransporte } from "./components/motor.ts";
+import { MOTOR, frenarTransporte, useMotorSincronizado } from "./components/use-motor.ts";
+import { useAtajosDeTeclado, useRuedaRota } from "./components/use-entrada.ts";
 import {
-  rotacionPorRueda, accionDeTecla, frenaElDefault, abreTapLimpio, reflejaElContextMenu,
-  accionDeClick, esLaPiezaEnLaMano,
+  rotacionPorRueda, reflejaElContextMenu, accionDeClick, esLaPiezaEnLaMano,
 } from "./components/input.ts";
-import { ACCION, EDICION } from "./components/constants/input.constants.ts";
+import { EDICION } from "./components/constants/input.constants.ts";
 
 /**
  * Pentomino Music — prototipo de instrumento, no un juego con reglas de resolucion.
@@ -35,9 +33,16 @@ import { ACCION, EDICION } from "./components/constants/input.constants.ts";
  * por el camino mas corto entre ellas (spec 009, `domain/sequence.ts`), no por el orden
  * en que se fueron colocando.
  *
- * Este archivo es el shell: estado, derivados, handlers y efectos. La geometria, la
- * musica y las reglas del tablero viven en `src/domain/`; el sonido en
- * `src/audio/`; y el JSX, en los cuatro componentes de `src/components/`.
+ * Este archivo es el shell: estado, derivados, handlers y la composicion — y desde el
+ * spec 022, CERO efectos. La geometria, la musica y las reglas del tablero viven en
+ * `src/domain/`; el sonido en `src/audio/`; el JSX, en los componentes de
+ * `src/components/`; y el puente con el motor, en `components/use-motor.ts` (los cuatro
+ * de reconciliacion) y `components/use-entrada.ts` (los dos de entrada del spec 013).
+ *
+ * Que los seis salieran de aca no fue prolijidad: en un `.tsx`
+ * `react-refresh/only-export-components` prohibe exportar cualquier cosa que no sea el
+ * componente, asi que nada de lo que viviera en este archivo podia testearse. Es el
+ * mismo mecanismo por el que nacio `domain/`.
  *
  * Ver docs/architecture/modelo-musical.md y docs/architecture/audio.md.
  */
@@ -62,8 +67,9 @@ export default function App(){
   // borrarlo y quedó cerrado con un "no"—: pasa a ser la única forma de encender el
   // recorrido en vez de la única forma de apagarlo.
   //
-  // El default vive acá y en `clicksAudible` de `engine.ts`, que este efecto pisa al
-  // montar. Los dos dicen `false`: el mismo valor declarado dos veces no puede discrepar.
+  // El default vive acá y en `clicksAudible` de `engine.ts`, que el efecto de
+  // `use-motor.ts` pisa al montar. Los dos dicen `false`: el mismo valor declarado dos
+  // veces no puede discrepar.
   //
   // Apaga solo esos: el cruce por celda ocupada suena su nota y no lo gobierna este
   // flag, porque es modelo y no mezcla (D6 del spec 011).
@@ -95,9 +101,6 @@ export default function App(){
   // estado re-renderizaria el arbol entero por una tecla apretada.
   const tapLimpio = useRef<boolean>(false);
 
-  useEffect(()=>{ setBpm(tempo); }, [tempo]);
-  useEffect(()=>{ setClicksAudible(clicks); }, [clicks]);
-
   const transformedShape = useMemo(()=>{
     let c = SHAPES[selected];
     c = rotateN(c, rotation);
@@ -122,6 +125,14 @@ export default function App(){
   // por su cuenta —`buildSequence`, para el motor— y tener dos copias de la regla era
   // justo lo que hacia falta cuando `PlacedPiece` guardaba sus notas.
   const noteSet = useMemo(()=> arpeggioFor(selected, rotation, mirror, regimen), [selected, rotation, mirror, regimen]);
+
+  // Los cuatro efectos de reconciliación que mantienen al motor mirando este mismo
+  // tablero viven en `components/use-motor.ts` (spec 022), y la llamada va ACÁ y no
+  // arriba con el resto del cableado: `secuencia` es un `const`, así que llamarlo antes
+  // de su `useMemo` la leería en su zona muerta temporal y tiraría un `ReferenceError`
+  // en el primer render. Sigue estando ANTES de los dos hooks de entrada, que es donde
+  // estaban los cuatro efectos, así que el orden de registro no cambia.
+  useMotorSincronizado({ secuencia, placed, tempo, clicks });
 
   // El tablero se edita EN el tablero (spec 014): sobre una pieza ya colocada, y solo con
   // esa misma pieza en la mano, el click la quita y `Alt`+click alterna su muteo. Qué
@@ -174,88 +185,10 @@ export default function App(){
   // lo correcto. Lo que queda es la latencia de pausar, que el motor ya documenta: los
   // 100 ms del lookahead más la cola del arpegio ya agendado.
   function resetBoard(){
-    stopClock();
+    frenarTransporte();
     setPlaying(false);
     setPlaced([]); // el efecto de reconciliación se encarga de vaciar la secuencia
   }
-
-  // Reconcilia la secuencia del motor contra el tablero. `playing` salió de las
-  // dependencias a propósito: la secuencia es función del tablero, no del
-  // transporte, y quien corta o arranca el sonido es `togglePlay` llamando a
-  // `stopClock`/`startClock`. El `clearJobs()` + `if (!playing) return` de antes
-  // era la forma vieja de lograr lo mismo desde acá; con una sola llamada a
-  // `setSequence` deja de hacer falta — colocar o quitar con el transporte
-  // parado igual deja la secuencia lista para cuando arranque.
-  //
-  // `setSequence` no interrumpe el ciclo en curso (D5, spec 009): la secuencia
-  // nueva entra recién al cerrar el circuito activo, así que reordenar el
-  // tablero puede tardar hasta un ciclo completo en escucharse — 7,5 s con 8
-  // piezas a 110 bpm. Es el precio de que el circuito se pueda reordenar entero
-  // sin que el patrón salte a mitad de frase.
-  //
-  // La `Sequence` de `buildSequence` no es la que espera el motor: acá se
-  // proyecta, no se traduce (D7, D8, AC12). `offset`, `notes` y la `note` MIDI del
-  // cruce viajan tal cual; lo que se cae es `pieceId` —el motor no tiene a quién
-  // devolvérselo— y `cell` en los clicks: el motor no puede ver `Cell`, que vive en
-  // `domain/` y el override de eslint sobre `audio/**` lo prohíbe importar incluso
-  // como `import type`. La `note` sí cruza, porque es un número MIDI y el motor habla
-  // MIDI: desde el spec 011 el recorrido puede pisar una celda ocupada y ese cruce
-  // suena su altura (D5), así que ya no alcanza con contar los clicks. Convertirla a
-  // Hz es del motor —lo hace `collectHits`, igual que con `steps.notes`—: acá se
-  // proyecta, y traducir sería justo lo que estas dos líneas no hacen.
-  // Las celdas no se pierden: siguen en la secuencia del dominio, y por eso este efecto
-  // encola en DOS colas con la misma `secuencia`. Leerlas de `placed` —que es lo que
-  // decía este comentario antes del spec 010— no alcanza, y ese es justo el punto de
-  // AC9: `placed` es el tablero de AHORA, o sea la ruta PENDIENTE, mientras que la
-  // cabeza tiene que dibujar la que está sonando. Quien guarda el par es
-  // `components/route-source.ts`, y hace su swap cuando el motor reporta el suyo.
-  //
-  // Las dos colas se encolan desde acá y con la MISMA instancia a propósito: si cada una
-  // llamara a su propio `buildSequence`, el dibujo y el sonido podrían quedar mirando
-  // circuitos distintos sin que nada falle.
-  useEffect(()=>{
-    encolar(secuencia, placed);
-    setSequence({
-      steps: secuencia.steps.map(({ offset, notes }) => ({ offset, notes })),
-      // El ternario y no `({ offset, note })`: con la forma corta el click mudo sale con
-      // la clave `note` PRESENTE y en `undefined`, y la ausencia del campo es justo lo
-      // que dice "celda vacía" (ver el docblock de `Click`). Hoy nadie lo notaría
-      // —`collectHits` compara `=== undefined`— pero es el tercer estado que el tipo
-      // existe para no tener.
-      clicks: secuencia.clicks.map((c) => c.note === undefined ? { offset: c.offset } : { offset: c.offset, note: c.note }),
-      length: secuencia.length,
-    });
-    // `placed` esta en las dependencias aunque `secuencia` ya se derive de el: no agrega
-    // ni una corrida —`secuencia` es un `useMemo` sobre `[placed]`, asi que cambian
-    // juntos— y evita callar la regla de exhaustividad con un disable, que taparia el
-    // dia en que alguien desacople las dos.
-  }, [secuencia, placed]);
-
-  // Al desmontar, frenar el reloj y vaciar la secuencia del motor. La limpieza
-  // sigue siendo sincrónica: si fuera asincrónica, en StrictMode podría
-  // ejecutarse después de que el efecto de arriba ya volvió a agendar, y
-  // pisaría la secuencia nueva con una vacía. Se proyecta `buildSequence([], …)`
-  // en vez de escribir el literal vacío a mano, para no meter la forma de un
-  // dato de dominio en el shell.
-  //
-  // Va `DEFAULT_REGIMEN` y no el `regimen` del estado, y es la unica llamada del
-  // archivo donde fijar uno es correcto: con el tablero vacio `buildSequence` corta en
-  // `n === 0` y devuelve la secuencia vacia sin mirar el regimen, asi que la eleccion
-  // es inerte. Usar el del estado lo metería en las dependencias de un efecto que existe
-  // SOLO para el desmontaje, y entonces la limpieza correria en cada cambio de regimen:
-  // frenaria el reloj y vaciaria la secuencia, que es exactamente lo que AC7 prohibe.
-  useEffect(()=> ()=>{
-    stopClock();
-    const s = buildSequence([], DEFAULT_REGIMEN);
-    setSequence({
-      steps: s.steps.map(({ offset, notes }) => ({ offset, notes })),
-      // Misma proyección que el efecto de arriba, y por el mismo motivo: la ausencia de
-      // `note` es lo que dice "celda vacía". Acá el tablero está vacío y no hay clicks,
-      // pero escribirla distinto invitaría a divergir la próxima vez que se toque una.
-      clicks: s.clicks.map((c) => c.note === undefined ? { offset: c.offset } : { offset: c.offset, note: c.note }),
-      length: s.length,
-    });
-  }, []);
 
   // `useCallback` y no una función suelta desde que el atajo de la barra espaciadora
   // también la llama (spec 013): el efecto del teclado la tiene en sus dependencias, y
@@ -263,109 +196,37 @@ export default function App(){
   // por cada tecla. Con `[playing]`, la identidad cambia exactamente cuando cambia el
   // transporte, que es la dependencia real que el efecto declara.
   const togglePlay = useCallback(()=>{
-    if (playing) stopClock(); else startClock();
-    // El motor es quien sabe si arrancó: startClock() es un no-op silencioso
-    // cuando audio() devuelve null, y sin este chequeo el botón diría "Pausa"
-    // con el reloj parado. Es la falla suave que .claude/rules/audio.md obliga
-    // a chequear en todo llamador, y era lo único que la consulta imperativa
-    // hacía bien antes de este spec.
-    setPlaying(clockRunning());
+    // La decisión —pedir lo contrario de lo que pasa y creerle al motor y no a lo que se
+    // pidió— vive en `alternarTransporte`, donde tiene test. Acá queda el cableado: el
+    // motor real y el `setState` con lo que el motor contestó.
+    setPlaying(alternarTransporte(playing, MOTOR));
   }, [playing]);
 
   // ── Entrada directa (spec 013) ──────────────────────────────────────────────────
-  // Los tres gestos que gobiernan la pieza POR COLOCAR se atan a la mano que ya está
-  // sobre el tablero, para no pagar un viaje al panel por cada cambio de orientación.
-  // La DECISIÓN de cada uno vive en `components/input.ts` —donde se puede testear sin
-  // jsdom— y acá queda solo el cableado.
-
-  // Las dependencias son las REALES —`rotation`, `mirror` y el `togglePlay` que lleva
-  // `playing` adentro— y el efecto se re-suscribe cuando cambian. La alternativa es un
-  // ref con el estado para suscribir una sola vez, que es la optimización que este repo
-  // no necesita: son dos `addEventListener` sobre `window`, no un costo, y el ref
-  // escondería de dónde sale cada valor.
-  useEffect(()=>{
-    // El `target` interactivo se mira acá y no en la pura: `HTMLButtonElement` es un
-    // tipo del DOM, y `input.ts` tiene que poder cargarse en `environment: 'node'`.
-    const esControl = (t: EventTarget | null) =>
-      t instanceof HTMLButtonElement || t instanceof HTMLInputElement;
-
-    const despachar = (e: KeyboardEvent, tipo: 'keydown' | 'keyup') => {
-      const evento = {
-        key: e.key, tipo, repeat: e.repeat,
-        targetEsControl: esControl(e.target),
-        tapLimpio: tapLimpio.current,
-      };
-      // El `preventDefault` va por su PROPIA pregunta y no por «hay acción»: la barra
-      // con auto-repeat no alterna el transporte pero su default sigue siendo scrollear,
-      // y cada `keydown` repetido trae el suyo. Cuando el evento no es nuestro, en
-      // cambio, el navegador tiene que quedárselo entero — es lo que deja que la barra
-      // active el botón que tiene el foco en vez de alternar el transporte dos veces.
-      if (frenaElDefault(evento)) e.preventDefault();
-      const accion = accionDeTecla(evento);
-      if (accion === null) return;
-      if (accion === ACCION.rotar) setRotation((rotation + 1) % 4);
-      else if (accion === ACCION.reflejar) setMirror(!mirror);
-      // El transporte pasa por `togglePlay` y no por `startClock`/`stopClock` sueltos:
-      // ahí vive la consulta a `clockRunning()` que `.claude/rules/audio.md` obliga a
-      // hacer en todo llamador, y abrir una segunda puerta la saltearía.
-      else togglePlay();
-    };
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      // Un modificador ABRE un tap limpio; cualquier otra tecla ENSUCIA el que hubiera.
-      // Con esto `Ctrl`+C no da vuelta la reflexión, que es el uso normal de un
-      // navegador y no el caso raro de apretar la tecla sin querer.
-      tapLimpio.current = abreTapLimpio(e);
-      despachar(e, 'keydown');
-    };
-    const onKeyUp = (e: KeyboardEvent) => despachar(e, 'keyup');
-
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
-    return ()=>{
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
-    };
-  }, [rotation, mirror, togglePlay]);
-
-  // La rueda va por `addEventListener` no pasivo y no por una prop `onWheel`: React
-  // registra `wheel` PASIVO en su contenedor raíz (react-dom 19.1.1), y adentro de un
-  // listener pasivo `preventDefault()` es un no-op que el navegador solo avisa por
-  // consola. Con la prop, la rueda rotaría y la página scrollearía igual — o sea que
-  // parecería andar. Ver el comentario del contenedor en `Board.tsx`.
+  // Los dos efectos viven en `components/use-entrada.ts` desde el spec 022, y reciben
+  // CALLBACKS y no setters: así el día en que la orientación deje de ser dos `useState`
+  // y pase a ser una ranura por pieza, lo que cambia es este bloque y no el hook.
   //
-  // Con el setter funcional este efecto no depende de `rotation` y se suscribe una sola
-  // vez, que es lo contrario del efecto del teclado y por un motivo concreto: acá no hay
-  // ningún valor que el handler tenga que leer.
-  useEffect(()=>{
-    const nodo = boardRef.current;
-    if (!nodo) return;
-    const onWheel = (e: WheelEvent) => {
-      // La rueda ensucia el tap SIEMPRE, y va ANTES de las dos guardas de abajo a
-      // propósito: la rueda que tiene que ensuciarlo es justamente la que sale por la
-      // primera. Con esta línea después del `return` por `ctrlKey`, el `keyup` del
-      // `Ctrl` encontraba el tap limpio y reflejaba la pieza al soltar — o sea que el
-      // gesto que D10 nombra por su nombre («`Ctrl`+rueda hace zoom y no refleja») era
-      // el único que se le escapaba.
-      tapLimpio.current = false;
-      // `Ctrl`+rueda es el zoom del navegador, que es una afordancia de accesibilidad y
-      // no un atajo de conveniencia: el evento se saltea ENTERO, `preventDefault`
-      // incluido, y el navegador hace lo suyo. Un gesto del sistema le gana a uno nuestro.
-      if (e.ctrlKey) return;
-      // Un `deltaY` de 0 es un scroll horizontal puro, que no rota (lo dice también
-      // `rotacionPorRueda`). Sale antes del `preventDefault` porque este nodo es el
-      // `overflow-x-auto` con el que se recorre la grilla debajo de `md`: frenarle el
-      // default sería dejar sin scroll horizontal al único elemento que lo tiene.
-      if (e.deltaY === 0) return;
-      e.preventDefault();
-      setRotation(r => rotacionPorRueda(r, e.deltaY));
-    };
-    // `{ passive: false }` explícito: Chrome asume `passive: true` para `wheel` sobre
-    // window y document, y aunque sobre un elemento el default sigue siendo false,
-    // escribirlo es lo que deja el trato a la vista.
-    nodo.addEventListener('wheel', onWheel, { passive: false });
-    return ()=> nodo.removeEventListener('wheel', onWheel);
-  }, []);
+  // `tapLimpio` se queda ACÁ y viaja a los dos: lo lee el teclado y lo escriben los dos,
+  // así que el ref es de quien los compone. Está argumentado en `use-entrada.ts`.
+
+  // Los dos del teclado se memoizan con sus dependencias REALES y no con `[]`: el efecto
+  // tiene que re-suscribirse cuando cambia la orientación, que es exactamente lo que hace
+  // hoy. Con arrows inline el hook se re-suscribiría por render — peor, y en silencio.
+  const rotarConTecla = useCallback(()=> setRotation((rotation + 1) % 4), [rotation]);
+  const reflejarConTecla = useCallback(()=> setMirror(!mirror), [mirror]);
+
+  // `useCallback` de dependencias VACÍAS, y no es cosmética: es lo que deja que el
+  // listener de `wheel` se registre una sola vez por montaje. Es posible porque el cuerpo
+  // usa el setter funcional y no lee `rotation`. Si alguna vez gana una dependencia, el
+  // listener pasa a re-suscribirse con ella.
+  const alRotar = useCallback((deltaY: number)=> setRotation(r => rotacionPorRueda(r, deltaY)), []);
+
+  useAtajosDeTeclado(
+    { rotar: rotarConTecla, reflejar: reflejarConTecla, transporte: togglePlay },
+    tapLimpio,
+  );
+  useRuedaRota(boardRef, alRotar, tapLimpio);
 
   // El menú contextual no se abre NUNCA sobre el tablero —`preventDefault` siempre—,
   // pero alternar es otra cosa: en macOS `Ctrl`+click llega como `contextmenu` con
