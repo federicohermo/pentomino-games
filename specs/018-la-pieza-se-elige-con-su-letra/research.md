@@ -89,15 +89,21 @@ del DOM.
 | `src/components/constants/input.constants.ts` | `ACCION` gana `seleccionar` |
 | `src/components/types/input.types.ts` | `EventoDeTecla` gana `ctrlKey`, `metaKey`, `altKey` |
 | `src/components/input.ts` | `accionDeTecla` gana la rama de las letras; nueva pura `piezaDeTecla` |
-| `src/components/__tests__/input.test.ts` | Los casos de AC1–AC7 y AC10 |
+| `src/components/__tests__/input.test.ts` | Los casos de AC1–AC7 y AC11, **y el factory `tecla` de la línea 19**, que arma el evento con defaults y deja de compilar apenas el tipo gana tres campos obligatorios |
 | `src/App.tsx` | Llena los tres campos nuevos; despacha `ACCION.seleccionar`; footer |
+| `docs/guides/quickstart.md` | La tabla «Cómo se toca» (línea 62) es la única doc que enumera los gestos: gana la fila de las letras. El footer de AC9 no la reemplaza |
 
 Ninguno en `domain/` ni en `audio/`. **No cruza el borde de paquete**: `mcp-server/` importa 31
 símbolos del dominio y este spec no toca ninguno.
 
 ## 8. Por qué la validación va contra `SHAPES` y no contra una lista
 
-`SHAPES` es el const-object que declara las doce piezas, y `PieceKey` se deriva de él. Una lista
+`SHAPES` es el único lugar **con existencia en runtime** donde las doce piezas están enumeradas, y por
+eso es contra él que se valida. La dirección es al revés de lo que parece: `PieceKey` está **declarado
+explícito** en `domain/types/pieces.types.ts` y `SHAPES` es un `Record<PieceKey, Cell[]>` — no se
+deriva de él. Es a propósito y su docblock dice por qué: así el tipo de las piezas sale de la
+geometría y no de la tabla musical. Para validar una tecla hace falta un valor, y el valor es
+`SHAPES`. Una lista
 `['F','I',...]` escrita en `input.constants.ts` sería el quinto lugar donde las doce letras están
 enumeradas, y el único que nada sincroniza — exactamente lo que la regla «los módulos no declaran
 constantes» existe para evitar, con el agravante de que el desincronizado sería silencioso: agregar
@@ -106,8 +112,17 @@ una pieza trece y olvidarse de la lista deja una tecla muerta que no falla en ni
 `input.ts` puede importar de `domain/`: el override de eslint sobre `components/**` lo permite —lo hace
 ya para `PieceKey` y `PlacedPiece`— y la dirección de dependencia es la correcta.
 
-`Object.keys(SHAPES)` devuelve `string[]`, así que la pura tiene que estrechar. Se hace con un
-`in`-check sobre el objeto (`k in SHAPES`), que TypeScript acepta como type guard sin `as`.
+`Object.keys(SHAPES)` devuelve `string[]`, así que la pura tiene que estrechar. El `in`-check **a secas
+no estrecha**, y está medido: `return k in SHAPES ? k : null` falla con `TS2322: Type 'string' is not
+assignable to type 'PieceKey | null'`. El `in` de TS 4.9 estrecha el operando **derecho** —el objeto—,
+no el izquierdo. Lo que sí compila, y sin un solo `as`, es un type predicate propio:
+
+```ts
+function esPieza(k: string): k is PieceKey { return k in SHAPES; }
+```
+
+Medido con `tsc --noEmit --strict --erasableSyntaxOnly` sobre las dos versiones: la primera es error, la
+segunda sale limpia. El `in` sigue siendo el runtime correcto; lo que hacía falta era la firma.
 
 ## 9. Riesgos
 

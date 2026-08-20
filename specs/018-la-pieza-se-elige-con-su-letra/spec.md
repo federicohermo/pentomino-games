@@ -15,9 +15,11 @@ El costo no es el click, es lo que el click interrumpe. Colocar una pieza es apu
 al panel a cambiar de pieza y volver es perder la celda que se estaba mirando. Con doce piezas y un
 tablero de 60 celdas, esa ida y vuelta es el gesto más repetido del instrumento.
 
-Y las doce piezas **ya se llaman por su letra** en todos lados: `describe_piece` las nombra así, el
-`title` de cada celda dice `F`, `DESIGN.md` mapea `F → tónica C`, y desde el spec 016 cada botón de la
-paleta lleva su letra escrita abajo. El nombre existe y está a la vista; lo que no existe es la tecla.
+Y las doce piezas **ya se llaman por su letra** en todos lados: `PieceKey` **es** la letra
+(`domain/types/pieces.types.ts`), `describe_piece` las nombra así, `DESIGN.md` mapea `F → tónica C`, y
+desde el spec 016 cada botón de la paleta lleva su letra escrita abajo. El único lugar donde la letra
+**no** aparece es el `title` de la celda —`(x,y) · D#5 · paso 3`, `Board.tsx:270`—, que dice la nota y
+el paso. El nombre existe y está a la vista; lo que no existe es la tecla.
 
 ## Solución Propuesta
 
@@ -59,7 +61,9 @@ primer caso donde la respuesta a la primera es sí y a la segunda es no.
   la letra ensució el tap, que es lo que `abreTapLimpio` ya hace con cualquier tecla que no sea
   modificador.
 - **AC4** — Con `Ctrl`, `Meta` o `Alt` abajo la letra **no** selecciona, y el navegador se queda el
-  atajo entero.
+  atajo entero. Tampoco selecciona al **soltarla**: la decisión es del `keydown`, así que un `Ctrl`+`V`
+  que suelte el `Ctrl` primero y la `V` después no deja la pieza `V` en la mano — el `keyup` de la `V`
+  llega con `ctrlKey: false` y pasaría la guarda.
 - **AC5** — Con el foco sobre un control del panel (el slider de tempo, cualquier botón) la letra
   **no** selecciona.
 - **AC6** — Ninguna letra hace `preventDefault`.
@@ -69,6 +73,10 @@ primer caso donde la respuesta a la primera es sí y a la segunda es no.
 - **AC9** — El footer nombra el gesto. Los atajos del 013 se documentaron ahí justamente porque un
   atajo que no está escrito no existe.
 - **AC10** — Repetir la misma letra no cambia nada.
+- **AC11** — Los tres gestos del 013 **no cambian**. En particular la barra sigue alternando el
+  transporte con `Ctrl`, `Alt` o `Meta` abajo: la guarda de modificadores es **de la rama de las
+  letras** y no un `return` al tope de `accionDeTecla`, que se la aplicaría también a la barra y a los
+  dos modificadores sin que ningún AC lo pida.
 
 ## Límites de Alcance
 

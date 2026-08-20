@@ -3,6 +3,9 @@
 Cuatro pasos. El 1 es la resta, el 2 la compensación que la medición obligó a agregar, el 3 la fila de
 transporte y el 4 la medición que hay que rehacer.
 
+**El paso 4 no se puede escribir antes que los otros tres**: sus números salen del layout final, y el
+paso 2 suma alto. Medir primero, escribir el docblock después.
+
 **El orden importa entre el 1 y el 2**: si el paso 2 mergeara después que el 1 en commits separados,
 habría un commit donde la orientación no se puede leer en ninguna parte para 6 de las 12 piezas. Van
 en el mismo commit.
@@ -35,7 +38,10 @@ dice la orientación:
 ```
 
 La derivación es trivial (`${rotation * 90}°` más el sufijo condicional) pero **no va inline en el
-JSX**: va como pura en `components/cell-text.ts` o en un módulo hermano, por el motivo de siempre —
+JSX**: va como pura en un **módulo propio de `components/`**, hermano de `piece-mini.ts` y por el mismo
+motivo. **No** en `cell-text.ts`: ese módulo contesta qué dice una celda **del tablero** —nota y paso—
+y su tipo `CellText` existe para cruzar hacia `Board.tsx`; meterle un texto de la paleta le rompe la
+frase con la que se define. El motivo de sacarlo del `.tsx` es el de siempre —
 `react-refresh/only-export-components` prohíbe que un `.tsx` exporte algo además del componente, así
 que escrita adentro no se puede testear. AC5 pide exactamente eso: verificar que la línea es correcta
 para las seis piezas donde la miniatura no puede decirlo.
@@ -43,6 +49,11 @@ para las seis piezas donde la miniatura no puede decirlo.
 Ojo con el **alto reservado**: la línea `Notas actuales` ya lleva `min-h-[2lh]` porque envolvía y movía
 todo lo de abajo al cambiar de pieza. La línea nueva tiene largo variable (`0°` contra `270° ·
 reflejada`) y el mismo problema; se le mide el peor caso y se le reserva.
+
+Y la pura tiene **dos** consumidores, no uno: el `aria-label` de los doce botones ya arma ese mismo
+texto inline (`PiecePalette.tsx:115`, `rotación ${rotation * 90}°${mirror ? ', reflejada' : ''}`). Si
+no lo consume, el archivo queda con dos copias de la misma derivación en dos formatos, que es la clase
+de par que el repo mandó a `constants/` justamente porque nada los sincroniza. AC13.
 
 ## Paso 3 — La fila de transporte
 
@@ -63,19 +74,35 @@ reflejada`) y el mismo problema; se le mide el peor caso y se le reserva.
 
 ## Paso 4 — Rehacer la medición de `CELL_PX`
 
-`layout.constants.ts`: el docblock de `CELL_PX` tiene hoy una tabla de tres filas («qué manda en cada
-spec») y un párrafo que dice que hoy manda el ancho y que sobran 26 px de alto. Las dos cosas dejan de
-ser ciertas.
+**Este paso va último y depende de T022**, que es la única medición tomada sobre el layout final. Lo
+que el research §2 midió es la resta sola; la línea de AC4 devuelve ~20 px y el paso 2 está en el mismo
+commit, así que escribir el docblock desde §2 es escribirle un número que la app no va a tener.
 
-Se agrega la fila del 019 con lo medido —73,1 por ancho contra 73,0 por alto— y el párrafo pasa a
-decir que **el colchón se gastó**: el número sigue siendo 73 pero por 0,1 px, y la próxima fila que
-salga del panel sí lo baja. Es exactamente la trampa que este docblock ya pisó dos veces y por eso se
-escribe antes de que la pise una tercera.
+`layout.constants.ts`: el docblock de `CELL_PX` afirma la cuenta vieja en **cuatro** lugares, no en
+dos, y hay que tocarlos todos o queda contradiciéndose consigo mismo:
 
-El **piso de 60** no se toca: depende de la fuente, no del layout, y este spec no toca el `text-[19px]`
-de `Board.tsx`.
+1. La **tabla** de tres filas («qué manda en cada spec») — gana la fila del 019.
+2. El párrafo de abajo de la tabla: «agrandar el tablero hoy pide más ANCHO de tarjeta … el alto ya
+   sobra». Sobra menos, y hay que decir cuánto.
+3. El bullet del **techo útil**: cita `730,7 × 464 px` de interior y «por alto 77,3», los dos derivados
+   de una paleta de 496 px que deja de existir.
+4. El párrafo de «inflar la paleta ya no compra nada», con los **26 px** de colchón a 496 px de paleta.
 
-`App.tsx`: el footer saca cualquier mención a los botones borrados y conserva los cuatro gestos.
+El `MINI_CELL_PX` de abajo cita el mismo umbral («en cuanto la paleta pasa de ~470 px»): se verifica
+que siga siendo cierto, y si lo es no se toca.
+
+El **piso de 60** no se toca: depende de la fuente, no del layout, y este spec no toca el
+`text-[19px]` de `Board.tsx`.
+
+`App.tsx`: el footer **se lee y probablemente no se toca**. Hoy (`App.tsx:447-451`) no menciona ningún
+botón: nombra `Rotación` y `Reflexión` como transformaciones del modelo, y después los cuatro gestos.
+Lo único que hay que hacer es confirmarlo; borrar esa primera oración sería sacar la explicación del
+modelo por confundirla con la etiqueta de un control (AC10).
+
+Y hay **tres páginas de documentación** que sí quedan falsas y entran al alcance: `quickstart.md`
+—donde el mecanismo de descubrimiento de los atajos es «ver iluminarse `180°` en la paleta», que es
+justo el botón que muere—, `audio.md` y `DESIGN.md` —los dos llaman al botón de recorrido «el toggle
+de la paleta»—. Ver `research.md` §7.
 
 ## Verificación
 

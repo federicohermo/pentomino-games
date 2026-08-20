@@ -1,6 +1,6 @@
 # Plan — Spec 020
 
-Cuatro pasos. La técnica del paso 2 es la que hace barato el spec: **borrar los dos `useState`
+Cinco pasos. La técnica del paso 2 es la que hace barato el spec: **borrar los dos `useState`
 primero** y dejar que el typecheck enumere los siete consumidores, en vez de buscarlos a mano.
 
 ## Paso 1 — El tipo y el valor inicial
@@ -25,8 +25,8 @@ En `App.tsx`, **borrar** los dos `useState` y poner en su lugar:
 const [orientaciones, setOrientaciones] = useState(ORIENTACIONES_INICIALES);
 ```
 
-A partir de ahí el typecheck marca los siete consumidores del §2 del research. Se los arregla uno por
-uno leyendo `orientaciones[selected]`:
+A partir de ahí el typecheck marca los **ocho** consumidores del §2 del research. Se los arregla uno
+por uno leyendo `orientaciones[selected]`:
 
 - `transformedShape`, `noteSet`: el `useMemo` cambia sus dependencias a `[selected, orientaciones, …]`.
 - `handleCellClick`: el `PlacedPiece` nuevo se arma con el par de la pieza en la mano.
@@ -34,6 +34,10 @@ uno leyendo `orientaciones[selected]`:
   de la seleccionada.
 - `Board`: sigue recibiendo `rotation` y `mirror` sueltos, que son los de la pieza en la mano — no
   necesita las doce.
+- `handleContextMenu`: escribe una sola ranura, igual que los dos efectos. Es el consumidor que no
+  está en ningún efecto ni `useMemo` —una función suelta del cuerpo— y es la mitad «botón derecho» de
+  AC2, o sea el más fácil de olvidar y el que más se nota olvidado. Al ser del cuerpo lee `selected`
+  sin tocar dependencias.
 
 Un derivado local (`const { rotation, mirror } = orientaciones[selected]`) mantiene el resto del
 archivo legible sin re-escribir cada uso.
@@ -78,6 +82,14 @@ es la decisión que más fácil se «arregla» sin querer: alguien que lea `rese
 Se le agrega el comentario que dice por qué **no**: `↺` tiene un alcance único y nombrable —las piezas
 colocadas— y el estado de orientación tiene su propio botón. Con el costo escrito: se renuncia al
 invariante «después de `↺` la app queda como recién abierta».
+
+## Paso 5 — Los dos documentos que lo afirman en presente
+
+`docs/architecture/overview.md` declara el estado del shell como dos escalares (`:24` y `:104`–`:105`)
+y `DESIGN.md:142` dice que el botón se dibuja «en la orientación que está seleccionada ahora mismo».
+Los dos quedan falsos con este spec, y los dos son de lo que este repo mantiene al día — el spec
+mergeado no se reescribe, la documentación sí. No cambia código: es el mismo movimiento de `d936597`
+y `eb154a0`, adelantado a su spec en vez de acumulado.
 
 ## Verificación
 

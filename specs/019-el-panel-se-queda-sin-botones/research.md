@@ -37,11 +37,31 @@ La explicación es que las dos tarjetas están en la misma fila del grid y se es
 es la paleta. El contenido real del tablero mide `6 × 73 + 32 = 470`, así que antes de este spec la
 tarjeta tenía **50 px de aire muerto** abajo de la grilla. Este spec se los come exactos.
 
+### La medición de arriba es de la RESTA sola, y este spec también suma
+
+**Ojo con leerla como el estado final.** Se tomó ocultando las tres filas en el DOM, o sea con el paso
+1 y el paso 3 puestos y **sin la línea de AC4**, que es del paso 2 y del mismo commit. Esa línea es una
+línea de `text-sm` con su alto reservado, o sea **+20 px** —y el §1 ya la anota: la fila `F → tónica`
+pasa de 68 a 88—. Con ella:
+
+```
+                    paleta    interior del tablero    por ancho   por alto   CELL_PX
+solo la resta        470            730,7 × 438          73,1       73,0       73
+con la línea de AC4  ~490           730,7 × ~458         73,1       ~76,3      73
+```
+
+O sea que el colchón **no se gasta entero**: baja de 50 a ~30 px, y el que manda **sigue siendo el
+ancho**, como con el 016. `CELL_PX = 73` sobrevive de las dos formas —esa parte no está en duda— pero
+la frase «vuelve a mandar el alto por 0,1 px» sale de la primera fila y no de la que este spec deja.
+
+El número que va al docblock es el de **T022**, medido en el navegador con el paso 2 puesto. Hasta
+tenerlo, el docblock no afirma un ganador: es el mismo docblock que ya se equivocó dos veces, y
+escribirle una tercera cifra derivada de una medición parcial es exactamente cómo pasó las dos
+anteriores.
+
 El docblock de `CELL_PX` decía que con el 016 manda el **ancho**, y que a 496 px de paleta sobran 26 px
-de alto. Este spec **gasta ese colchón entero**: quien manda vuelve a ser el alto, y gana por 0,1 px.
-O sea que `CELL_PX = 73` sobrevive, pero deja de tener margen — y el docblock tiene que decirlo, porque
-la próxima fila que alguien saque del panel sí achica el tablero. El 020, que agrega una línea, lo
-devuelve.
+de alto. Los dos números cambian igual —la paleta ya no mide 496— así que el párrafo se reescribe de
+todas formas; lo que no se puede escribir todavía es la conclusión.
 
 ## 3. La miniatura no puede reemplazar a los botones de grados — medido contra el dominio
 
@@ -73,11 +93,23 @@ X rot 270°:  E5 · F#5 · G#5 · B5 · C#6
 X 0° reflejada:  F#5 · E5 · C#5 · B4 · A4
 ```
 
-Cinco sonidos distintos, **una sola forma**. Sin los botones de grados y sin la línea de texto, no
-habría ningún lugar de la app donde leer en cuál de los cinco está.
+Cinco sonidos distintos, **una sola forma**. Verificado con `describe_piece` sobre el dominio de hoy:
+`X` rot 0 da `A4 B4 C#5 E5 F#5`, rot 3 da `E5 F#5 G#5 B5 C#6`, y la reflejada de rot 0 sale invertida.
 
-Esto es lo que convierte a AC4 en obligatorio y no en un lujo: sin esa línea el spec **es una regresión
-funcional** para la mitad de las piezas.
+**Lo que no es cierto es que no quede ningún lector**, y conviene decirlo con precisión porque de acá
+salen AC4 y AC5:
+
+- `Notas actuales` (`PiecePalette.tsx:254`) **se queda**, y de hecho distingue las ocho orientaciones:
+  pinta el arpegio en orden de reproducción, así que la reflexión también se ve —invierte la lista—.
+- El `aria-label` de los doce botones (`PiecePalette.tsx:115`) ya dice `rotación 180°, reflejada`.
+  Para un lector de pantalla la orientación **nunca** estuvo sólo en los botones de grados.
+
+Entonces la resta no es una regresión funcional: es una regresión de **directez**. Lo que se pierde es
+poder leer la orientación sin derivarla de cinco nombres de nota, y eso alcanza y sobra para justificar
+AC4 —un panel existe para ahorrar exactamente esa derivación—. La forma exagerada del argumento («no
+habría ningún lugar donde leerlo») era falsa y además tapaba el dato útil: como el `aria-label` ya
+arma ese texto inline, la pura de AC4 **tiene un segundo consumidor** y no hay que escribirlo dos
+veces (AC13).
 
 ## 4. Por qué la línea de texto y no devolver los botones
 
@@ -122,10 +154,24 @@ vacío» era todo lo que quedaba de esa aclaración. El `title` la puede decir e
 | Archivo | Qué cambia |
 |---|---|
 | `src/components/PiecePalette.tsx` | Todo el cuerpo del cambio |
+| `src/components/<módulo nuevo>.ts` | La pura de AC4, hermana de `piece-mini.ts` |
+| `src/components/__tests__/…` | Sus tests (T009, T010) |
 | `src/components/constants/layout.constants.ts` | El docblock de `CELL_PX`: la medición del §2 |
-| `src/App.tsx` | Las props que dejan de pasarse; el footer |
+| `src/App.tsx` | Las props que dejan de pasarse |
 
 `domain/` y `audio/` no se tocan. **No cruza el borde de paquete.**
+
+**Y hay tres archivos de documentación que este spec falsifica**, agregados por el review. No son
+specs viejos —esos no se reescriben— sino las páginas que el repo sí mantiene al día, y las tres
+afirman **en presente**:
+
+| Archivo | Qué afirma hoy |
+|---|---|
+| `docs/guides/quickstart.md:58-59` | Que los atajos «se descubren solos —se rota con la rueda y se ve iluminarse `180°` en la paleta—». Es justo el botón que muere, y el reemplazo es la línea de AC4 |
+| `docs/architecture/audio.md:247` | «el toggle «Recorrido en el vacío» de la paleta», que pasa a ser un icono en el transporte |
+| `DESIGN.md:250-251` | «el panel lo enciende con «Recorrido en el vacío»», con la etiqueta a la vista |
+
+`App.tsx:447-451` —el footer— **no** entra por AC10: hoy no menciona ningún botón.
 
 ## 8. Las props que pueden morir
 

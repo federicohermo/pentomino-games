@@ -88,6 +88,13 @@ es la trampa que el docblock de `CELL_PX` dice haberse comido dos veces.
 | **Piezas** | dock pegado al borde **derecho**, centrado en vertical | `(8,1)` … `(9,4)` — 8 celdas |
 | **Señal** | franja **abajo a la izquierda** | `(0,5)` `(1,5)` `(2,5)` — 3 celdas |
 
+**Las dos cajas se miden en celdas, no en px** — dock `2 × 4` celdas, franja `3 × 1`, o sea
+`calc(var(--cell) * n)` como todo lo demás. Con medidas fijas la tabla vale solo a 1920 × 1080: a
+1366 × 768 un dock de 640 px de alto centrado entra en la fila 5 y **tapa `(9,5)`**, que es la celda
+que este spec declaró intocable. La cuenta está en el §4 del research. Consecuencia que hay que
+absorber: a `CELL_PX = 73` el dock queda en 146 × 292 px y el panel de piezas necesita **scroll
+interno propio**, porque hoy mide 349 × 496.
+
 **11 de 60 celdas** tapadas con los dos abiertos, y **ninguna de las dos de la costura**: `(0,0)` y
 `(9,5)` quedan libres. Eso es lo que decidió la posición y no la estética — ahí es donde el circuito
 cierra (spec 009) y donde arranca la cabeza lectora (spec 010), así que son las dos celdas que no se
@@ -102,17 +109,22 @@ Arriba se descartó por medición: una barra superior tapa el borde de arriba en
 ## Criterios de Aceptación
 
 - **AC1** — El tablero ocupa el viewport. No hay `max-w-6xl`, ni tarjeta blanca alrededor de la grilla,
-  ni scroll vertical de página.
+  ni scroll vertical de página: `document.documentElement.scrollHeight === innerHeight` en los cinco
+  viewports de escritorio de la tabla.
 - **AC2** — `CELL_PX = max(73, min(vw/10, vh/6))`, recalculado al redimensionar la ventana.
 - **AC3** — La nota y el `#N` escalan con la celda, con las proporciones `0,2603` y `0,1781`.
 - **AC4** — A `CELL_PX = 73` el tablero se ve **igual que hoy**: nota a 19 px, `#N` a 13 px.
 - **AC5** — Abajo de 730 px de viewport el tablero scrollea horizontalmente y la celda se queda en 73.
+  Y abajo de **438 px de alto** el desborde vertical lo absorbe el **contenedor del tablero**, no la
+  página: es el mismo `overflow-x-auto` cuyo eje Y computa a `auto`.
 - **AC6** — La cabeza lectora sigue alineada con la grilla en cualquier tamaño de celda, **también
   mientras se redimensiona la ventana con el transporte corriendo**.
 - **AC7** — La cabeza lectora sigue dibujándose fuera del estado de React, a 60 fps, sin re-render por
   frame (spec 010).
 - **AC8** — Los dos paneles flotan sobre el tablero, en una capa superior, y no empujan la grilla.
-- **AC9** — Ninguno de los dos tapa `(0,0)` ni `(9,5)` en ningún viewport de escritorio.
+- **AC9** — Ninguno de los dos tapa `(0,0)` ni `(9,5)` en ningún viewport de escritorio, **verificado
+  en 1920×1080 y 1366×768**, que son los dos donde la geometría cambia de manos. Se cumple por
+  construcción —las cajas se miden en celdas— y no por una medición hecha en un solo viewport.
 - **AC10** — Los dos se pliegan y se despliegan con un click, y arrancan desplegados.
 - **AC11** — El espectro se sigue redibujando al cambiar de tamaño su contenedor, incluido al plegar y
   desplegar.
@@ -122,6 +134,12 @@ Arriba se descartó por medición: una barra superior tapa el borde de arriba en
   siguen funcionando sobre el tablero nuevo.
 - **AC14** — La rueda sobre el tablero sigue sin scrollear la página, y `Ctrl`+rueda sigue haciendo el
   zoom del navegador.
+- **AC16** — La leyenda de gestos del `<footer>` **no desaparece**: se muda adentro de un flotante. Es
+  hoy el único lugar donde los cuatro gestos del 013 están escritos, y borrarla los vuelve invisibles
+  otra vez — el problema que su propio comentario dice haber resuelto.
+- **AC17** — La cabeza lectora y su velo se dibujan sobre la baldosa exacta a cualquier `CELL_PX`: los
+  **seis** sitios de `Playhead.tsx` que dependen del tamaño de celda derivan de `--cell`, y el aire y
+  el redondeo de `VELO_CAJA`/`VELO_TAPA` siguen coincidiendo con los de `Board.tsx`.
 - **AC15** — El docblock de `CELL_PX` se reescribe: se va la tabla de repartos de columnas, se queda la
   medición del piso, y entra la fórmula con la tabla de viewports.
 

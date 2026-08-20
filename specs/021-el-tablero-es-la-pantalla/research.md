@@ -11,6 +11,20 @@ Medido en el DOM sobre `main` con los specs 013–017 mergeados, y leyendo los c
 | `Board.tsx` | `gridTemplateColumns` y `style={{ width: CELL_PX, height: CELL_PX }}` — dentro del render |
 | `Playhead.tsx` | `nodo.style.left = entrada.cell[0] * CELL_PX` — **fuera de React, en un `requestAnimationFrame`** |
 
+**No son cuatro sitios, son seis, y los seis hay que convertirlos.** Las cuatro escrituras de
+`style` de arriba (`Playhead.tsx:172-175`) son las del **velo**, no las de la cabeza; la cabeza usa
+otras dos: el `transform` de `Playhead.tsx:240` y —el que se pasa por alto— el
+`style={{ width: CELL_PX, height: CELL_PX }}` del JSX en `Playhead.tsx:270`, que es su propia caja.
+Si ese ultimo queda en 73 mientras la grilla va a 180, el anillo de la cabeza marca un cuadrado de 73
+px en el medio de una celda de 180.
+
+Y hay dos constantes mas del mismo archivo que no mencionan a `CELL_PX` pero dependen de la baldosa:
+`VELO_CAJA = 'absolute p-[2px]'` y el `rounded-lg` de `VELO_TAPA` (`Playhead.tsx:126-127`) **repiten a
+proposito** el aire y el redondeo de la baldosa de `Board.tsx` —su comentario lo dice: «es la misma
+caja, y poner los numeros a mano seria un segundo lugar donde mantenerlos»—. El §8 vuelve esos dos
+numeros `calc()` **en `Board.tsx`**: si aca quedan literales, el velo deja de cubrir la baldosa exacta,
+que es lo que esas dos constantes existen para garantizar.
+
 `Playhead` existe justamente para dibujarse sin pasar por el estado (spec 010): lee de
 `route-source.ts`, se posiciona imperativamente y no re-renderiza nada. Si `CELL_PX` pasa a ser estado
 de React, la cabeza lectora se queda con el valor que tenía al montar y **se desalinea de la grilla en
@@ -28,6 +42,18 @@ Hay dos salidas y una es claramente mejor.
   fuentes del mismo número.
 
 Se va por la custom property. Es lo que hace que AC6 y AC7 no se peleen.
+
+**Corolario que el plan tiene que respetar: no hay estado de React para `cellPx`.** Si el numero se
+guarda en un `useState`, cada evento de `resize` re-renderiza `App` y con el las 60 celdas de `Board`,
+que es exactamente el re-render que este parrafo argumenta evitar. El efecto calcula y escribe la
+custom property; nadie mas necesita el numero. La pura sigue existiendo y sigue siendo testeable —lo
+que no existe es la copia en estado—.
+
+**Y la primera escritura va antes del primer paint.** `--cell` sin definir hace que
+`repeat(10, var(--cell))` sea invalido en tiempo de valor computado: la declaracion entera cae a
+`none` y la grilla colapsa a una columna por un cuadro. Se resuelve con `useLayoutEffect` —corre antes
+de pintar— o con un fallback en cada uso (`var(--cell, 73px)`). Se recomienda `useLayoutEffect`: deja
+un solo lugar donde vive el piso.
 
 **Cómo se setea sin cast**: `style={{ '--cell': …}}` no typechequea contra `React.CSSProperties`, y el
 arreglo habitual es un `as`. Acá se hace con un efecto sobre el `ref` que ya existe
@@ -96,6 +122,43 @@ arriba entero, `(0,0)` incluida — por eso se descartó.
 
 Los 11 tapados no son inalcanzables: los dos paneles se pliegan.
 
+### Los 360 × 640 fijos NO sobreviven a 1366 × 768 — remedido
+
+La cuenta de arriba vale **solo** a 1920 × 1080, y AC9 dice «en ningún viewport de escritorio». Rehecha
+con la misma aritmética a 1366 × 768, que es justamente el segundo viewport que T035 verifica:
+
+```
+CELL_PX = min(136,6 · 128,0) = 128        tablero 1280 × 768, margen (1366-1280)/2 = 43 px
+columnas: x=7 → 939..1067   x=8 → 1067..1195   x=9 → 1195..1323
+filas:    y=0 →   0..128    y=5 →  640..768
+
+dock 360 × 640 pegado a la derecha y centrado en vertical
+  ocupa x 1006..1366  → entra en la columna 7
+  ocupa y   64..704   → entra en la fila 0 Y en la fila 5
+
+  tapa (9,5): SÍ        tapa parte de (7,0)…(9,0): SÍ
+```
+
+O sea que **con medidas fijas AC9 se rompe en el viewport de escritorio más común**, y se rompe en la
+única celda que el spec declaró intocable. El 640 y el 360 no son números: son proporciones del
+tablero que se calcularon una vez a 1920.
+
+**La geometría de los dos flotantes tiene que derivar de `--cell`**, que es la misma decisión que el §1
+tomó para la grilla y por la misma razón —una sola fuente del número—:
+
+```
+dock piezas    ancho ≤ calc(var(--cell) * 2)     alto ≤ calc(var(--cell) * 4)   centrado en vertical
+franja señal   ancho ≤ calc(var(--cell) * 3)     alto ≤ calc(var(--cell) * 1)   pegada abajo-izquierda
+```
+
+Con eso los 11 de 60 del §4 valen **en todo viewport**, no en uno: el dock cubre por construcción las
+filas 1..4 de las columnas 8..9 y la franja la fila 5 de las columnas 0..2, que es lo que las tablas de
+arriba dicen. Y a `CELL_PX = 73` el dock queda en 146 × 292, que es más chico que la paleta de hoy: el
+panel necesita **scroll interno propio**, no crecer y comerse celdas. Eso es una restricción del paso 3,
+no un detalle.
+
+Los 11 tapados no son inalcanzables: los dos paneles se pliegan.
+
 ## 5. Lo que muere del layout de hoy
 
 ```
@@ -114,6 +177,20 @@ Y con ellos, dos bloques largos de documentación que dejan de ser ciertos:
 
 El `overflow-x-auto` del contenedor de la grilla **se queda**, y su comentario también: sigue siendo lo
 que evita que la grilla empuje scroll horizontal a la página entera cuando el piso gana.
+
+**Falta uno en la lista, y es el que rompe AC1:** el `<footer>` de `App.tsx:446-455`, la leyenda de
+gestos que el spec 013 escribió. Con el tablero a `100dvh` y un footer debajo, la página scrollea
+vertical — que es exactamente lo que AC1 prohíbe. No es un descuido cosmético: ese footer es hoy el
+**único** lugar donde los cuatro gestos del 013 están escritos, así que borrarlo sin más deja los
+atajos otra vez invisibles, que es el problema que su propio comentario dice haber resuelto. Tiene que
+mudarse adentro de un flotante (el de piezas es el candidato: ya es el panel de controles) y no
+desaparecer.
+
+Y con el mismo criterio hay que mirar el **piso en vertical**: a `CELL_PX = 73` la grilla mide 438 px
+de alto, así que en un viewport apaisado y bajo (`vh < 438`, p. ej. 1280 × 400) el tablero desborda
+hacia abajo. El `overflow-x-auto` de Tailwind fija **solo** el eje X y el Y computa a `auto` —está
+medido en el docblock de `Playhead.tsx`—, así que scrollea el contenedor del tablero y no la página:
+AC1 se salva, pero AC5 hoy solo nombra el caso horizontal y hay que decir el otro.
 
 ## 6. Lo que ya está resuelto y no hay que inventar
 
@@ -147,10 +224,17 @@ Además de las dos fuentes, hay tres números en px fijos que a 180 px de celda 
 | `p-0.5` (2 px) | el aire entre baldosas | queda como un pelo |
 | `rounded-lg` (8 px) | el redondeo de la baldosa | queda casi recto |
 | `bottom-0.5 right-1.5` | la posición del `#N` | queda pegado al borde |
+| `pb-2` (8 px) | el alto que la baldosa le **reserva** al `#N` | la nota flota alta y la reserva no guarda proporción |
 
-Los tres pasan a `calc(var(--cell) * …)` con la proporción que tienen hoy sobre 73. No es cosmética
+Los cuatro pasan a `calc(var(--cell) * …)` con la proporción que tienen hoy sobre 73. No es cosmética
 opcional: el comentario de `Board.tsx` dice que la baldosa «se lee como una ficha y no como un
-casillero», y eso depende de esas tres medidas.
+casillero», y eso depende de esas medidas.
+
+El `pb-2` es el que casi se escapa, y es el más cargado de los cuatro: su comentario en `Board.tsx`
+dice que **no es estética** sino «lo que deja crecer la nota» — la nota se centra en el alto que el
+`#N` no usa, y los 19 px entran con 2,3 px de separación *medidos con esa reserva de 8 px*. Con las dos
+fuentes proporcionales y el `pb` clavado, la relación que esos 2,3 px describen deja de valer para toda
+celda que no sea 73. Proporción: `8 / 73 = 0,1096`.
 
 ## 9. Archivos afectados
 
@@ -162,6 +246,13 @@ casillero», y eso depende de esas tres medidas.
 | `src/components/PiecePalette.tsx` | De tarjeta en columna a dock flotante plegable |
 | `src/components/Spectrum.tsx` | Contenedor nuevo; el `ResizeObserver` no cambia |
 | `src/components/constants/layout.constants.ts` | `CELL_PX` → piso + proporciones; docblock reescrito |
+| `DESIGN.md` | Afirma en presente `CELL_PX` = 73, «Tablero **730 × 438 px**» y «Tarjeta del tablero **`md:col-span-8`**» (líneas 79-81), y la baldosa con sus medidas fijas (99-102, 112). Es la tabla que más queda mintiendo |
+| `.claude/rules/ui.md` | Afirma en presente que «los `col-span` no viven en `App.tsx` sino en la tarjeta de cada componente» y que `CELL_PX` «sale de `min(interior/10, interior/6)` sobre la tarjeta real» (líneas 66-68). Sin tarjetas, las dos reglas quedan sin referente |
+| `docs/guides/conventions.md` | Líneas 247-248: las celdas «se dimensionan con `style={{ width: CELL_PX, … }}`». Pasan a `var(--cell)` |
+
+`docs/architecture/overview.md` **no** describe el layout de tarjetas —se verificó, no tiene ninguna
+afirmación de `col-span`, `max-w-6xl` ni `CELL_PX`—: figuraba en el plan por analogía y no hay nada que
+corregir ahí.
 
 ## 10. Riesgos
 

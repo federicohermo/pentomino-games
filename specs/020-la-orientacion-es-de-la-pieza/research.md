@@ -31,20 +31,28 @@ const [rotation, setRotation] = useState<number>(0); // 0..3
 const [mirror, setMirror] = useState<boolean>(false);
 ```
 
-Y **siete** consumidores, todos derivados de esos dos:
+Y **ocho** consumidores, todos derivados de esos dos:
 
 | Consumidor | Qué hace con ellos |
 |---|---|
-| `transformedShape` (`useMemo`) | `rotateN` + `reflect` para el fantasma y la colocación |
-| `noteSet` (`useMemo`) | `arpeggioFor(selected, rotation, mirror, regimen)` |
-| `handleCellClick` | los guarda en el `PlacedPiece` nuevo |
-| `PiecePalette` (props) | las doce miniaturas (`miniCells(key, rotation, mirror)`) |
-| `Board` (props) | el `title` y el texto del fantasma |
-| efecto de teclado | `setRotation((rotation + 1) % 4)` y `setMirror(!mirror)` |
-| efecto de la rueda | `setRotation(r => rotacionPorRueda(r, e.deltaY))` |
+| `transformedShape` (`useMemo`, `App.tsx:102`) | `rotateN` + `reflect` para el fantasma y la colocación |
+| `noteSet` (`useMemo`, `App.tsx:124`) | `arpeggioFor(selected, rotation, mirror, regimen)` |
+| `handleCellClick` (`App.tsx:153`) | los guarda en el `PlacedPiece` nuevo |
+| `PiecePalette` (props, `App.tsx:401`) | las doce miniaturas (`miniCells(key, rotation, mirror)`) |
+| `Board` (props, `App.tsx:424`) | el `title` y el texto del fantasma |
+| efecto de teclado (`App.tsx:306`) | `setRotation((rotation + 1) % 4)` y `setMirror(!mirror)` |
+| efecto de la rueda (`App.tsx:361`) | `setRotation(r => rotacionPorRueda(r, e.deltaY))` |
+| `handleContextMenu` (`App.tsx:374`) | `setMirror(m=>!m)` — es la mitad «botón derecho» de **AC2** |
 
-Los siete pasan a leer `orientaciones[selected]`. **Ninguno cambia de forma**, lo que cambia es de
-dónde sale el par — que es lo que hace este spec barato pese a tocar siete lugares.
+**El octavo es el que se escapa leyendo.** `handleContextMenu` no está en ningún `useMemo` ni en
+ningún efecto: es una función suelta del cuerpo del componente, y es la única vía del gesto que AC2
+nombra primero. La técnica del paso 2 —borrar los dos `useState` y dejar que el typecheck enumere—
+lo atrapa igual, y por eso no es un bloqueante; pero enumerarlo acá es lo que evita que la tarea que
+lo arregla quede sin escribir. No necesita nada nuevo: al ser una función del cuerpo, lee `selected`
+sin pasar por dependencias.
+
+Los ocho pasan a leer `orientaciones[selected]`. **Ninguno cambia de forma**, lo que cambia es de
+dónde sale el par — que es lo que hace este spec barato pese a tocar ocho lugares.
 
 ## 3. `PlacedPiece` ya resuelve la mitad difícil
 
@@ -104,9 +112,15 @@ este repo no declaran constantes.
 paleta pasa de llamarla doce veces con el mismo par a llamarla doce veces con doce pares. **La firma
 no cambia.**
 
-Y la caja fija de 5×5 del 016 pasa a ser **más** necesaria, no menos. Su docblock dice:
+Y la caja fija de 5×5 del 016 pasa a ser **más** necesaria, no menos. Su docblock
+(`src/components/piece-mini.ts:18`) dice:
 
-> Con pistas automáticas la `I` sola haría saltar la fila entera entre 5 y 1 celdas de ancho.
+> La `I` pasa de 5×1 a 1×5 al rotar: con cajas ajustadas, los doce botones reflowearían en cada
+> rotación.
+
+El mismo argumento está en `DESIGN.md:147` y el número 5 se declara en
+`src/components/constants/layout.constants.ts` (`MINI_BOX`), que son los tres lugares donde el
+comentario de este spec tiene que quedar coherente.
 
 Con rotación global eso pasaba en bloque y una vez por rotación. Con doce orientaciones independientes
 podría pasar en cualquier momento y por una sola pieza. AC12 lo verifica.
@@ -133,8 +147,15 @@ saca botones del panel y el 020 devuelve uno — asimetría real, escrita en las
 | `src/components/constants/` | La orientación inicial |
 | `src/App.tsx` | Los dos `useState` → un `Record`; los siete consumidores; los dos efectos |
 | `src/components/PiecePalette.tsx` | Las doce miniaturas leen doce pares; el botón `0°`; la línea del 019 |
+| `docs/architecture/overview.md` | El diagrama (`:24`) y la tabla de estado (`:104`–`:105`) declaran `rotation` `0..3` y `mirror` `boolean` como dos escalares del shell. Este spec los reemplaza por un `Record` |
+| `DESIGN.md` | `:142` afirma que el botón se dibuja «en la orientación que está seleccionada ahora mismo» — singular y global. Pasa a ser la **suya** |
 
 `domain/`, `audio/` y `mcp-server/` no se tocan.
+
+Los dos de documentación no son alcance opcional: `docs/` y `DESIGN.md` son lo que este repo
+**sí** mantiene al día —los specs mergeados no se reescriben, la desviación 2 de `specs/README.md`—,
+así que dejarlos afirmando en presente algo que este spec falsifica es la deuda que los commits
+`d936597` y `eb154a0` ya tuvieron que pagar en lote.
 
 ## 9. Riesgos
 

@@ -16,10 +16,15 @@ convierten en dos copias del mismo número y AC6 deja de ser verificable.
 
 `App.tsx`:
 
-- Estado `cellPx`, derivado del viewport con `max(CELL_PX_MIN, min(vw/10, vh/6))`. La fórmula va como
-  **pura** en un módulo de `components/`, no inline en el shell: es lo único de este spec que se puede
-  testear en `environment: 'node'`, y la tabla de viewports del research es su tabla de casos.
-- Un efecto que escucha `resize` y escribe `boardRef.current.style.setProperty('--cell', …)`.
+- La fórmula `max(CELL_PX_MIN, min(vw/10, vh/6))` va como **pura** en `components/cell-px.ts`, no
+  inline en el shell: es lo único de este spec que se puede testear en `environment: 'node'`, y la
+  tabla de viewports del research es su tabla de casos.
+- **Sin estado de React para `cellPx`.** Un `useState` re-renderiza `App` y con él las 60 celdas de
+  `Board` por cada evento de resize, que es exactamente el re-render que la custom property existe
+  para evitar. El número vive en `--cell` y en ningún otro lado.
+- Un `useLayoutEffect` que escucha `resize` y escribe
+  `boardRef.current.style.setProperty('--cell', …)`. **Layout y no `useEffect`**: con `--cell` sin
+  definir, `repeat(10, var(--cell))` es inválido y la grilla colapsa a una columna en el primer cuadro.
   **Sin debounce**, con el motivo escrito: la única escritura por evento es una custom property, el
   navegador ya coalesce por frame, y el debounce le mete latencia a un gesto continuo.
 - `100dvh` y no `100vh`, o `visualViewport.height` cuando existe: en iOS `100vh` incluye la barra del
@@ -42,8 +47,12 @@ cast que existe sólo para saltear el tipado es de la misma familia.
 - **El `overflow-x-auto` se queda**, y su comentario también: sigue siendo lo que evita que la grilla
   empuje scroll horizontal a la página cuando gana el piso.
 
-`Playhead.tsx`: las cuatro escrituras de `style` (`left`, `top`, `width`, `height`) y el `transform` de
-las marcas pasan a `calc(var(--cell) * n)`. **Ese es todo el cambio del archivo**, y es lo que hace que
+`Playhead.tsx`: son **seis** sitios, no cuatro. Las cuatro escrituras de `style` (`left`, `top`,
+`width`, `height`, `:172-175`) son las del **velo**; la cabeza usa además el `transform` (`:240`) y su
+propia caja en el JSX (`style={{ width: CELL_PX, height: CELL_PX }}`, `:270`). Los seis pasan a
+`calc(var(--cell) * n)`. Y `VELO_CAJA`/`VELO_TAPA` repiten a propósito el aire y el redondeo de la
+baldosa de `Board.tsx`: si allá pasan a `calc()` y acá no, el velo deja de cubrir la baldosa exacta.
+Eso es todo el cambio del archivo, y es lo que hace que
 AC6 y AC7 no se peleen: la cabeza deja de leer un número de JS y pasa a leer el mismo valor que la
 grilla, resuelto por el navegador. El docblock tiene que decir por qué — es el punto entero del paso.
 
@@ -53,8 +62,16 @@ grilla, resuelto por el navegador. El docblock tiene que decir por qué — es e
 contenedor a pantalla que no scrollea vertical, con el tablero centrado y los dos paneles en
 `position: fixed` sobre él.
 
-- **Piezas**: dock pegado al borde derecho, centrado en vertical.
-- **Señal**: franja abajo a la izquierda.
+- **Piezas**: dock pegado al borde derecho, centrado en vertical, de `2 × 4` celdas.
+- **Señal**: franja abajo a la izquierda, de `3 × 1` celdas.
+
+Las dos cajas se miden **en celdas** (`calc(var(--cell) * n)`) y no en px: con px fijos la cuenta del
+§4 vale sólo a 1920×1080 y a 1366×768 el dock tapa `(9,5)`. A `CELL_PX = 73` el dock queda en
+146 × 292 px contra los 349 × 496 de la paleta de hoy, así que el panel necesita scroll interno propio.
+
+El `<footer>` con la leyenda de gestos **se muda adentro del dock de piezas**, no se borra: es hoy el
+único lugar donde los cuatro gestos del 013 están escritos, y dejarlo debajo del tablero da el scroll
+vertical de página que AC1 prohíbe.
 
 Las posiciones salen de la medición (§4 del research) y no del gusto: son las que dejan libres `(0,0)` y
 `(9,5)`, que es donde el circuito cierra y donde arranca la cabeza. Ese porqué va como comentario junto
@@ -86,8 +103,12 @@ Tres bloques largos de documentación quedan mintiendo si no se tocan:
    alto de toda la fila, así que inflarla no agranda el tablero». **Con el layout nuevo no hay fila**:
    el argumento entero desaparece y hay que reemplazarlo por el que corresponda al dock.
 
-Y `docs/architecture/overview.md` y `docs/guides/conventions.md`, donde el layout de tres tarjetas está
-descrito.
+Y tres archivos que lo afirman en presente: `DESIGN.md` (la tabla de `:79-81` con `CELL_PX` 73, el
+tablero de 730 × 438 y el `md:col-span-8`, más las medidas de la baldosa en `:99-102` y `:112`),
+`.claude/rules/ui.md:66-68` (los `col-span` en la tarjeta de cada componente, y `CELL_PX` derivado de
+la tarjeta real) y `docs/guides/conventions.md:247-248` (las celdas dimensionadas con
+`style={{ width: CELL_PX, … }}`). **`docs/architecture/overview.md` no entra**: se verificó y no
+describe el layout.
 
 ## Verificación
 

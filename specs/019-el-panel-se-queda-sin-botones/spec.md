@@ -5,10 +5,14 @@
 > **No cambia una nota.** Borra los seis botones que duplican gestos que ya existen desde el 013, y
 > reordena lo que queda alrededor del transporte.
 >
-> **Medido: borrar esas filas gasta exactamente el colchón de alto que el spec 016 dejó.** La paleta
-> baja de 520 a 470 px y `CELL_PX` re-derivado sigue dando **73** —73,0 por alto contra 73,1 por
-> ancho—, o sea que sobrevive por 0,1 px. Los 50 px que se van eran **aire muerto** en la tarjeta del
-> tablero, no tablero.
+> **Medido: borrar esas filas gasta la mayor parte del colchón de alto que el spec 016 dejó.** La
+> paleta baja de 520 a 470 px y `CELL_PX` re-derivado sigue dando **73**. Los 50 px que se van eran
+> **aire muerto** en la tarjeta del tablero, no tablero.
+>
+> Ese −50 es la resta sola. Este spec además **suma una línea** —la de AC4, que la medición no
+> incluía— y esa línea devuelve ~20 px: la paleta real queda en ~490 y el colchón baja de 50 a ~30 px
+> en vez de gastarse. `CELL_PX = 73` sobrevive de las dos formas, pero **quién manda** no lo decide
+> este párrafo sino la medición de T022, con el paso 2 puesto.
 
 ## Problema
 
@@ -63,8 +67,14 @@ reflexión que la miniatura NO puede mostrar:  I, T, U, V, W, X — no agregan n
 ```
 
 La `X` es el testigo: rotarla cuatro veces da cuatro arpegios distintos (`A4 B4 C#5 E5 F#5` a 0°,
-`E5 F#5 G#5 B5 C#6` a 270°) y **cero** cambio visible. Hoy eso lo tapaban los botones de grados. Sin
-ellos, la miniatura del 016 quedaría como único lector y mentiría en 6 de las 12 piezas.
+`E5 F#5 G#5 B5 C#6` a 270°) y **cero** cambio visible. Hoy eso lo tapaban los botones de grados.
+
+Sin ellos la miniatura del 016 mentiría en 6 de las 12 piezas, pero **no queda como único lector** y
+conviene no agrandar el hueco: `Notas actuales` (`PiecePalette.tsx:254`) ya distingue las ocho
+orientaciones de cada pieza —verificado contra el dominio para la `X`, reflexión incluida: sale en
+orden inverso— y el `aria-label` de cada botón (`PiecePalette.tsx:115`) ya dice la orientación para un
+lector de pantalla. Lo que falta es un lector **directo y visible**: deducir la rotación leyendo cinco
+nombres de nota es exactamente la derivación que un panel existe para ahorrar.
 
 Entonces: una línea de texto, `180° · reflejada`, junto al `F → tónica C` que ya está ahí. No devuelve
 ningún botón —no se puede apretar— y cierra el 30 % que la forma no puede decir.
@@ -93,18 +103,34 @@ tacho promete *borrar* algo elegido, que es una operación con alcance y no la q
 - **AC3** — El régimen sigue alcanzable, ahora como fila propia con la etiqueta `Rotación`.
 - **AC4** — Una línea del panel dice la orientación actual en texto: `0°`, `90°`, `180°`, `270°`, y
   `· reflejada` cuando corresponde.
-- **AC5** — Esa línea es correcta para las seis piezas donde la miniatura no puede decirlo (`I T U V W X`).
+- **AC5** — Para las seis piezas donde la miniatura no puede decirlo (`I T U V W X`), dos orientaciones
+  que dan la **misma** `miniCells` dan textos **distintos**. Es la forma falsable del criterio: la pura
+  de AC4 no recibe la pieza, así que «es correcta para seis piezas» sólo se puede verificar cruzándola
+  con `miniCells`.
 - **AC6** — El botón de recorrido está en la fila de transporte, es solo-icono, y su estado se lee por
   color.
 - **AC7** — El metrónomo tiene `aria-label` y `title`; el SVG lleva `aria-hidden`, porque el nombre
   accesible lo da el botón.
 - **AC8** — Reset dice `↺`, con `aria-label` y `title`, y sigue haciendo las dos cosas que hacía:
   vaciar el tablero y frenar el transporte.
-- **AC9** — `CELL_PX` sigue siendo **73**. La medición se rehace y se escribe en el docblock: lo que
-  cambia es **quién manda**, que vuelve a ser el alto por 0,1 px de diferencia.
-- **AC10** — El footer sigue diciendo los cuatro gestos del 013, y ya no menciona ningún botón borrado.
+- **AC9** — `CELL_PX` sigue siendo **73**, y la medición que se escribe en el docblock se toma **con el
+  paso 2 ya puesto**. La del `research.md` §2 se tomó ocultando las tres filas y **sin** la línea de
+  AC4, que devuelve ~20 px de los 50: con ella la paleta queda en ~490 px y el que manda sigue siendo
+  el **ancho**. Quién manda lo dice la medición de T022, no este spec — y hasta tenerla el docblock no
+  afirma un ganador.
+- **AC10** — El footer sigue diciendo los cuatro gestos del 013. **Hoy no menciona ningún botón**
+  (`App.tsx:447-451`): nombra `Rotación` y `Reflexión` como transformaciones del modelo, no como
+  controles, así que no hay nada que sacar y esa primera oración **no se toca**.
 - **AC11** — `PiecePalette` sigue siendo presentacional: sin estado y sin efectos.
-- **AC12** — Las props `onRotate` y `onMirror` desaparecen de `PiecePalette` si no las usa nadie más.
+- **AC12** — Las props `onRotate` y `onMirror` desaparecen de `PiecePalette`. No las usa nadie más:
+  `App.tsx:409-410` las pasa inline, y los gestos del 013 llaman a `setRotation`/`setMirror` directo.
+- **AC13** — La derivación de la orientación se escribe **una sola vez**: el `aria-label` de los doce
+  botones —que hoy la arma inline en `PiecePalette.tsx:115`— consume la misma pura de AC4. Dos copias
+  del mismo texto en el mismo archivo es justo lo que la convención de constantes existe para evitar.
+- **AC14** — Las tres páginas que describen **en presente** lo que este spec cambia quedan al día:
+  `docs/guides/quickstart.md` (el mecanismo de descubrimiento de los atajos era «ver iluminarse `180°`
+  en la paleta»), `docs/architecture/audio.md` y `DESIGN.md` (los dos llaman al botón de recorrido
+  «el toggle de la paleta», con su etiqueta a la vista).
 
 ## Límites de Alcance
 
