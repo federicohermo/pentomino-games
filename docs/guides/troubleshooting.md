@@ -4,6 +4,28 @@ Errores que ya se pisaron en este repo, con su causa real. No son hipotéticos.
 
 ## Build y configuración
 
+### `A config object has a "plugins" key defined as an array of strings`
+
+ESLint no arranca y el mensaje habla de migrar a flat config, aunque la config **ya es** flat. Pasó al
+subir `eslint-plugin-react-hooks` de 5.x a 7.x (spec 030).
+
+**Causa:** el plugin invirtió sus exports. En 5.x `configs['recommended-latest']` era el preset flat;
+en 6.x y 7.x ese nombre volvió a ser el de eslintrc —con `plugins` como array de strings, que es lo que
+flat config rechaza— y el flat pasó a `configs.flat['recommended-latest']`.
+
+**Solución:** `reactHooks.configs.flat['recommended-latest']`. Vale la pena mirar qué trae: en 5.2.0 el
+preset activaba 2 reglas y en 7.x activa 17, porque incluye las del React Compiler. Salen por este
+plugin y no por uno separado, y sirven aunque el compilador no se adopte.
+
+### `'// eslint-disable-next-line …' has no effect because you have 'noInlineConfig'`
+
+Es a propósito y no hay nada que arreglar en la config: desde el spec 030 el repo no admite
+`eslint-disable` en el código, por el mismo argumento que el "cero `any`, cero `@ts-ignore`". Y como
+`pnpm lint` corre con `--max-warnings 0`, ese aviso **rompe el build** en vez de quedar como ruido.
+
+**Solución:** arreglar lo que la regla marca. Si de verdad hace falta una excepción, va como override
+por archivo en `eslint.config.js`, con el porqué al lado — ahí se ve en el diff.
+
 ### `Failed to load PostCSS config: module is not defined in ES module scope`
 
 ```

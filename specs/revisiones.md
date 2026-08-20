@@ -586,3 +586,56 @@ Verificado: `pnpm verify` en verde (322 tests de `src/` + 85 del MCP server), **
 los nombres viejos fuera de `specs/022-*`, y el diagrama de cajas de `overview.md` y el árbol de
 `directory-structure.md` re-alineados a mano — `engine-bridge.ts` mide siete columnas más que
 `motor.ts` y les rompía el ancho fijo.
+
+---
+
+## 2026-08-20 — El spec 030 salió distinto en dos lugares, y los dos son la misma lección
+
+El spec proponía siete frentes y entraron siete, pero **dos cambiaron de forma al medirlos**. Vale
+anotar los dos juntos porque el error de partida fue el mismo: escribir la regla desde lo que la doc
+dice, en vez de desde lo que la doc **quiso decir**.
+
+### «Los módulos no declaran constantes» no se puede aplicar como está escrita
+
+El primer selector daba **21 hallazgos**. Ninguno era deuda:
+
+- **Ocho eran `let`**, no `const`. `let ctx: AudioContext | null = null` es estado mutable de módulo,
+  que es lo contrario de una constante. Faltaba el ancla `kind='const'`, y con ella bajaron a 9.
+- **Siete de los nueve restantes están en `components/`** —`BAR_COUNT`, `GAP`, `MIN_BAR` e `IDLE_TEXT`
+  en `Spectrum.tsx`; `BORDE_COLOR`, `VELO_CAJA` y `VELO_TAPA` en `Playhead.tsx`— y **tampoco** son
+  deuda. Son privadas de su archivo, y sus docblocks no explican el *valor* sino el **mecanismo**: por
+  qué `box-shadow` y no `transform: scale` (con la medición del `scrollHeight` en el DOM), por qué las
+  clases de Tailwind van escritas enteras. Mudarlas a `constants/` habría mudado esa explicación lejos
+  del código que explica.
+
+Lo que resolvió la duda fue releer el **motivo** escrito de la regla y no su enunciado: el daño medido
+fueron *cuatro pares de números que tenían que coincidir y nada sincronizaba*. Un valor privado de un
+solo archivo no puede desincronizarse con nada. Así que la regla se aplica donde el motivo aplica
+—`domain/` y `audio/`, donde una constante es parte del modelo— y las dos que quedaban fuera ahí
+(`ROTATIONS`, `PASOS_MAX`) se mudaron. Quedan 0.
+
+**La doc se corrigió, no la regla.** `CLAUDE.md` y `conventions.md` decían la versión ancha en
+presente, y era falsa desde antes de este spec.
+
+### `import-x/no-cycle` costaba el 60 % del lint y no compraba nada
+
+Entró en el plan por el comentario de `DOMAIN_INTERNO`, que dice que las hojas «no se importan entre sí,
+que es lo que garantiza que no haya ciclos». Parecía el candidato obvio a convertir esa garantía escrita
+en una verificada. Medido: **15 de los 25 segundos** del lint, y **cero** ciclos.
+
+Y al mirarlo de nuevo, la redundancia es total: las zonas prohíben por nombre cada arista de vuelta del
+DAG, así que un ciclo adentro de `domain/` no es improbable sino imposible. La regla habría pagado 15 s
+por confirmar un teorema que otra regla ya demuestra.
+
+### La lección común
+
+Las dos veces el atajo era el mismo: **tomar la regla escrita y buscarle un selector**. Las dos veces la
+salida fue mirar el número —21 hallazgos, 15 segundos— y recién ahí volver al *por qué* de la regla. El
+`research.md` de este repo se escribe midiendo; resulta que las reglas del linter también.
+
+### Y un dato para la próxima
+
+`pnpm verify` pasó de **4,0 s a 11,8 s** y el nodo es `lint`. La mitad cara del linting con tipos es
+`mcp-server/`: **13,9 s** él solo contra **8,4 s** de `src/`, porque importa 31 símbolos del dominio y
+su programa de TypeScript es grande. Si algún día el tiempo molesta, eso es lo primero a soltar — y no
+`src/`, que es donde el tipo compra.
