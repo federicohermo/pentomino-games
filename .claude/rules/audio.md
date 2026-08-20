@@ -54,8 +54,9 @@ El porqué de cada decisión, con las mediciones que la respaldan, está en
   con su propio `hz` —no un `hz?: number` sobre la rama del click—. La construye `collectHits` en
   `audio/scheduler.ts`; `engine.ts` solo la despacha. La `Sequence` sigue sin llevar `Cell` ni ningún
   otro tipo de `domain/` —ni con `import type`—, pero desde el spec 011 **ya no es cierto que para
-  sonar alcance con contar clicks**: `clicks` es `{ offset: number; note?: number }[]`. `App.tsx`
-  sigue proyectando `buildSequence(placed, regimen)` a esa versión antes de pasarla a `setSequence`. Es D7/D8
+  sonar alcance con contar clicks**: `clicks` es `{ offset: number; note?: number }[]`.
+  `proyectarAlMotor` (`components/motor.ts`) sigue llevando `buildSequence(placed, regimen)` a esa
+  versión antes de que `use-motor.ts` la pase a `setSequence`. Es D7/D8
   del spec 009 más la ampliación del 011, y lo verifica `pnpm lint` con el override de capa.
 - **El swap de secuencia al cerrar el ciclo (spec 009) tiene la misma trampa que `startClock`.** Al
   reemplazar la secuencia activa por la pendiente hay que bajar `scheduledUntil` a estrictamente

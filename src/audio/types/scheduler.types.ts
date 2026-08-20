@@ -32,9 +32,13 @@ import type { HIT } from '../constants/scheduler.constants.ts';
  * - AFLOJAR el override del linter compra comodidad tirando abajo la separacion que
  *   sostiene el grafo de imports desde el spec 005.
  *
- * Por eso esta forma es la del dominio MENOS `pieceId` y MENOS `cell`: `App.tsx` es
- * el unico puente entre las dos capas y entrega la secuencia dejando caer esos
- * campos. Es una PROYECCION, no una traduccion —los `offset`, los `notes` y la `note`
+ * Por eso esta forma es la del dominio MENOS `pieceId` y MENOS `cell`:
+ * `components/motor.ts` es el unico puente entre las dos capas y entrega la secuencia
+ * dejando caer esos campos. Vive en `components/` porque es la unica capa que puede
+ * importar los dos tipos `Sequence` —el override de eslint le prohibe a `domain/` ver
+ * `audio/` y viceversa—, y es una PURA con test desde el spec 022: hasta ahi el cruce
+ * estaba escrito dos veces adentro del shell, donde no se podia exportar ni verificar. Es una
+ * PROYECCION, no una traduccion —los `offset`, los `notes` y la `note`
  * del cruce viajan tal cual, en MIDI y sin recalcularse—, y eso solo se sostiene
  * mientras las dos formas sigan siendo estructuralmente compatibles.
  */

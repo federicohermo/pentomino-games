@@ -10,7 +10,7 @@ import type { PlacedPiece } from '../../domain/types/board.types.ts';
 
 /**
  * Las decisiones de los cinco gestos del spec 013. Lo que NO está acá es el cableado
- * —que `App.tsx` mire bien el `e.target`, que el `preventDefault` frene el scroll de
+ * —que `components/use-entrada.ts` mire bien el `e.target`, que el `preventDefault` frene el scroll de
  * verdad—: eso queda en las tareas `[M]` del navegador, porque el repo no monta
  * componentes y no tiene jsdom.
  */

@@ -12,18 +12,37 @@ una persona y no bloquea el cierre.
 - [ ] T004 Comentario en la fila de régimen: por qué asciende (la frase que completaba se quedó sin
       sujeto) y por qué **no** se borra (el precedente del `T070` del 011, agravado: el régimen no
       tiene ningún gesto directo)
-- [ ] T005 `PiecePalette.tsx` + `App.tsx`: sacar las props `onRotate` y `onMirror`. **`rotation` y
-      `mirror` se quedan** — las usan la miniatura del 016 y la línea nueva de T007 — **AC12**
+- [ ] T005 `PiecePalette.tsx` + `panel.types.ts` + `App.tsx`: sacar `onRotate` y `onMirror`. Desde el
+      spec 022 dejaron de ser props sueltas de `PiecePalette`: hoy son dos campos de
+      `PropsDeOrientacion` (`panel.types.ts`), así que esto es borrar los dos campos del tipo, la
+      desestructuración en `PiecePalette.tsx` y las dos entradas del literal `orientacion={{…}}` que
+      arma `App.tsx` — ya no es tocar la firma del componente. **`rotation` y `mirror` se quedan** —
+      las usan la miniatura del 016 (hoy en `PanelDeOrientacion.tsx`) y la línea nueva de T007 —
+      **AC12**
 
-- [ ] T035 `PiecePalette.tsx`: los comentarios que se quedan sin referente al borrar las dos filas.
-      Son **cuatro** y están medidos: el docblock del componente (`:12`, «eleccion de pieza, rotacion,
-      reflexion…»), el de la prop `regimen` (`:24`, «completa la frase de su propia fila», que deja de
-      ser cierto en cuanto T003 la asciende a fila propia), el del botón de recorrido (`:205`, «con el
-      mismo idioma que Reflexion») y el del transporte (`:283-287`, «lo activo en Rotacion y Reflexion»
-      y «el "apagado" de esos dos»). El idioma visual sobrevive en el régimen; lo que se va son los
-      nombres que citan
+- [ ] T035 Los comentarios que se quedan sin referente al borrar las dos filas. Son **cuatro** y están
+      medidos, pero el spec 022 los repartió en **tres archivos** (antes los cuatro vivían en
+      `PiecePalette.tsx`) y además reescribió uno de punta a punta, así que ninguno se toca por número
+      de línea:
+      - `PiecePalette.tsx`, el docblock del componente («## Por que este archivo se queda con cuatro
+        filas»): la frase «bajo el `space-y-2` de abajo el orden real es Rotacion → Reflexion →
+        *clicks* → linea de notas → Tempo» nombra una fila, Reflexión, que T002 borra entera —el
+        docblock viejo que citaba «eleccion de pieza, rotacion, reflexion…» ya no existe, el 022 lo
+        reescribió por otro motivo (la partición en tres componentes) y este es el texto que hay que
+        corregir en su lugar
+      - `panel.types.ts`, el docblock del campo `regimen` de `PropsDeOrientacion` («completa la frase
+        de su propia fila»), que deja de ser cierto en cuanto T003 la asciende a fila propia —con el
+        022 esta línea se mudó de `PiecePalette.tsx` a este archivo
+      - `PiecePalette.tsx`, el del botón de recorrido («con el mismo idioma que Reflexion»): sigue en
+        este archivo porque T011, que lo muda a `PanelDeTransporte.tsx`, es del paso 3 y corre después
+        de este
+      - `PanelDeTransporte.tsx`, el del botón de play («lo activo en Rotacion y Reflexion» y «el
+        "apagado" de esos dos»): con el 022 este comentario ya no vive en `PiecePalette.tsx`
 
-> T001–T005 escriben el mismo archivo, así que ninguna lleva `[P]`. **Los borrados van en su propio
+      El idioma visual sobrevive en el régimen; lo que se va son los nombres que citan
+
+> T001–T005 comparten `PiecePalette.tsx` —T005 además toca `panel.types.ts` y `App.tsx`—, así que
+> ninguna lleva `[P]`. **Los borrados van en su propio
 > commit** (convención del repo), pero en el **mismo commit que el paso 2**: separarlos dejaría un
 > commit donde la orientación no se lee en ninguna parte para 6 de 12 piezas.
 
@@ -36,9 +55,12 @@ una persona y no bloquea el cierre.
       cruza a `Board.tsx`). `rotation` sigue siendo `number` sin acotar, como en todo el repo — el
       union type es la deuda abierta de `deuda.md` y no se salda acá, pero esta pura es su próxima casa
 - [ ] T007 `PiecePalette.tsx`: la línea, junto al `<b>{selected}</b> → tónica …` — **AC4**
-- [ ] T031 `PiecePalette.tsx:115`: el `aria-label` de los doce botones consume la pura de T006 en vez
-      de armar el texto inline. Son dos copias de la misma derivación en el mismo archivo, en dos
-      formatos (`rotación 180°, reflejada` contra `180° · reflejada`) — **AC13**
+- [ ] T031 `PanelDeOrientacion.tsx`: el `aria-label` de los doce botones (el que arma
+      `` `${key}, rotación ${rotation * 90}°…` ``) consume la pura de T006 en vez de armar el texto
+      inline. Con el spec 022 esta línea se mudó de `PiecePalette.tsx` a `PanelDeOrientacion.tsx`, así
+      que las dos copias de la misma derivación —en dos formatos, `rotación 180°, reflejada` contra
+      `180° · reflejada`— dejaron de compartir archivo con la de T007, que se queda en
+      `PiecePalette.tsx`: la duplicación que T031 salda ahora cruza dos componentes — **AC13**
 - [ ] T008 Medir el peor caso de largo (`270° · reflejada`) y reservarle el alto, como ya hace
       `min-h-[2lh]` en `Notas actuales`. Sin esto la línea envuelve al cambiar de pieza y mueve todo
       lo de abajo, que es el bug que esa reserva existe para evitar
@@ -57,8 +79,16 @@ una persona y no bloquea el cierre.
 
 ## Paso 3 — La fila de transporte
 
-- [ ] T011 `PiecePalette.tsx`: el botón de recorrido se muda a la fila de transporte y pierde el texto;
-      estado por color (`bg-slate-900` encendido) — **AC6**
+- [ ] T011 `PiecePalette.tsx` + `PanelDeTransporte.tsx`: el botón de recorrido —hoy la fila «Recorrido
+      en el vacío» de `PiecePalette.tsx`— se borra de ahí y se agrega a la fila de transporte de
+      `PanelDeTransporte.tsx`, perdiendo el texto; estado por color (`bg-slate-900` encendido). Desde
+      el 022 `clicks`/`onToggleClicks` ya viajan en `PropsDeTransporte`, así que `panel.types.ts` no
+      cambia — solo el JSX que los consume. **Además**: actualizar el docblock del componente de
+      `PiecePalette.tsx` (el que dice «El 019 vuelve contigua parte de esta interpolación cuando muda
+      el boton de los clicks… en un spec el problema se achica solo») y el comentario del propio
+      row que citaba el reordenamiento de DOM (AC18 del 022) — con clicks afuera, el argumento de «no
+      se puede mover sin reordenar el DOM» deja de aplicar a esa fila y la cuenta de filas del título
+      («Por que este archivo se queda con cuatro filas») baja — **AC6**
 - [ ] T012 SVG del metrónomo **inline**, `1em` + `currentColor` + `aria-hidden="true"`; `aria-label` y
       `title` en el **botón**, con la etiqueta entera (más larga que la que cabía en la fila) —
       **AC7**
@@ -97,9 +127,14 @@ una persona y no bloquea el cierre.
 - [ ] T018 Verificar que el **piso de 60** queda intacto: depende de la fuente y este spec no toca el
       `text-[19px]` de `Board.tsx`
 - [ ] T019 `App.tsx`: **leer** el footer y confirmar que no hay nada que sacar — hoy no menciona ningún
-      botón, nombra `Rotación` y `Reflexión` como transformaciones del modelo (`App.tsx:447-451`). La
-      primera oración **no se toca** — **AC10**
-- [ ] T020 Verificar que `PiecePalette` sigue sin estado y sin efectos — **AC11**
+      botón, nombra `Rotación` y `Reflexión` como transformaciones del modelo (el `<footer>` con la
+      frase «Rotación cambia la fórmula de escala o el arranque del arpegio…»; el spec 022 corrió de
+      línea el archivo entero, así que no vale citarlo por número). La primera oración **no se toca**
+      — **AC10**
+- [ ] T020 Verificar que `PiecePalette` sigue sin estado y sin efectos. Desde el spec 022 dos de sus
+      filas viven en componentes propios (`PanelDeOrientacion.tsx`, `PanelDeTransporte.tsx`);
+      confirmar que tampoco ganaron estado ni efectos al recibir el botón que este paso les mueve
+      (T011) — **AC11**
 
 ## Paso 5 — La documentación que este spec falsifica
 
@@ -136,10 +171,14 @@ sí mantiene al día, y las tres lo afirman **en presente**. **AC14**.
 - [ ] T026 [M] Navegador: el metrónomo enciende y apaga el recorrido, y su color lo dice — **AC6**
 - [ ] T039 [M] Navegador: el metrónomo **apagado** y `↺` se distinguen uno del otro. Son
       `bg-slate-100` contra `bg-slate-200` y ahora están en la misma fila, que es el par que el 008
-      rechazó por indistinguible (`PiecePalette.tsx:285-287`) — **AC6**
+      rechazó por indistinguible (el botón de Reset, con el spec 022 en `PanelDeTransporte.tsx` y no
+      en `PiecePalette.tsx`, ya en `bg-slate-200`) — **AC6**
 - [ ] T040 [M] Navegador: `↺` sigue haciendo las **dos** cosas — vacía el tablero y frena el
-      transporte —. `resetBoard` (`App.tsx:176-180`) no se toca, así que el riesgo es bajo; el AC no
-      tenía contraparte igual — **AC8**
+      transporte —. Con el spec 022 `resetBoard` llama a `frenarTransporte()` (exportada de
+      `use-motor.ts`) en vez de al `stopClock()` de antes, y se corrió de línea: ya no está en
+      `App.tsx:176-180`. Es cableado y no comportamiento —esa migración es cuenta del 022, no de este
+      spec—, así que el riesgo para esta verificación sigue siendo bajo; el AC no tenía contraparte
+      igual — **AC8**
 
 ## PR
 

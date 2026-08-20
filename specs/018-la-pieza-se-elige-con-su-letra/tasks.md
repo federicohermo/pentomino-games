@@ -64,16 +64,28 @@ una persona y no bloquea el cierre.
 
 ## Paso 4 — El cableado
 
-- [ ] T013 `App.tsx`: el objeto `evento` del `despachar` suma `ctrlKey`, `metaKey` y `altKey`
-- [ ] T014 `App.tsx`: la rama `ACCION.seleccionar`, preguntando por `piezaDeTecla` y saliendo si es
-      `null` — **sin `!`**, con el comentario de por qué la redundancia contra la pura es deliberada.
-      Va como `else if` **antes** del `else togglePlay()` de `App.tsx:311`, que hoy es el catch-all sin
-      condición: agregada como `if` suelto después de la cadena, la letra arranca además el transporte
-      y eso pasa typecheck y lint — **AC11**
-- [ ] T015 `App.tsx`: verificar que las dependencias del efecto de teclado **no** cambian (`setSelected`
-      es un setter de `useState`, identidad estable)
-- [ ] T016 Footer de `App.tsx` (líneas 446-452, los tres `<span>` de 449-451): sumar el gesto en el
-      idioma de los tres del 013 — **AC9**
+- [ ] T013 `src/components/use-entrada.ts`: en `despachar`, adentro de `useAtajosDeTeclado`, el objeto
+      `evento` suma `ctrlKey`, `metaKey` y `altKey` — es el cableado que el spec 022 sacó de `App.tsx`
+      y que arma el objeto con el que después se llama a `accionDeTecla`
+- [ ] T014 Dos archivos, por el mismo reparto que el spec 022 dejó entre el hook y el shell: en
+      `src/components/use-entrada.ts`, la interfaz `Acciones` suma el campo
+      `seleccionar: (pieza: PieceKey) => void` (con su import de
+      `../domain/types/pieces.types.ts`) y `despachar` gana la rama `ACCION.seleccionar` —preguntando
+      por `piezaDeTecla` y saliendo si es `null`, **sin `!`**, con el comentario de por qué la
+      redundancia contra la pura es deliberada— que llama a `acciones.seleccionar(pieza)`. Va como
+      `else if` **antes** del `else transporte()` que hoy cierra la cadena: agregada como `if` suelto
+      después de la cadena, la letra arranca además el transporte y eso pasa typecheck y lint —
+      **AC11**. Y en `src/App.tsx`, un callback nuevo —mismo patrón que `rotarConTecla` y
+      `reflejarConTecla`— envuelve a `setSelected` y se suma como `seleccionar` al objeto que hoy tiene
+      `rotar`, `reflejar` y `transporte` en la llamada a `useAtajosDeTeclado`
+- [ ] T015 Verificar las dos identidades que T014 da por sentadas: el callback nuevo de `src/App.tsx`
+      envuelve a `setSelected` —un setter de `useState`, identidad estable— así que puede ir con
+      dependencias vacías, igual que `alRotar`; y que el array de dependencias del `useEffect` de
+      `useAtajosDeTeclado` en `src/components/use-entrada.ts` pasa a incluir `seleccionar` junto a
+      `rotar`, `reflejar`, `transporte` y `tapLimpio`
+- [ ] T016 Footer de `src/App.tsx` (el bloque `<footer>`, hoy en las líneas 303-309; los tres
+      `<span>` de gesto están en las líneas 306-308): sumar el gesto en el idioma de los tres del
+      013 — **AC9**
 - [ ] T030 `docs/guides/quickstart.md`: la tabla «Cómo se toca» (encabezado en la línea 57, filas de la
       63 a la 70) suma la fila de las letras —`F I L N P T U V W X Y Z` · Selecciona esa pieza · Toda la
       ventana, al **apretar**—. Y el párrafo que la introduce (línea 59) dice «Los **tres** gestos que
@@ -91,8 +103,9 @@ una persona y no bloquea el cierre.
 - [ ] T022 [M] Navegador: apretar `F` dos veces no cambia nada — **AC10**
 - [ ] T031 [M] Navegador: apretar una letra con el transporte parado **no lo arranca**, y con el
       transporte corriendo **no lo para**. Es el único lugar donde se ve si la rama nueva quedó del
-      lado equivocado del `else togglePlay()` (T014): la pura no lo puede atrapar, porque el bug vive
-      en la cadena de `App.tsx` y no en `accionDeTecla` — **AC11**
+      lado equivocado del `else transporte()` (T014): la pura no lo puede atrapar, porque el bug vive
+      en la cadena de `despachar`, en `src/components/use-entrada.ts`, y no en `accionDeTecla` —
+      **AC11**
 
 ## PR
 

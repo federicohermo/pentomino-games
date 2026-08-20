@@ -360,16 +360,9 @@ export function buildSequence(placed: readonly PlacedPiece[], regimen: RegimenDe
   if (n === 0) return { steps: [], clicks: [], order: [], length: 0 };
 
   // Con UNA pieza no hay salto: el ciclo es su arpegio y vuelve a empezar contiguo.
-  //
-  // El plan del spec 009 decia que el ciclo era "el salto de la pieza a si misma",
-  // de la salida (grado 4) a la entrada (grado 0). Se cambio DESPUES DE ESCUCHARLO:
-  // con la `Z` en (0,1)(1,1)(1,0)(2,0)(3,0) ese salto mide 3 y su camino era
-  // [[2,0],[1,0]], o sea que los dos clicks caian SOBRE la propia pieza que acababa de
-  // sonar. No se oia un recorrido —no hay a donde ir— sino dos golpes encima del
-  // arpegio. El recorrido existe ENTRE piezas; con una sola no hay entre.
-  //
-  // El spec 011 le saco el sintoma y no el motivo: `routeBetween` rodea la pieza en vez
-  // de pisarla, asi que hoy esos clicks caerian en celdas vacias. Siguen sobrando.
+  // **El recorrido existe ENTRE piezas, y con una sola no hay entre**, asi que no hay
+  // clicks que emitir. Como se llego a eso —el plan del 009 decia otra cosa y se cambio
+  // despues de escucharlo— esta en `specs/revisiones.md`, pase de comentarios del 022.
   //
   // El ciclo mide `CELLS_PER_PIECE` y no `CELLS_PER_PIECE - 1`: las cinco notas
   // abarcan 4 intervalos, asi que con largo 4 la ultima nota de una vuelta y la

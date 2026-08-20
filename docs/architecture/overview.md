@@ -19,19 +19,22 @@ expresivo, no más difícil.
 └──────────────────────────┬──────────────────────────────┘
                            │
 ┌──────────────────────────▼──────────────────────────────┐
-│  src/App.tsx — el shell                                 │
-│   estado · derivados · handlers · los seis efectos      │
+│  src/App.tsx — el shell, sin un solo efecto             │
+│   estado · derivados · handlers · composición           │
 │   selected · rotation · mirror · tempo                  │
 │   playing · placed[] · hover                            │
 └───────┬─────────────────────────────┬───────────────────┘
-        │ compone                     │ playNow · setSequence · startClock
+        │ compone                     │ playNow (el resto pasa por use-motor.ts)
 ┌───────▼──────────────────┐  ┌───────▼───────────────────┐
 │  src/components/         │  │  src/audio/               │
 │   PiecePalette · Board   │  │   voice.ts     síntesis   │
 │   Spectrum · Playhead    │  │   scheduler.ts lookahead  │
-│                          │  │   engine.ts    singletons │
-│   presentacionales:      │  │   spectrum.ts  bins→barras│
+│   PanelDeOrientacion     │  │   engine.ts    singletons │
+│   PanelDeTransporte      │  │   spectrum.ts  bins→barras│
+│   presentacionales:      │  │                           │
 │   props, sin estado      │  │                           │
+│   use-motor · use-entrada│  │                           │
+│   motor.ts  la proyección│  │                           │
 └───────┬──────────────────┘  │  voice y scheduler reciben│
         │                     │  el ctx por parámetro y NO│
         │ importan            │  importan engine.ts → se  │
@@ -65,12 +68,27 @@ que un `.tsx` exporte algo además del componente, así que mientras la geometr�
 `App.tsx` **no podían exportarse, y por lo tanto no podían testearse**. La organización no era neutral:
 condenaba al dominio a no ser verificable. Hoy `src/domain/` tiene tests donde antes había cero.
 
-Lo que queda en `App.tsx` es el shell: estado, derivados, handlers, los seis efectos y la composición de
-los componentes. Ninguna función pura y ningún literal de dominio.
+**El shell perdió sus seis `useEffect` con el spec 022**, y por el mismo motivo por tercera vez: en un `.tsx` no se
+podían exportar, así que las 166 líneas del puente con el motor —el 75 % de ellas comentario— no se
+podían montar ni testear. Lo que queda en `App.tsx` es el shell: estado, derivados, handlers y la
+composición de los componentes, con **cero `useEffect`**. Ninguna función pura y ningún literal de
+dominio.
 
-Los seis son cuatro de reconciliación —tempo, clicks, la secuencia contra el tablero, y la limpieza al
-desmontar— y los **dos de entrada** que agregó el spec 013: el del teclado sobre `window` y el de la
-rueda sobre el nodo del tablero. Van separados porque no comparten ni el target ni las dependencias.
+Los que había son ahora **dos archivos** de `components/`, y el corte es el que la lista ya dibujaba:
+
+- `use-motor.ts` — los **cuatro de reconciliación**: tempo, clicks, la secuencia contra el tablero, y la
+  limpieza al desmontar. `useMotorSincronizado` los declara en ese orden y recibe la `secuencia` ya
+  derivada, para que el dibujo y el sonido no puedan mirar circuitos distintos (D5 del spec 009).
+- `use-entrada.ts` — los **dos de entrada** que agregó el spec 013: `useAtajosDeTeclado` sobre `window` y
+  `useRuedaRota` sobre el nodo del tablero. Van separados porque no comparten ni el target ni las
+  dependencias, y reciben **callbacks y no setters**: así la forma del estado de la orientación es del
+  shell y no del hook. El `tapLimpio` que comparten se queda en `App.tsx` y entra por parámetro a los
+  dos — lo lee el teclado y lo escriben los dos, así que la arista va escrita en las dos firmas en vez
+  de sostenerse por adyacencia.
+
+La **proyección** del `Sequence` del dominio al del motor es una pura, `proyectarAlMotor` en
+`components/motor.ts`: es el único módulo del repo que puede importar los dos tipos `Sequence`, y estaba
+escrita dos veces adentro del shell.
 
 ## Las cuatro capas
 
@@ -108,7 +126,10 @@ esta escala no hace falta, y agregarlo sería la clase de complejidad que un pro
 | `placed` | `PlacedPiece[]` | Piezas en el tablero |
 | `hover` | `Cell \| null` | Celda bajo el cursor, para el fantasma |
 
-Derivados con `useMemo`: `transformedShape` y `noteSet`. Derivados sin memo (baratos, se recalculan por
+Derivados con `useMemo`: `transformedShape`, `secuencia` y `noteSet`. La llamada a
+`useMotorSincronizado` va **después** del `useMemo` de `secuencia` y no arriba con el resto del cableado:
+`secuencia` es un `const`, así que leerla antes sería leerla en su zona muerta temporal. Derivados
+sin memo (baratos, se recalculan por
 render): `previewCells` y `previewValid`. `previewCells` viaja al `Board` como **array y no como `Set`
 de claves `"x,y"`**: el índice de cada celda es lo que la conecta con su grado, y el `Set` lo perdía.
 
@@ -148,8 +169,13 @@ reordena.
 ### El estado es la fuente de verdad; los efectos reconcilian
 
 Los loops de audio no se agendan ni cancelan desde los handlers. Un único `useEffect` observa
-`[placed]` y le entrega al motor la secuencia del recorrido con `setSequence`. `playing` no está en
-las dependencias: la secuencia es función del tablero y no del transporte.
+`[secuencia, placed]` y le entrega al motor la secuencia del recorrido con `setSequence`. `playing` no
+está en las dependencias: la secuencia es función del tablero y no del transporte.
+
+Ese efecto **no vive en el shell**: desde el spec 022 está en `components/use-motor.ts` con los otros
+tres de reconciliación, y `App.tsx` no declara un solo `useEffect` (ver [Qué vive dónde](#qué-vive-dónde)). Lo
+que se queda en el shell es la **derivación** —`secuencia` es un `useMemo` sobre `[placed, regimen]`— y
+el hook recibe el resultado, para que el dibujo y el sonido no puedan mirar circuitos distintos.
 
 El patrón imperativo anterior —cada handler acordándose de limpiar lo suyo— es exactamente el que
 produjo el bug de loops huérfanos que sobrevivían a "Quitar" y "Reset". Ver

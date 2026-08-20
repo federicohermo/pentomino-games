@@ -174,7 +174,8 @@ export const setBpm = (v: number): void => { bpm = v; };
  * opcional: sin discriminante, esta funcion no tendria a quien apagar.
  *
  * **Arranca en `false` desde el spec 015**, y este es el segundo lugar donde vive ese
- * default: el otro es el `useState` de `App.tsx`, que lo pisa en el efecto de montaje.
+ * default: el otro es el `useState` de `App.tsx`, que `useMotorSincronizado`
+ * (`components/use-motor.ts`) baja al motor en su efecto de montaje.
  * Que se pisen no vuelve inofensivo dejarlos en desacuerdo — es el mismo valor
  * declarado dos veces, exactamente lo que `App.tsx` evita tomando el tempo de
  * `DEFAULT_BPM`. El argumento del cambio esta escrito donde el usuario lo ve, que es

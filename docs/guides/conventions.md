@@ -56,7 +56,8 @@ módulo `transform.ts`.
 | test de un módulo | `<capa>/__tests__/` | `<módulo>.test.ts` |
 | helper de test | `<capa>/__tests__/` | nombre descriptivo |
 | componente | `components/` | `PascalCase.tsx`, único export |
-| hook | `<capa>/hooks/` | `useCamelCase.ts` |
+| hook que cablea un módulo | al lado del módulo | `use-<módulo>.ts` |
+| hook sin módulo propio | `<capa>/hooks/` | `useCamelCase.ts` |
 | validación de datos externos | `<capa>/schemas/` | `<módulo>.schema.ts` |
 | helper interno de un módulo | `<capa>/utils/` | `<módulo>.utils.ts` |
 | helper genérico sin dominio | `src/lib/` | `<tema>.ts` |
@@ -76,6 +77,14 @@ porque una duración que depende del tempo no puede tener un valor por defecto q
 
 Las `Props` de cada componente son la excepción: se quedan **inline y sin exportar**, porque
 `react-refresh/only-export-components` obliga a que el componente sea el único export del `.tsx`.
+
+**Un hook que cablea un módulo va al lado de ese módulo y no a `hooks/`.** El spec 022 sacó los seis
+efectos del shell y los partió en dos pares: `motor.ts` con las puras y `use-motor.ts` con los cuatro
+efectos que las llaman, y `input.ts` con las puras de entrada y `use-entrada.ts` con los dos efectos que
+las cablean. El nombre en kebab-case y la adyacencia son lo que hace visible el par —la decisión vive en
+el archivo sin `use-`, el cableado en el que lo tiene—, y mandarlos a `components/hooks/` habría partido
+cada par en dos carpetas por una convención de nombre. `hooks/` sigue reservado para un hook que **no**
+tenga un módulo del que sea el cableado.
 
 **Las carpetas de rol se crean cuando tienen su primer archivo.** Hoy no hay `hooks/`, `utils/`,
 `schemas/` ni `lib/`: estarían vacías.
@@ -150,6 +159,27 @@ export const ROTATION = { DEG_0: 0, DEG_90: 1, DEG_180: 2, DEG_270: 3 } as const
 export type Rotation = (typeof ROTATION)[keyof typeof ROTATION];
 ```
 
+### El idioma de los identificadores
+
+**Inglés para el vocabulario técnico universal, español para el vocabulario del instrumento.** Es
+**descriptiva**: sale de mirar lo que el repo ya escribió, no es un mandato nuevo, y **no se renombra
+nada** hacia atrás. Aplicarla hacia atrás sería un churn que ningún test atrapa.
+
+Inglés cuando el nombre existiría igual en cualquier repo: `rotate90`, `normalize`, `reflect`,
+`midiFor`, `buildSequence`, `setBpm`, `clockRunning`, `offset`, `notes`. Es el vocabulario del dominio
+técnico —geometría, MIDI, Web Audio, React— y traducirlo agrega un salto mental por cada lectura.
+
+Español cuando el nombre nombra algo de **este** instrumento, o un rol que sólo existe acá: `puertas`,
+`regimen`, `velo`, `tapLimpio`, `celdas`, `marcas`, `encolar`, `rutaActiva`, `proyectarAlMotor`,
+`accionDeTecla`, `MotorDeTransporte`. Acá el inglés sería una traducción de algo que se piensa en
+español —los comentarios, los commits y los specs están en español—, y la traducción se pierde: nadie
+llamaría `gates` a las puertas de una pieza dos veces igual.
+
+El caso de borde que decide la regla es el **rol**: `MotorDeTransporte` no replica
+`startClock`/`stopClock`/`clockRunning` porque el tipo describe lo que su consumidor necesita y no la API
+del motor. Si el nombre viene de afuera, va en el idioma de afuera; si lo inventa este repo, va en
+español.
+
 ## Geometría
 
 ### El orden del array es un invariante
@@ -188,11 +218,17 @@ mal, pero es la clase de cosa que alguien "arregla" por error.
 
 ## Efectos
 
-Los efectos **reconcilian**, no ejecutan comandos. El efecto de audio observa `[placed]` y le entrega
-al motor la secuencia entera con `setSequence`. Los handlers solo cambian estado.
+Los efectos **reconcilian**, no ejecutan comandos. El efecto de audio observa `[secuencia, placed]` y le
+entrega al motor la secuencia entera con `setSequence`. Los handlers solo cambian estado.
+
+**Y no viven en el `.tsx`.** Desde el spec 022 los seis del repo están en dos hooks de `components/`
+—`use-motor.ts` y `use-entrada.ts`—, y el motivo es el mismo por el que salieron el audio y el dominio:
+`react-refresh/only-export-components` prohíbe que un `.tsx` exporte algo además del componente, así que
+un efecto escrito ahí no se puede montar ni verificar. Lo que se queda en el shell es la **derivación**
+—los `useMemo`— y los callbacks: el hook recibe el resultado, no la regla.
 
 `playing` **no** está en las dependencias: la secuencia es función del tablero y no del transporte, y
-quien corta o arranca el sonido es `togglePlay` con `stopClock`/`startClock`.
+quien corta o arranca el sonido es `togglePlay` con `alternarTransporte`.
 
 Que reemplazar la secuencia entera sea aceptable no es casualidad, es una propiedad del diseño: la
 secuencia es un **dato puro** que `tick()` lee, y el reloj es un origen que el efecto no toca —
@@ -206,7 +242,8 @@ closure, chequeado después del `await`, seteado en la limpieza).
 
 Y ojo con las limpiezas asincrónicas: en StrictMode pueden correr **después** del siguiente efecto. Si
 la limpieza tiene que ganarle al re-montaje, tiene que ser sincrónica — es el caso del efecto de
-desmontaje que llama a `stopClock()` y entrega una secuencia vacía con `setSequence()`. Ver
+desmontaje de `use-motor.ts`, que llama a `stopClock()` y entrega una secuencia vacía con
+`setSequence()`. Ver
 [audio.md](../architecture/audio.md#reconciliación-de-loops).
 
 ## Comentarios
@@ -230,6 +267,41 @@ const ANCHOR_INDEX: Record<PieceKey, number> = { … };
 ```
 
 Los comentarios de este repo están **en español**, igual que los mensajes de commit y los specs.
+
+### El eje del tiempo: restricción vigente contra crónica
+
+«El porqué» tiene dos formas y sólo una envejece bien. **Se queda el comentario que describe una
+restricción que HOY hace que el código tenga que ser así. El que cuenta cómo se llegó se muda a
+[`specs/revisiones.md`](../../specs/revisiones.md), y en su lugar queda un puntero de una línea.**
+
+`revisiones.md` existe textualmente para «el porqué de cada decisión», así que no es una poda: es
+mudanza. El costo de tener la crónica en el código es que el lector tiene que separar, párrafo por
+párrafo, la restricción que sigue viva de la historia de cómo se llegó — y la segunda se pudre sola:
+cada spec nuevo deja una capa más de «antes esto decía otra cosa».
+
+Se queda (restricción vigente — el código no puede escribirse de otra forma):
+
+```ts
+// El ternario y no `({ offset, note })`: con la forma corta el click mudo sale con la
+// clave `note` PRESENTE y en `undefined`, y la ausencia del campo es justo lo que dice
+// "celda vacía".
+```
+
+Se muda (crónica — cuenta un cambio de opinión, no una restricción de hoy):
+
+```ts
+// El plan del spec 009 decía que el ciclo era X. Se cambió DESPUÉS DE ESCUCHARLO, y el
+// spec 011 le sacó el síntoma y no el motivo.
+```
+
+Tres reglas para aplicarlo sin perder nada:
+
+- **Ante la duda, se queda.** Un comentario de más cuesta una lectura; uno de menos cuesta el
+  argumento, y el argumento es lo que este repo tiene de valioso.
+- **Si un párrafo mezcla las dos cosas, se parte**: la restricción se queda donde está, la historia se
+  muda y deja el puntero.
+- **Sin objetivo numérico.** Un porcentaje es un incentivo a borrar el comentario largo, que acá es
+  sistemáticamente el bueno.
 
 ## Estilos
 

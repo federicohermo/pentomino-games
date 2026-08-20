@@ -11,9 +11,6 @@ export default defineConfig({
     // que es una implementacion nativa de Web Audio. jsdom no implementa Web
     // Audio en absoluto, asi que ahi OfflineAudioContext no existe.
     environment: 'node',
-    // Sin `globals`: los tests importan describe/it/expect de 'vitest'. Evita
-    // chocar con @types/jest, que sigue en el arbol y declara las mismas
-    // globales con firmas distintas.
     include: ['src/**/*.test.{ts,tsx}'],
   },
 })

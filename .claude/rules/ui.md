@@ -2,13 +2,24 @@
 paths:
   - "src/App.tsx"
   - "src/components/**/*.tsx"
+  # Los `.ts` de la capa entran desde el spec 022: los efectos que el shell tenía
+  # viven en `use-motor.ts` y `use-entrada.ts`, que NO son `.tsx`. Sin este patrón la regla
+  # no se carga al tocarlos, que es exactamente donde hacen falta las tres cosas
+  # que el 022 agregó abajo — la cardinalidad de dependencias, «callbacks y no
+  # setters», y el `tapLimpio` compartido.
+  - "src/components/**/*.ts"
 ---
 
 # UI: el shell y los componentes
 
-`App.tsx` es el shell: estado con `useState` local, derivados, handlers, los seis efectos y la
-composición. **Ninguna función pura y ningún literal de dominio** — eso vive en `domain/`, que es lo
-único que puede testearse.
+`App.tsx` es el shell: estado con `useState` local, derivados, handlers y la composición. Desde el spec
+022 **no declara un solo `useEffect`**: los cuatro de reconciliación viven en `components/use-motor.ts`
+y los dos de entrada en `components/use-entrada.ts`. **Ninguna función pura y ningún literal de
+dominio** — y eso ya no significa «se va a `domain/`»: un `.tsx` no puede exportar nada además del
+componente (`react-refresh/only-export-components`), así que lo que vive acá no se puede testear, pero
+el destino puede ser tanto `domain/` como un `.ts` de `components/`. Hoy hay **seis** módulos de
+`components/` con tests —`input.ts`, `cell-text.ts`, `piece-mini.ts`, `route-source.ts`, `motor.ts` y
+`palette.constants.ts`—, todos en el `environment: 'node'` del repo y ninguno con DOM.
 
 Los componentes son presentacionales, uno por archivo: reciben datos y callbacks por props, sin estado
 ni efectos propios. La excepción ya no es una sola: `Spectrum.tsx` y `Playhead.tsx` (spec 010) no reciben
@@ -27,25 +38,42 @@ con nodos que crea y destruye él mismo.
   necesita pintar, lo pinta con nodos propios superpuestos. Partir el estilo de un mismo nodo entre los
   dos es lo que el review del spec 007 pagó caro.
 
-- **Todo lo que suena en el loop pasa por el efecto de reconciliación.** Un único `useEffect` sobre
-  `[secuencia, placed]` proyecta `buildSequence(placed, regimen)` y se la entrega al motor con
-  `setSequence`; los handlers solo cambian estado. `playing` **no** está en las dependencias, y
-  desde el spec 009 eso es deliberado: la secuencia es función del tablero y no del transporte, y
-  quien arranca o corta el sonido es `togglePlay` con `startClock`/`stopClock`. El `clearJobs()` +
-  `if (!playing) return` de antes era la forma vieja de lograr lo mismo desde acá. El patrón
-  imperativo anterior —cada handler limpiando lo suyo— produjo loops huérfanos que sobrevivían a
-  "Quitar" y "Reset". Si hace falta agendar algo nuevo, va adentro de ese efecto.
-- **La proyección dominio→motor vive acá y en ningún otro lado de `src/`.** `App.tsx` es el único
-  puente entre las dos capas: entrega la `Sequence` del dominio dejando caer `pieceId` y `cell`,
-  porque `audio/` no puede ver `Cell` ni con `import type`. Ver `.claude/rules/audio.md`.
+- **Todo lo que suena en el loop pasa por el efecto de reconciliación**, que vive en
+  `components/use-motor.ts` y no en el shell. Un único `useEffect` sobre `[secuencia, placed]` entrega
+  la secuencia al motor con `setSequence`; los handlers solo cambian estado. `playing` **no** está en
+  las dependencias, y desde el spec 009 eso es deliberado: la secuencia es función del tablero y no del
+  transporte, y quien arranca o corta el sonido es `togglePlay`. El `clearJobs()` + `if (!playing)
+  return` de antes era la forma vieja de lograr lo mismo desde acá. El patrón imperativo anterior
+  —cada handler limpiando lo suyo— produjo loops huérfanos que sobrevivían a "Quitar" y "Reset". Si
+  hace falta agendar algo nuevo, va adentro de ese efecto.
+- **El hook recibe la `secuencia` ya derivada y no la vuelve a derivar.** El `useMemo` de
+  `buildSequence(placed, regimen)` se queda en el shell: si el hook llamara a `buildSequence` por su
+  cuenta, el dibujo y el sonido podrían mirar circuitos distintos sin que nada falle, que es lo que D5
+  del 009 existe para cerrar. El shell deriva la regla; el hook recibe el resultado.
+- **La proyección dominio→motor vive en `components/motor.ts` y en ningún otro lado de `src/`.**
+  `proyectarAlMotor` es el único puente entre las dos capas: entrega la `Sequence` del dominio dejando
+  caer `pieceId` y `cell`, porque `audio/` no puede ver `Cell` ni con `import type`. Es una **pura** y
+  no un efecto, justamente para que ese cruce tenga test —los tres estados de `Click.note`, incluido
+  que el click mudo salga **sin la clave**—. Ver `.claude/rules/audio.md`.
+- **El transporte se alterna con `alternarTransporte(playing, MOTOR)` y no con `startClock`/`stopClock`
+  sueltos.** La pura devuelve lo que el motor dice que pasó y no lo que se le pidió, que es la falla
+  suave que `.claude/rules/audio.md` obliga a chequear en todo llamador. `MOTOR` es el cableado real y
+  vive en `use-motor.ts`, el único módulo de la capa que importa la **API de transporte** del motor
+  (`startClock`, `stopClock`, `clockRunning`, `setSequence`, `setBpm`, `setClicksAudible`). No es el
+  único que importa `audio/engine.ts`: `Playhead.tsx`, `Spectrum.tsx` y `route-source.ts` también, pero
+  los tres piden **lecturas** —`playheadOffset`, `readSpectrum`, `cycleGeneration`— y ninguna de las
+  tres arranca, frena ni agenda nada.
 - **Nunca mutar objetos ya entregados a React.** Ese fue exactamente el bug de los loops que motivó el
   rediseño: `newPiece._sched = id` después del `setPlaced`. Si un dato tiene que cambiar después de
   crearse, o va en el estado con su propio setter, o va afuera de React (ref o singleton de módulo).
 - **Efectos que reconcilian**, no que ejecutan comandos. Con flag de cancelación si hacen trabajo
   asincrónico; sincrónicos si la limpieza tiene que ganarle al re-montaje de StrictMode.
 - **`key` por id, nunca por índice**, en listas de elementos removibles.
-- **Un solo export por `.tsx`.** `react-refresh/only-export-components` lo exige, así que las `Props`
-  quedan inline y sin exportar. Es la misma regla que mantuvo al dominio sin tests mientras vivía acá.
+- **Un solo export por `.tsx`.** `react-refresh/only-export-components` lo exige. Los tipos de props
+  que se comparten entre un contenedor y sus paneles van a `components/types/*.types.ts`
+  (`panel.types.ts`); los que no se comparten quedan inline y sin exportar. Es la misma regla que
+  mantuvo al dominio sin tests mientras vivía acá, y la que le sacó al shell sus seis `useEffect` con
+  el spec 022.
 - **Lo que sale de una constante va por estilo inline, no por clase.** Tailwind escanea el fuente: una
   clase interpolada (`w-[${CELL_PX}px]`) no se generaría.
 
@@ -72,21 +100,35 @@ distinta y ahí no tiene que pasar nada.
 El spec 013 fue el primero que agregó uno —hasta ahí el único `addEventListener` de `src/` era un
 `matchMedia` en `Spectrum.tsx`—, así que la regla la escribió él y la próxima se copia de esta.
 
-- **El listener global vive en `App.tsx`, en un efecto propio**, y el componente sobre el que escucha
-  no gana ni estado ni efectos. `App.tsx` es quien tiene los setters, así que es quien puede despachar.
+- **El listener global vive en un hook de `components/`, en un efecto propio** —`use-entrada.ts` desde
+  el spec 022—, y el componente sobre el que escucha no gana ni estado ni efectos. El shell es quien
+  tiene los setters, así que el hook recibe **callbacks y no setters**: así cambiar la forma del estado
+  es cambiar el shell y no el hook.
 - **Las dependencias del efecto son las reales.** Un `[]` con un ref del estado para suscribir una sola
   vez es la optimización que este repo no necesita —son dos `addEventListener` sobre `window`— y
   esconde de dónde sale cada valor. Si el handler no lee ningún valor (setter funcional), ahí sí `[]`.
+- **Con callbacks, la cardinalidad de suscripción pasa a decidirse en el shell.** Los callbacks del
+  teclado se memoizan con sus dependencias reales (`[rotation]`, `[mirror]`) para que el efecto se
+  re-suscriba cuando cambia la orientación, y el de la rueda con `[]` para que su listener se registre
+  una sola vez por montaje. Y un objeto de acciones armado inline **no puede entrar crudo** al array de
+  dependencias del efecto: tiene identidad nueva por render, así que el hook se re-suscribiría por
+  render y no por cambio de estado — peor que antes, y sin que nada falle. El hook lo desarma y lista
+  sus campos.
+- **Un ref compartido entre dos hooks entra por parámetro a los dos.** `tapLimpio` lo lee el teclado y
+  lo escriben los dos; vive en el shell, que es quien los compone. Meterlo adentro del hook que lo lee
+  deja al otro sin forma de escribirlo, y ahí vuelve el bug de `Ctrl`+rueda del spec 013 sin que falle
+  un solo test.
 - **La DECISIÓN del gesto se extrae como pura a `components/`**, recibiendo los campos del evento que
   importan y no el evento. El repo corre en `environment: 'node'` sin jsdom: una pura que reciba un
-  `KeyboardEvent` no se puede testear, y en `App.tsx` ni siquiera se puede exportar. El precedente son
-  `input.ts`, `cell-text.ts` y `route-source.ts`. Lo que queda en el `.tsx` es cableado, y es lo que
-  las tareas `[M]` verifican en el navegador.
+  `KeyboardEvent` no se puede testear, y en un `.tsx` ni siquiera se puede exportar. El precedente son
+  `input.ts`, `cell-text.ts`, `route-source.ts` y `motor.ts`. Lo que queda en el hook es cableado, y es
+  lo que las tareas `[M]` verifican en el navegador.
 - **`wheel` no puede ir por prop de JSX si hace falta `preventDefault`.** React registra sus listeners
   en el contenedor raíz y a `touchstart`, `touchmove` y `wheel` los registra **pasivos** (react-dom
   19.1.1), donde `preventDefault()` es un no-op que el navegador solo avisa por consola. Va por
-  `addEventListener(nodo, 'wheel', h, { passive: false })` con el nodo por un `ref` creado en
-  `App.tsx`. Es la falla más cara posible: el handler corre, así que parece que anda.
+  `addEventListener(nodo, 'wheel', h, { passive: false })` —hoy en `useRuedaRota`— con el nodo por un
+  `ref` creado en `App.tsx`, que es quien compone los hooks. Es la falla más cara posible: el handler
+  corre, así que parece que anda.
 - **El handler global se saltea `<button>` e `<input>`**: si se saltea el evento, el navegador tiene
   que quedárselo entero — es lo que evita el doble disparo con un control enfocado sin recurrir a un
   `blur()` a mano.

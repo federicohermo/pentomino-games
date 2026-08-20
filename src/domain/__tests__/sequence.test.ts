@@ -987,7 +987,7 @@ describe('AC6 — la pieza muteada emite cinco clicks mudos y ningun paso', () =
       expect(c, `nota ${j}`).toBeDefined();
       expect(c!.cell, `nota ${j}`).toEqual(celdas[j]);
       // La AUSENCIA del campo y no un `undefined` explicito: es lo que el docblock de
-      // `Click` distingue, y lo que la proyeccion de `App.tsx` cuida con un ternario.
+      // `Click` distingue, y lo que `proyectarAlMotor` cuida con un ternario.
       expect('note' in c!, `nota ${j}`).toBe(false);
     }
   });

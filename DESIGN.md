@@ -125,7 +125,7 @@ comunicaba identidad de pieza, y nunca sobre el canal de estado.*
 | Dónde | Qué hace el color | Por qué |
 |---|---|---|
 | `Board` | celda ocupada = color de pieza | identidad debajo, estado encima |
-| `PiecePalette` | **el fondo del botón no se toca**; el color pinta **la forma** de la pieza, dibujada en miniatura | el fondo ya es el canal de "seleccionado" |
+| `PanelDeOrientacion` (la tarjeta que compone `PiecePalette`) | **el fondo del botón no se toca**; el color pinta **la forma** de la pieza, dibujada en miniatura | el fondo ya es el canal de "seleccionado" |
 
 *(`PlacedList` era el tercer caso y se fue con el spec 014: la letra iba **sobre** el color de pieza y
 no *pintada* del color, porque como texto sobre el blanco de la tarjeta el amarillo de `V` da **1,07 de
