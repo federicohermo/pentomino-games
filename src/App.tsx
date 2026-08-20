@@ -257,23 +257,26 @@ export default function App(){
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4">
       <div className="max-w-6xl mx-auto grid grid-cols-12 gap-4">
+        {/* Los dos objetos se arman INLINE y no en un `useMemo`: tienen identidad nueva
+            por render, y eso no cuesta nada porque `PiecePalette` no esta memoizado —
+            re-renderiza igual cuando el shell re-renderiza. Va escrito porque es lo
+            primero que alguien va a querer "arreglar" con un `useMemo` que no compra
+            nada y agrega dos arrays de dependencias que mantener. */}
         <PiecePalette
-          selected={selected}
-          rotation={rotation}
-          mirror={mirror}
-          tempo={tempo}
-          playing={playing}
-          clicks={clicks}
-          regimen={regimen}
-          noteSet={noteSet}
-          onSelect={setSelected}
-          onRotate={setRotation}
-          onMirror={()=> setMirror(m=>!m)}
-          onTempo={setTempo}
-          onTogglePlay={togglePlay}
-          onToggleClicks={()=> setClicks(c=>!c)}
-          onRegimen={setRegimen}
-          onReset={resetBoard}
+          orientacion={{
+            selected, rotation, mirror, regimen, noteSet,
+            onSelect: setSelected,
+            onRotate: setRotation,
+            onMirror: ()=> setMirror(m=>!m),
+            onRegimen: setRegimen,
+          }}
+          transporte={{
+            tempo, playing, clicks,
+            onTempo: setTempo,
+            onTogglePlay: togglePlay,
+            onToggleClicks: ()=> setClicks(c=>!c),
+            onReset: resetBoard,
+          }}
         />
 
         <Board
