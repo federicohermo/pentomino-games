@@ -137,7 +137,7 @@ una persona y no bloquea el cierre.
 - [x] T036 El PR declara que **cambia lo que suena** y que **cambia firmas del dominio** que cruzan al
       MCP server
 - [ ] T037 [M] `/pr-review` antes de pedir revisión
-- [ ] T038 `specs/log.md`: estado del 017
+- [x] T038 `specs/log.md`: estado del 017
 
 ## Seguimiento (no bloquea)
 

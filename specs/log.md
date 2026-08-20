@@ -26,11 +26,15 @@ casillas abiertas como próxima tarea.
 | [011](./011-el-recorrido-esquiva-las-piezas/spec.md) | 2026-08-17 | Propuesto | Pisar una celda ocupada deja de ser gratis y pasa a **costar**: el recorrido rodea las piezas cuando le conviene y las cruza cuando rodear sale caro, y el cruce **suena la nota de esa celda** como floritura en vez de un golpe sordo. Medido: hoy pisan entre el 71 % y el 88 % de los tramos. **Cambia la matriz de costos y con ella el orden de visita en el 30-48 % de los tableros**; revisa el modelo del 009 |
 | [012](./012-el-arpegio-camina-la-pieza/spec.md) | 2026-08-19 | Propuesto | El orden de las notas dentro de una pieza deja de ser el anillo angular y pasa a ser un **camino**: cada nota suena en una celda que toca a la anterior, preferentemente por un lado y —en las cuatro piezas que no admiten recorrido ortogonal— por una esquina. Medido: los pasos que **pasaban por encima** de una celda que no había sonado bajan de **4 a 0** y las 12 piezas se recorren enteras. **Revisa el mapeo del 007** —9 de 12 piezas cambian qué nota muestra cada celda, y la lámina deja de ser la referencia— y **mueve las puertas del 009/010**: el 56 % de los tableros cambia el orden de visita |
 
-| [013](./013-control-directo/spec.md) | 2026-08-19 | En curso | El instrumento se toca sin ir al panel: rueda y `Shift` rotan, botón derecho y `Ctrl` reflejan, la barra espaciadora es el transporte. **No cambia una nota**. Crea la primera capa de entrada del repo —hoy `src/` no tiene un solo listener de teclado— y fija la tabla de modificadores que el 014 necesita. Los tres choques reales están resueltos: el scroll bajo la rueda, el `Ctrl`+click de Mac que cancelaría la reflexión, y el doble disparo del espacio con el botón enfocado |
-| [014](./014-el-tablero-se-edita-en-el-tablero/spec.md) | 2026-08-19 | En curso | Click sobre una pieza colocada la **quita**, `Alt`+click la **mutea**, y `Alt`+click en celda vacía la coloca ya muteada. Una pieza muteada conserva su lugar y su tiempo en el circuito y suena como clicks: se ve con la baldosa **blanca**, conservando nota y `#N`. **Borra `PlacedList.tsx` entero** y con él el único lugar donde se leía el orden del recorrido. Medido: `CELL_PX` 63 → **71**, y la novena columna no le compra nada al tablero |
-| [015](./015-el-click-deja-de-ser-ruido/spec.md) | 2026-08-19 | En curso | El click del recorrido deja de ser ruido blanco —centroide medido en **11 260 Hz**— y pasa a ser una campana de altura **fija** a 2 093 Hz (`C7`), 50 ms, centroide **2 645 Hz** con ventana rectangular —2 093 exactos con Hann: ese número medía el borde de la ventana y no el timbre—. Y arranca **apagado**, dando vuelta D4 del 009. Medido: con 3 piezas el 44 % de los eventos del ciclo son clicks. **Cierra el `T070` del 011 con un "no"**: con el default apagado el botón es la única forma de encenderlos |
-| [016](./016-la-pieza-se-ve-antes-de-colocarse/spec.md) | 2026-08-19 | En curso | El botón de la paleta deja de ser una letra y pasa a ser la **forma**, en caja fija de 5×5 y en la orientación actual. La caja fija es lo que lo hace posible: con cajas ajustadas al contenido la `I` pasa de 5×1 a 1×5 y los doce botones reflowean en cada rotación. **No cambia una nota**; consume las columnas del 014 y empuja `CELL_PX` de 71 a **73** |
-| [017](./017-el-regimen-de-rotacion/spec.md) | 2026-08-19 | En curso | La rotación pasa a tener **dos regímenes**: `escala` (el de hoy, cuatro fórmulas) y `orden` (pentatónica mayor fija, y la rotación corre cíclicamente el arpegio). A 0° los dos son idénticos, así que la comparación es auditable. Medido: **36 de 48** arpegios cambian, los conjuntos de alturas bajan de 43 a 12, y **ninguna celda conserva su nota al rotar** en `orden` —garantizado, porque 5 es primo— contra 36 de 180 en `escala`. Existe para poder decidir escuchando cuál se queda |
+| [013](./013-control-directo/spec.md) | 2026-08-19 | Implementado | El instrumento se toca sin ir al panel: rueda y `Shift` rotan, botón derecho y `Ctrl` reflejan, la barra espaciadora es el transporte. **No cambia una nota**. Crea la primera capa de entrada del repo —hoy `src/` no tiene un solo listener de teclado— y fija la tabla de modificadores que el 014 necesita. Los tres choques reales están resueltos: el scroll bajo la rueda, el `Ctrl`+click de Mac que cancelaría la reflexión, y el doble disparo del espacio con el botón enfocado |
+| [014](./014-el-tablero-se-edita-en-el-tablero/spec.md) | 2026-08-19 | Implementado | Click sobre una pieza colocada la **quita**, `Alt`+click la **mutea**, y `Alt`+click en celda vacía la coloca ya muteada. Una pieza muteada conserva su lugar y su tiempo en el circuito y suena como clicks: se ve con la baldosa **blanca**, conservando nota y `#N`. **Borra `PlacedList.tsx` entero** y con él el único lugar donde se leía el orden del recorrido. Medido: `CELL_PX` 63 → **71**, y la novena columna no le compra nada al tablero |
+| [015](./015-el-click-deja-de-ser-ruido/spec.md) | 2026-08-19 | Implementado | El click del recorrido deja de ser ruido blanco —centroide medido en **11 260 Hz**— y pasa a ser una campana de altura **fija** a 2 093 Hz (`C7`), 50 ms, centroide **2 645 Hz** con ventana rectangular —2 093 exactos con Hann: ese número medía el borde de la ventana y no el timbre—. Y arranca **apagado**, dando vuelta D4 del 009. Medido: con 3 piezas el 44 % de los eventos del ciclo son clicks. **Cierra el `T070` del 011 con un "no"**: con el default apagado el botón es la única forma de encenderlos |
+| [016](./016-la-pieza-se-ve-antes-de-colocarse/spec.md) | 2026-08-19 | Implementado | El botón de la paleta deja de ser una letra y pasa a ser la **forma**, en caja fija de 5×5 y en la orientación actual. La caja fija es lo que lo hace posible: con cajas ajustadas al contenido la `I` pasa de 5×1 a 1×5 y los doce botones reflowean en cada rotación. **No cambia una nota**; consume las columnas del 014 y empuja `CELL_PX` de 71 a **73** |
+| [017](./017-el-regimen-de-rotacion/spec.md) | 2026-08-19 | Implementado | La rotación pasa a tener **dos regímenes**: `escala` (el de hoy, cuatro fórmulas) y `orden` (pentatónica mayor fija, y la rotación corre cíclicamente el arpegio). A 0° los dos son idénticos, así que la comparación es auditable. Medido: **36 de 48** arpegios cambian, los conjuntos de alturas bajan de 43 a 12, y **ninguna celda conserva su nota al rotar** en `orden` —garantizado, porque 5 es primo— contra 36 de 180 en `escala`. Existe para poder decidir escuchando cuál se queda |
+| [018](./018-la-pieza-se-elige-con-su-letra/spec.md) | 2026-08-20 | Propuesto | Apretar la letra de una pieza la selecciona: las doce (`F I L N P T U V W X Y Z`), insensibles a mayúsculas, y **nada más** —repetir la letra es un no-op—. Medido: **cero colisiones** con la tabla de teclas del 013/014, que gastó modificadores y la barra justamente para no gastar letras. Es la primera entrada de teclado que no es un modificador, y `abreTapLimpio` ya la cubre sin tocarla: `Shift`+`f` selecciona y al soltar **no** rota. **No cambia una nota** |
+| [019](./019-el-panel-se-queda-sin-botones/spec.md) | 2026-08-20 | Propuesto | Mueren los cuatro botones de grados y el ON/OFF de Reflexión —desde el 013 rueda, `Shift`, botón derecho y `Ctrl` hacen lo mismo sin soltar el tablero—; `Recorrido en el vacío` se muda a la fila de transporte como metrónomo **SVG** solo-icono (Unicode no tiene metrónomo) y `Reset` pasa a `↺`. Medido: borrar esas filas se come **exactamente** los 50 px de aire muerto de la tarjeta del tablero, y `CELL_PX` re-derivado sigue en **73** por 0,1 px. Y otra medición lo obliga a no ser sólo una resta: **29 de 96 orientaciones suenan distinto sin verse distinto**, así que agrega un lector textual de la orientación. **No cambia una nota** |
+| [020](./020-la-orientacion-es-de-la-pieza/spec.md) | 2026-08-20 | Propuesto | La rotación y la reflexión dejan de ser del instrumento y pasan a ser **de cada pieza**: `Record<PieceKey, Orientacion>`, las doce miniaturas cada una en la suya, y un botón `0°` sobre la seleccionada. Medido: hoy rotar una pieza **mueve 11 de las 12 miniaturas**, y la orientación que queda no es la elegida sino la que dejó la última pieza tocada. `↺` **no** toca las orientaciones (D3). **No toca `domain/`**: `PlacedPiece` ya guarda la suya |
+| [021](./021-el-tablero-es-la-pantalla/spec.md) | 2026-08-20 | Propuesto | Muere el `max-w-6xl grid-cols-12`: el tablero llena el viewport y los paneles de piezas y señal flotan encima, plegables. `CELL_PX` deja de ser constante y pasa a `max(73, min(vw/10, vh/6))` con tipografía proporcional — en escritorio la celda va de 73 a **120–180 px**, o sea entre 2,7× y 6× de área. Medido: el tablero ocupa hoy el **15 %** de una pantalla de 1920×1080; los dos flotantes tapan **11 de 60** celdas y **ninguna de la costura**. El piso salió **73 y no 60**: los 60 valían con la fuente clavada. **No cambia una nota** |
 
 ## Dependencias entre specs
 
@@ -127,6 +131,42 @@ casillas abiertas como próxima tarea.
   del instrumento **se angosta 7 semitonos** por arriba, porque la fórmula fija no tiene la
   transposición `+7` de la rotación 3. Las dos están escritas como consecuencia del pedido, con la
   variante que las evitaría anotada al lado.
+
+- **018 → 019 → 020 → 021 sale de un pedido de seis features cortado en cuatro specs.** El corte no es
+  por tamaño: **2, 3 y 4 del pedido son una sola decisión** —qué queda en el panel y con qué idioma— y
+  por eso van juntos en el 019. Los otros tres son independientes entre sí.
+- **018 y 020 son ortogonales, y el orden entre ellos da igual.** Uno decide *qué pieza* está en la
+  mano; el otro, *en qué orientación*. Cuando los dos estén puestos, seleccionar por letra va a
+  restaurar además la orientación recordada de esa pieza — y eso es un cambio del handler de `App.tsx`,
+  no de la pura del 018, que sigue contestando qué pieza y nada más.
+- **019 va antes que 020, y es lo que evita escribir el lector dos veces.** El 019 borra los botones de
+  grados y tiene que compensarlo con una línea de texto que diga la orientación, porque la miniatura no
+  puede: **29 de 96 orientaciones suenan distinto sin verse distinto**, en 6 de 12 piezas (`I T U V W
+  X`). La `X` es el testigo — cuatro rotaciones, cuatro arpegios, **una sola forma**. El 020 vuelve esa
+  línea *por pieza*, que es un cambio de una línea; al revés habría que escribirla dos veces.
+- **El 019 saca botones del panel y el 020 devuelve uno.** El `0°` vive en el 020 y no en el 019 porque
+  sólo existe si hay memoria por pieza: lo que hoy deja las doce orientaciones mal de golpe es
+  precisamente la rotación global que el 020 borra, así que un «resetear las doce» pierde su caso de uso
+  en el mismo movimiento que lo haría posible. La asimetría es real y se anota en vez de disimularse.
+- **019 y 020 se pasan el colchón de alto, y está medido.** El 019 borra tres filas del panel: la paleta
+  baja de 520 a 470 px, que son **exactamente** los 50 px de aire muerto que la tarjeta del tablero
+  tenía abajo de la grilla. `CELL_PX` re-derivado sigue en 73 —73,0 por alto contra 73,1 por ancho— o
+  sea que **sobrevive por 0,1 px** y el colchón que el 016 dejó se gasta entero. El 020, que agrega una
+  línea, lo devuelve. Es la tercera vez que este número cambia de mano y la primera en que queda sin
+  margen: la próxima fila que salga del panel sí achica el tablero.
+- **021 va último porque borra el layout sobre el que trabajan los otros tres.** Toca los cuatro
+  componentes, mata el `max-w-6xl grid-cols-12`, y reescribe docblocks que el 019 acaba de tocar. Al
+  revés, el 019 mediría un colchón de alto que el 021 hace desaparecer.
+- **El riesgo central del 021 no es el layout, es la cabeza lectora.** `Playhead.tsx` se posiciona
+  imperativamente con `CELL_PX` a 60 fps, **fuera del estado de React** y a propósito desde el 010. Si
+  `CELL_PX` pasa a ser estado, la cabeza se desalinea de la grilla en cuanto alguien redimensiona. La
+  salida es una custom property de CSS (`--cell`): dibujo y cabeza leen el mismo valor y lo resuelve el
+  navegador, así que AC6 y AC7 dejan de pelearse y la tipografía proporcional sale gratis.
+- **El 021 salió distinto de lo previsto en un número, y midiendo.** El piso de `CELL_PX` iba a ser
+  **60**, que es el que el docblock tiene medido con un `Range`. Pero esos 60 valen **con la fuente
+  clavada en 19 px**, y el 021 la vuelve proporcional: a 60 de celda la nota renderiza a 15,6 px, o sea
+  por debajo de lo que el repo midió como necesario. El piso coherente es **73**, que además deja la
+  promesa de que el tablero nunca es más chico que hoy, sólo más grande.
 
 ## Lo que dejó de vivir acá
 
