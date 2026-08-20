@@ -11,7 +11,7 @@ qué es un pentominó (ver [audio.md](./audio.md#el-recorrido-en-el-scheduler)).
 | Entrada | Determina | Mecanismo |
 |---|---|---|
 | **Qué pieza** | La tónica | `BASE_MAP` |
-| **Rotación** | La fórmula de escala | `notesForRotation` |
+| **Rotación** | Una de dos, según el **régimen**: la fórmula de escala (`escala`) o por dónde arranca el arpegio (`orden`) | `notesForRotation` |
 | **Reflexión** | El orden de las notas, y con él la puerta de entrada y salida del recorrido | `ns.reverse()` — retrógrado; `gates` lee `cellsByPlayOrder` |
 | **La forma** | Qué celda tiene qué nota, y en qué orden se recorren | `degreeByCellIndex` — el camino por la pieza |
 | **La posición en el tablero** | El orden de reproducción y el silencio entre piezas | `buildSequence` — circuito + `routeBetween` |
@@ -144,9 +144,15 @@ resultado teórico: hay 12 pentominós libres y 12 semitonos.
 > Cuidado con la colisión de nombres: la **pieza `F`** tiene por tónica la **nota C**, y la **nota F**
 > le corresponde a la **pieza `T`**. La letra del pentominó describe su forma, no su sonido.
 
-La octava está fija en `4` en la llamada actual (`notesForRotation(basePc, 4, rotation)`).
+La octava está fija en `4` en la llamada actual (`notesForRotation(basePc, 4, rotation, regimen)`).
 
-## Rotación → escala
+## Rotación → escala **o** orden: los dos regímenes
+
+Desde el [spec 017](../../specs/017-el-regimen-de-rotacion/spec.md) la rotación hace **una de dos** cosas,
+y cuál se elige con un interruptor global (`RegimenDeRotacion`, estado de `App.tsx` como el tempo). El
+default es `escala`: sin tocar nada, el instrumento suena como siempre.
+
+### `escala` — rotar cambia qué notas
 
 ```ts
 rotación 0   → PENT_MAJOR  [0,2,4,7,9]     pentatónica mayor
@@ -158,6 +164,52 @@ rotación 270 → PENT_MAJOR  transpuesta +7  mayor a la quinta
 Las cuatro son escalas de cinco grados, uno por celda del pentominó. Girar la pieza cambia **el color
 armónico** manteniendo la tónica — salvo en 270°, donde la transposición de +7 semitonos la mueve a la
 quinta.
+
+### `orden` — rotar cambia por dónde arranca
+
+Pentatónica mayor **siempre**, corrida `rotación` posiciones:
+
+```
+F, pentatónica mayor sobre C
+
+rotación 0   C4 D4 E4 G4 A4        ← idéntico en los dos regímenes
+rotación 1   D4 E4 G4 A4 C4
+rotación 2   E4 G4 A4 C4 D4
+rotación 3   G4 A4 C4 D4 E4
+```
+
+Se corre el **arpegio** y no la entrada: al oído las dos lecturas son idénticas, pero forzar el arranque
+del camino cambiaría las puertas del circuito, o sea que mover el orden *dentro* de una pieza terminaría
+reordenando el tablero. Este régimen no toca `transform.ts` ni el circuito.
+
+### Qué separa a los dos, medido
+
+| | `escala` | `orden` |
+|---|---|---|
+| conjuntos de alturas distintos (sobre 48) | 43 | **12** |
+| celdas que conservan su nota al rotar (sobre 180) | **36** (24/12/0 por rotación) | **0** |
+| paso máximo dentro del arpegio | 3 semitonos | **9** (un descenso, siempre el mismo) |
+| registro del instrumento | `C4`–`D#6` | `C4`–**`G#5`** |
+
+Los dos coinciden **exactamente en las 12 combinaciones de rotación 0**, y eso es el diseño: la fórmula
+fija de `orden` es la de la rotación 0 de `escala`, que es lo único que hace que los dos se puedan
+comparar escuchando en vez de ser dos instrumentos. Difieren en las otras 36 de 48.
+
+El cero de `orden` está **garantizado y no medido de casualidad**: un corrimiento cíclico de `k ≠ 0`
+sobre `n` elementos tiene puntos fijos sólo si `gcd(k, n) > 1`, y `n = NOTES_PER_PIECE = 5` es primo.
+Con una escala de seis notas dejaría de valer. La consecuencia musical es que `orden` le saca a la pieza
+su ancla: la tónica sigue en el conjunto pero deja de ser la primera nota.
+
+Las dos últimas filas de la tabla **no estaban previstas** y salieron midiendo: correr el arpegio mete
+exactamente un descenso de 9 semitonos —el techo de `PENT_MAJOR` está a 9 de la tónica, así que es
+siempre esa distancia—, y el registro se angosta 7 semitonos por arriba porque la fórmula fija no tiene
+la transposición `+7` de la rotación 3. Están declaradas como consecuencia del pedido, no como efecto a
+corregir: la variante que las evitaría —reajustar la octava de las notas que dan la vuelta— cambia los
+MIDI, y el pedido era mover el orden *sin* cambiar las notas.
+
+**Los dos regímenes existen para poder decidir escuchando cuál se queda.** Es explícitamente temporal:
+el régimen viaja como parámetro por todo el modelo, así que retirar el que pierda es borrar una rama de
+`notesForRotation`, no desenredarla.
 
 ### Corrimiento de octava
 
@@ -187,8 +239,10 @@ if (mirror) ns = [...ns].reverse();
 Mismas cinco alturas, orden inverso. Es el **retrógrado** en el sentido clásico del término, y es lo que
 promete el footer de la UI.
 
-Se compone limpiamente con la rotación: rotar elige *qué* notas, reflejar elige *en qué orden*. Son
-ortogonales a propósito, y el
+Se compone limpiamente con la rotación en los dos regímenes, pero la frase corta —«rotar elige *qué*
+notas, reflejar elige *en qué orden*»— vale sólo con `escala`: bajo `orden` la rotación **también** mueve
+el orden, y lo que las separa es que el retrógrado lo **invierte** mientras la rotación lo **corre**.
+Ortogonales siguen siendo —las dos se componen sin pisarse—, y el
 [spec 007](../../specs/007-nota-por-celda-y-lenguaje-visual/spec.md) §D3 argumenta por qué mantenerlas
 así al agregar el mapeo espacial.
 
@@ -269,14 +323,15 @@ Cuatro cosas que definen la regla, y por qué son así:
   esté.
 - **Se calcula sobre la forma canónica y viaja por índice.** Rotar **no** reordena el mapeo: se corre una
   vez sobre `SHAPES[pieza]` sin transformar, apoyado en el invariante de orden del array. Rotar ya cambia
-  la escala; si además reordenara el mapeo espacial, dos cosas ortogonales cambiarían a la vez. Queda:
-  **la rotación cambia qué notas, la forma cambia dónde.** El camino en sí es invariante —rotar y
+  el arpegio; si además reordenara el mapeo espacial, dos cosas ortogonales cambiarían a la vez. Queda:
+  **la rotación cambia el arpegio —sus notas con `escala`, su arranque con `orden`—, y la forma cambia
+  dónde.** El régimen no mueve el camino: es lo mismo en los dos. El camino en sí es invariante —rotar y
   reflejar preservan la adyacencia, verificado sobre las 96 orientaciones— pero el desempate angular no,
   y por eso la regla sigue siendo la forma canónica.
 - **La reflexión no cambia qué nota muestra una celda.** El retrógrado es del *orden de reproducción*: la
   celda de grado `g` muestra siempre `notesForRotation(...)[g]`, o sea la nota `g` del arpegio
   **ascendente**. Ojo con la fuente de datos, porque la lectura contraria suena igual y pinta otro
-  tablero: `arpeggioFor(pieza, rotación, reflexión)` —la que alimenta a `buildSequence`— y el campo
+  tablero: `arpeggioFor(pieza, rotación, reflexión, régimen)` —la que alimenta a `buildSequence`— y el campo
   `notes` de `describe_piece` vienen **ya invertidos**.
 
 El mapeo completo de las 12 piezas —grado por índice y nota por celda— está medido en

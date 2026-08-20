@@ -4,10 +4,12 @@ import { centroid, normalize, pathThroughCells, reflect, rotateN } from '../tran
 import { cellsAt } from '../board.ts';
 import {
   BASE_MAP, CHROMATIC, DEFAULT_OCTAVE, DEGREE_EPSILON, PENT_MAJOR, PENT_MINOR, PENT_BLUES5,
+  REGIMEN, NOTES_PER_PIECE,
 } from '../constants/music.constants.ts';
 import { ANCHOR_INDEX, SHAPES } from '../constants/pieces.constants.ts';
 import type { Cell } from '../types/transform.types.ts';
 import type { PieceKey } from '../types/pieces.types.ts';
+import type { RegimenDeRotacion } from '../types/music.types.ts';
 
 const PIECES = Object.keys(BASE_MAP) as PieceKey[];
 
@@ -35,20 +37,45 @@ describe('midiName', () => {
 describe('notesForRotation', () => {
   it('cada rotacion usa su formula, sobre C', () => {
     const base = midiFor(0, DEFAULT_OCTAVE);
-    expect(notesForRotation(0, DEFAULT_OCTAVE, 0)).toEqual(PENT_MAJOR.map(iv => base + iv));
-    expect(notesForRotation(0, DEFAULT_OCTAVE, 1)).toEqual(PENT_MINOR.map(iv => base + iv));
-    expect(notesForRotation(0, DEFAULT_OCTAVE, 2)).toEqual(PENT_BLUES5.map(iv => base + iv));
-    expect(notesForRotation(0, DEFAULT_OCTAVE, 3)).toEqual(PENT_MAJOR.map(iv => base + iv + 7));
+    expect(notesForRotation(0, DEFAULT_OCTAVE, 0, REGIMEN.escala)).toEqual(PENT_MAJOR.map(iv => base + iv));
+    expect(notesForRotation(0, DEFAULT_OCTAVE, 1, REGIMEN.escala)).toEqual(PENT_MINOR.map(iv => base + iv));
+    expect(notesForRotation(0, DEFAULT_OCTAVE, 2, REGIMEN.escala)).toEqual(PENT_BLUES5.map(iv => base + iv));
+    expect(notesForRotation(0, DEFAULT_OCTAVE, 3, REGIMEN.escala)).toEqual(PENT_MAJOR.map(iv => base + iv + 7));
   });
 
-  it('una rotacion fuera de 0..3 cae en la formula mayor', () => {
-    expect(notesForRotation(0, DEFAULT_OCTAVE, 4)).toEqual(notesForRotation(0, DEFAULT_OCTAVE, 0));
+  it('en `escala`, una rotacion fuera de 0..3 cae en la formula mayor', () => {
+    expect(notesForRotation(0, DEFAULT_OCTAVE, 4, REGIMEN.escala)).toEqual(notesForRotation(0, DEFAULT_OCTAVE, 0, REGIMEN.escala));
+  });
+
+  // El titulo de arriba dice `escala` a proposito: los dos regimenes NO hacen lo mismo
+  // fuera de rango, y esa divergencia es el argumento de `specs/deuda.md` para acotar
+  // el tipo de `rotation`. Mientras siga siendo un `number`, el borde se testea.
+  it('en `orden`, una rotacion fuera de 0..3 corre ciclicamente en vez de caer en la mayor', () => {
+    const rot0 = notesForRotation(0, DEFAULT_OCTAVE, 0, REGIMEN.orden);
+    // `rot: 4` NO es la rotacion 0: es el corrimiento 4, o sea la ultima nota adelante.
+    expect(notesForRotation(0, DEFAULT_OCTAVE, 4, REGIMEN.orden)).not.toEqual(rot0);
+    expect(notesForRotation(0, DEFAULT_OCTAVE, 5, REGIMEN.orden)).toEqual(rot0);
+  });
+
+  // El `%` de JS conserva el signo del dividendo, asi que un modulo simple dejaba
+  // `base[-1]` —`undefined`, que `midiName` pinta como `undefinedNaN` en la celda—.
+  // Es el mismo agujero que el modulo existe para tapar, del otro lado del cero.
+  it('en `orden`, una rotacion NEGATIVA sigue dando una permutacion ciclica', () => {
+    const rot0 = notesForRotation(0, DEFAULT_OCTAVE, 0, REGIMEN.orden);
+    for (const rot of [-1, -2, -5, -6]) {
+      const ns = notesForRotation(0, DEFAULT_OCTAVE, rot, REGIMEN.orden);
+      expect(ns).toHaveLength(5);
+      expect(ns.every(n => Number.isInteger(n))).toBe(true);
+      expect([...ns].sort((a, b) => a - b)).toEqual([...rot0].sort((a, b) => a - b));
+    }
+    // `-5` es una vuelta entera hacia atras: el corrimiento neto es 0.
+    expect(notesForRotation(0, DEFAULT_OCTAVE, -5, REGIMEN.orden)).toEqual(rot0);
   });
 
   it('devuelve 5 notas distintas y ascendentes para las 96 combinaciones', () => {
     for (const p of PIECES) {
       for (let rot = 0; rot < 4; rot++) {
-        const ns = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot);
+        const ns = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, REGIMEN.escala);
         expect(ns).toHaveLength(5);
         expect(new Set(ns).size).toBe(5);
         for (let i = 1; i < ns.length; i++) expect(ns[i]).toBeGreaterThan(ns[i - 1]);
@@ -59,7 +86,7 @@ describe('notesForRotation', () => {
   it('la nota mas grave de una pieza es su tonica', () => {
     for (const p of PIECES) {
       for (let rot = 0; rot < 4; rot++) {
-        const ns = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot);
+        const ns = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, REGIMEN.escala);
         // La rotacion 3 transpone +7, asi que su grave es la quinta, no la tonica.
         const esperada = rot === 3 ? (BASE_MAP[p] + 7) % 12 : BASE_MAP[p];
         expect(ns[0] % 12).toBe(esperada);
@@ -70,7 +97,7 @@ describe('notesForRotation', () => {
   it('el corrimiento de octava sube la nota en vez de envolverla', () => {
     // Z (tonica B = 11) + la sexta mayor (9) pasa de B: la nota sube de octava en
     // vez de volver al grave. Es decision de diseno, no un bug.
-    const ns = notesForRotation(BASE_MAP.Z, DEFAULT_OCTAVE, 0);
+    const ns = notesForRotation(BASE_MAP.Z, DEFAULT_OCTAVE, 0, REGIMEN.escala);
     expect(ns[4] - ns[0]).toBe(9);
     expect(midiName(ns[0])).toBe('B4');
     expect(midiName(ns[4])).toBe('G#5');
@@ -79,7 +106,7 @@ describe('notesForRotation', () => {
   it('el ambito nunca supera una decima', () => {
     for (const p of PIECES) {
       for (let rot = 0; rot < 4; rot++) {
-        const ns = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot);
+        const ns = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, REGIMEN.escala);
         const ambito = ns[4] - ns[0];
         expect(ambito).toBeGreaterThanOrEqual(7);
         expect(ambito).toBeLessThanOrEqual(10);
@@ -92,9 +119,12 @@ describe('notesForRotation', () => {
  * La derivacion celda→nota completa, tal como la arma quien dibuja el tablero: el
  * grado sale de la forma CANONICA indexado por `k`, y la nota sale del arpegio
  * ASCENDENTE indexada por ese grado.
+ *
+ * El regimen es parametro y no `escala` fijo: es lo unico que separa la cuenta de las
+ * 36 celdas que sobreviven a rotar de la de las 0 (spec 017, AC5 y AC6).
  */
-const notaDeCelda = (p: PieceKey, rot: number, k: number): number =>
-  notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot)[degreeByCellIndex(SHAPES[p])[k]];
+const notaDeCelda = (p: PieceKey, rot: number, k: number, regimen: RegimenDeRotacion): number =>
+  notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, regimen)[degreeByCellIndex(SHAPES[p])[k]];
 
 /** Lo que mide el spec 012: cuanto se mueve el arpegio de una nota a la siguiente. */
 const distanciasDelArpegio = (p: PieceKey): number[] => {
@@ -107,6 +137,182 @@ const distanciaAlCentro = (p: PieceKey, k: number) => {
   const cent = centroid(SHAPES[p]);
   return Math.hypot(SHAPES[p][k][0] - cent[0], SHAPES[p][k][1] - cent[1]);
 };
+
+/**
+ * Tests de CARACTERIZACION del regimen `escala`, escritos ANTES de que existiera la
+ * segunda rama (spec 017, paso 1). No describen una regla nueva: congelan la que ya
+ * habia, para que romperla falle aca y no en una escucha tres pasos despues.
+ *
+ * Lo que congelan no son las notas —eso ya lo hace la referencia congelada del 012—
+ * sino la propiedad de que rotar CONSERVA parte del material. Es justo lo que el
+ * regimen `orden` no hace, asi que sin dejarla escrita la comparacion de los dos
+ * regimenes no tendria contra que medirse.
+ */
+describe('regimen `escala` — que sobrevive a rotar (caracterizacion, spec 017)', () => {
+  // 12 piezas x 3 rotaciones != 0 x 5 celdas = 180. La rotacion 0 queda afuera porque
+  // es la referencia contra la que se compara, no un caso mas.
+  const ROTACIONES = [1, 2, 3];
+
+  it('AC6 — 36 de 180 celdas conservan su nota, con la descomposicion 24 / 12 / 0', () => {
+    const porRotacion = ROTACIONES.map(rot =>
+      PIECES.reduce((n, p) =>
+        n + SHAPES[p].reduce((m, _c, k) => m + (notaDeCelda(p, rot, k, REGIMEN.escala) === notaDeCelda(p, 0, k, REGIMEN.escala) ? 1 : 0), 0), 0));
+
+    // Las tres cifras estan EXPLICADAS y no medidas de casualidad: las formulas
+    // comparten grados. `PENT_MAJOR` y `PENT_MINOR` coinciden en los grados 0 y 3
+    // —2 grados x 12 piezas = 24—, `PENT_MAJOR` y `PENT_BLUES5` solo en el 0 —12—, y
+    // la rotacion 3 transpone TODO +7, asi que no conserva ninguna.
+    expect(porRotacion).toEqual([24, 12, 0]);
+    expect(porRotacion.reduce((a, b) => a + b, 0)).toBe(36);
+  });
+
+  it('el grado 0 conserva la tonica en las rotaciones 1 y 2, y NO en la 3', () => {
+    // Es la propiedad que hace que `BASE_MAP` se escuche como identidad: rotar una
+    // pieza cambia su escala pero la deja anclada a su nota. La rotacion 3 es la
+    // unica excepcion, y la produce la transposicion +7.
+    for (const p of PIECES) {
+      const tonica = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 0, REGIMEN.escala)[0];
+      expect(notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 1, REGIMEN.escala)[0], `${p} rot1`).toBe(tonica);
+      expect(notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 2, REGIMEN.escala)[0], `${p} rot2`).toBe(tonica);
+      expect(notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 3, REGIMEN.escala)[0], `${p} rot3`).not.toBe(tonica);
+    }
+  });
+});
+
+/**
+ * El regimen `orden`, la segunda rama que el spec 017 le agrega a `notesForRotation`.
+ *
+ * El oraculo de estos tests NO es `notesForRotation`: las notas esperadas se componen a
+ * mano desde las formulas y la regla del `octShift`, porque una no-regresion que llama
+ * a la funcion que verifica no verifica nada.
+ */
+describe('los dos regimenes de rotacion (spec 017)', () => {
+  const FORMULAS = [PENT_MAJOR, PENT_MINOR, PENT_BLUES5, PENT_MAJOR];
+  const TRANSPOSE = [0, 0, 0, 7];
+
+  /** La formula sobre la tonica, con el corrimiento de octava. Escrita a mano a proposito. */
+  const desdeLaFormula = (p: PieceKey, formula: readonly number[], transpose: number): number[] =>
+    formula.map(iv => {
+      const total = BASE_MAP[p] + iv + transpose;
+      return midiFor(((total % 12) + 12) % 12, DEFAULT_OCTAVE + Math.floor(total / 12));
+    });
+
+  it('AC2 — en `escala` las 48 combinaciones dan exactamente lo que daban antes del 017', () => {
+    for (const p of PIECES) {
+      for (let rot = 0; rot < 4; rot++) {
+        expect(notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, REGIMEN.escala), `${p}/${rot}`)
+          .toEqual(desdeLaFormula(p, FORMULAS[rot], TRANSPOSE[rot]));
+      }
+    }
+  });
+
+  it('AC3 — en `orden` la rotacion r corre el arpegio r posiciones sobre la pentatonica mayor', () => {
+    for (const p of PIECES) {
+      const base = desdeLaFormula(p, PENT_MAJOR, 0);
+      for (let rot = 0; rot < 4; rot++) {
+        expect(notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, REGIMEN.orden), `${p}/${rot}`)
+          .toEqual(base.map((_n, j) => base[(j + rot) % base.length]));
+      }
+    }
+  });
+
+  it('AC4 — a rotacion 0 los dos regimenes son identicos, sobre las 12 piezas', () => {
+    // Es lo que hace AUDITABLE la comparacion (D2): los dos regimenes tienen un origen
+    // comun y divergen recien al rotar. Con cualquier otra formula fija en `orden` los
+    // dos sistemas no se tocarian en ningun punto y comparar seria comparar dos
+    // instrumentos distintos, no dos reglas.
+    for (const p of PIECES) {
+      expect(notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 0, REGIMEN.orden), p)
+        .toEqual(notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 0, REGIMEN.escala));
+    }
+  });
+
+  it('los dos difieren en 36 de las 48 combinaciones, y las 12 que coinciden son las de rotacion 0', () => {
+    const distintas: string[] = [];
+    for (const p of PIECES) {
+      for (let rot = 0; rot < 4; rot++) {
+        const a = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, REGIMEN.escala);
+        const b = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, REGIMEN.orden);
+        if (a.join() !== b.join()) distintas.push(`${p}/${rot}`);
+      }
+    }
+    expect(distintas).toHaveLength(36);
+    // Y las 12 identicas son EXACTAMENTE las de rotacion 0, no doce cualesquiera.
+    expect(distintas.every(clave => !clave.endsWith('/0'))).toBe(true);
+  });
+
+  it('`orden` deja a cada pieza con UN solo conjunto de alturas: 12 conjuntos contra 43', () => {
+    // Es la medida de lo que el regimen simplifica, y el costo de la variedad que
+    // `escala` compra: dos piezas cualesquiera del tablero pueden no compartir ni una
+    // nota, asi que lo que se escucha depende menos de como se armo el circuito que de
+    // que formulas cayeron.
+    const conjuntos = (regimen: RegimenDeRotacion) => new Set(
+      PIECES.flatMap(p => [0, 1, 2, 3].map(rot =>
+        [...notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, regimen)].sort((a, b) => a - b).join())));
+    expect(conjuntos(REGIMEN.escala).size).toBe(43);
+    expect(conjuntos(REGIMEN.orden).size).toBe(12);
+  });
+
+  it('AC5 — en `orden` NINGUNA celda conserva su nota al rotar: 0 de 180', () => {
+    // El cero esta GARANTIZADO, no medido de casualidad: un corrimiento ciclico de
+    // `k != 0` sobre `n` elementos tiene puntos fijos solo si `gcd(k, n) > 1`, y aca
+    // `n` es `NOTES_PER_PIECE`. Se verifica el gcd ANTES de contar, para que el test
+    // siga significando algo si alguien toca `NOTES_PER_PIECE`: con una escala de 6
+    // notas, `k = 2` y `k = 3` si tendrian puntos fijos y este 0 dejaria de valer.
+    // Escrito como "esperamos 0" a secas seria un numero magico.
+    const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+    for (let k = 1; k <= 3; k++) {
+      expect(gcd(k, NOTES_PER_PIECE), `gcd(${k}, ${NOTES_PER_PIECE}) tiene que ser 1`).toBe(1);
+    }
+
+    const conservadas = [1, 2, 3].reduce((n, rot) =>
+      n + PIECES.reduce((m, p) =>
+        m + SHAPES[p].reduce((c, _celda, k) =>
+          c + (notaDeCelda(p, rot, k, REGIMEN.orden) === notaDeCelda(p, 0, k, REGIMEN.orden) ? 1 : 0), 0), 0), 0);
+    expect(conservadas).toBe(0);
+  });
+
+  it('en `orden` el arpegio deja de subir siempre: un descenso de 9 semitonos exactos', () => {
+    // D6, medido y NO previsto. La nota de arriba vuelve abajo, y siempre la misma
+    // distancia: el techo de `PENT_MAJOR` esta a 9 de la tonica. No es «hasta 9».
+    // Esta escrito como test y no solo en el spec porque es lo que la escucha del 017
+    // tiene que evaluar — y porque la variante que lo evitaria (un `+12` condicional)
+    // esta a una linea, asi que conviene que aplicarla falle acá y se vea.
+    const descensos: number[] = [];
+    for (const p of PIECES) {
+      for (let rot = 0; rot < 4; rot++) {
+        const ns = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, REGIMEN.orden);
+        for (let i = 1; i < ns.length; i++) if (ns[i] < ns[i - 1]) descensos.push(ns[i - 1] - ns[i]);
+      }
+    }
+    // Uno por arpegio en las 36 combinaciones que se mueven; las 12 de rotacion 0 no
+    // tienen ninguno, porque son la pentatonica mayor sin correr.
+    expect(descensos).toHaveLength(36);
+    expect(new Set(descensos)).toEqual(new Set([9]));
+
+    // Y en `escala` el paso mas grande es 3, porque las cuatro formulas son crecientes.
+    const pasos = PIECES.flatMap(p => [0, 1, 2, 3].flatMap(rot => {
+      const ns = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, REGIMEN.escala);
+      return ns.slice(1).map((n, i) => n - ns[i]);
+    }));
+    expect(Math.max(...pasos)).toBe(3);
+    expect(Math.min(...pasos)).toBeGreaterThan(0);
+  });
+
+  it('en `orden` el registro se angosta 7 semitonos por arriba: C4..G#5 contra C4..D#6', () => {
+    // La otra mitad de D6, y su causa esta escrita: la formula fija no tiene la
+    // transposicion +7 de la rotacion 3, que es lo que en `escala` empuja a las piezas
+    // de tonica alta casi una octava mas arriba. Es consecuencia declarada del pedido,
+    // no un efecto a corregir.
+    const registro = (regimen: RegimenDeRotacion) => {
+      const todas = PIECES.flatMap(p => [0, 1, 2, 3].flatMap(rot =>
+        notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, regimen)));
+      return [midiName(Math.min(...todas)), midiName(Math.max(...todas))];
+    };
+    expect(registro(REGIMEN.escala)).toEqual(['C4', 'D#6']);
+    expect(registro(REGIMEN.orden)).toEqual(['C4', 'G#5']);
+  });
+});
 
 describe('degreeByCellIndex', () => {
   it('AC1 — las 12 piezas dan una permutacion de [0,1,2,3,4]', () => {
@@ -228,8 +434,8 @@ describe('playOrderByCellIndex — el paso de cada celda', () => {
       for (const mirror of [false, true]) {
         const grados = degreeByCellIndex(SHAPES[p]);
         const pasos = playOrderByCellIndex(SHAPES[p], mirror);
-        const asc = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 0);
-        const enOrden = arpeggioFor(p, 0, mirror);
+        const asc = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 0, REGIMEN.escala);
+        const enOrden = arpeggioFor(p, 0, mirror, REGIMEN.escala);
         for (let k = 0; k < 5; k++) {
           expect(enOrden[pasos[k]], `${p}/${mirror} celda ${k}`).toBe(asc[grados[k]]);
         }
@@ -326,12 +532,12 @@ describe('AC12 — la reflexion no cambia la nota de una celda', () => {
     for (const p of PIECES) {
       const grados = degreeByCellIndex(SHAPES[p]);
       for (let rot = 0; rot < 4; rot++) {
-        const ascendente = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot);
+        const ascendente = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, REGIMEN.escala);
         const retrogrado = [...ascendente].reverse();
         for (let k = 0; k < grados.length; k++) {
-          expect(notaDeCelda(p, rot, k)).toBe(ascendente[grados[k]]);
+          expect(notaDeCelda(p, rot, k, REGIMEN.escala)).toBe(ascendente[grados[k]]);
           // El grado 2 es el centro del arpegio: el unico que el retrogrado deja quieto.
-          if (grados[k] !== 2) expect(notaDeCelda(p, rot, k)).not.toBe(retrogrado[grados[k]]);
+          if (grados[k] !== 2) expect(notaDeCelda(p, rot, k, REGIMEN.escala)).not.toBe(retrogrado[grados[k]]);
         }
       }
     }
@@ -340,9 +546,9 @@ describe('AC12 — la reflexion no cambia la nota de una celda', () => {
   it('la celda de grado 0 se queda con la nota mas grave, no con la mas aguda', () => {
     for (const p of PIECES) {
       const k = degreeByCellIndex(SHAPES[p]).indexOf(0);
-      const ascendente = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 0);
-      expect(notaDeCelda(p, 0, k)).toBe(ascendente[0]);
-      expect(notaDeCelda(p, 0, k)).not.toBe(ascendente[4]);   // lo que daria el retrogrado
+      const ascendente = notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, 0, REGIMEN.escala);
+      expect(notaDeCelda(p, 0, k, REGIMEN.escala)).toBe(ascendente[0]);
+      expect(notaDeCelda(p, 0, k, REGIMEN.escala)).not.toBe(ascendente[4]);   // lo que daria el retrogrado
     }
   });
 });
@@ -387,7 +593,7 @@ const TONICA_EN: Record<PieceKey, number> = {
 describe('AC8 — la referencia congelada', () => {
   it('las 12 piezas suenan celda por celda como la tabla del spec 012', () => {
     for (const p of PIECES) {
-      const leida = SHAPES[p].map((_, k) => midiName(notaDeCelda(p, 0, k)));
+      const leida = SHAPES[p].map((_, k) => midiName(notaDeCelda(p, 0, k, REGIMEN.escala)));
       expect(leida).toEqual(REFERENCIA[p].map(([, nombre]) => nombre));
     }
   });
@@ -402,7 +608,7 @@ describe('AC8 — la referencia congelada', () => {
     for (const p of PIECES) {
       const k = TONICA_EN[p];
       expect(degreeByCellIndex(SHAPES[p])[k]).toBe(0);
-      expect(notaDeCelda(p, 0, k) % 12).toBe(BASE_MAP[p]);
+      expect(notaDeCelda(p, 0, k, REGIMEN.escala) % 12).toBe(BASE_MAP[p]);
     }
   });
 });

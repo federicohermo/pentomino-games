@@ -58,7 +58,11 @@ persona; lo que dejó de ser barato es el **costo en tokens** de localizar leyen
 Preguntar en vez de leer cuando la pregunta es:
 
 - *¿Qué notas suenan con la pieza `Z` rotada 270° y reflejada?* → `describe_piece`. A mano hay que
-  aplicar la fórmula de escala, el corrimiento de octava y el retrógrado, en ese orden.
+  aplicar la fórmula de escala, el corrimiento de octava y el retrógrado, en ese orden. Desde el
+  [spec 017](../../specs/017-el-regimen-de-rotacion/spec.md) la pregunta **no está completa sin el
+  régimen**: `describe_piece` y `simulate_board` lo aceptan como argumento —default `escala`, el de la
+  app— y lo **devuelven** en la respuesta, porque en 36 de las 48 combinaciones de pieza × rotación las
+  mismas cinco notas tienen dos respuestas correctas.
 - *¿Qué forma tiene la `F` rotada 180°, y dónde queda su celda de agarre?* → `describe_piece`.
 - *¿Este tablero suena como un recorrido continuo o con saltos largos?* → `simulate_board`, y mirar el
   orden del circuito, sus saltos y el largo del ciclo. Es lo que el

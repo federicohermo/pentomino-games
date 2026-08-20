@@ -1,6 +1,7 @@
 import type { Cell } from './types/transform.types.ts';
 import type { PlacedPiece } from './types/board.types.ts';
 import type { Step, Click, Visita, Sequence } from './types/sequence.types.ts';
+import type { RegimenDeRotacion } from './types/music.types.ts';
 import { routeBetween, occupantAt, occupantCellIndex } from './board.ts';
 import { degreeByCellIndex, playOrderByCellIndex, arpeggioFor, notesForRotation } from './music.ts';
 import { SHAPES, CELLS_PER_PIECE } from './constants/pieces.constants.ts';
@@ -19,7 +20,7 @@ import { BASE_MAP, DEFAULT_OCTAVE } from './constants/music.constants.ts';
 
 /**
  * Las celdas de la pieza en ORDEN DE REPRODUCCION: `[j]` es la celda donde suena la
- * nota `j` de `arpeggioFor(p.piece, p.rotation, p.mirror)`.
+ * nota `j` de `arpeggioFor(p.piece, p.rotation, p.mirror, regimen)`.
  *
  * El paso sale de la forma CANONICA y se lee POR INDICE:
  * `playOrderByCellIndex(SHAPES[p.piece], p.mirror)[k]` es el paso de `p.cells[k]`,
@@ -111,11 +112,18 @@ export function gates(p: PlacedPiece): { entrada: Cell; salida: Cell } {
  *   trae el retrogrado aplicado. El grado lee la forma al derecho: indexar con el un
  *   arpegio invertido da la nota espejada. `arpeggioFor` responde en que ORDEN suenan
  *   las notas; esta responde que nota hay en una celda, que es otra pregunta.
+ *
+ * Y una tercera desde el spec 017: el REGIMEN se PROPAGA, no se fija aca. De esta
+ * funcion sale el `Click.note` de `clickEn`, o sea la altura que suena al CRUZAR una
+ * celda ocupada, y tambien el `crossed` que reporta `simulate_board`. Si se quedara en
+ * `escala` mientras la pieza toca `orden`, la celda diria una altura y pisarla sonaria
+ * otra en 36 de 48 combinaciones — que es exactamente el bug que este docblock existe
+ * para prevenir. `tsc` obliga a tocar la linea pero no dice cual es la respuesta.
  */
-export function noteAtCell(p: PlacedPiece, cell: Cell): number | null {
+export function noteAtCell(p: PlacedPiece, cell: Cell, regimen: RegimenDeRotacion): number | null {
   const k = occupantCellIndex(p, cell[0], cell[1]);
   if (k < 0) return null;
-  const ascendente = notesForRotation(BASE_MAP[p.piece], DEFAULT_OCTAVE, p.rotation);
+  const ascendente = notesForRotation(BASE_MAP[p.piece], DEFAULT_OCTAVE, p.rotation, regimen);
   return ascendente[degreeByCellIndex(SHAPES[p.piece])[k]];
 }
 
@@ -133,9 +141,9 @@ export function noteAtCell(p: PlacedPiece, cell: Cell): number | null {
  * tres y no un caso raro. El cruce no desaparece: sigue siendo un click, mudo, igual que
  * sobre una celda vacia. Lo unico que cambia es su `kind` del lado de la UI.
  */
-function clickEn(offset: number, celda: Cell, placed: readonly PlacedPiece[]): Click {
+function clickEn(offset: number, celda: Cell, placed: readonly PlacedPiece[], regimen: RegimenDeRotacion): Click {
   const ocupante = occupantAt(placed, celda[0], celda[1]);
-  const nota = ocupante === null || ocupante.muted ? null : noteAtCell(ocupante, celda);
+  const nota = ocupante === null || ocupante.muted ? null : noteAtCell(ocupante, celda, regimen);
   return nota === null ? { offset, cell: celda } : { offset, cell: celda, note: nota };
 }
 
@@ -327,6 +335,11 @@ function shortestCircuit(cost: readonly (readonly number[])[]): number[] {
  * camino que se agenda es el que el circuito eligio, y la cantidad de clicks no se
  * calcula sino que es el largo de ese camino (D8).
  *
+ * El `regimen` (spec 017) atraviesa la funcion sin decidir nada: gobierna que notas
+ * dispara cada pieza y que altura suena un cruce, y no toca el circuito ni las puertas
+ * ni los offsets. Es a proposito — el 017 corre el arpegio y no la entrada, justamente
+ * para no reordenar el tablero al cambiar de regimen (D1).
+ *
  * ## La pieza muteada ocupa su lugar y su tiempo, y no suena (spec 014)
  *
  * El muteo entra DESPUES de que el circuito esta elegido, y eso no es un detalle de
@@ -342,7 +355,7 @@ function shortestCircuit(cost: readonly (readonly number[])[]): number[] {
  * El otro borde lo pone `clickEn`: un tramo que CRUZA una pieza muteada tampoco suena su
  * nota. Sin eso el muteo seria parcial en uno de cada tres tableros.
  */
-export function buildSequence(placed: readonly PlacedPiece[]): Sequence {
+export function buildSequence(placed: readonly PlacedPiece[], regimen: RegimenDeRotacion): Sequence {
   const n = placed.length;
   if (n === 0) return { steps: [], clicks: [], order: [], length: 0 };
 
@@ -371,7 +384,7 @@ export function buildSequence(placed: readonly PlacedPiece[]): Sequence {
   if (n === 1) {
     const p = placed[0];
     return {
-      steps: p.muted ? [] : [{ pieceId: p.id, offset: 0, notes: arpeggioFor(p.piece, p.rotation, p.mirror) }],
+      steps: p.muted ? [] : [{ pieceId: p.id, offset: 0, notes: arpeggioFor(p.piece, p.rotation, p.mirror, regimen) }],
       clicks: p.muted ? clicksDeMuteada(p, 0) : [],
       order: [{ pieceId: p.id, offset: 0 }],
       length: CELLS_PER_PIECE,
@@ -403,11 +416,11 @@ export function buildSequence(placed: readonly PlacedPiece[]): Sequence {
     // `arpeggioFor` devuelve un array nuevo en cada llamada, asi que no hay copia
     // defensiva que hacer: `Step.notes` es mutable por contrato y no aliasa nada. La
     // copia que habia aca protegia de mutar `PlacedPiece.notes`, que ya no existe.
-    else steps.push({ pieceId: p.id, offset, notes: arpeggioFor(p.piece, p.rotation, p.mirror) });
+    else steps.push({ pieceId: p.id, offset, notes: arpeggioFor(p.piece, p.rotation, p.mirror, regimen) });
 
     const ultima = offset + (CELLS_PER_PIECE - 1);
     const ruta = rutas[circuito[t]][circuito[(t + 1) % n]];
-    for (let m = 0; m < ruta.path.length; m++) clicks.push(clickEn(ultima + 1 + m, ruta.path[m], placed));
+    for (let m = 0; m < ruta.path.length; m++) clicks.push(clickEn(ultima + 1 + m, ruta.path[m], placed, regimen));
 
     offset = ultima + ruta.steps;
   }

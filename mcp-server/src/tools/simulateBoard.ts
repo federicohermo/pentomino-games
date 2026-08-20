@@ -7,6 +7,7 @@ import { midiName } from '../../../src/domain/music.ts';
 import { buildSequence, gates } from '../../../src/domain/sequence.ts';
 import { SHAPES, ANCHOR_INDEX, CELLS_PER_PIECE } from '../../../src/domain/constants/pieces.constants.ts';
 import { GRID_W, GRID_H } from '../../../src/domain/constants/board.constants.ts';
+import { REGIMEN, DEFAULT_REGIMEN } from '../../../src/domain/constants/music.constants.ts';
 import type { Cell } from '../../../src/domain/types/transform.types.ts';
 import type { PlacedPiece } from '../../../src/domain/types/board.types.ts';
 import { collectHits, barDuration, intervalDuration } from '../../../src/audio/scheduler.ts';
@@ -66,6 +67,13 @@ const inputSchema = z.object({
   // ~36 s de simulacion con 4.
   cycles: z.number().int().min(1).max(4).default(2)
     .describe('Cuántas vueltas del circuito simular. El ciclo lo fija el tablero, no el tempo.'),
+  regimen: z.enum([REGIMEN.escala, REGIMEN.orden]).default(DEFAULT_REGIMEN)
+    .describe(
+      'Qué cambia la rotación (spec 017). `escala`: la rotación elige entre cuatro fórmulas, o sea ' +
+      'QUÉ NOTAS suena cada pieza. `orden`: pentatónica mayor siempre, corrida `rotation` posiciones, ' +
+      'o sea POR DÓNDE ARRANCA su arpegio. Gobierna las notas de cada paso y la altura de los cruces, ' +
+      'y no toca el circuito ni las puertas ni los offsets: cambiarlo no reordena el tablero (D1).',
+    ),
 });
 
 /** Una colocacion ya resuelta: lo que la respuesta reporta de cada jugada. */
@@ -212,14 +220,17 @@ export const simulateBoard = defineTool({
     'celda ocupada cuesta más (pisar la pieza), y cuando ese cruce es inevitable el click cae sobre esa ' +
     'celda con la MISMA nota que suena al pisarla. Cada salto trae esos cruces aparte, con su celda y ' +
     'su nota, para comparar el costo de pisar sin escucharlo. En el teselado de 12 piezas —sin ninguna ' +
-    'celda vacía, el peso no puede evitar nada— los 14 clicks caen todos sobre celdas con pieza.',
+    'celda vacía, el peso no puede evitar nada— los 14 clicks caen todos sobre celdas con pieza.\n' +
+    'Desde el spec 017 la respuesta trae también el `regimen`: la rotación cambia las notas ' +
+    '(`escala`) o el arranque del arpegio (`orden`), y sin decirlo la línea de tiempo es ambigua en ' +
+    '36 de las 48 combinaciones. El circuito no cambia con el régimen — solo las alturas.',
   inputSchema,
-  run: ({ pieces, bpm, cycles }) => {
+  run: ({ pieces, bpm, cycles, regimen }) => {
     const { resolved, placed } = resolve(pieces);
 
     // Etapa 2 — la secuencia del recorrido, la misma que arma la app. Una pieza
     // invalida no esta en `placed` y por lo tanto no entra al circuito.
-    const seq = buildSequence(placed);
+    const seq = buildSequence(placed, regimen);
     // El circuito y no los pasos: desde el spec 014 una pieza MUTEADA visita su lugar
     // sin emitir `Step`, asi que contar pasos reportaria un recorrido al que le faltan
     // nodos y fusionaria dos tramos en uno.
@@ -298,6 +309,12 @@ export const simulateBoard = defineTool({
 
     return json({
       bpm,
+      // El regimen viaja EN LA RESPUESTA y no solo en la entrada: en 36 de las 48
+      // combinaciones de pieza x rotacion la misma pieza tiene dos arpegios, asi que
+      // una `timeline` con notas y sin regimen es ambigua. El circuito NO depende de
+      // el —los saltos, las puertas y los offsets salen iguales en los dos—: lo unico
+      // que mueve son las alturas.
+      regimen,
       barSeconds: round4(barDuration(bpm)),
       // La separacion entre eventos consecutivos del recorrido, que desde el spec
       // 008 sale del compas: sin este numero la `timeline` no se puede leer sin

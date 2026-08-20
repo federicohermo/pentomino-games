@@ -28,13 +28,13 @@ con nodos que crea y destruye él mismo.
   dos es lo que el review del spec 007 pagó caro.
 
 - **Todo lo que suena en el loop pasa por el efecto de reconciliación.** Un único `useEffect` sobre
-  `[placed]` proyecta `buildSequence(placed)` y se la entrega al motor con `setSequence`; los handlers
-  solo cambian estado. `playing` **no** está en las dependencias, y desde el spec 009 eso es
-  deliberado: la secuencia es función del tablero y no del transporte, y quien arranca o corta el
-  sonido es `togglePlay` con `startClock`/`stopClock`. El `clearJobs()` + `if (!playing) return` de
-  antes era la forma vieja de lograr lo mismo desde acá. El patrón imperativo anterior —cada handler
-  limpiando lo suyo— produjo loops huérfanos que sobrevivían a "Quitar" y "Reset". Si hace falta
-  agendar algo nuevo, va adentro de ese efecto.
+  `[secuencia, placed]` proyecta `buildSequence(placed, regimen)` y se la entrega al motor con
+  `setSequence`; los handlers solo cambian estado. `playing` **no** está en las dependencias, y
+  desde el spec 009 eso es deliberado: la secuencia es función del tablero y no del transporte, y
+  quien arranca o corta el sonido es `togglePlay` con `startClock`/`stopClock`. El `clearJobs()` +
+  `if (!playing) return` de antes era la forma vieja de lograr lo mismo desde acá. El patrón
+  imperativo anterior —cada handler limpiando lo suyo— produjo loops huérfanos que sobrevivían a
+  "Quitar" y "Reset". Si hace falta agendar algo nuevo, va adentro de ese efecto.
 - **La proyección dominio→motor vive acá y en ningún otro lado de `src/`.** `App.tsx` es el único
   puente entre las dos capas: entrega la `Sequence` del dominio dejando caer `pieceId` y `cell`,
   porque `audio/` no puede ver `Cell` ni con `import type`. Ver `.claude/rules/audio.md`.

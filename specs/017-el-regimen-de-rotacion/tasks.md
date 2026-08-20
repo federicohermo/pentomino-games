@@ -5,12 +5,12 @@ una persona y no bloquea el cierre.
 
 ## Paso 1 — Caracterizar el régimen de hoy, antes de tocarlo
 
-- [ ] T001 **AC6** — test: en `escala`, **36 de 180** celdas conservan su nota al rotar, con la
+- [x] T001 **AC6** — test: en `escala`, **36 de 180** celdas conservan su nota al rotar, con la
       descomposición **24 / 12 / 0** por rotación
-- [ ] T002 Test: el grado 0 conserva la tónica en las rotaciones 1 y 2 y **no** en la 3 (la
+- [x] T002 Test: el grado 0 conserva la tónica en las rotaciones 1 y 2 y **no** en la 3 (la
       transposición `+7`). Es la propiedad que hace que `BASE_MAP` se escuche como identidad, y hoy no
       está escrita en ningún lado
-- [ ] T003 Comentario en los dos tests: son de **caracterización**, escritos antes de que exista la
+- [x] T003 Comentario en los dos tests: son de **caracterización**, escritos antes de que exista la
       segunda rama, para que romper el régimen viejo falle acá y no en una escucha tres pasos después
 
 > **Ninguna de las tres lleva `[P]`, y no es un olvido:** las tres escriben
@@ -19,52 +19,52 @@ una persona y no bloquea el cierre.
 
 ## Paso 2 — El régimen entra al dominio
 
-- [ ] T004 `domain/constants/music.constants.ts`: const-object con los dos valores, y el default
-- [ ] T005 `domain/types/music.types.ts` *(nuevo)*: `RegimenDeRotacion` derivado del const-object.
+- [x] T004 `domain/constants/music.constants.ts`: const-object con los dos valores, y el default
+- [x] T005 `domain/types/music.types.ts` *(nuevo)*: `RegimenDeRotacion` derivado del const-object.
       **Sin `enum`** — lo rechaza `erasableSyntaxOnly`, que es la misma opción que permite que node
       cargue `domain/` sin compilar — **AC1**
-- [ ] T006 `notesForRotation` recibe el régimen, **sin default en el parámetro**. Un default haría que
+- [x] T006 `notesForRotation` recibe el régimen, **sin default en el parámetro**. Un default haría que
       un llamador que se lo olvide obtenga el régimen viejo en silencio, y son 36 de 48 las
       combinaciones que difieren: que el typecheck lo atrape es el punto (mismo criterio que `dur` y
       `rel` en `scheduleVoice`)
-- [ ] T007 La rama `orden`: pentatónica mayor sobre la tónica, corrida `r` posiciones
-- [ ] T008 Reescribir **los dos docblocks de `music.ts`**, no uno: la frase «que la rotación elija la
+- [x] T007 La rama `orden`: pentatónica mayor sobre la tónica, corrida `r` posiciones
+- [x] T008 Reescribir **los dos docblocks de `music.ts`**, no uno: la frase «que la rotación elija la
       fórmula es la decisión de diseño del instrumento» está en el docblock **de módulo** (`:9-14`), y
       el de `notesForRotation` (`:22-31`) es el que lista «0° → pentatónica mayor · 90° → menor …» más
       la nota del `octShift`. Tocar uno solo deja el otro afirmando la regla vieja en presente. Los dos
       pasan a decir una de dos, con la otra al lado y con el motivo de que existan las dos
-- [ ] T009 `arpeggioFor` recibe y pasa el régimen
-- [ ] T010 `buildSequence(placed, regimen)` — es la firma más consumida de las dos que cambian
+- [x] T009 `arpeggioFor` recibe y pasa el régimen
+- [x] T010 `buildSequence(placed, regimen)` — es la firma más consumida de las dos que cambian
       (`research.md` §6)
-- [ ] T010b **AC16** — `noteAtCell` (`domain/sequence.ts:115`) recibe el régimen: es la **tercera**
+- [x] T010b **AC16** — `noteAtCell` (`domain/sequence.ts:115`) recibe el régimen: es la **tercera**
       firma pública del dominio que cambia, y de ella sale el `Click.note` de `clickEn` (`:131`), o sea
       la altura que suena al **cruzar** una celda ocupada, más el `crossed` que reporta
       `simulate_board`. Si se queda en `escala` mientras la pieza toca `orden`, la celda dice una altura
       y pisarla suena otra — el bug exacto que su docblock (`:98-114`) existe para prevenir. `tsc`
       obliga a tocar la línea pero no dice cuál es la respuesta: **propagar**, no fijar un régimen ahí
-- [ ] T010c Test de `noteAtCell` bajo `orden`: la nota de la celda coincide con la que el tablero pinta
+- [x] T010c Test de `noteAtCell` bajo `orden`: la nota de la celda coincide con la que el tablero pinta
       ahí. `sequence.test.ts:299-336` ya tiene la batería, hay que darle el segundo régimen
-- [ ] T011 `cell-text.ts` recibe el régimen, **y el régimen entra en la clave del memo de módulo**
+- [x] T011 `cell-text.ts` recibe el régimen, **y el régimen entra en la clave del memo de módulo**
       (`cell-text.ts:9` y `:52`, hoy `${piece}${rotation}${mirror}`) — **AC15**. Es un `Map` de módulo que
       sobrevive al render y que **no mira ningún linter**: sin el régimen en la clave, cambiarlo deja
       las celdas mostrando las notas del régimen anterior para siempre. Es la misma razón por la que la
       reflexión ya está en esa clave, escrita en el docblock de `cellTextFor`
-- [ ] T011b Test de **AC15**: `cellTextFor` con la misma pieza y los dos regímenes devuelve notas
+- [x] T011b Test de **AC15**: `cellTextFor` con la misma pieza y los dos regímenes devuelve notas
       distintas. `cell-text.test.ts:80` ya ejercita el memo con `toBe`, así que el hueco es visible
-- [ ] T012 **AC2** — no-regresión: en `escala` las 48 combinaciones dan exactamente lo de hoy
-- [ ] T013 **AC3** — el corrimiento sobre las 48 combinaciones
-- [ ] T014 **AC4** — a rotación 0 los dos regímenes son idénticos, sobre las 12 piezas. Es la
+- [x] T012 **AC2** — no-regresión: en `escala` las 48 combinaciones dan exactamente lo de hoy
+- [x] T013 **AC3** — el corrimiento sobre las 48 combinaciones
+- [x] T014 **AC4** — a rotación 0 los dos regímenes son idénticos, sobre las 12 piezas. Es la
       propiedad que hace **auditable** la comparación (D2)
 
 > **T012–T015 tampoco llevan `[P]`, por lo mismo que T001–T003:** los cuatro van a
 > `src/domain/__tests__/music.test.ts` (`research.md` §9). El bloque que sí se puede abanicar es el de
 > las firmas —T006/T007/T008 en `music.ts`, T010/T010b en `sequence.ts`, T011 en `cell-text.ts`— pero
 > están encadenados por el typecheck, así que tampoco.
-- [ ] T015 **AC5** — el 0 sobre 180 en `orden`, con el **porqué escrito en el test**: un corrimiento
+- [x] T015 **AC5** — el 0 sobre 180 en `orden`, con el **porqué escrito en el test**: un corrimiento
       cíclico de `k ≠ 0` sobre `n` elementos tiene puntos fijos sólo si `gcd(k, n) > 1`, y `n = 5` es
       primo. Escrito así el test sigue significando algo si alguien toca `NOTES_PER_PIECE`; escrito como
       "esperamos 0" se vuelve un número mágico
-- [ ] T016 `invariants.ts`: `checkNotes` recorre las **96** combinaciones, con el chequeo de orden
+- [x] T016 `invariants.ts`: `checkNotes` recorre las **96** combinaciones, con el chequeo de orden
       **partido por régimen** — **AC12**. Hoy recorre 48 «porque el espejo sólo invierte el orden», y
       con dos regímenes eso es la mitad del espacio; es donde un corrimiento mal escrito produciría el
       `undefined` que `midiName` pinta como `undefinedNaN` (`research.md` §7).
@@ -73,52 +73,52 @@ una persona y no bloquea el cierre.
       `check_invariants` quedaría en rojo por diseño y esta misma AC la pide en verde. En `orden` el
       chequeo equivalente y más fuerte es **«es una permutación cíclica del arpegio de rotación 0»**;
       `length === NOTES_PER_PIECE` y «sin repetidas» se quedan compartidos
-- [ ] T017 `pnpm verify` en verde con `escala` pasado explícitamente en todos lados y **nada sonando
+- [x] T017 `pnpm verify` en verde con `escala` pasado explícitamente en todos lados y **nada sonando
       distinto** — lo garantiza el paso 1
-- [ ] T018 **Commit propio y declarado**: cambia lo que suena en 36 de 48 combinaciones cuando el
+- [x] T018 **Commit propio y declarado**: cambia lo que suena en 36 de 48 combinaciones cuando el
       régimen nuevo está activo
 
 ## Paso 3 — El interruptor y las tools
 
-- [ ] T019 `App.tsx`: estado del régimen, default **`escala`** — **AC11**
-- [ ] T020 `App.tsx`: pasarlo a `buildSequence` (`:74`), a `arpeggioFor` (`:81`) y a la proyección de
+- [x] T019 `App.tsx`: estado del régimen, default **`escala`** — **AC11**
+- [x] T020 `App.tsx`: pasarlo a `buildSequence` (`:74`), a `arpeggioFor` (`:81`) y a la proyección de
       desmontaje (`:174`) — **y a las dep arrays de los dos `useMemo`**, AC15. `exhaustive-deps` las
       ve, pero `recommended-latest` la reporta como **warning** y `pnpm lint` corre sin
       `--max-warnings 0`: no frena el gate
-- [ ] T020b `Board.tsx` recibe el régimen como **prop**: `cellTextFor` **no** se llama desde `App.tsx`,
+- [x] T020b `Board.tsx` recibe el régimen como **prop**: `cellTextFor` **no** se llama desde `App.tsx`,
       lo llama `Board.tsx` dos veces (`:163` la pieza colocada, `:164` el fantasma). El archivo no
       estaba en el alcance del spec
-- [ ] T020c `PlacedList.tsx:85` llama `arpeggioFor` y también necesita la prop — **salvo que el 014 ya
+- [x] T020c `PlacedList.tsx:85` llama `arpeggioFor` y también necesita la prop — **salvo que el 014 ya
       haya mergeado**, que es quien lo borra. Hoy el archivo existe: si el 017 se implementa fuera del
       orden del lote, es un consumidor más
-- [ ] T021 **AC8** — verificar que **ninguna función del dominio lee un global**: el régimen viaja como
+- [x] T021 **AC8** — verificar que **ninguna función del dominio lee un global**: el régimen viaja como
       parámetro y el linter de dirección de dependencia sigue en verde
-- [ ] T022 `PiecePalette.tsx`: el interruptor en la fila de `Rotación`, leyéndose como oración —
+- [x] T022 `PiecePalette.tsx`: el interruptor en la fila de `Rotación`, leyéndose como oración —
       `Rotación → cambia [escala | orden]` — **AC10**, D4
-- [ ] T023 Medir la fila contra el ancho de la tarjeta que dejó el 016, que ya la llenó de miniaturas
-- [ ] T024 **AC9** — `describe_piece` acepta el régimen **y lo reporta**
-- [ ] T024b **AC9** — `SCALE_LABEL` (`mcp-server/src/tools/describePiece.ts:31-36`): array hardcodeado
+- [x] T023 Medir la fila contra el ancho de la tarjeta que dejó el 016, que ya la llenó de miniaturas
+- [x] T024 **AC9** — `describe_piece` acepta el régimen **y lo reporta**
+- [x] T024b **AC9** — `SCALE_LABEL` (`mcp-server/src/tools/describePiece.ts:31-36`): array hardcodeado
       indexado por rotación cuyas cuatro entradas son falsas bajo `orden` —la fórmula es siempre la
       pentatónica mayor y lo que la rotación mueve es el arranque—. Su docblock lo declara «uno de los
       DOS supuestos del server sobre el dominio que pueden quedar desincronizados **sin que `tsc` diga
       nada**»: ningún gate lo atrapa. Reportar el régimen y seguir diciendo «pentatónica menor
       (rotación 90°)» es peor que no reportarlo
-- [ ] T025 **AC9** — `simulate_board` acepta el régimen **y lo reporta**
-- [ ] T026 [P] Test en `mcp-server`: la misma pieza con los dos regímenes da respuestas distintas y cada
+- [x] T025 **AC9** — `simulate_board` acepta el régimen **y lo reporta**
+- [x] T026 [P] Test en `mcp-server`: la misma pieza con los dos regímenes da respuestas distintas y cada
       una dice cuál es. Sin eso, la tool es ambigua en 36 de 48 casos
 
 ## Paso 4 — Documentación y escucha
 
-- [ ] T027 [P] `docs/architecture/modelo-musical.md` en **tres** puntos, no en uno: la fila `:14`
+- [x] T027 [P] `docs/architecture/modelo-musical.md` en **tres** puntos, no en uno: la fila `:14`
       («Rotación | La fórmula de escala»), el `:169` («rotar elige *qué* notas, reflejar elige *en qué
       orden*», que en `orden` es al revés) y el `:252` («la rotación cambia qué notas, la forma cambia
       dónde»)
-- [ ] T028 [P] `CLAUDE.md:152`: la fila del modelo musical en la tabla de documentación, y la
+- [x] T028 [P] `CLAUDE.md:152`: la fila del modelo musical en la tabla de documentación, y la
       descripción del instrumento
-- [ ] T029 [P] `.claude/rules/domain.md:36`
-- [ ] T029b [P] `docs/README.md:11` — «rotación → escala», en el índice. No estaba en la lista original
+- [x] T029 [P] `.claude/rules/domain.md:36`
+- [x] T029b [P] `docs/README.md:11` — «rotación → escala», en el índice. No estaba en la lista original
       y es el sexto lugar que lo afirma en presente
-- [ ] T030 `pnpm verify` y `check_invariants` en proceso fresco antes y después — **AC12**
+- [x] T030 `pnpm verify` y `check_invariants` en proceso fresco antes y después — **AC12**
 - [ ] T031 [M] **AC7** — alternar el régimen con el transporte corriendo: el tablero entero se re-deriva
       y entra en el ciclo siguiente, sin cortar el que suena (D5 del spec 009)
 - [ ] T032 [M] **AC13 — el punto del spec**: el mismo tablero en los dos regímenes, alternando en vivo.
@@ -133,8 +133,8 @@ una persona y no bloquea el cierre.
 
 ## PR
 
-- [ ] T035 Rama `feature/017-el-regimen-de-rotacion` desde `main`
-- [ ] T036 El PR declara que **cambia lo que suena** y que **cambia firmas del dominio** que cruzan al
+- [x] T035 Rama `feature/017-el-regimen-de-rotacion` desde `main`
+- [x] T036 El PR declara que **cambia lo que suena** y que **cambia firmas del dominio** que cruzan al
       MCP server
 - [ ] T037 [M] `/pr-review` antes de pedir revisión
 - [ ] T038 `specs/log.md`: estado del 017

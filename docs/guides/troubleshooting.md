@@ -121,7 +121,7 @@ distintas.
 ### Loops que siguen sonando después de borrar la pieza
 
 Era un bug real, corregido. Si reaparece, el sospechoso es que alguien le haya hablado al motor **fuera**
-del efecto de reconciliación. Desde el spec 009 hay una sola llamada —`setSequence(buildSequence(placed))`—
+del efecto de reconciliación. Desde el spec 009 hay una sola llamada —`setSequence(buildSequence(placed, regimen))`—
 y toda la gestión tiene que pasar por ese efecto — ver
 [audio.md](../architecture/audio.md#reconciliación-de-loops).
 

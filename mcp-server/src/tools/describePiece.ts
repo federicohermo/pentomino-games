@@ -5,7 +5,8 @@ import { PIECE_KEYS } from '../pieces.ts';
 import { rotateN, reflect } from '../../../src/domain/transform.ts';
 import { notesForRotation, midiName, degreeByCellIndex, playOrderByCellIndex } from '../../../src/domain/music.ts';
 import { SHAPES, ANCHOR_INDEX } from '../../../src/domain/constants/pieces.constants.ts';
-import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE } from '../../../src/domain/constants/music.constants.ts';
+import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE, REGIMEN, DEFAULT_REGIMEN } from '../../../src/domain/constants/music.constants.ts';
+import type { RegimenDeRotacion } from '../../../src/domain/types/music.types.ts';
 
 /**
  * Forma + sonido de una pieza en una orientacion. Es la tool de mayor ahorro:
@@ -16,7 +17,7 @@ import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE } from '../../../src/domain/constan
  */
 
 /**
- * Como se llama la formula que elige cada rotacion.
+ * Como se llama la formula que elige cada rotacion EN EL REGIMEN `escala`.
  *
  * Es una ETIQUETA, no la regla: quien elige la formula es `notesForRotation` en
  * `domain/music.ts`, y las notas de la respuesta salen de ahi. Si el mapeo
@@ -26,6 +27,11 @@ import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE } from '../../../src/domain/constan
  * desincronizados sin que `tsc` diga nada; el otro es `ORIENTATIONS_PER_PIECE` en
  * `checkInvariants.ts`. Estan anotados los dos, y son los dos unicos: todo lo
  * demas se ejecuta en vez de describirse.
+ *
+ * El spec 017 lo cobro: con el regimen `orden` las CUATRO entradas son falsas —la
+ * formula es siempre la pentatonica mayor y lo que la rotacion mueve es el arranque—,
+ * y ningun gate lo habria atrapado. Por eso el array dejo de ser lo que la respuesta
+ * lee: lo lee `scaleLabel`, que primero mira el regimen.
  */
 const SCALE_LABEL = [
   'pentatónica mayor (rotación 0°)',
@@ -34,15 +40,37 @@ const SCALE_LABEL = [
   'pentatónica mayor transpuesta +7 (rotación 270°)',
 ];
 
+/**
+ * Que dice la respuesta en `scale`, que depende del regimen y no solo de la rotacion.
+ *
+ * Reportar el regimen y seguir diciendo «pentatónica menor (rotación 90°)» bajo `orden`
+ * es peor que no reportarlo: la respuesta se contradiria a si misma, y las notas que
+ * trae al lado serian las correctas.
+ */
+function scaleLabel(regimen: RegimenDeRotacion, rotation: number): string {
+  if (regimen === REGIMEN.escala) return SCALE_LABEL[rotation];
+  return rotation === 0
+    ? 'pentatónica mayor, sin correr (rotación 0°)'
+    : `pentatónica mayor corrida ${rotation} ${rotation === 1 ? 'posición' : 'posiciones'} (rotación ${rotation * 90}°)`;
+}
+
 const inputSchema = z.object({
   piece: z.enum(PIECE_KEYS)
     .describe('Letra de la pieza. Describe la FORMA, no el sonido: la pieza F suena en C.'),
   rotation: z.number().int().min(0).max(3).default(0)
-    .describe('Cuartos de vuelta horarios: 0=0°, 1=90°, 2=180°, 3=270°. Elige la fórmula de escala.'),
+    .describe('Cuartos de vuelta horarios: 0=0°, 1=90°, 2=180°, 3=270°. Qué hace lo decide `regimen`.'),
   mirror: z.boolean().default(false)
     .describe('Reflexión. Invierte el orden de las notas (retrógrado) y a veces no cambia la forma.'),
   octave: z.number().int().min(0).max(8).default(DEFAULT_OCTAVE)
     .describe(`Octava en la que se construye el arpegio. La app usa ${DEFAULT_OCTAVE}.`),
+  regimen: z.enum([REGIMEN.escala, REGIMEN.orden]).default(DEFAULT_REGIMEN)
+    .describe(
+      'Qué cambia la rotación (spec 017). `escala`: elige entre cuatro fórmulas, o sea que rotar ' +
+      'cambia QUÉ NOTAS suena la pieza. `orden`: pentatónica mayor siempre, corrida `rotation` ' +
+      `posiciones, o sea que rotar cambia POR DÓNDE ARRANCA el arpegio. El default es ${DEFAULT_REGIMEN}, ` +
+      'que es el de la app. A rotación 0 los dos dan lo mismo; en las otras 36 de las 48 ' +
+      'combinaciones dan cosas distintas.',
+    ),
 });
 
 export const describePiece = defineTool({
@@ -60,20 +88,24 @@ export const describePiece = defineTool({
     'cuatro rotaciones, y en T y U en las rotaciones 0 y 180°; (3) `cellMap` sale del arpegio ' +
     'ASCENDENTE, no de `notes` — el retrógrado es del ORDEN DE REPRODUCCIÓN, así que reflejar ' +
     'mueve las celdas de lugar pero no cambia qué nota le toca a cada una.\n' +
+    'Desde el spec 017 la rotación hace UNA DE DOS cosas y la elige `regimen`: con `escala` cambia ' +
+    'la fórmula (las notas), con `orden` corre el arpegio sobre una pentatónica mayor fija (el ' +
+    'arranque). La respuesta trae el `regimen` que usó y su `scale` lo respeta — a rotación 0 los ' +
+    'dos dan lo mismo, en las otras 36 de 48 combinaciones no.\n' +
     'Hay DOS dibujos: `ascii` marca la celda de agarre (`@`) y `asciiPlayOrder` pone el PASO de ' +
     'cada celda —su lugar en el orden de reproducción, que es el número que el tablero pinta en la ' +
     'esquina—, así que el `0` es siempre por donde el recorrido entra y el `4` por donde sale. Con ' +
     '`mirror` NO coincide con el grado: el retrógrado invierte el orden, así que el paso es ' +
     '`4 - grado`. `cellMap` trae los dos números por celda.',
   inputSchema,
-  run: ({ piece, rotation, mirror, octave }) => {
+  run: ({ piece, rotation, mirror, octave, regimen }) => {
     const rotated = rotateN(SHAPES[piece], rotation);
     const cells = mirror ? reflect(rotated) : rotated;
     const anchorIndex = ANCHOR_INDEX[piece];
 
     // El retrogrado se aplica igual que en la app: `notesForRotation` produce el
     // arpegio ascendente y la reflexion lo da vuelta despues.
-    const ascending = notesForRotation(BASE_MAP[piece], octave, rotation);
+    const ascending = notesForRotation(BASE_MAP[piece], octave, rotation, regimen);
     const notes = mirror ? [...ascending].reverse() : ascending;
 
     // La forma CANONICA, no `cells`: rotar corre el origen del angulo, asi que
@@ -86,9 +118,14 @@ export const describePiece = defineTool({
 
     return json({
       piece, rotation, mirror, octave,
+      // El regimen viaja EN LA RESPUESTA y no solo en la entrada: en 36 de las 48
+      // combinaciones la misma pieza tiene dos arpegios, asi que una respuesta que
+      // dice cinco notas sin decir bajo que regimen es ambigua las tres cuartas
+      // partes de las veces.
+      regimen,
       tonic: CHROMATIC[BASE_MAP[piece]],
       tonicPc: BASE_MAP[piece],
-      scale: SCALE_LABEL[rotation],
+      scale: scaleLabel(regimen, rotation),
       // El indice k es la misma celda logica que en SHAPES: rotar, reflejar y
       // normalizar son `map`. De eso depende que el ancla salga por indice.
       cells,

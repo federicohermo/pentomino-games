@@ -1,16 +1,29 @@
 import type { Cell } from './types/transform.types.ts';
 import type { PieceKey } from './types/pieces.types.ts';
+import type { RegimenDeRotacion } from './types/music.types.ts';
 import { centroid, angleFromCentroid, pathThroughCells } from './transform.ts';
 import {
   CHROMATIC, PENT_MAJOR, PENT_MINOR, PENT_BLUES5, DEGREE_EPSILON,
-  BASE_MAP, DEFAULT_OCTAVE,
+  BASE_MAP, DEFAULT_OCTAVE, REGIMEN,
 } from './constants/music.constants.ts';
 
 /**
- * El modelo musical: de una clase de altura y una rotacion, a cinco notas MIDI.
+ * El modelo musical: de una clase de altura, una rotacion y un REGIMEN, a cinco notas
+ * MIDI.
  *
- * Que la rotacion elija la formula es la decision de diseno del instrumento, no un
- * dato: por eso el mapeo vive aca y las formulas en `constants/music.constants.ts`.
+ * Que hace la rotacion es una de dos y se elige (spec 017): con el regimen `escala`
+ * elige la formula de escala —rotar cambia QUE NOTAS suena la pieza y no toca el
+ * orden—, y con `orden` corre ciclicamente el arpegio sobre una pentatonica mayor fija
+ * —rotar cambia POR DONDE ARRANCA y deja el material quieto—. Las dos son decisiones de
+ * diseno del instrumento y no datos: por eso el mapeo vive aca y las formulas en
+ * `constants/music.constants.ts`.
+ *
+ * Los dos existen a la vez porque cual de las dos reglas vuelve al instrumento mas
+ * expresivo no es una pregunta que se conteste en el papel: el 017 construye la
+ * comparacion para poder decidirla escuchando, y el regimen viaja como PARAMETRO justo
+ * para que retirar el que pierda sea borrar una rama y no desenredarla. Medido, los dos
+ * difieren en 36 de las 48 combinaciones de pieza x rotacion y coinciden exactamente en
+ * las 12 de rotacion 0.
  */
 
 /** Nota MIDI de la clase de altura `pc` en la octava `octave`. C4 = 60. */
@@ -20,26 +33,81 @@ export function midiFor(pc: number, octave: number): number { return 12*(octave+
 export function midiName(m: number): string { const pc = m%12; const o = Math.floor(m/12)-1; return `${CHROMATIC[pc]}${o}`; }
 
 /**
- * Las cinco notas de una pieza segun su rotacion.
+ * Una formula de escala convertida en notas MIDI sobre una tonica y una octava.
  *
- * 0° → pentatonica mayor · 90° → menor · 180° → menor con blue note ·
- * 270° → mayor transpuesta +7.
- *
- * El corrimiento de octava (`octShift`) es deliberado: cuando la suma pasa de B la
- * nota SUBE de octava en vez de envolverse, y por eso las piezas de tonica alta
- * abren mas registro. Es decision documentada, no un bug a corregir de paso.
+ * Sale de adentro de `notesForRotation` porque los dos regimenes la necesitan igual y
+ * escribirla dos veces seria dos copias de la regla del `octShift`, que es justo la
+ * que nadie sincronizaria.
  */
-export function notesForRotation(basePc: number, octave: number, rot: number): number[]{
-  let formula = PENT_MAJOR, transpose=0;
-  if (rot===1) formula = PENT_MINOR;
-  else if (rot===2) formula = PENT_BLUES5;
-  else if (rot===3) { formula = PENT_MAJOR; transpose = 7; }
+function notasDeFormula(basePc: number, octave: number, formula: readonly number[], transpose: number): number[] {
   return formula.map(iv => {
     const total = basePc + iv + transpose;
     const pc = ((total%12)+12)%12;
     const octShift = Math.floor((basePc + iv + transpose)/12);
     return midiFor(pc, octave + octShift);
   });
+}
+
+/**
+ * Las cinco notas de una pieza segun su rotacion Y SU REGIMEN.
+ *
+ * - `escala`: 0° → pentatonica mayor · 90° → menor · 180° → menor con blue note ·
+ *   270° → mayor transpuesta +7. Rotar cambia el material y no el orden.
+ * - `orden`: pentatonica mayor SIEMPRE, corrida `rot` posiciones. Rotar cambia por
+ *   donde arranca el arpegio y no el material: la pieza tiene UN solo conjunto de
+ *   cinco alturas en las cuatro rotaciones, contra los 43 conjuntos que `escala`
+ *   produce sobre las 48 combinaciones.
+ *
+ * A rotacion 0 los dos devuelven exactamente lo mismo, y no es casualidad sino D2: la
+ * formula fija de `orden` es la de la rotacion 0 de `escala`. Es lo que hace que los
+ * dos regimenes se puedan comparar escuchando en vez de ser dos instrumentos.
+ *
+ * `regimen` NO lleva default a proposito: un llamador que se lo olvide obtendria el
+ * regimen viejo en silencio, y son 36 de las 48 combinaciones las que difieren. Que el
+ * typecheck lo atrape es el punto — mismo criterio que `dur` y `rel` en `scheduleVoice`.
+ *
+ * El corrimiento de octava (`octShift`) es deliberado: cuando la suma pasa de B la
+ * nota SUBE de octava en vez de envolverse, y por eso las piezas de tonica alta
+ * abren mas registro. Es decision documentada, no un bug a corregir de paso.
+ *
+ * ## Dos consecuencias MEDIDAS de `orden`, escritas porque se escuchan
+ *
+ * El arpegio deja de subir siempre: correr ciclicamente mete un descenso, y siempre el
+ * mismo —la nota de arriba vuelve abajo, **9 semitonos exactos**, porque el techo de
+ * `PENT_MAJOR` esta a 9 de la tonica—, contra un paso maximo de 3 en `escala`. Y el
+ * registro se angosta 7 semitonos por arriba (`C4..G#5` contra `C4..D#6`), porque la
+ * formula fija no tiene la transposicion +7 de la rotacion 3.
+ *
+ * Ninguna de las dos es un efecto a corregir: son consecuencias directas del pedido
+ * —cambiar el orden sin cambiar las notas— y son justo lo que la escucha del 017 tiene
+ * que evaluar. La variante que las evitaria —reajustar la octava de las notas que dan
+ * la vuelta, `D4 E4 G4 A4 C5` en vez de `D4 E4 G4 A4 C4`, un `+12` condicional en una
+ * linea— se descarto porque cambia los MIDI aunque no las clases de altura, y el pedido
+ * dice sin cambio de las notas. Queda anotada como seguimiento del spec 017.
+ */
+export function notesForRotation(basePc: number, octave: number, rot: number, regimen: RegimenDeRotacion): number[]{
+  if (regimen === REGIMEN.orden) {
+    const base = notasDeFormula(basePc, octave, PENT_MAJOR, 0);
+    // El corrimiento va con modulo y no con `base[j + rot]` a secas: el tipo de
+    // `rotation` sigue siendo un `number` sin acotar (`specs/deuda.md`), y sin el un
+    // valor fuera de `0..3` devolveria `undefined`, que `midiName` no rechaza —pinta
+    // `undefinedNaN` en la celda—.
+    //
+    // Y el modulo va DOS VECES porque el `%` de JS conserva el signo del dividendo:
+    // con `rot` negativo `(j + rot) % 5` da negativo y `base[-1]` es `undefined`
+    // otra vez, o sea el mismo agujero que esta linea existe para tapar. El `+ largo`
+    // antes del segundo `%` lo lleva al rango, y recien con eso es cierto que
+    // CUALQUIER `rot` —negativo incluido— da una permutacion ciclica, que es lo que
+    // `checkNotes` verifica. Sigue siendo una red y no el arreglo: el arreglo es que
+    // el tipo no admita el valor, y esta anotado en `specs/deuda.md`.
+    const largo = base.length;
+    return base.map((_n, j) => base[(((j + rot) % largo) + largo) % largo]);
+  }
+  let formula = PENT_MAJOR, transpose=0;
+  if (rot===1) formula = PENT_MINOR;
+  else if (rot===2) formula = PENT_BLUES5;
+  else if (rot===3) { formula = PENT_MAJOR; transpose = 7; }
+  return notasDeFormula(basePc, octave, formula, transpose);
 }
 
 /**
@@ -65,9 +133,13 @@ export function notesForRotation(basePc: number, octave: number, rot: number): n
  * La octava es `DEFAULT_OCTAVE` y no un parametro: la app entera toca en una sola
  * octava. Quien necesite otra —hoy solo `describe_piece`, que la expone como argumento—
  * usa `notesForRotation` directo.
+ *
+ * El REGIMEN si es parametro y se propaga tal cual (spec 017): esta funcion no elige
+ * ninguno, porque elegirlo aca lo desacoplaria del que eligio el tablero y la misma
+ * pieza sonaria distinto segun quien la pregunte.
  */
-export function arpeggioFor(piece: PieceKey, rotation: number, mirror: boolean): number[] {
-  const asc = notesForRotation(BASE_MAP[piece], DEFAULT_OCTAVE, rotation);
+export function arpeggioFor(piece: PieceKey, rotation: number, mirror: boolean, regimen: RegimenDeRotacion): number[] {
+  const asc = notesForRotation(BASE_MAP[piece], DEFAULT_OCTAVE, rotation, regimen);
   return mirror ? asc.reverse() : asc;
 }
 

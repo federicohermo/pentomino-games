@@ -147,7 +147,7 @@ de secuencia al cerrar un ciclo — ver [más abajo](#el-swap-en-el-cierre-de-ci
 ## El recorrido en el scheduler
 
 `domain/sequence.ts` arma el circuito y los offsets; el motor no recalcula ni reordena nada, solo lee
-lo que le entregan. `App.tsx` llama a `buildSequence(placed)` y proyecta el resultado a la `Sequence`
+lo que le entregan. `App.tsx` llama a `buildSequence(placed, regimen)` y proyecta el resultado a la `Sequence`
 del motor, que **no lleva celdas**:
 
 ```ts

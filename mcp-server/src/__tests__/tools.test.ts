@@ -183,6 +183,48 @@ describe('describe_piece', () => {
       (a.notes as { midi: number }[]).map(n => n.midi + 12),
     );
   });
+
+  test('AC9 (spec 017) — los dos regimenes dan respuestas distintas y cada una dice cual es', () => {
+    // Sin el `regimen` en la respuesta, la tool seria ambigua en 36 de las 48
+    // combinaciones: dos preguntas iguales con dos respuestas correctas y ninguna
+    // forma de saber cual se contesto.
+    const escala = call(describePiece, { piece: 'F', rotation: 1, regimen: 'escala' });
+    const orden = call(describePiece, { piece: 'F', rotation: 1, regimen: 'orden' });
+
+    assert.equal(escala.regimen, 'escala');
+    assert.equal(orden.regimen, 'orden');
+    assert.notDeepEqual(
+      (orden.notes as { midi: number }[]).map(n => n.midi),
+      (escala.notes as { midi: number }[]).map(n => n.midi),
+    );
+
+    // Y `scale` respeta el regimen: bajo `orden` decir «pentatónica menor (rotación
+    // 90°)» seria peor que no reportar nada, porque las notas de al lado no son las de
+    // una menor. Es el supuesto hardcodeado que ningun gate atrapa (`SCALE_LABEL`).
+    assert.match(String(escala.scale), /menor/);
+    assert.doesNotMatch(String(orden.scale), /menor/);
+    assert.match(String(orden.scale), /corrida 1 posición/);
+
+    // `cellMap` sale del mismo arpegio que `notes`, asi que tambien se mueve.
+    const notaDe = (r: Record<string, unknown>) => (r.cellMap as { note: string }[]).map(c => c.note);
+    assert.notDeepEqual(notaDe(orden), notaDe(escala));
+  });
+
+  test('AC4 (spec 017) — a rotacion 0 los dos regimenes dan lo mismo', () => {
+    // La propiedad que hace AUDITABLE la comparacion, verificada tambien del lado de
+    // la tool: si divergieran acá, el server estaria componiendo otra cosa.
+    for (const piece of PIECE_KEYS) {
+      const escala = call(describePiece, { piece, rotation: 0, regimen: 'escala' });
+      const orden = call(describePiece, { piece, rotation: 0, regimen: 'orden' });
+      assert.deepEqual(orden.notes, escala.notes, piece);
+    }
+  });
+
+  test('AC11 (spec 017) — sin `regimen` contesta `escala`, que es el de la app', () => {
+    const porOmision = call(describePiece, { piece: 'F', rotation: 2 });
+    assert.equal(porOmision.regimen, 'escala');
+    assert.deepEqual(porOmision.notes, call(describePiece, { piece: 'F', rotation: 2, regimen: 'escala' }).notes);
+  });
 });
 
 describe('check_invariants', () => {
@@ -519,6 +561,38 @@ describe('simulate_board', () => {
     assert.equal(cuentas(r).total, 15);
     assert.equal(cuentas(r).distinctInstants, 15);
     assert.equal(cuentas(r).total, 3 * ciclo(r).intervals);
+  });
+
+  test('AC9 (spec 017) — el regimen mueve las alturas y NO el circuito, y la respuesta lo dice', () => {
+    // Las tres piezas de `BASE` rotadas, para que el regimen tenga algo que mover: a
+    // rotacion 0 los dos son identicos por D2 y este test pasaria vacio.
+    const rotadas = [
+      { piece: 'F', rotation: 1, at: [1, 1] },
+      { piece: 'Z', rotation: 2, at: [7, 4] },
+      { piece: 'I', rotation: 1, at: [5, 2] },
+    ];
+    const escala = call(simulateBoard, { pieces: rotadas, regimen: 'escala' });
+    const orden = call(simulateBoard, { pieces: rotadas, regimen: 'orden' });
+
+    assert.equal(escala.regimen, 'escala');
+    assert.equal(orden.regimen, 'orden');
+
+    // Lo que NO cambia: el circuito entero. El 017 corre el arpegio y no la entrada
+    // justamente para no reordenar el tablero (D1), asi que el orden, los saltos y el
+    // largo del ciclo salen iguales en los dos.
+    assert.deepEqual(ruta(orden).order, ruta(escala).order);
+    assert.deepEqual(ruta(orden).hops.map(h => h.distance), ruta(escala).hops.map(h => h.distance));
+    assert.deepEqual(ciclo(orden), ciclo(escala));
+
+    // Lo que si cambia: las alturas de la linea de tiempo, en los mismos instantes.
+    const notas = (r: Record<string, unknown>) => linea(r).map(e => e.note ?? null);
+    assert.deepEqual(linea(orden).map(e => e.at), linea(escala).map(e => e.at));
+    assert.notDeepEqual(notas(orden), notas(escala));
+  });
+
+  test('AC11 (spec 017) — sin `regimen` simula `escala`, que es el de la app', () => {
+    const porOmision = call(simulateBoard, { pieces: BASE });
+    assert.equal(porOmision.regimen, 'escala');
   });
 
   test('AC12 del spec 014 — una pieza muteada reporta sus clicks y no su arpegio', () => {

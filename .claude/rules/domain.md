@@ -33,7 +33,7 @@ en pantalla. No está mal — es la clase de cosa que alguien "arregla" por erro
 | Entrada | Determina |
 |---|---|
 | Qué pieza | La tónica (`BASE_MAP`: F→C, I→C#, … Z→B) |
-| Rotación | La fórmula de escala (mayor → menor → blues → mayor +7) |
+| Rotación | **Una de dos, según el régimen** (spec 017): con `escala`, la fórmula (mayor → menor → blues → mayor +7); con `orden`, cuántas posiciones se corre el arpegio sobre una pentatónica mayor fija. A rotación 0 los dos dan lo mismo; en las otras 36 de 48 combinaciones, no |
 | Reflexión | El orden de las notas (retrógrado) y, con él, el **paso** de cada celda y la puerta de entrada/salida del recorrido (`playOrderByCellIndex` → `gates`, spec 010) |
 | La posición en el tablero | El orden de reproducción y el silencio entre piezas (`buildSequence`, spec 009) |
 | **La forma** | **El camino que recorre el arpegio, y con él qué celda tiene qué nota** (`degreeByCellIndex`, specs 007 y 012) |
@@ -41,7 +41,8 @@ en pantalla. No está mal — es la clase de cosa que alguien "arregla" por erro
 `degreeByCellIndex` se llama **sobre `SHAPES[pieza]` sin transformar** y el grado viaja por índice.
 Correrla sobre una forma ya rotada compila igual y devuelve otro mapeo en **53 de las 96**
 orientaciones, porque rotar corre el origen del ángulo y el ángulo es lo que desempata. La rotación
-elige *qué* notas; la forma, *dónde* está cada una.
+elige el arpegio —*qué* notas con `escala`, *por dónde arranca* con `orden`—; la forma, *dónde* está cada
+una. El régimen no toca el mapeo: es el mismo en los dos.
 
 **Desde el spec 012 el arpegio RECORRE la pieza**, sin pasar nunca por encima de una celda propia. El
 orden lo da `pathThroughCells` (`domain/transform.ts`, Held-Karp de camino abierto) y el orden angular
