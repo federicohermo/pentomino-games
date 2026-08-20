@@ -88,12 +88,20 @@ function notasDeFormula(basePc: number, octave: number, formula: readonly number
 export function notesForRotation(basePc: number, octave: number, rot: number, regimen: RegimenDeRotacion): number[]{
   if (regimen === REGIMEN.orden) {
     const base = notasDeFormula(basePc, octave, PENT_MAJOR, 0);
-    // El corrimiento va con `%` y no con `base[j + rot]` a secas: el tipo de `rotation`
-    // sigue siendo un `number` sin acotar (`specs/deuda.md`), y sin el modulo un valor
-    // fuera de `0..3` devolveria `undefined`, que `midiName` no rechaza —pinta
-    // `undefinedNaN` en la celda—. Con el modulo, cualquier `rot` da una permutacion
-    // ciclica, que es lo que `checkNotes` verifica.
-    return base.map((_n, j) => base[(j + rot) % base.length]);
+    // El corrimiento va con modulo y no con `base[j + rot]` a secas: el tipo de
+    // `rotation` sigue siendo un `number` sin acotar (`specs/deuda.md`), y sin el un
+    // valor fuera de `0..3` devolveria `undefined`, que `midiName` no rechaza —pinta
+    // `undefinedNaN` en la celda—.
+    //
+    // Y el modulo va DOS VECES porque el `%` de JS conserva el signo del dividendo:
+    // con `rot` negativo `(j + rot) % 5` da negativo y `base[-1]` es `undefined`
+    // otra vez, o sea el mismo agujero que esta linea existe para tapar. El `+ largo`
+    // antes del segundo `%` lo lleva al rango, y recien con eso es cierto que
+    // CUALQUIER `rot` —negativo incluido— da una permutacion ciclica, que es lo que
+    // `checkNotes` verifica. Sigue siendo una red y no el arreglo: el arreglo es que
+    // el tipo no admita el valor, y esta anotado en `specs/deuda.md`.
+    const largo = base.length;
+    return base.map((_n, j) => base[(((j + rot) % largo) + largo) % largo]);
   }
   let formula = PENT_MAJOR, transpose=0;
   if (rot===1) formula = PENT_MINOR;

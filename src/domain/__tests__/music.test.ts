@@ -43,8 +43,33 @@ describe('notesForRotation', () => {
     expect(notesForRotation(0, DEFAULT_OCTAVE, 3, REGIMEN.escala)).toEqual(PENT_MAJOR.map(iv => base + iv + 7));
   });
 
-  it('una rotacion fuera de 0..3 cae en la formula mayor', () => {
+  it('en `escala`, una rotacion fuera de 0..3 cae en la formula mayor', () => {
     expect(notesForRotation(0, DEFAULT_OCTAVE, 4, REGIMEN.escala)).toEqual(notesForRotation(0, DEFAULT_OCTAVE, 0, REGIMEN.escala));
+  });
+
+  // El titulo de arriba dice `escala` a proposito: los dos regimenes NO hacen lo mismo
+  // fuera de rango, y esa divergencia es el argumento de `specs/deuda.md` para acotar
+  // el tipo de `rotation`. Mientras siga siendo un `number`, el borde se testea.
+  it('en `orden`, una rotacion fuera de 0..3 corre ciclicamente en vez de caer en la mayor', () => {
+    const rot0 = notesForRotation(0, DEFAULT_OCTAVE, 0, REGIMEN.orden);
+    // `rot: 4` NO es la rotacion 0: es el corrimiento 4, o sea la ultima nota adelante.
+    expect(notesForRotation(0, DEFAULT_OCTAVE, 4, REGIMEN.orden)).not.toEqual(rot0);
+    expect(notesForRotation(0, DEFAULT_OCTAVE, 5, REGIMEN.orden)).toEqual(rot0);
+  });
+
+  // El `%` de JS conserva el signo del dividendo, asi que un modulo simple dejaba
+  // `base[-1]` —`undefined`, que `midiName` pinta como `undefinedNaN` en la celda—.
+  // Es el mismo agujero que el modulo existe para tapar, del otro lado del cero.
+  it('en `orden`, una rotacion NEGATIVA sigue dando una permutacion ciclica', () => {
+    const rot0 = notesForRotation(0, DEFAULT_OCTAVE, 0, REGIMEN.orden);
+    for (const rot of [-1, -2, -5, -6]) {
+      const ns = notesForRotation(0, DEFAULT_OCTAVE, rot, REGIMEN.orden);
+      expect(ns).toHaveLength(5);
+      expect(ns.every(n => Number.isInteger(n))).toBe(true);
+      expect([...ns].sort((a, b) => a - b)).toEqual([...rot0].sort((a, b) => a - b));
+    }
+    // `-5` es una vuelta entera hacia atras: el corrimiento neto es 0.
+    expect(notesForRotation(0, DEFAULT_OCTAVE, -5, REGIMEN.orden)).toEqual(rot0);
   });
 
   it('devuelve 5 notas distintas y ascendentes para las 96 combinaciones', () => {
