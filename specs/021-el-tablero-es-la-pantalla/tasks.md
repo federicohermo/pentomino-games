@@ -139,8 +139,8 @@ una persona y no bloquea el cierre.
       dice «el shell: estado, derivados, handlers y la composición. Desde el spec 022 **sin un solo
       `useEffect`**» (`:74-76`). No hay «seis» para pasar a «siete»: cambiar «sin un solo `useEffect`»
       por «con un `useEffect`» y nombrarlo — el `useLayoutEffect` que escribe `--cell` (T043). La
-      mención a que los cuatro de reconciliación viven en `use-motor.ts` y los dos de entrada en
-      `use-entrada.ts` sigue siendo cierta y no se toca
+      mención a que los cuatro de reconciliación viven en `use-engine.ts` y los dos de entrada en
+      `use-input.ts` sigue siendo cierta y no se toca
 - [ ] T048 [P] `DESIGN.md:79-83`: la tabla afirma en presente `CELL_PX` **73**, «Tablero **730 × 438
       px**», «Tarjeta del tablero **`md:col-span-8`**» y —las dos filas que faltaban en esta lista—
       «Aire de la baldosa **2 px** por lado» y «Borde de la baldosa **1 px**». Y `:99-102` (la baldosa

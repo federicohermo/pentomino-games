@@ -124,13 +124,13 @@ dice de dónde sale `describe`, que es lo que se pierde con las globales.
 ### Loops que siguen sonando después de borrar la pieza
 
 Era un bug real, corregido. Si reaparece, el sospechoso es que alguien le haya hablado al motor **fuera**
-del efecto de reconciliación, que desde el spec 022 vive en `components/use-motor.ts` y no en el shell.
+del efecto de reconciliación, que desde el spec 022 vive en `components/use-engine.ts` y no en el shell.
 Desde el spec 009 hay una sola llamada —`setSequence(proyectarAlMotor(secuencia))`— y toda la gestión
 tiene que pasar por ese efecto — ver
 [audio.md](../architecture/audio.md#reconciliación-de-loops).
 
 **No es `setSequence(buildSequence(placed, regimen))`**, que es como se escribía acá antes del 022: la
-`Sequence` del dominio no es la del motor y en el medio va la proyección de `components/motor.ts`, que
+`Sequence` del dominio no es la del motor y en el medio va la proyección de `components/engine-bridge.ts`, que
 deja caer `pieceId` y `cell`. Hoy escribirlo así ni siquiera typechequea; el motivo de que igual importe
 está en el docblock de `proyectarAlMotor`.
 

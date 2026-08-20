@@ -64,11 +64,11 @@ una persona y no bloquea el cierre.
 
 ## Paso 4 — El cableado
 
-- [ ] T013 `src/components/use-entrada.ts`: en `despachar`, adentro de `useAtajosDeTeclado`, el objeto
+- [ ] T013 `src/components/use-input.ts`: en `despachar`, adentro de `useAtajosDeTeclado`, el objeto
       `evento` suma `ctrlKey`, `metaKey` y `altKey` — es el cableado que el spec 022 sacó de `App.tsx`
       y que arma el objeto con el que después se llama a `accionDeTecla`
 - [ ] T014 Dos archivos, por el mismo reparto que el spec 022 dejó entre el hook y el shell: en
-      `src/components/use-entrada.ts`, la interfaz `Acciones` suma el campo
+      `src/components/use-input.ts`, la interfaz `Acciones` suma el campo
       `seleccionar: (pieza: PieceKey) => void` (con su import de
       `../domain/types/pieces.types.ts`) y `despachar` gana la rama `ACCION.seleccionar` —preguntando
       por `piezaDeTecla` y saliendo si es `null`, **sin `!`**, con el comentario de por qué la
@@ -81,7 +81,7 @@ una persona y no bloquea el cierre.
 - [ ] T015 Verificar las dos identidades que T014 da por sentadas: el callback nuevo de `src/App.tsx`
       envuelve a `setSelected` —un setter de `useState`, identidad estable— así que puede ir con
       dependencias vacías, igual que `alRotar`; y que el array de dependencias del `useEffect` de
-      `useAtajosDeTeclado` en `src/components/use-entrada.ts` pasa a incluir `seleccionar` junto a
+      `useAtajosDeTeclado` en `src/components/use-input.ts` pasa a incluir `seleccionar` junto a
       `rotar`, `reflejar`, `transporte` y `tapLimpio`
 - [ ] T016 Footer de `src/App.tsx` (el bloque `<footer>`, hoy en las líneas 303-309; los tres
       `<span>` de gesto están en las líneas 306-308): sumar el gesto en el idioma de los tres del
@@ -104,7 +104,7 @@ una persona y no bloquea el cierre.
 - [ ] T031 [M] Navegador: apretar una letra con el transporte parado **no lo arranca**, y con el
       transporte corriendo **no lo para**. Es el único lugar donde se ve si la rama nueva quedó del
       lado equivocado del `else transporte()` (T014): la pura no lo puede atrapar, porque el bug vive
-      en la cadena de `despachar`, en `src/components/use-entrada.ts`, y no en `accionDeTecla` —
+      en la cadena de `despachar`, en `src/components/use-input.ts`, y no en `accionDeTecla` —
       **AC11**
 
 ## PR

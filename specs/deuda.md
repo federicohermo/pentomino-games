@@ -15,7 +15,7 @@ esta lista y entra como fila en [log.md](./log.md).
   nombre de nota— no vive en `Board.tsx` sino en `domain/board.ts` (`occupantCellIndex`, AC14), así que
   el componente sigue siendo un encadenado de puras testeadas en `environment: 'node'`. Su
   `components/__tests__/palette.test.ts` es el primer test de la carpeta, pero es de constantes: no
-  renderiza nada y **no** desbloquea ni requiere jsdom. El spec 022 sumó `motor.test.ts` por la misma
+  renderiza nada y **no** desbloquea ni requiere jsdom. El spec 022 sumó `engine-bridge.test.ts` por la misma
   vía: es de puras, corre en `node` y no monta nada. Los componentes pasaron de cuatro a seis
   —`PiecePalette` se partió en tres— y **se siguen verificando a ojo**: el hueco es el mismo, sólo que
   reparte su superficie en más archivos.
@@ -70,7 +70,7 @@ archivos de test y no compra nada.
 Y con ellas **AC10 del spec 008**, que era el ítem más viejo del registro: que el botón de transporte
 refleje si el reloj *arrancó de verdad* y no si se lo apretó. Pedía «extraer el handler de `App.tsx` **o**
 agregar testing-library», y se cerró por la primera de las dos vías que él mismo nombraba —
-`alternarTransporte` en `components/motor.ts`, con el motor por parámetro, y un motor falso de una línea
+`alternarTransporte` en `components/engine-bridge.ts`, con el motor por parámetro, y un motor falso de una línea
 (`corriendo: () => false`) para la rama en la que se pidió arrancar y no arrancó—. **Sin jsdom.** Vale
 anotar la forma, porque es la que va a servir la próxima vez: el ítem pedía infra y lo cerró una firma.
 

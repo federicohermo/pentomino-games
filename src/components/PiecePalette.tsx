@@ -1,8 +1,8 @@
 import { midiName } from '../domain/music.ts';
 import { CHROMATIC, BASE_MAP } from '../domain/constants/music.constants.ts';
 import { REGIMEN } from '../domain/constants/music.constants.ts';
-import PanelDeOrientacion from './PanelDeOrientacion.tsx';
-import PanelDeTransporte from './PanelDeTransporte.tsx';
+import OrientationPanel from './OrientationPanel.tsx';
+import TransportPanel from './TransportPanel.tsx';
 import type { PropsDeOrientacion, PropsDeTransporte } from './types/panel.types.ts';
 
 /**
@@ -30,8 +30,8 @@ import type { PropsDeOrientacion, PropsDeTransporte } from './types/panel.types.
  * la empujaria 16 px hacia abajo por el `mt-4` del contenedor.
  *
  * Entonces cada componente se lleva un subarbol CONTIGUO y lo devuelve tal cual: las doce
- * miniaturas (`PanelDeOrientacion`) y el bloque `border-t` del transporte
- * (`PanelDeTransporte`). Las cuatro filas del medio se quedan acá, leyendo del objeto que
+ * miniaturas (`OrientationPanel`) y el bloque `border-t` del transporte
+ * (`TransportPanel`). Las cuatro filas del medio se quedan acá, leyendo del objeto que
  * les corresponde. El 019 vuelve contigua parte de esta interpolacion cuando muda el
  * boton de los clicks a la fila de transporte (`019` `T011`): en un spec el problema se
  * achica solo.
@@ -51,11 +51,11 @@ export default function PiecePalette({ orientacion, transporte }: Props) {
   // pasa a estarlo por el alto, asi que la novena columna no le compraria un solo pixel
   // (la tabla esta en `Board.tsx`). El interior de esta tarjeta pasa de 252 a 349,3 px,
   // que es donde el spec 016 va a meter las doce miniaturas — y es la premisa de la tabla
-  // de columnas de `PanelDeOrientacion.tsx`, que sin este dato no se puede re-derivar.
+  // de columnas de `OrientationPanel.tsx`, que sin este dato no se puede re-derivar.
   return (
     <div className="col-span-12 md:col-span-4 bg-white rounded-2xl shadow p-3">
       <h2 className="text-lg font-semibold mb-2">Piezas</h2>
-      <PanelDeOrientacion orientacion={orientacion} />
+      <OrientationPanel orientacion={orientacion} />
       <div className="mt-4 space-y-2">
         {/* La fila de Rotación son DOS líneas y no dos filas: la segunda dice QUÉ cambia
             la de arriba, así que se lee como una oración —«Rotación … cambia escala /
@@ -110,7 +110,7 @@ export default function PiecePalette({ orientacion, transporte }: Props) {
             comentarios del 022.
 
             Es del TRANSPORTE y sin embargo lo renderiza este archivo: cae entre dos
-            bloques de orientacion, asi que llevarselo a `PanelDeTransporte` reordenaria
+            bloques de orientacion, asi que llevarselo a `TransportPanel` reordenaria
             el DOM (AC18 del 022). Ver el docblock de arriba. */}
         <div className="flex items-center justify-between">
           <span className="font-medium">Recorrido en el vacío</span>
@@ -136,7 +136,7 @@ export default function PiecePalette({ orientacion, transporte }: Props) {
               que recordar actualizar. */}
           <p className="min-h-[2lh]">Notas actuales: {noteSet.map(m => midiName(m)).join(" · ")}</p>
         </div>
-        <PanelDeTransporte transporte={transporte} />
+        <TransportPanel transporte={transporte} />
       </div>
     </div>
   );

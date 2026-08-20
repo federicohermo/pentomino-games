@@ -72,8 +72,8 @@ board.ts + music.ts ← sequence.ts          components/ y App.tsx importan de l
    mapeo del espectro.
 3. **`components/`** — un componente por archivo, presentacionales.
 4. **`App.tsx`** — el shell: estado, derivados, handlers y la composición. Desde el spec 022 **sin un
-   solo `useEffect`**: los cuatro de reconciliación viven en `components/use-motor.ts` y los dos de
-   entrada en `components/use-entrada.ts`.
+   solo `useEffect`**: los cuatro de reconciliación viven en `components/use-engine.ts` y los dos de
+   entrada en `components/use-input.ts`.
 
 `domain/` y `audio/` son **hermanos sin aristas entre ellos**: el motor habla números MIDI y no sabe
 qué es un pentominó.

@@ -16,7 +16,7 @@ import type { PropsDeOrientacion } from './types/panel.types.ts';
  * nada: es un hijo directo de la tarjeta, y agregarle un nodo cambiaria el ritmo
  * vertical con las clases intactas.
  */
-export default function PanelDeOrientacion({ orientacion }: { orientacion: PropsDeOrientacion }) {
+export default function OrientationPanel({ orientacion }: { orientacion: PropsDeOrientacion }) {
   const { selected, rotation, mirror, onSelect } = orientacion;
   return (
     /* El ancho lo gobierna la caja de la miniatura, que mide 5 × `MINI_CELL_PX` = 40 px

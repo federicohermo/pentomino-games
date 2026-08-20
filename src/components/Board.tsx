@@ -128,7 +128,7 @@ interface Props {
   /** El boton derecho sobre el tablero alterna la reflexion (spec 013). Handler y no
       logica: quien decide si el evento cuenta es `App.tsx` con `reflejaElContextMenu`. */
   onContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
-  /** El nodo al que `useRuedaRota` (`components/use-entrada.ts`) le engancha la rueda.
+  /** El nodo al que `useRuedaRota` (`components/use-input.ts`) le engancha la rueda.
       Este componente lo CUELGA y no lo lee: el `ref` se crea en `App.tsx`, que es quien
       compone los dos hooks de entrada, asi que aca no hay ni estado ni efecto. */
   boardRef: RefObject<HTMLDivElement | null>;
@@ -189,7 +189,7 @@ export default function Board({
           `preventDefault()` es un no-op que el navegador avisa por consola. O sea que un
           `onWheel` de JSX rotaria sin frenar el scroll, que es la falla mas cara: parece
           que anda. Por eso la rueda va por `addEventListener(..., { passive: false })`
-          desde `use-entrada.ts`, y lo unico que llega aca es el `ref` del nodo. `contextmenu`
+          desde `use-input.ts`, y lo unico que llega aca es el `ref` del nodo. `contextmenu`
           no esta entre esos tres nombres, asi que el boton derecho si puede ir por prop. */}
       <div ref={boardRef} className="relative overflow-x-auto" onContextMenu={onContextMenu}>
         <Playhead />

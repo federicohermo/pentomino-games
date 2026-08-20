@@ -11,7 +11,7 @@
  * firma de la pura al singleton del `AudioContext` sin necesidad.
  *
  * El mapeo a las tres funciones reales se hace en un solo lugar, que es
- * `components/use-motor.ts` — el único módulo de la capa que importa la **API de transporte** del
+ * `components/use-engine.ts` — el único módulo de la capa que importa la **API de transporte** del
  * motor. `Playhead.tsx`, `Spectrum.tsx` y `route-source.ts` también importan `audio/engine.ts`, pero
  * los tres piden lecturas y ninguno arranca, frena ni agenda nada.
  */

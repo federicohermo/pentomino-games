@@ -13,7 +13,7 @@ una persona y no bloquea el cierre.
       memoria inicial **derivada de `SHAPES`**, no escrita a mano con las doce letras. El estrechado
       es el que el repo ya usa —`Object.keys(SHAPES) as PieceKey[]`—, no uno nuevo. Los dos testigos
       se buscan **por símbolo, no por línea**: el `.map` de los doce botones, que con el spec 022 se
-      mudó de `PiecePalette.tsx` a `src/components/PanelDeOrientacion.tsx` —justo el símbolo que esta
+      mudó de `PiecePalette.tsx` a `src/components/OrientationPanel.tsx` —justo el símbolo que esta
       tarea daba por estable en el archivo viejo, y la razón por la que ya no vale citarlo por línea
       tampoco cambió: es un archivo chico y cualquier spec que lo toque corre las líneas de abajo—, y
       `PIECES` en `src/domain/invariants.ts`, que ningún spec de por medio toca — **AC6**
@@ -57,23 +57,23 @@ una persona y no bloquea el cierre.
 - [ ] T008 `App.tsx` + `src/components/types/panel.types.ts`: el campo `rotation`/`mirror` de
       `PropsDeOrientacion` —hoy el par de la seleccionada, que el spec 022 dejó ahí al partir
       `PiecePalette` en dos objetos— pasa a ser `orientaciones` **entera** (las doce miniaturas de
-      `PanelDeOrientacion.tsx` necesitan las doce), y el literal inline que arma `orientacion` en
+      `OrientationPanel.tsx` necesitan las doce), y el literal inline que arma `orientacion` en
       `App.tsx` baja el `Record` en vez de `rotation`/`mirror` sueltos. Con `selected` +
       `orientaciones` los lectores que hoy toman su par de esas dos props sueltas —las miniaturas y
-      el `aria-label` en `PanelDeOrientacion.tsx`, la fila de Rotación/Reflexión y la línea del 019
+      el `aria-label` en `OrientationPanel.tsx`, la fila de Rotación/Reflexión y la línea del 019
       en `PiecePalette.tsx`— pasan a derivarlo con `orientaciones[selected]` (o `orientaciones[key]`
       adentro del `.map` de las miniaturas), y dejarlos leyendo dos props sueltas sería una segunda
       fuente de la misma verdad. `Board` **sí** sigue recibiendo el par suelto de la seleccionada por
       su prop propia: es el único que no necesita las doce
 - [ ] T009 `App.tsx`: desde el spec 022 no hay «el efecto de teclado» en este archivo —vive en
-      `useAtajosDeTeclado`, `components/use-entrada.ts`, y ese hook no se toca—; lo que este spec
+      `useAtajosDeTeclado`, `components/use-input.ts`, y ese hook no se toca—; lo que este spec
       reescribe son los dos `useCallback` que le arman `acciones`: `rotarConTecla` y
       `reflejarConTecla`. Cada uno escribe **una sola ranura** de `orientaciones` con setter
       funcional; objeto nuevo, nunca mutación — **AC1**, **AC2**
 - [ ] T010 `App.tsx`: el `useCallback` de `alRotar` pasa a rotar la ranura de la pieza
       seleccionada y no un `rotation` global. **No puede resolverse agregando `selected` a sus
       dependencias**: `alRotar` tiene deps vacías a propósito desde el spec 022 —es lo que deja que
-      `useRuedaRota` (`components/use-entrada.ts`) registre el listener de `wheel` una sola vez por
+      `useRuedaRota` (`components/use-input.ts`) registre el listener de `wheel` una sola vez por
       montaje—, y agregarle una dependencia rompe esa cardinalidad (**AC16 del 022**). La salida es
       leer `selected` sin declararlo como dependencia: por ejemplo con un `ref` que lo siga
       (`selectedRef.current`), o resolviendo la ranura adentro del setter funcional sin cerrar sobre
@@ -109,7 +109,7 @@ una persona y no bloquea el cierre.
       del mismo objeto las otras dos props de gesto (`onRotate`, `onMirror`), así que no queda
       ninguna que se le pueda reusar — **AC7**
 
-- [ ] T040 `components/use-entrada.ts`: la cadena de `if`/`else` de `despachar`, adentro de
+- [ ] T040 `components/use-input.ts`: la cadena de `if`/`else` de `despachar`, adentro de
       `useAtajosDeTeclado`, tiene desde el **018** una rama `ACCION.seleccionar` que **no lee
       `rotation` ni `mirror`**. Con el spec 022 puesto, esa cadena ya no vive en `App.tsx` ni este
       spec la reescribe: los tres callbacks del shell (`rotar`, `reflejar`, `transporte`) son opacos
@@ -124,23 +124,23 @@ una persona y no bloquea el cierre.
       Es el mismo mecanismo por el que `handleContextMenu` hubo que cazarlo a mano (T033). Si el 018
       todavía no está mergeado, la tarea se cierra con «no existía» — **018 AC1**
 
-> T004–T012, T033, T034 y T038 escriben `src/App.tsx` (T008 y T038 además `src/components/types/panel.types.ts`), así que ninguna lleva `[P]`. T040 pasó a verificar `components/use-entrada.ts`, que este spec no escribe.
+> T004–T012, T033, T034 y T038 escriben `src/App.tsx` (T008 y T038 además `src/components/types/panel.types.ts`), así que ninguna lleva `[P]`. T040 pasó a verificar `components/use-input.ts`, que este spec no escribe.
 
 ## Paso 3 — La paleta muestra doce orientaciones
 
-- [ ] T013 `src/components/PanelDeOrientacion.tsx` —el `.map` de las doce se mudó ahí desde
+- [ ] T013 `src/components/OrientationPanel.tsx` —el `.map` de las doce se mudó ahí desde
       `PiecePalette.tsx` con el spec 022—: `miniCells` se llama con el par de **cada** pieza, leyendo
       `orientaciones[key].rotation`/`.mirror` adentro del mismo `.map` sobre `Object.keys(SHAPES)`, y
       no las `rotation`/`mirror` de la seleccionada que hoy usa para las doce —el bug que le da
       nombre al spec— **AC4**
-- [ ] T014 `src/components/PanelDeOrientacion.tsx` —se mudó junto con el `.map` de T013—: el
+- [ ] T014 `src/components/OrientationPanel.tsx` —se mudó junto con el `.map` de T013—: el
       `aria-label` de cada botón dice **su** orientación, no la global. Sigue llamando a
       `textoDeOrientacion(rotation, mirror)` —la pura que crea el 019 (su T006), en su módulo propio
       de `components/`— sólo que con el par de cada pieza. **AC13 del 019 sigue valiendo**: la
       derivación se escribe una sola vez, y este spec sólo le cambia los argumentos
 - [ ] T015 `PiecePalette.tsx` —se queda ahí: el spec 022 sólo le sacó a este archivo la grilla de
-      miniaturas (`PanelDeOrientacion.tsx`) y el bloque `border-t` del transporte
-      (`PanelDeTransporte.tsx`), y la línea de orientación no es ninguno de los dos—: la línea de
+      miniaturas (`OrientationPanel.tsx`) y el bloque `border-t` del transporte
+      (`TransportPanel.tsx`), y la línea de orientación no es ninguno de los dos—: la línea de
       orientación del 019 llama a la misma `textoDeOrientacion` con `orientaciones[selected]` —
       **AC9**
 - [ ] T016 `PiecePalette.tsx`: el botón `0°` junto a esa línea, cableado al campo nuevo de
@@ -150,7 +150,7 @@ una persona y no bloquea el cierre.
 - [ ] T017 Comentario **en `PiecePalette.tsx`, sobre el botón `0°`**: por qué `0°` y no un icono (al
       lado hay un `↺` y dos «volver atrás» tienen que distinguirse), y por qué resetea **también** la
       reflexión (los 29 de 96 del 019 §3). El `↺` que compara ya no es un control del mismo archivo:
-      desde el spec 022 el botón de Reset vive en `PanelDeTransporte.tsx`, un componente hermano
+      desde el spec 022 el botón de Reset vive en `TransportPanel.tsx`, un componente hermano
       dentro de la misma tarjeta. El comentario tiene que decir eso —dos "volver atrás" en la misma
       tarjeta pero en dos archivos distintos— y no dar por sentado que están en el mismo `.tsx`
 - [ ] T018 Comentario en el docblock de `MINI_BOX`
@@ -163,12 +163,12 @@ una persona y no bloquea el cierre.
 ## Paso 4 — `↺` no toca las orientaciones
 
 - [ ] T019 `App.tsx`: `resetBoard` **no cambia lo que hace**. Con el spec 022 puesto su cuerpo ya
-      cambió —llama a `frenarTransporte()` (`components/use-motor.ts`) en vez de `stopClock()`, y se
-      corrió de línea— pero eso es cableado y no comportamiento: sigue frenando el reloj, vaciando
-      `placed` y sin tocar ninguna orientación, que es lo que a este spec le importa. Se le agrega el
-      comentario de por qué no toca `ORIENTACIONES_INICIALES` pese a que existe justo al lado. Con el
-      costo escrito: se renuncia al invariante «después de `↺` la app queda como recién abierta» —
-      **AC8**
+      cambió —llama a `frenarTransporte()` (`components/use-engine.ts`) en vez de `stopClock()`, y
+      se corrió de línea— pero eso es cableado y no comportamiento: sigue frenando el reloj,
+      vaciando `placed` y sin tocar ninguna orientación, que es lo que a este spec le importa. Se le
+      agrega el comentario de por qué no toca `ORIENTACIONES_INICIALES` pese a que existe justo al
+      lado. Con el costo escrito: se renuncia al invariante «después de `↺` la app queda como recién
+      abierta» — **AC8**
 
 ## Verificación
 

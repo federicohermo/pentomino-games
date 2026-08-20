@@ -32,7 +32,7 @@ export interface PlacedPiece {
    * **Obligatorio y no `muted?: boolean`.** Opcional daria dos formas de decir "no
    * muteada" —`false` y ausente— y este repo ya pago ese error una vez: en `Click.note`
    * la AUSENCIA del campo significa algo distinto de un `undefined` explicito, y hay un
-   * ternario puesto a proposito en `proyectarAlMotor` (`components/motor.ts`) para no
+   * ternario puesto a proposito en `proyectarAlMotor` (`components/engine-bridge.ts`) para no
    * producir el tercer estado — y que desde el spec 022 tiene test. Acá no hay nada que la
    * ausencia pueda significar, asi que no se le da la
    * oportunidad.

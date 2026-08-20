@@ -1,5 +1,5 @@
 import type { Sequence } from '../domain/types/sequence.types.ts';
-import type { SequenceDelMotor, MotorDeTransporte } from './types/motor.types.ts';
+import type { SequenceDelMotor, MotorDeTransporte } from './types/engine.types.ts';
 
 /**
  * Las dos puras del puente con el motor: proyectar la secuencia, y alternar el
@@ -12,7 +12,7 @@ import type { SequenceDelMotor, MotorDeTransporte } from './types/motor.types.ts
  *
  * Sin React y sin importar el motor: por eso su test corre en
  * `environment: 'node'` como los otros cinco de esta capa. El cableado con React y
- * con `audio/engine.ts` es de `use-motor.ts`, que no toma ninguna decisión.
+ * con `audio/engine.ts` es de `use-engine.ts`, que no toma ninguna decisión.
  *
  * Los dos `Sequence` chocan de nombre, así que uno viaja con alias, y el alias va
  * del lado del motor. Medido en esta capa: el del dominio ya lo importa

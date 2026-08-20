@@ -12,7 +12,7 @@ import type { PlacedPiece } from '../domain/types/board.types.ts';
  * jsdom: no hay `KeyboardEvent` ni `MouseEvent` que fabricar, y tampoco hay forma de
  * montar un componente para dispararlos. Recibiendo los campos que importan, las
  * guardas quedan testeadas de verdad y lo único que queda sin red es que el cableado de
- * `use-entrada.ts` los llene bien — que es exactamente lo que las tareas `[M]` del spec 013
+ * `use-input.ts` los llene bien — que es exactamente lo que las tareas `[M]` del spec 013
  * verifican en el
  * navegador.
  *
@@ -36,7 +36,7 @@ import type { PlacedPiece } from '../domain/types/board.types.ts';
  *
  * Un `deltaY` de 0 no rota. Llega de verdad —un scroll horizontal puro con `deltaX`
  * deja `deltaY` en 0— y girar ahí sería rotar sin que nadie lo haya pedido. El cableado
- * de `use-entrada.ts` además **sale antes** en ese caso, por un motivo que esta pura no puede
+ * de `use-input.ts` además **sale antes** en ese caso, por un motivo que esta pura no puede
  * ver: el nodo que escucha la rueda es el `overflow-x-auto` con el que se recorre la
  * grilla debajo de `md`, así que hacerle `preventDefault` a un gesto horizontal sería
  * dejar sin scroll al único elemento que lo tiene.

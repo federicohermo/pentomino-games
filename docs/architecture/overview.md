@@ -24,17 +24,17 @@ expresivo, no más difícil.
 │   selected · rotation · mirror · tempo                  │
 │   playing · placed[] · hover                            │
 └───────┬─────────────────────────────┬───────────────────┘
-        │ compone                     │ playNow (el resto pasa por use-motor.ts)
+        │ compone                     │ playNow (el resto pasa por use-engine.ts)
 ┌───────▼──────────────────┐  ┌───────▼───────────────────┐
 │  src/components/         │  │  src/audio/               │
 │   PiecePalette · Board   │  │   voice.ts     síntesis   │
 │   Spectrum · Playhead    │  │   scheduler.ts lookahead  │
-│   PanelDeOrientacion     │  │   engine.ts    singletons │
-│   PanelDeTransporte      │  │   spectrum.ts  bins→barras│
+│   OrientationPanel       │  │   engine.ts    singletons │
+│   TransportPanel         │  │   spectrum.ts  bins→barras│
 │   presentacionales:      │  │                           │
 │   props, sin estado      │  │                           │
-│   use-motor · use-entrada│  │                           │
-│   motor.ts  la proyección│  │                           │
+│   use-engine · use-input │  │                           │
+│   engine-bridge.ts       │  │                           │
 └───────┬──────────────────┘  │  voice y scheduler reciben│
         │                     │  el ctx por parámetro y NO│
         │ importan            │  importan engine.ts → se  │
@@ -76,10 +76,10 @@ dominio.
 
 Los que había son ahora **dos archivos** de `components/`, y el corte es el que la lista ya dibujaba:
 
-- `use-motor.ts` — los **cuatro de reconciliación**: tempo, clicks, la secuencia contra el tablero, y la
+- `use-engine.ts` — los **cuatro de reconciliación**: tempo, clicks, la secuencia contra el tablero, y la
   limpieza al desmontar. `useMotorSincronizado` los declara en ese orden y recibe la `secuencia` ya
   derivada, para que el dibujo y el sonido no puedan mirar circuitos distintos (D5 del spec 009).
-- `use-entrada.ts` — los **dos de entrada** que agregó el spec 013: `useAtajosDeTeclado` sobre `window` y
+- `use-input.ts` — los **dos de entrada** que agregó el spec 013: `useAtajosDeTeclado` sobre `window` y
   `useRuedaRota` sobre el nodo del tablero. Van separados porque no comparten ni el target ni las
   dependencias, y reciben **callbacks y no setters**: así la forma del estado de la orientación es del
   shell y no del hook. El `tapLimpio` que comparten se queda en `App.tsx` y entra por parámetro a los
@@ -87,7 +87,7 @@ Los que había son ahora **dos archivos** de `components/`, y el corte es el que
   de sostenerse por adyacencia.
 
 La **proyección** del `Sequence` del dominio al del motor es una pura, `proyectarAlMotor` en
-`components/motor.ts`: es el único módulo del repo que puede importar los dos tipos `Sequence`, y estaba
+`components/engine-bridge.ts`: es el único módulo del repo que puede importar los dos tipos `Sequence`, y estaba
 escrita dos veces adentro del shell.
 
 ## Las cuatro capas
@@ -172,7 +172,7 @@ Los loops de audio no se agendan ni cancelan desde los handlers. Un único `useE
 `[secuencia, placed]` y le entrega al motor la secuencia del recorrido con `setSequence`. `playing` no
 está en las dependencias: la secuencia es función del tablero y no del transporte.
 
-Ese efecto **no vive en el shell**: desde el spec 022 está en `components/use-motor.ts` con los otros
+Ese efecto **no vive en el shell**: desde el spec 022 está en `components/use-engine.ts` con los otros
 tres de reconciliación, y `App.tsx` no declara un solo `useEffect` (ver [Qué vive dónde](#qué-vive-dónde)). Lo
 que se queda en el shell es la **derivación** —`secuencia` es un `useMemo` sobre `[placed, regimen]`— y
 el hook recibe el resultado, para que el dibujo y el sonido no puedan mirar circuitos distintos.

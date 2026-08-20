@@ -392,7 +392,7 @@ sin spec en [deuda.md](./deuda.md).
   escrito las dos salidas, así que la información para cerrarlo estaba ahí desde el 008 — lo que
   faltaba era leerlo como una decisión y no como una espera.
 - **2026-08-20 — El 022 no pudo partir `PiecePalette` como decía su propio plan, y el motivo estaba a
-  medio medir.** El spec pedía que `PanelDeOrientacion` se llevara las doce miniaturas, el régimen, la
+  medio medir.** El spec pedía que `OrientationPanel` se llevara las doce miniaturas, el régimen, la
   reflexión y el lector de notas, devolviendo un **fragmento** para no tocar el ritmo vertical del
   `space-y-2`. Su `research.md` §10 había medido la trampa a medias: vio que la fila de los clicks
   (transporte) cae **entre** dos bloques de orientación, pero no que el bloque de tónica + `Notas
@@ -414,11 +414,12 @@ sin spec en [deuda.md](./deuda.md).
   prometa no mover un píxel.
 - **2026-08-20 — Un hook que cablea un módulo va al lado del módulo, y eso contradecía la tabla de
   roles.** `conventions.md` mandaba los hooks a `<capa>/hooks/` como `useCamelCase.ts`, y los dos que
-  este spec creó fueron a `components/` en kebab-case: `use-motor.ts` al lado de `motor.ts`, y
-  `use-entrada.ts` al lado de `input.ts`. La regla nueva no es un permiso, es lo que hace legible la
-  partición: **la decisión vive en el archivo sin `use-` y el cableado en el que lo tiene**, y mandar
-  el segundo a otra carpeta parte cada par en dos lugares por una convención de nombre. `hooks/` queda
-  reservado para un hook que no sea el cableado de ningún módulo — y sigue sin existir.
+  este spec creó fueron a `components/` en kebab-case: `use-engine.ts` al lado de
+  `engine-bridge.ts`, y `use-input.ts` al lado de `input.ts`. La regla nueva no es un permiso, es lo
+  que hace legible la partición: **la decisión vive en el archivo sin `use-` y el cableado en el que
+  lo tiene**, y mandar el segundo a otra carpeta parte cada par en dos lugares por una convención de
+  nombre. `hooks/` queda reservado para un hook que no sea el cableado de ningún módulo — y sigue
+  sin existir.
 
 ## 2026-08-20 — El pase de comentarios del spec 022
 
@@ -466,7 +467,7 @@ El spec 011 le sacó el síntoma y no el motivo: `routeBetween` rodea la pieza e
 hoy esos clicks caerían en celdas vacías. Siguen sobrando, y el que se queda en el código es el motivo:
 el recorrido existe **entre** piezas.
 
-### El esquema de columnas de la paleta (`PanelDeOrientacion.tsx`)
+### El esquema de columnas de la paleta (`OrientationPanel.tsx`)
 
 El esquema **se remidió entero para el spec 016 y no se heredó**: la cuenta anterior estaba hecha sobre
 la letra más el punto de color, y ninguno de los dos gobierna ya el ancho — hoy manda la caja de la
@@ -478,7 +479,7 @@ padding efectivo llegaba a **-4,6 px a 768**, o sea la letra cruzando su propio 
 más apretado del rango era el mismo entonces que ahora, que es lo que hace que la tabla de viewports se
 tenga que leer completa y no en su extremo ancho.
 
-### El punto de color de los botones de pieza (`PanelDeOrientacion.tsx`)
+### El punto de color de los botones de pieza (`OrientationPanel.tsx`)
 
 Hasta el spec 016 la identidad de la pieza entraba en el botón como un **punto de 8 px al costado de la
 letra**. Con la forma pintada del color de la pieza, el punto decía lo mismo dos veces y se fue. De él
@@ -487,7 +488,7 @@ punto vivía con `slate-400` porque tenía que verse sobre los dos fondos del bo
 resuelve eso invirtiendo el borde con el estado — que es la parte que se quedó en el código, con sus
 números de contraste.
 
-### El transporte antes de ser un botón (`PanelDeTransporte.tsx`)
+### El transporte antes de ser un botón (`TransportPanel.tsx`)
 
 Antes del spec 008 el transporte eran **dos controles**: un checkbox que decidía si sonaba y un botón que
 arrancaba el reloj, y ninguno de los dos mostraba si el reloj estaba corriendo. Los dos se fundieron en
@@ -529,3 +530,59 @@ efecto de reconciliación y qué observa», y estaba escrito en cinco lugares co
 El corolario para escribir el próximo spec: **el oráculo se elige después de contar los lugares, no
 antes.** AC9 midió cuatro y nombró cuatro; los otros tres nunca entraron a la lista, así que el AC podía
 darse por cumplido con el trabajo a medias y sin que nada fallara.
+
+## 2026-08-20 — Los nombres de archivo del 022 estaban en castellano, y era el único lugar del repo
+
+**El 022 estrenó una convención que no existía, sin decirlo.** En el commit base había **57 archivos
+en `src/` y cero con nombre en castellano**; los siete que agregó el spec fueron los primeros:
+`motor.ts`, `use-motor.ts`, `use-entrada.ts`, `PanelDeOrientacion.tsx`, `PanelDeTransporte.tsx`,
+`types/motor.types.ts` y `__tests__/motor.test.ts`.
+
+El caso peor era `motor.ts`: es el puente con `audio/engine.ts`, o sea que la misma cosa quedó
+nombrada de dos formas en dos idiomas, que es peor que cualquiera de las dos por separado.
+
+**Pero el código sí tenía castellano antes, y eso es lo que hace que la decisión no sea simétrica.**
+Medido sobre el mismo commit: **21 identificadores exportados** en castellano, y **los 21 en
+`components/`** — `abreTapLimpio`, `accionDeTecla`, `accionDeClick`, `esLaPiezaEnLaMano`,
+`frenaElDefault`, `rotacionPorRueda`, `reflejaElContextMenu`, `Accion`/`ACCION`,
+`Edicion`/`EDICION`, `EventoDeTecla`, `EventoDeModificador` en `input.ts`; `rutaActiva`, `encolar`,
+`Marca`, `MarcaKind`, `Visita`, `CeldaPorEstrenar` en `route-source.ts` y `types/route.types.ts`; y
+`MARCA` y `LC_EXCEPCIONES` en `constants/`. `domain/` y `audio/` son **100 % inglés**. O sea que
+`proyectarAlMotor` y `useAtajosDeTeclado` sí tenían precedente local; los nombres de archivo no
+tenían ninguno.
+
+La regla de `CLAUDE.md` no decidía el empate: enumera **tres** cosas —comentarios, commits y specs—
+y el código no está en la lista. No prohíbe identificadores en castellano ni los autoriza; lo único
+que los autorizaba era `input.ts`.
+
+**Por eso el renombre es de archivos y no de identificadores.** Así queda coherente con las dos
+convenciones que el repo ya tenía —archivos en inglés siempre, identificadores en castellano dentro
+de `components/`— en vez de coherente con ninguna:
+
+| Antes | Ahora |
+|---|---|
+| `components/motor.ts` | `components/engine-bridge.ts` |
+| `components/use-motor.ts` | `components/use-engine.ts` |
+| `components/use-entrada.ts` | `components/use-input.ts` |
+| `components/PanelDeOrientacion.tsx` | `components/OrientationPanel.tsx` |
+| `components/PanelDeTransporte.tsx` | `components/TransportPanel.tsx` |
+| `components/types/motor.types.ts` | `components/types/engine.types.ts` |
+| `components/__tests__/motor.test.ts` | `components/__tests__/engine-bridge.test.ts` |
+
+`types/panel.types.ts` no se toca: ya estaba en inglés. Los dos componentes sí cambian de nombre
+además de archivo, porque el nombre del componente y el del `.tsx` son la misma decisión.
+
+**El momento se eligió midiendo, no por prolijidad.** Los cuatro specs 018–021 están en `Propuesto`,
+y entre sus `tasks.md` hay **31 tareas** que el 022 reescribió apuntando a estas rutas. Renombrar
+antes de implementarlos cuesta un `sed`; después cuesta lo mismo más todo el código que se escriba
+encima.
+
+**Los cuatro archivos del spec 022 quedaron sin tocar, a propósito** (desviación 2 de
+[README.md](./README.md)): un spec mergeado es un ADR y no se reescribe, así que sus rutas siguen
+diciendo `motor.ts`. Lo que se mantiene al día es `docs/`, `.claude/rules/` y `CLAUDE.md` — y eso es
+lo que este cambio actualizó, junto con los `tasks.md` de 018–021, que todavía no se implementaron.
+
+Verificado: `pnpm verify` en verde (322 tests de `src/` + 85 del MCP server), **cero** referencias a
+los nombres viejos fuera de `specs/022-*`, y el diagrama de cajas de `overview.md` y el árbol de
+`directory-structure.md` re-alineados a mano — `engine-bridge.ts` mide siete columnas más que
+`motor.ts` y les rompía el ancho fijo.

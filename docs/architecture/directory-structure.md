@@ -95,8 +95,8 @@ src/
 └── components/                   # un componente por archivo, presentacionales
     ├── PiecePalette.tsx          # la tarjeta y la composición de los dos paneles, más las
     │                             #   filas que quedan interpoladas entre ellos (spec 022)
-    ├── PanelDeOrientacion.tsx    # las doce miniaturas en la orientación actual (spec 016)
-    ├── PanelDeTransporte.tsx     # tempo, play/pausa y reset
+    ├── OrientationPanel.tsx      # las doce miniaturas en la orientación actual (spec 016)
+    ├── TransportPanel.tsx        # tempo, play/pausa y reset
     ├── Board.tsx                 # grilla 10×6: color por pieza, nota por celda, y el fantasma
     │                             #   diciendo lo mismo antes de colocar
     ├── Spectrum.tsx              # canvas del espectro: rAF + HiDPI, sin props
@@ -109,12 +109,12 @@ src/
     │                             #   ya rotada y reflejada (spec 016). Fuera del .tsx por lo mismo
     ├── input.ts                  # la decisión de cada gesto de entrada: rueda, tecla, menú
     │                             #   contextual y click sobre una celda (specs 013 y 014)
-    ├── motor.ts                  # las dos puras del puente con el motor: proyectarAlMotor
+    ├── engine-bridge.ts          # las dos puras del puente con el motor: proyectarAlMotor
     │                             #   —la única del repo que ve los dos tipos Sequence— y
     │                             #   alternarTransporte, que devuelve lo que el motor dice
-    ├── use-motor.ts              # los cuatro efectos de reconciliación del spec 022: tempo,
+    ├── use-engine.ts             # los cuatro efectos de reconciliación del spec 022: tempo,
     │                             #   clicks, la secuencia contra el tablero y el desmontaje
-    ├── use-entrada.ts            # los dos efectos de entrada del 013: teclado y rueda. Reciben
+    ├── use-input.ts              # los dos efectos de entrada del 013: teclado y rueda. Reciben
     │                             #   callbacks, no setters, y el tapLimpio del shell
     ├── constants/
     │   ├── layout.constants.ts   # CELL_PX · MINI_BOX · MINI_CELL_PX · TEMPO_MIN · TEMPO_MAX
@@ -124,7 +124,7 @@ src/
     ├── types/
     │   ├── cell-text.types.ts    # CellText: lo que una celda muestra
     │   ├── route.types.ts        # Marca · CeldaPorEstrenar
-    │   ├── motor.types.ts        # MotorDeTransporte · SequenceDelMotor
+    │   ├── engine.types.ts       # MotorDeTransporte · SequenceDelMotor
     │   ├── panel.types.ts        # PropsDeOrientacion · PropsDeTransporte
     │   └── input.types.ts        # Accion · Edicion · los campos de evento que las puras miran
     └── __tests__/
@@ -132,7 +132,7 @@ src/
         ├── route-source.test.ts  # el par activa/pendiente y el velo, con el motor mockeado
         ├── cell-text.test.ts     # el #N es el paso y la nota es el grado, en las 96
         ├── input.test.ts         # la decisión de cada gesto: rueda, teclas y click (013 y 014)
-        ├── motor.test.ts         # los tres estados de Click.note al proyectar, y las dos ramas
+        ├── engine-bridge.test.ts # los tres estados de Click.note al proyectar, y las dos ramas
         │                         #   de alternarTransporte — AC10 del 008, sin jsdom
         └── piece-mini.test.ts    # la forma entra y queda centrada en la caja, en las 96
 ```
@@ -178,8 +178,8 @@ los de audio. Las `@testing-library/*` **ya no están en el árbol**: el spec 02
 `@types/jest`, `postcss` y `autoprefixer`, porque ninguna tenía un consumidor y el caso que las esperaba
 —AC10 del spec 008, que el botón de transporte diga lo que el reloj hace y no lo que se le pidió— se
 cerró por la otra vía que el propio registro de deuda nombraba: extraer el handler a una pura
-(`motor.ts`) y pasarle el motor por parámetro. Cuando renderizar un componente haga falta de verdad,
-`jsdom` se agrega ahí, con su caso.
+(`engine-bridge.ts`) y pasarle el motor por parámetro. Cuando renderizar un componente haga falta de
+verdad, `jsdom` se agrega ahí, con su caso.
 
 `components/__tests__/palette.test.ts` es el primer test de la carpeta y **no** cambia lo anterior: es de
 constantes, corre en `environment: 'node'` y no monta nada. La otra mitad de la respuesta es que la
@@ -225,7 +225,7 @@ viven en la carpeta de su rol.** Un `.ts` de capa tiene funciones y nada más.
 | helper de test | `<capa>/__tests__/` | nombre descriptivo (`test-context.ts`) |
 | componente | `components/` | `PascalCase.tsx`, **único export** |
 | estado nuevo de UI | `useState` dentro de `App()` | no hay ni hace falta estado global |
-| efecto de audio | `components/use-motor.ts`, junto a los otros cuatro | ver [audio.md](./audio.md) |
+| efecto de audio | `components/use-engine.ts`, junto a los otros cuatro | ver [audio.md](./audio.md) |
 | hook que cablea un módulo | al lado del módulo | `use-<módulo>.ts`, en kebab-case como el resto |
 | asset referenciado por URL | `public/` | se copia sin procesar |
 | documentación de arquitectura | `docs/architecture/` | |

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { proyectarAlMotor, alternarTransporte } from '../motor.ts';
+import { proyectarAlMotor, alternarTransporte } from '../engine-bridge.ts';
 import { buildSequence } from '../../domain/sequence.ts';
 import { cellsAt } from '../../domain/board.ts';
 import { rotateN, reflect } from '../../domain/transform.ts';
@@ -7,10 +7,10 @@ import { SHAPES, ANCHOR_INDEX } from '../../domain/constants/pieces.constants.ts
 import { REGIMEN } from '../../domain/constants/music.constants.ts';
 import type { PieceKey } from '../../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../../domain/types/board.types.ts';
-import type { MotorDeTransporte } from '../types/motor.types.ts';
+import type { MotorDeTransporte } from '../types/engine.types.ts';
 
 /**
- * `motor.ts` es el único puente entre el `Sequence` del dominio y el del motor, y hasta
+ * `engine-bridge.ts` es el único puente entre el `Sequence` del dominio y el del motor, y hasta
  * el spec 022 ese cruce estaba escrito dos veces adentro de `App.tsx` —o sea en un
  * `.tsx`, donde no se puede exportar y por lo tanto no se puede testear—. Los tres
  * casos de la proyección son los que ningún test cubría, y el tercero es el que el tipo

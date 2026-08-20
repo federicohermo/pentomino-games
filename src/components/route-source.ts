@@ -19,7 +19,7 @@ import { cycleGeneration } from '../audio/engine.ts';
  * que este spec existe para hacer visibles.
  *
  * Vive en `components/` y no en `audio/` por esa misma frontera: habla `Cell`. Es el
- * mismo cruce que `proyectarAlMotor` (`components/motor.ts`) ya hace al proyectar la
+ * mismo cruce que `proyectarAlMotor` (`components/engine-bridge.ts`) ya hace al proyectar la
  * secuencia para `setSequence`.
  *
  * Singleton de modulo y NO estado de React a proposito: lo lee un loop de
@@ -73,7 +73,7 @@ let estrenando: string[] = [];
 let veloActual: CeldaPorEstrenar[] = [];
 
 /**
- * Encola el recorrido nuevo. La llama el mismo efecto de `use-motor.ts` que ya hace
+ * Encola el recorrido nuevo. La llama el mismo efecto de `use-engine.ts` que ya hace
  * `setSequence`: las dos colas se encolan juntas, o la cabeza y el sonido quedarian
  * mirando ciclos distintos.
  *

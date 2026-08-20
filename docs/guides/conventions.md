@@ -79,8 +79,8 @@ Las `Props` de cada componente son la excepción: se quedan **inline y sin expor
 `react-refresh/only-export-components` obliga a que el componente sea el único export del `.tsx`.
 
 **Un hook que cablea un módulo va al lado de ese módulo y no a `hooks/`.** El spec 022 sacó los seis
-efectos del shell y los partió en dos pares: `motor.ts` con las puras y `use-motor.ts` con los cuatro
-efectos que las llaman, y `input.ts` con las puras de entrada y `use-entrada.ts` con los dos efectos que
+efectos del shell y los partió en dos pares: `engine-bridge.ts` con las puras y `use-engine.ts` con los cuatro
+efectos que las llaman, y `input.ts` con las puras de entrada y `use-input.ts` con los dos efectos que
 las cablean. El nombre en kebab-case y la adyacencia son lo que hace visible el par —la decisión vive en
 el archivo sin `use-`, el cableado en el que lo tiene—, y mandarlos a `components/hooks/` habría partido
 cada par en dos carpetas por una convención de nombre. `hooks/` sigue reservado para un hook que **no**
@@ -222,7 +222,7 @@ Los efectos **reconcilian**, no ejecutan comandos. El efecto de audio observa `[
 entrega al motor la secuencia entera con `setSequence`. Los handlers solo cambian estado.
 
 **Y no viven en el `.tsx`.** Desde el spec 022 los seis del repo están en dos hooks de `components/`
-—`use-motor.ts` y `use-entrada.ts`—, y el motivo es el mismo por el que salieron el audio y el dominio:
+—`use-engine.ts` y `use-input.ts`—, y el motivo es el mismo por el que salieron el audio y el dominio:
 `react-refresh/only-export-components` prohíbe que un `.tsx` exporte algo además del componente, así que
 un efecto escrito ahí no se puede montar ni verificar. Lo que se queda en el shell es la **derivación**
 —los `useMemo`— y los callbacks: el hook recibe el resultado, no la regla.
@@ -242,7 +242,7 @@ closure, chequeado después del `await`, seteado en la limpieza).
 
 Y ojo con las limpiezas asincrónicas: en StrictMode pueden correr **después** del siguiente efecto. Si
 la limpieza tiene que ganarle al re-montaje, tiene que ser sincrónica — es el caso del efecto de
-desmontaje de `use-motor.ts`, que llama a `stopClock()` y entrega una secuencia vacía con
+desmontaje de `use-engine.ts`, que llama a `stopClock()` y entrega una secuencia vacía con
 `setSequence()`. Ver
 [audio.md](../architecture/audio.md#reconciliación-de-loops).
 

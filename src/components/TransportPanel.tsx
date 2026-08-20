@@ -13,7 +13,7 @@ import type { PropsDeTransporte } from './types/panel.types.ts';
  * agregarle un nodo cambiaria el ritmo vertical del `space-y-2` que lo contiene con las
  * clases intactas.
  */
-export default function PanelDeTransporte({ transporte }: { transporte: PropsDeTransporte }) {
+export default function TransportPanel({ transporte }: { transporte: PropsDeTransporte }) {
   const { tempo, playing, onTempo, onTogglePlay, onReset } = transporte;
   return (
     <div className="mt-4 border-t pt-3 space-y-2">

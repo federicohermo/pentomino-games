@@ -148,7 +148,7 @@ de secuencia al cerrar un ciclo — ver [más abajo](#el-swap-en-el-cierre-de-ci
 
 `domain/sequence.ts` arma el circuito y los offsets; el motor no recalcula ni reordena nada, solo lee
 lo que le entregan. El shell llama a `buildSequence(placed, regimen)` en un `useMemo` y
-`proyectarAlMotor` (`components/motor.ts`) lo lleva a la `Sequence` del motor, que **no lleva celdas**:
+`proyectarAlMotor` (`components/engine-bridge.ts`) lo lleva a la `Sequence` del motor, que **no lleva celdas**:
 
 ```ts
 // audio/types/scheduler.types.ts
@@ -262,7 +262,7 @@ interruptor de clicks queda, pero ya no es la única mitigación: la mitigación
 
 **Desde el spec 015 ese interruptor arranca en `false`** —los clicks nacen apagados, y el default vive
 en dos lugares que tienen que decir lo mismo: el `useState` de `App.tsx` y `clicksAudible` en
-`engine.ts`, que el efecto de `components/use-motor.ts` pisa al montar—. El argumento del 009 no se
+`engine.ts`, que el efecto de `components/use-engine.ts` pisa al montar—. El argumento del 009 no se
 negó: sin clicks un salto largo es un silencio mudo, y
 apagarlos apaga el 44 % de los eventos de un tablero chico. Lo que cambió es quién decide. Por eso el
 `T070` del 011, que proponía **borrar** el botón, quedó cerrado con un "no": con el default dado vuelta
@@ -277,7 +277,7 @@ está cerrado: AC11 del 011 lo deja abierto a confirmarse escuchando, y moverlo 
 
 ## Reconciliación de loops
 
-Un único `useEffect` —en `components/use-motor.ts` desde el spec 022, en `App.tsx` hasta ahí— observa
+Un único `useEffect` —en `components/use-engine.ts` desde el spec 022, en `App.tsx` hasta ahí— observa
 `[secuencia, placed]` y le entrega al motor la secuencia donde debe estar. Los handlers solo cambian
 estado.
 
@@ -288,8 +288,8 @@ useEffect(() => {
 }, [secuencia, placed]);
 ```
 
-La proyección vive en `components/motor.ts` desde el spec 022 y **no se escribe a mano acá**. Antes
-este snippet la mostraba inline, y con la forma corta:
+La proyección vive en `components/engine-bridge.ts` desde el spec 022 y **no se escribe a mano
+acá**. Antes este snippet la mostraba inline, y con la forma corta:
 
 ```ts
 clicks: s.clicks.map(({ offset, note }) => ({ offset, note })),   // ← NO
@@ -299,7 +299,7 @@ Esa forma deja la clave `note` **presente y en `undefined`**, que es el tercer e
 `Click` existe para no tener: la **ausencia** de la clave es lo que significa «celda vacía». Hoy nadie
 lo notaría porque `collectHits` compara `=== undefined`, y por eso el snippet vivió mal tanto tiempo —
 copiarlo reintroducía el bug sin que fallara nada. `proyectarAlMotor` lo cierra con un ternario, y
-`motor.test.ts` lo blinda con `'note' in destino` en vez de `=== undefined`.
+`engine-bridge.test.ts` lo blinda con `'note' in destino` en vez de `=== undefined`.
 
 El `buildSequence` que este snippet mostraba también quedó viejo por otro lado: desde el spec 017
 recibe el **régimen** (`buildSequence(placed, regimen)`), y `secuencia` es un `useMemo` sobre
@@ -309,7 +309,7 @@ Dos cosas del snippet que no son detalle:
 
 - **`playing` no está en las dependencias**, y salió a propósito con el spec 009. La secuencia es
   función del **tablero**, no del transporte: quien corta o arranca el sonido es `togglePlay`, que desde
-  el spec 022 pasa por la pura `alternarTransporte` de `components/motor.ts`. El `clearJobs()` + `if (!playing) return` de antes era la forma vieja de
+  el spec 022 pasa por la pura `alternarTransporte` de `components/engine-bridge.ts`. El `clearJobs()` + `if (!playing) return` de antes era la forma vieja de
   lograr lo mismo desde acá; con una sola llamada a `setSequence` deja de hacer falta, y colocar o
   quitar con el transporte parado igual deja la secuencia lista para cuando arranque.
 - **Es una proyección, no una traducción.** `offset` y `notes` viajan tal cual; lo que se cae es

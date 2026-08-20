@@ -3,7 +3,7 @@ paths:
   - "src/App.tsx"
   - "src/components/**/*.tsx"
   # Los `.ts` de la capa entran desde el spec 022: los efectos que el shell tenía
-  # viven en `use-motor.ts` y `use-entrada.ts`, que NO son `.tsx`. Sin este patrón la regla
+  # viven en `use-engine.ts` y `use-input.ts`, que NO son `.tsx`. Sin este patrón la regla
   # no se carga al tocarlos, que es exactamente donde hacen falta las tres cosas
   # que el 022 agregó abajo — la cardinalidad de dependencias, «callbacks y no
   # setters», y el `tapLimpio` compartido.
@@ -13,12 +13,12 @@ paths:
 # UI: el shell y los componentes
 
 `App.tsx` es el shell: estado con `useState` local, derivados, handlers y la composición. Desde el spec
-022 **no declara un solo `useEffect`**: los cuatro de reconciliación viven en `components/use-motor.ts`
-y los dos de entrada en `components/use-entrada.ts`. **Ninguna función pura y ningún literal de
+022 **no declara un solo `useEffect`**: los cuatro de reconciliación viven en `components/use-engine.ts`
+y los dos de entrada en `components/use-input.ts`. **Ninguna función pura y ningún literal de
 dominio** — y eso ya no significa «se va a `domain/`»: un `.tsx` no puede exportar nada además del
 componente (`react-refresh/only-export-components`), así que lo que vive acá no se puede testear, pero
 el destino puede ser tanto `domain/` como un `.ts` de `components/`. Hoy hay **seis** módulos de
-`components/` con tests —`input.ts`, `cell-text.ts`, `piece-mini.ts`, `route-source.ts`, `motor.ts` y
+`components/` con tests —`input.ts`, `cell-text.ts`, `piece-mini.ts`, `route-source.ts`, `engine-bridge.ts` y
 `palette.constants.ts`—, todos en el `environment: 'node'` del repo y ninguno con DOM.
 
 Los componentes son presentacionales, uno por archivo: reciben datos y callbacks por props, sin estado
@@ -39,7 +39,7 @@ con nodos que crea y destruye él mismo.
   dos es lo que el review del spec 007 pagó caro.
 
 - **Todo lo que suena en el loop pasa por el efecto de reconciliación**, que vive en
-  `components/use-motor.ts` y no en el shell. Un único `useEffect` sobre `[secuencia, placed]` entrega
+  `components/use-engine.ts` y no en el shell. Un único `useEffect` sobre `[secuencia, placed]` entrega
   la secuencia al motor con `setSequence`; los handlers solo cambian estado. `playing` **no** está en
   las dependencias, y desde el spec 009 eso es deliberado: la secuencia es función del tablero y no del
   transporte, y quien arranca o corta el sonido es `togglePlay`. El `clearJobs()` + `if (!playing)
@@ -50,7 +50,8 @@ con nodos que crea y destruye él mismo.
   `buildSequence(placed, regimen)` se queda en el shell: si el hook llamara a `buildSequence` por su
   cuenta, el dibujo y el sonido podrían mirar circuitos distintos sin que nada falle, que es lo que D5
   del 009 existe para cerrar. El shell deriva la regla; el hook recibe el resultado.
-- **La proyección dominio→motor vive en `components/motor.ts` y en ningún otro lado de `src/`.**
+- **La proyección dominio→motor vive en `components/engine-bridge.ts` y en ningún otro lado de
+  `src/`.**
   `proyectarAlMotor` es el único puente entre las dos capas: entrega la `Sequence` del dominio dejando
   caer `pieceId` y `cell`, porque `audio/` no puede ver `Cell` ni con `import type`. Es una **pura** y
   no un efecto, justamente para que ese cruce tenga test —los tres estados de `Click.note`, incluido
@@ -58,7 +59,7 @@ con nodos que crea y destruye él mismo.
 - **El transporte se alterna con `alternarTransporte(playing, MOTOR)` y no con `startClock`/`stopClock`
   sueltos.** La pura devuelve lo que el motor dice que pasó y no lo que se le pidió, que es la falla
   suave que `.claude/rules/audio.md` obliga a chequear en todo llamador. `MOTOR` es el cableado real y
-  vive en `use-motor.ts`, el único módulo de la capa que importa la **API de transporte** del motor
+  vive en `use-engine.ts`, el único módulo de la capa que importa la **API de transporte** del motor
   (`startClock`, `stopClock`, `clockRunning`, `setSequence`, `setBpm`, `setClicksAudible`). No es el
   único que importa `audio/engine.ts`: `Playhead.tsx`, `Spectrum.tsx` y `route-source.ts` también, pero
   los tres piden **lecturas** —`playheadOffset`, `readSpectrum`, `cycleGeneration`— y ninguna de las
@@ -100,7 +101,7 @@ distinta y ahí no tiene que pasar nada.
 El spec 013 fue el primero que agregó uno —hasta ahí el único `addEventListener` de `src/` era un
 `matchMedia` en `Spectrum.tsx`—, así que la regla la escribió él y la próxima se copia de esta.
 
-- **El listener global vive en un hook de `components/`, en un efecto propio** —`use-entrada.ts` desde
+- **El listener global vive en un hook de `components/`, en un efecto propio** —`use-input.ts` desde
   el spec 022—, y el componente sobre el que escucha no gana ni estado ni efectos. El shell es quien
   tiene los setters, así que el hook recibe **callbacks y no setters**: así cambiar la forma del estado
   es cambiar el shell y no el hook.
@@ -121,7 +122,7 @@ El spec 013 fue el primero que agregó uno —hasta ahí el único `addEventList
 - **La DECISIÓN del gesto se extrae como pura a `components/`**, recibiendo los campos del evento que
   importan y no el evento. El repo corre en `environment: 'node'` sin jsdom: una pura que reciba un
   `KeyboardEvent` no se puede testear, y en un `.tsx` ni siquiera se puede exportar. El precedente son
-  `input.ts`, `cell-text.ts`, `route-source.ts` y `motor.ts`. Lo que queda en el hook es cableado, y es
+  `input.ts`, `cell-text.ts`, `route-source.ts` y `engine-bridge.ts`. Lo que queda en el hook es cableado, y es
   lo que las tareas `[M]` verifican en el navegador.
 - **`wheel` no puede ir por prop de JSX si hace falta `preventDefault`.** React registra sus listeners
   en el contenedor raíz y a `touchstart`, `touchmove` y `wheel` los registra **pasivos** (react-dom

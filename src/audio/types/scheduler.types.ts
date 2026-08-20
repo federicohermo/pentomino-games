@@ -33,7 +33,7 @@ import type { HIT } from '../constants/scheduler.constants.ts';
  *   sostiene el grafo de imports desde el spec 005.
  *
  * Por eso esta forma es la del dominio MENOS `pieceId` y MENOS `cell`:
- * `components/motor.ts` es el unico puente entre las dos capas y entrega la secuencia
+ * `components/engine-bridge.ts` es el unico puente entre las dos capas y entrega la secuencia
  * dejando caer esos campos. Vive en `components/` porque es la unica capa que puede
  * importar los dos tipos `Sequence` —el override de eslint le prohibe a `domain/` ver
  * `audio/` y viceversa—, y es una PURA con test desde el spec 022: hasta ahi el cruce

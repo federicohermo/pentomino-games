@@ -14,9 +14,9 @@ import type { RegimenDeRotacion } from "./domain/types/music.types.ts";
 import PiecePalette from "./components/PiecePalette.tsx";
 import Board from "./components/Board.tsx";
 import Spectrum from "./components/Spectrum.tsx";
-import { alternarTransporte } from "./components/motor.ts";
-import { MOTOR, frenarTransporte, useMotorSincronizado } from "./components/use-motor.ts";
-import { useAtajosDeTeclado, useRuedaRota } from "./components/use-entrada.ts";
+import { alternarTransporte } from "./components/engine-bridge.ts";
+import { MOTOR, frenarTransporte, useMotorSincronizado } from "./components/use-engine.ts";
+import { useAtajosDeTeclado, useRuedaRota } from "./components/use-input.ts";
 import {
   rotacionPorRueda, reflejaElContextMenu, accionDeClick, esLaPiezaEnLaMano,
 } from "./components/input.ts";
@@ -36,8 +36,8 @@ import { EDICION } from "./components/constants/input.constants.ts";
  * Este archivo es el shell: estado, derivados, handlers y la composicion — y desde el
  * spec 022, CERO efectos. La geometria, la musica y las reglas del tablero viven en
  * `src/domain/`; el sonido en `src/audio/`; el JSX, en los componentes de
- * `src/components/`; y el puente con el motor, en `components/use-motor.ts` (los cuatro
- * de reconciliacion) y `components/use-entrada.ts` (los dos de entrada del spec 013).
+ * `src/components/`; y el puente con el motor, en `components/use-engine.ts` (los cuatro
+ * de reconciliacion) y `components/use-input.ts` (los dos de entrada del spec 013).
  *
  * Que los seis salieran de aca no fue prolijidad: en un `.tsx`
  * `react-refresh/only-export-components` prohibe exportar cualquier cosa que no sea el
@@ -58,7 +58,7 @@ export default function App(){
   // la paleta es la única forma de ENCENDER el recorrido: por eso no se puede borrar.
   //
   // El default vive acá y en `clicksAudible` de `engine.ts`, que el efecto de
-  // `use-motor.ts` pisa al montar. Los dos dicen `false`: el mismo valor declarado dos
+  // `use-engine.ts` pisa al montar. Los dos dicen `false`: el mismo valor declarado dos
   // veces no puede discrepar.
   //
   // Apaga solo esos: el cruce por celda ocupada suena su nota y no lo gobierna este
@@ -120,7 +120,7 @@ export default function App(){
   const noteSet = useMemo(()=> arpeggioFor(selected, rotation, mirror, regimen), [selected, rotation, mirror, regimen]);
 
   // Los cuatro efectos de reconciliación que mantienen al motor mirando este mismo
-  // tablero viven en `components/use-motor.ts` (spec 022), y la llamada va ACÁ y no
+  // tablero viven en `components/use-engine.ts` (spec 022), y la llamada va ACÁ y no
   // arriba con el resto del cableado: `secuencia` es un `const`, así que llamarlo antes
   // de su `useMemo` la leería en su zona muerta temporal y tiraría un `ReferenceError`
   // en el primer render. Sigue estando ANTES de los dos hooks de entrada, que es donde
@@ -196,12 +196,12 @@ export default function App(){
   }, [playing]);
 
   // ── Entrada directa (spec 013) ──────────────────────────────────────────────────
-  // Los dos efectos viven en `components/use-entrada.ts` desde el spec 022, y reciben
+  // Los dos efectos viven en `components/use-input.ts` desde el spec 022, y reciben
   // CALLBACKS y no setters: así el día en que la orientación deje de ser dos `useState`
   // y pase a ser una ranura por pieza, lo que cambia es este bloque y no el hook.
   //
   // `tapLimpio` se queda ACÁ y viaja a los dos: lo lee el teclado y lo escriben los dos,
-  // así que el ref es de quien los compone. Está argumentado en `use-entrada.ts`.
+  // así que el ref es de quien los compone. Está argumentado en `use-input.ts`.
 
   // Los dos del teclado se memoizan con sus dependencias REALES y no con `[]`: el efecto
   // tiene que re-suscribirse cuando cambia la orientación, que es exactamente lo que hace

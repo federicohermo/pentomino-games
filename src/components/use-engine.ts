@@ -7,8 +7,8 @@ import { buildSequence } from '../domain/sequence.ts';
 import { DEFAULT_REGIMEN } from '../domain/constants/music.constants.ts';
 import type { Sequence } from '../domain/types/sequence.types.ts';
 import type { PlacedPiece } from '../domain/types/board.types.ts';
-import type { MotorDeTransporte } from './types/motor.types.ts';
-import { proyectarAlMotor } from './motor.ts';
+import type { MotorDeTransporte } from './types/engine.types.ts';
+import { proyectarAlMotor } from './engine-bridge.ts';
 import { encolar } from './route-source.ts';
 
 /**
@@ -43,9 +43,9 @@ import { encolar } from './route-source.ts';
  * capa: `route-source.ts` declara `RUTA_VACIA` y `cell-text.ts` su `memo`, los dos consts
  * de módulo y ninguno en `constants/`.
  *
- * Vive acá y no en `motor.ts` porque éste es el único módulo de la capa que importa la API de
- * transporte del
- * motor de verdad: la pura lo recibe por parámetro justamente para no tener que hacerlo.
+ * Vive acá y no en `engine-bridge.ts` porque éste es el único módulo de la capa que importa la API
+ * de transporte del motor de verdad: la pura lo recibe por parámetro justamente para no tener que
+ * hacerlo.
  */
 export const MOTOR: MotorDeTransporte = {
   arrancar: startClock,
@@ -92,7 +92,7 @@ export function useMotorSincronizado({ secuencia, placed, tempo, clicks }: Recon
   // sin que el patrón salte a mitad de frase.
   //
   // La `Sequence` de `buildSequence` no es la que espera el motor: la proyección vive en
-  // `motor.ts` y su docblock explica qué se cae y por qué. Acá sólo se la llama, y por
+  // `engine-bridge.ts` y su docblock explica qué se cae y por qué. Acá sólo se la llama, y por
   // eso este efecto y el del desmontaje ya no pueden divergir.
   //
   // Las celdas no se pierden: siguen en la secuencia del dominio, y por eso este efecto
