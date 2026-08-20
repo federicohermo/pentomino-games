@@ -302,7 +302,9 @@ una persona y no bloquea el cierre.
 
 - [ ] T037 `globals: true` en Vitest queda **disponible y sin ejercer** desde que se va `@types/jest`.
       Ejercerlo es sacarle el import a 16 archivos de test, y no compra nada que este spec necesite
-- [ ] T038 `App.tsx` queda en ≈250 líneas y deja de ser el archivo de producción más largo del repo:
-      pasa a serlo `domain/sequence.ts` (429). Lo que queda en el shell es estado, derivados,
+- [ ] T038 `App.tsx` queda en **312** líneas —no ≈250: la diferencia son los comentarios nuevos que
+      documentan por qué la llamada al hook va donde va y por qué cada callback se memoiza como se
+      memoiza— y deja de ser el archivo de producción más largo del repo: pasa a serlo
+      `domain/sequence.ts`, que este mismo spec dejó en **422** al mudarle siete líneas de crónica. Lo que queda en el shell es estado, derivados,
       handlers y composición — que es exactamente lo que `.claude/rules/ui.md` dice que tiene que ser,
       y por primera vez sin la lista de efectos al lado

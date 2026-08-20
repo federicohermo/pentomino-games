@@ -83,8 +83,8 @@ una persona y no bloquea el cierre.
       dependencias vacías, igual que `alRotar`; y que el array de dependencias del `useEffect` de
       `useAtajosDeTeclado` en `src/components/use-entrada.ts` pasa a incluir `seleccionar` junto a
       `rotar`, `reflejar`, `transporte` y `tapLimpio`
-- [ ] T016 Footer de `src/App.tsx` (el bloque `<footer>`, hoy en las líneas 310-316; los tres
-      `<span>` de gesto están en las líneas 313-315): sumar el gesto en el idioma de los tres del
+- [ ] T016 Footer de `src/App.tsx` (el bloque `<footer>`, hoy en las líneas 303-309; los tres
+      `<span>` de gesto están en las líneas 306-308): sumar el gesto en el idioma de los tres del
       013 — **AC9**
 - [ ] T030 `docs/guides/quickstart.md`: la tabla «Cómo se toca» (encabezado en la línea 57, filas de la
       63 a la 70) suma la fila de las letras —`F I L N P T U V W X Y Z` · Selecciona esa pieza · Toda la

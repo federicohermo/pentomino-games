@@ -43,7 +43,8 @@ import { encolar } from './route-source.ts';
  * capa: `route-source.ts` declara `RUTA_VACIA` y `cell-text.ts` su `memo`, los dos consts
  * de módulo y ninguno en `constants/`.
  *
- * Vive acá y no en `motor.ts` porque éste es el único módulo de la capa que importa el
+ * Vive acá y no en `motor.ts` porque éste es el único módulo de la capa que importa la API de
+ * transporte del
  * motor de verdad: la pura lo recibe por parámetro justamente para no tener que hacerlo.
  */
 export const MOTOR: MotorDeTransporte = {
@@ -107,10 +108,15 @@ export function useMotorSincronizado({ secuencia, placed, tempo, clicks }: Recon
   useEffect(()=>{
     encolar(secuencia, placed);
     setSequence(proyectarAlMotor(secuencia));
-    // `placed` esta en las dependencias aunque `secuencia` ya se derive de el: no agrega
-    // ni una corrida —`secuencia` es un `useMemo` sobre `[placed]`, asi que cambian
-    // juntos— y evita callar la regla de exhaustividad con un disable, que taparia el
-    // dia en que alguien desacople las dos.
+    // `placed` esta en las dependencias aunque `secuencia` ya se derive de el, y no agrega
+    // ni una corrida: `secuencia` es un `useMemo` sobre `[placed, regimen]`, asi que cada
+    // vez que cambia `placed` cambia tambien `secuencia`. La implicacion va en UN solo
+    // sentido —desde el spec 017 `secuencia` puede cambiar sola, si cambio el regimen— y
+    // alcanza, porque lo que hay que descartar es una corrida de mas y no una de menos.
+    // El comentario decia `[placed]` a secas, que era cierto antes del 017 y ya no.
+    //
+    // Y evita callar la regla de exhaustividad con un disable, que taparia el dia en que
+    // alguien desacople las dos.
   }, [secuencia, placed]);
 
   // Al desmontar, frenar el reloj y vaciar la secuencia del motor. La limpieza

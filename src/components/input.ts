@@ -12,7 +12,8 @@ import type { PlacedPiece } from '../domain/types/board.types.ts';
  * jsdom: no hay `KeyboardEvent` ni `MouseEvent` que fabricar, y tampoco hay forma de
  * montar un componente para dispararlos. Recibiendo los campos que importan, las
  * guardas quedan testeadas de verdad y lo único que queda sin red es que el cableado de
- * `use-entrada.ts` los llene bien — que es exactamente lo que las tareas `[M]` del spec 013 verifican en el
+ * `use-entrada.ts` los llene bien — que es exactamente lo que las tareas `[M]` del spec 013
+ * verifican en el
  * navegador.
  *
  * ## Por qué viven acá y no en `App.tsx`

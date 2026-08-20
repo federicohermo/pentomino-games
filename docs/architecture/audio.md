@@ -262,7 +262,8 @@ interruptor de clicks queda, pero ya no es la única mitigación: la mitigación
 
 **Desde el spec 015 ese interruptor arranca en `false`** —los clicks nacen apagados, y el default vive
 en dos lugares que tienen que decir lo mismo: el `useState` de `App.tsx` y `clicksAudible` en
-`engine.ts`, que el efecto de `components/use-motor.ts` pisa al montar—. El argumento del 009 no se negó: sin clicks un salto largo es un silencio mudo, y
+`engine.ts`, que el efecto de `components/use-motor.ts` pisa al montar—. El argumento del 009 no se
+negó: sin clicks un salto largo es un silencio mudo, y
 apagarlos apaga el 44 % de los eventos de un tablero chico. Lo que cambió es quién decide. Por eso el
 `T070` del 011, que proponía **borrar** el botón, quedó cerrado con un "no": con el default dado vuelta
 el botón es la única forma de **encender** el recorrido.
@@ -282,20 +283,33 @@ estado.
 
 ```ts
 useEffect(() => {
-  const s = buildSequence(placed);
-  setSequence({
-    steps: s.steps.map(({ offset, notes }) => ({ offset, notes })),   // se cae pieceId
-    clicks: s.clicks.map(({ offset, note }) => ({ offset, note })),   // se cae cell, viaja la altura
-    length: s.length,
-  });
-}, [placed]);
+  encolar(secuencia, placed);
+  setSequence(proyectarAlMotor(secuencia));
+}, [secuencia, placed]);
 ```
+
+La proyección vive en `components/motor.ts` desde el spec 022 y **no se escribe a mano acá**. Antes
+este snippet la mostraba inline, y con la forma corta:
+
+```ts
+clicks: s.clicks.map(({ offset, note }) => ({ offset, note })),   // ← NO
+```
+
+Esa forma deja la clave `note` **presente y en `undefined`**, que es el tercer estado que el tipo
+`Click` existe para no tener: la **ausencia** de la clave es lo que significa «celda vacía». Hoy nadie
+lo notaría porque `collectHits` compara `=== undefined`, y por eso el snippet vivió mal tanto tiempo —
+copiarlo reintroducía el bug sin que fallara nada. `proyectarAlMotor` lo cierra con un ternario, y
+`motor.test.ts` lo blinda con `'note' in destino` en vez de `=== undefined`.
+
+El `buildSequence` que este snippet mostraba también quedó viejo por otro lado: desde el spec 017
+recibe el **régimen** (`buildSequence(placed, regimen)`), y `secuencia` es un `useMemo` sobre
+`[placed, regimen]`.
 
 Dos cosas del snippet que no son detalle:
 
 - **`playing` no está en las dependencias**, y salió a propósito con el spec 009. La secuencia es
-  función del **tablero**, no del transporte: quien corta o arranca el sonido es `togglePlay` llamando
-  a `stopClock`/`startClock`. El `clearJobs()` + `if (!playing) return` de antes era la forma vieja de
+  función del **tablero**, no del transporte: quien corta o arranca el sonido es `togglePlay`, que desde
+  el spec 022 pasa por la pura `alternarTransporte` de `components/motor.ts`. El `clearJobs()` + `if (!playing) return` de antes era la forma vieja de
   lograr lo mismo desde acá; con una sola llamada a `setSequence` deja de hacer falta, y colocar o
   quitar con el transporte parado igual deja la secuencia lista para cuando arranque.
 - **Es una proyección, no una traducción.** `offset` y `notes` viajan tal cual; lo que se cae es
@@ -305,7 +319,7 @@ Dos cosas del snippet que no son detalle:
 
 Antes este efecto iteraba piezas y armaba un job por cada una; hoy es **una sola llamada**:
 `buildSequence` (`domain/sequence.ts`) arma el circuito entero —orden, offsets y clicks— de una vez, y
-y el puente entre las dos capas es una sola pura, `proyectarAlMotor`. Que sea una pura y no dos
+el puente entre las dos capas es una sola pura, `proyectarAlMotor`. Que sea una pura y no dos
 bloques de efecto es del spec 022: hasta ahí el mismo cruce estaba escrito dos veces —el efecto de
 reconciliación y el de desmontaje—, con un comentario que ya admitía que escribirlo distinto invitaría a
 divergir. Con la pura eso pasa a ser imposible de escribir, y los tres estados de `Click.note` tienen

@@ -199,7 +199,7 @@ mantiene al día (desviación 2 de `specs/README.md`): dejar estos dos afirmando
 este spec falsifica es la deuda que `d936597` y `eb154a0` ya tuvieron que pagar en lote.
 
 - [ ] T036 [P] `docs/architecture/overview.md`: el diagrama del shell (`:24`) y la tabla de estado
-      (`:104`–`:105`) dejan de listar `rotation` `0..3` y `mirror` `boolean` como dos escalares
+      (`:122`–`:123`) dejan de listar `rotation` `0..3` y `mirror` `boolean` como dos escalares
       sueltos y pasan a la memoria por pieza
 - [ ] T037 [P] `DESIGN.md:142`: el botón de la paleta ya no se dibuja «en la orientación que está
       seleccionada ahora mismo» sino en **la suya**. Es el párrafo del 016, y el resto de esa sección

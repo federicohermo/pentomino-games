@@ -48,7 +48,7 @@ const colocar = (piece: PieceKey, rot: number, mirror: boolean, x: number, y: nu
   };
 };
 
-/** Encola el tablero por el mismo camino que `App.tsx`: una `buildSequence`, dos colas. */
+/** Encola el tablero por el mismo camino que `components/use-motor.ts`: una `buildSequence`, dos colas. */
 const encolarTablero = (placed: readonly PlacedPiece[]): void => rs.encolar(buildSequence(placed, REGIMEN.escala), placed);
 
 /** Lo que hace el motor al cerrar un ciclo: subir el contador. */

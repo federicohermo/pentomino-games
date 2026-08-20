@@ -128,7 +128,8 @@ esta escala no hace falta, y agregarlo sería la clase de complejidad que un pro
 
 Derivados con `useMemo`: `transformedShape`, `secuencia` y `noteSet`. La llamada a
 `useMotorSincronizado` va **después** del `useMemo` de `secuencia` y no arriba con el resto del cableado:
-`secuencia` es un `const`, así que leerla antes sería leerla en su zona muerta temporal. Derivados sin memo (baratos, se recalculan por
+`secuencia` es un `const`, así que leerla antes sería leerla en su zona muerta temporal. Derivados
+sin memo (baratos, se recalculan por
 render): `previewCells` y `previewValid`. `previewCells` viaja al `Board` como **array y no como `Set`
 de claves `"x,y"`**: el índice de cada celda es lo que la conecta con su grado, y el `Set` lo perdía.
 

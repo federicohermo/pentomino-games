@@ -104,7 +104,7 @@ una persona y no bloquea el cierre.
       146 × 292 px y el panel mide hoy del orden de 349 × 496 (medición sobre `main`; el 019 y el 020
       la mueven, ver §4 del research) — sin scroll, crece y se come celdas — **AC19**
 - [ ] T047 `src/App.tsx`: el `<footer>` con la leyenda de gestos (era `:446-455`; el 022 achicó el
-      archivo de 455 a 319 líneas y hoy está en `:310-316`) **se muda adentro de un flotante**, no se
+      archivo de 455 a 312 líneas y hoy está en `:303-309`) **se muda adentro de un flotante**, no se
       borra: es hoy el único lugar donde los cuatro gestos del 013 están escritos, y dejarlo debajo del
       tablero da scroll vertical de página — **AC1**, **AC16**
 - [ ] T020 `z-index` explícito por encima del tablero, y fondo semiopaco con `backdrop-blur`: abajo hay

@@ -174,7 +174,8 @@ function construir(s: Sequence, placed: readonly PlacedPiece[]): Ruta {
   for (const step of s.steps) {
     const pieza = porId.get(step.pieceId);
     // No puede pasar: el shell deriva la secuencia de `placed` con un `useMemo` y le
-    // pasa las dos al hook, que las entrega juntas en el mismo efecto. Si igual pasara, ese paso queda sin marcas y la cabeza lo cruza a
+    // pasa las dos al hook, que las entrega juntas en el mismo efecto. Si igual pasara, ese paso
+    // queda sin marcas y la cabeza lo cruza a
     // oscuras en vez de dibujar una celda inventada — el silencio es preferible a la
     // mentira, porque una celda equivocada se lee como que el modelo esta mal.
     if (!pieza) continue;

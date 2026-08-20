@@ -72,9 +72,11 @@ refleje si el reloj *arrancó de verdad* y no si se lo apretó. Pedía «extraer
 agregar testing-library», y se cerró por la primera de las dos vías que él mismo nombraba —
 `alternarTransporte` en `components/motor.ts`, con el motor por parámetro, y un motor falso de una línea
 (`corriendo: () => false`) para la rama en la que se pidió arrancar y no arrancó—. **Sin jsdom.** Vale
-anotar la forma, porque es la que va a servir la próxima vez: el ítem pedía infra y lo cerró una firma. También el anclaje de la fase a la
-columna (spec 004, AC8), que no tenía test automático porque las puras no se podían exportar desde
-`App.tsx`: hoy vive en `domain/board.ts` y lo cubre `domain/__tests__/board.test.ts`.
+anotar la forma, porque es la que va a servir la próxima vez: el ítem pedía infra y lo cerró una firma.
+
+También está resuelto el anclaje de la fase a la columna (spec 004, AC8), que no tenía test automático
+porque las puras no se podían exportar desde `App.tsx`: hoy vive en `domain/board.ts` y lo cubre
+`domain/__tests__/board.test.ts`.
 
 Y la tarea de seguimiento que preveía que `occupantAt` devolviera **además** el índice de la celda
 dentro de la pieza —anotada como «`cellOccupied` devuelve también el índice de celda dentro de la

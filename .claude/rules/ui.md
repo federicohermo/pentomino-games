@@ -2,6 +2,12 @@
 paths:
   - "src/App.tsx"
   - "src/components/**/*.tsx"
+  # Los `.ts` de la capa entran desde el spec 022: los efectos que el shell tenía
+  # viven en `use-motor.ts` y `use-entrada.ts`, que NO son `.tsx`. Sin este patrón la regla
+  # no se carga al tocarlos, que es exactamente donde hacen falta las tres cosas
+  # que el 022 agregó abajo — la cardinalidad de dependencias, «callbacks y no
+  # setters», y el `tapLimpio` compartido.
+  - "src/components/**/*.ts"
 ---
 
 # UI: el shell y los componentes
@@ -52,7 +58,11 @@ con nodos que crea y destruye él mismo.
 - **El transporte se alterna con `alternarTransporte(playing, MOTOR)` y no con `startClock`/`stopClock`
   sueltos.** La pura devuelve lo que el motor dice que pasó y no lo que se le pidió, que es la falla
   suave que `.claude/rules/audio.md` obliga a chequear en todo llamador. `MOTOR` es el cableado real y
-  vive en `use-motor.ts`, el único módulo de la capa que importa `audio/engine.ts`.
+  vive en `use-motor.ts`, el único módulo de la capa que importa la **API de transporte** del motor
+  (`startClock`, `stopClock`, `clockRunning`, `setSequence`, `setBpm`, `setClicksAudible`). No es el
+  único que importa `audio/engine.ts`: `Playhead.tsx`, `Spectrum.tsx` y `route-source.ts` también, pero
+  los tres piden **lecturas** —`playheadOffset`, `readSpectrum`, `cycleGeneration`— y ninguna de las
+  tres arranca, frena ni agenda nada.
 - **Nunca mutar objetos ya entregados a React.** Ese fue exactamente el bug de los loops que motivó el
   rediseño: `newPiece._sched = id` después del `setPlaced`. Si un dato tiene que cambiar después de
   crearse, o va en el estado con su propio setter, o va afuera de React (ref o singleton de módulo).
