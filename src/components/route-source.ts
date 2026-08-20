@@ -199,5 +199,16 @@ function construir(s: Sequence, placed: readonly PlacedPiece[]): Ruta {
     marcas[c.offset] = { cell: c.cell, kind: c.note !== undefined ? MARCA.cruce : MARCA.click };
   }
 
+  // `ids` y `porPieza` salen de `s.steps` y NO de `s.order`, asi que una pieza MUTEADA
+  // (spec 014) no entra a ninguno de los dos: no tiene velo de estreno. Es una decision
+  // y no un accidente de donde estaba escrito el `for` — el velo dice "esto todavia no
+  // sono", y una pieza muteada no va a sonar nunca, asi que atenuarla hasta que le
+  // "toque" prometeria algo que no va a pasar. Ademas la opacidad ya esta ocupada
+  // diciendo eso, y el canal del muteo es otro: la baldosa blanca de `Board.tsx`.
+  //
+  // Lo que si la cubre son las MARCAS: sus cinco celdas entran por el `for` de los
+  // clicks de arriba, asi que la cabeza lectora la sigue recorriendo celda por celda
+  // —esta ocupando ese tiempo— pero con `MARCA.click` en vez de `MARCA.nota`, o sea con
+  // el borde del click. Tambien es deliberado: lo que suena ahi ES un click.
   return { marcas, ids: s.steps.map((st) => st.pieceId), porPieza };
 }

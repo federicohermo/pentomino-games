@@ -49,16 +49,40 @@ export interface Click {
 }
 
 /**
- * El circuito entero, listo para agendar: los arpegios, los clicks y el largo del
- * ciclo.
+ * Una pieza dentro del circuito, suene o no: cuando le toca.
+ *
+ * Es lo que `steps` dejo de poder contestar cuando el spec 014 hizo que una pieza
+ * MUTEADA no emita `Step`. El muteo no la saca del recorrido —sigue ocupando su lugar y
+ * su tiempo, y el circuito la sigue visitando—, asi que leer el orden de visita de
+ * `steps` pasaria por alto justamente a las piezas que no suenan. Antes del 014 las dos
+ * listas eran la misma y por eso `order` no existia.
+ *
+ * `offset` esta acá y en `Step` para las piezas que suenan, y no pueden discrepar: las
+ * dos salen de la MISMA variable del mismo bucle de `buildSequence`, en la misma
+ * iteracion. Es duplicacion de escritura, no de derivacion.
+ */
+export interface Visita {
+  pieceId: string;
+  offset: number;
+}
+
+/**
+ * El circuito entero, listo para agendar: los arpegios, los clicks, el orden de visita
+ * y el largo del ciclo.
  *
  * `length` es el ciclo COMPLETO —incluye el salto de la ultima pieza de vuelta a la
  * primera—, asi que no es el offset del ultimo paso sino donde el recorrido vuelve
  * a empezar. Sin ese salto el loop se cerraria antes de tiempo y la costura se
  * escucharia.
+ *
+ * `order` lleva TODAS las piezas y `steps` solo las que suenan: desde el spec 014 una
+ * pieza muteada esta en el primero y no en el segundo. Con el tablero sin mutear nada
+ * son la misma lista en el mismo orden, que es lo que hace que `order` se pueda comparar
+ * campo por campo entre las dos versiones de un tablero (AC5).
  */
 export interface Sequence {
   steps: Step[];
   clicks: Click[];
+  order: Visita[];
   length: number;
 }

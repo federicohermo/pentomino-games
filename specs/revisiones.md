@@ -343,3 +343,22 @@ sin spec en [deuda.md](./deuda.md).
   La lección de método: **un lote de specs puede estar compuesto de specs individualmente correctos y
   ser contradictorio igual**, y la contradicción no aparece leyéndolos en orden — aparece cruzando qué
   toca cada uno. Es lo que ahora hace el Paso 2 de `/spec-implement-batch`.
+- **2026-08-19 — El review del spec 016 encontró un canal que se anula solo en un estado.** El hallazgo
+  no fue un bug de lógica: `miniCells` y su test están bien, y las 96 combinaciones pasan. Fue que el
+  borde de la miniatura se implementó con `slate-900` —el idioma del tablero desde el 007, y la
+  justificación literal de D3— sin notar que **el botón seleccionado tiene ese mismo color de fondo**.
+  Razón de contraste 1,00: en ese estado el borde no existe. Y ahí es donde hace falta, porque `W`
+  (`#0000FF`) queda a **2,08** contra `slate-900`, bajo el piso de 3:1 que WCAG 1.4.11 pide para un
+  objeto gráfico.
+  Lo que hizo decidible el fix fue medir las 12 contra los **dos** fondos en vez de contra uno: los
+  conjuntos que fallan son **disjuntos** —7 de 12 contra el botón claro (peor `V`, 1,02, el amarillo
+  sobre el gris); una sola contra el seleccionado— así que ningún color de borde fijo cubre los dos
+  estados. `slate-400`, que es el que llevaba el punto de color y el que AC7 mandaba heredar, da 2,34
+  sobre el claro: también bajo el piso. El borde se invierte con el estado (T040).
+  Dos lecciones. La primera es de método: **el contraste hay que medirlo contra todos los fondos que el
+  elemento puede tener, no contra el de reposo.** El repo ya tenía la disciplina de medir —`DESIGN.md`
+  usa el contraste como test y `palette.test.ts` lo recalcula— pero medía el color de pieza contra la
+  tarjeta blanca, que es un fondo solo. La segunda es que el criterio no es siempre el mismo: para
+  elegir el color de TEXTO sobre un color de pieza el repo usa APCA desde el 007 y con razón, pero
+  para un objeto **gráfico** —una celda pintada, un borde— el umbral que aplica es el 3:1 de WCAG
+  1.4.11, y confundirlos hace mirar la tabla equivocada.

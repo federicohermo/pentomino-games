@@ -11,7 +11,7 @@ const PIECES = Object.keys(SHAPES) as PieceKey[];
 
 /** Una pieza colocada con las celdas dadas. El resto de los campos no lo mira el tablero. */
 const piezaEn = (id: string, cells: Cell[]): PlacedPiece =>
-  ({ id, piece: 'I', rotation: 0, mirror: false, cells });
+  ({ id, piece: 'I', rotation: 0, mirror: false, cells, muted: false });
 
 describe('cellsAt', () => {
   it('AC8 — la celda de agarre cae exactamente donde se clickeo', () => {
@@ -216,7 +216,7 @@ const distancia009 = (a: Cell, b: Cell): number => Math.min(
 const colocar = (id: string, piece: PieceKey, rot: number, mirror: boolean, x: number, y: number): PlacedPiece => {
   const base = rotateN(SHAPES[piece], rot);
   const shape = mirror ? reflect(base) : base;
-  return { id, piece, rotation: rot, mirror, cells: cellsAt(shape, ANCHOR_INDEX[piece], x, y) };
+  return { id, piece, rotation: rot, mirror, cells: cellsAt(shape, ANCHOR_INDEX[piece], x, y), muted: false };
 };
 
 /**
