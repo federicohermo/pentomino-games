@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, MouseEvent, RefObject } from 'react';
 import { occupantAt, occupantCellIndex } from '../domain/board.ts';
 import { GRID_W, GRID_H } from '../domain/constants/board.constants.ts';
 import type { Cell } from '../domain/types/transform.types.ts';
@@ -89,7 +89,7 @@ import Playhead from './Playhead.tsx';
  *
  * ## La celda es una baldosa, no un casillero
  *
- * Cada celda de 63 px contiene una BALDOSA redondeada con 2 px de aire alrededor,
+ * Cada celda de `CELL_PX` contiene una BALDOSA redondeada con 2 px de aire alrededor,
  * en vez de ser un rectangulo con borde compartido (`-m-px`, que es lo que habia).
  * Es el lenguaje de la lamina de referencia: las piezas se leen como fichas
  * apoyadas sobre la grilla y no como celdas de una tabla. La separacion la hace el
@@ -109,29 +109,58 @@ interface Props {
   /** La reflexion del fantasma. Solo mueve el `#N`: la nota de una celda no la
       cambia la reflexion, el orden en que suenan si. */
   mirror: boolean;
-  onCellClick: (x: number, y: number) => void;
+  /** El `altKey` cruza porque `Alt`+click MUTEA en vez de colocar o quitar (spec 014):
+      el gesto no se puede decidir sin el, y el `onClick` de la celda no pasaba el evento. */
+  onCellClick: (x: number, y: number, altKey: boolean) => void;
   onCellEnter: (cell: Cell) => void;
   onMouseLeave: () => void;
+  /** La celda bajo el cursor esta ocupada por la pieza que esta en la mano, o sea que el
+      click va a EDITARLA. Llega calculado por la misma pura que decide el click
+      (`esLaPiezaEnLaMano`), y no derivado aca: dos copias de esa condicion serian dos
+      formas de que el cursor prometa una cosa y el click haga otra. */
+  hoverEdita: boolean;
+  /** El boton derecho sobre el tablero alterna la reflexion (spec 013). Handler y no
+      logica: quien decide si el evento cuenta es `App.tsx` con `reflejaElContextMenu`. */
+  onContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
+  /** El nodo al que `App.tsx` le engancha la rueda. Este componente lo CUELGA y no lo
+      lee: el `ref` se crea alla, asi que aca no hay ni estado ni efecto. */
+  boardRef: RefObject<HTMLDivElement | null>;
 }
 
 export default function Board({
   placed, previewCells, previewValid, hover, selected, rotation, mirror,
-  onCellClick, onCellEnter, onMouseLeave,
+  onCellClick, onCellEnter, onMouseLeave, hoverEdita, onContextMenu, boardRef,
 }: Props) {
   // Que celda del fantasma cae en (x,y), POR INDICE: es lo que permite pedirle su
   // texto al mapeo canonico. Se arma una vez por render y no una vez por celda.
   const ghostIndexAt = new Map(previewCells.map(([x, y], k) => [`${x},${y}`, k]));
 
-  // `md:col-span-7` y no 6: con seis columnas la tarjeta mide 536 × 380 de interior
-  // y la grilla 520 × 312, o sea llena a lo ancho y le sobran 68 px de alto — el
-  // tablero es 10 × 6 y la tarjeta no tenia esa proporcion. Con siete columnas el
-  // interior pasa a 633 × 380, y 10 × 6 celdas de 63 px dan 630 × 378: entra con
-  // ~2 px por lado y el padding queda parejo en los cuatro. La columna sale de
-  // `PlacedList`, que es texto que reflowea y tenia aire de sobra.
+  // `md:col-span-8` desde el spec 014, cuando murio `PlacedList` y quedaron dos columnas
+  // libres. El reparto —una para el tablero y otra para la paleta— esta MEDIDO en el DOM
+  // y no elegido, y lo que lo decide es que a partir de ocho columnas cambia quien limita.
+  // La tabla es la medicion que DECIDIO el reparto, tomada con la paleta de ENTONCES
+  // (429,6 px de alto): su ultima columna no es el `CELL_PX` de hoy, que es 73 y sale
+  // del parrafo de abajo.
+  //
+  //   reparto   interior del tablero   por ancho   por alto   CELL_PX
+  //   3 / 7        633,3 × 429,6          63,3       71,6       63  (lo limita el ancho)
+  //   4 / 8        730,7 × 429,6          73,1       71,6       71  (lo limita el ALTO)
+  //   3 / 9        828,0 × 429,6          82,8       71,6       71  (lo limita el ALTO)
+  //
+  // O sea que la novena columna no le compra al tablero un solo pixel: los dos repartos
+  // que la incluyen dan 71. Por eso la segunda columna va a la paleta, que la necesita
+  // para el spec 016 — su interior pasa de 252 a 349,3 px.
+  //
+  // El alto de la tarjeta lo fija la PALETA, que es la mas alta de la fila; el tablero se
+  // estira con ella — y el spec 016 lo EJERCIO. Con las doce miniaturas la paleta paso de
+  // 461,6 a 496 px de caja, el interior del tablero a 730,7 × 464 y `CELL_PX` a **73**,
+  // que es el techo por ancho de este reparto (730,7 / 10). Ahi se detiene: pasado ese
+  // punto lo que la paleta crezca ya no agranda el tablero, le deja aire muerto. El
+  // detalle de la cadena entera esta en el docblock de `CELL_PX`.
   return (
-    <div className="col-span-12 md:col-span-7 bg-white rounded-2xl shadow p-4">
-      {/* `overflow-x-auto` y no un `CELL_PX` mas chico: la grilla mide 10 × 63 =
-          630 px FIJOS y no se encoge, y abajo del breakpoint `md` el panel util
+    <div className="col-span-12 md:col-span-8 bg-white rounded-2xl shadow p-4">
+      {/* `overflow-x-auto` y no un `CELL_PX` mas chico: la grilla mide 10 × 73 =
+          730 px FIJOS y no se encoge, y abajo del breakpoint `md` el panel util
           queda en ~311 px. Sin esto la grilla se sale del borde derecho y —toda la
           cadena de ancestros es `overflow-x: visible`— empuja scroll horizontal a
           la PAGINA entera. Scrollea el tablero, que es lo que sobra, en vez de
@@ -142,7 +171,20 @@ export default function Board({
           directo y no llega por una ranura de `children`: `Playhead` no recibe props, o
           sea que no le pide nada a `App`, y una ranura generica reabriria la puerta que
           el review del 007 cerro midiendo. */}
-      <div className="relative overflow-x-auto">
+      {/* Los dos gestos del spec 013 enganchan ACA y no en el `.grid` de adentro ni en
+          la tarjeta: este div cubre exactamente el area del tablero —incluida la franja
+          que queda a la derecha cuando la grilla scrollea debajo de `md`— mientras que
+          el `.grid` dejaria un borde muerto y la tarjeta se comeria el `p-4`.
+
+          Entran distinto y la asimetria esta medida, no elegida: React registra sus
+          listeners en el contenedor raiz y a `touchstart`, `touchmove` y `wheel` los
+          registra PASIVOS (react-dom 19.1.1), y adentro de un listener pasivo
+          `preventDefault()` es un no-op que el navegador avisa por consola. O sea que un
+          `onWheel` de JSX rotaria sin frenar el scroll, que es la falla mas cara: parece
+          que anda. Por eso la rueda va por `addEventListener(..., { passive: false })`
+          desde `App.tsx`, y lo unico que llega aca es el `ref` del nodo. `contextmenu`
+          no esta entre esos tres nombres, asi que el boton derecho si puede ir por prop. */}
+      <div ref={boardRef} className="relative overflow-x-auto" onContextMenu={onContextMenu}>
         <Playhead />
         <div
           className="grid w-max"
@@ -171,6 +213,21 @@ export default function Board({
             let tone: string;
             const style: CSSProperties = {};
             if (occ && ghost) tone = 'bg-rose-500 text-white';   // choque contra pieza colocada
+            // La pieza MUTEADA cae al blanco de una celda libre y conserva su nota y su
+            // `#N` (spec 014). El canal es la AUSENCIA de color y no uno de los dos
+            // obvios, porque los dos estaban tomados: el color es IDENTIDAD de pieza y
+            // esta medido en contraste contra su propio `fg`, y la opacidad la usa
+            // `Playhead` para el velo de "esta celda no se estreno" — si muteado tambien
+            // atenuara, una pieza muteada recien colocada seria indistinguible de una
+            // esperando su turno.
+            //
+            // Sin `style.color`: el texto hereda el gris del tablero. `PIECE_COLOR[p].fg`
+            // esta elegido contra el `bg` de SU pieza, asi que sobre blanco varios son
+            // ilegibles y algunos directamente blancos.
+            //
+            // No se confunde con una celda libre porque una celda libre no tiene texto:
+            // es la misma distincion que ya separa a una libre de una del fantasma.
+            else if (occ && occ.muted) tone = 'bg-white shadow-sm';
             else if (occ) {
               tone = 'shadow-sm';
               // Inline y no `bg-[...]`: Tailwind escanea el fuente y una clase
@@ -186,10 +243,14 @@ export default function Board({
 
             return (
               <div key={i}
-                onClick={() => onCellClick(x, y)}
+                onClick={(e) => onCellClick(x, y, e.altKey)}
                 onMouseEnter={() => onCellEnter([x, y])}
                 style={{ width: CELL_PX, height: CELL_PX }}
-                className={`p-0.5 ${previewValid || !hover ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                /* `hoverEdita` entra al cursor: sobre una celda propia la jugada de
+                   COLOCAR es invalida —la pieza se choca consigo misma— pero el click no
+                   coloca, borra. Sin esto el cursor diria "aca no entra" justo donde el
+                   gesto es destructivo, que es lo contrario de lo que pasa. */
+                className={`p-0.5 ${previewValid || !hover || hoverEdita ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                 /* El title dice las tres cosas de la celda, no solo su coordenada: la
                    nota entra en la baldosa pero el paso va abreviado a `#3`, y sobre
                    el fantasma las dos son lo que decide la jugada. Sale del MISMO

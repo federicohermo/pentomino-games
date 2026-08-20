@@ -54,6 +54,36 @@ Para verificar tipos sin buildear:
 pnpm exec tsc -b --noEmit
 ```
 
+## Cómo se toca
+
+Los tres gestos que gobiernan la pieza **por colocar** tienen una segunda vía, más corta que ir al
+panel: el panel se queda y sigue siendo quien **muestra** el estado, así que los atajos se descubren
+solos —se rota con la rueda y se ve iluminarse `180°` en la paleta—.
+
+| Gesto | Qué hace | Dónde escucha |
+|---|---|---|
+| Rueda abajo / arriba | Rotación `+90°` / `−90°` | Solo sobre el tablero |
+| `Shift` (tap) | Rotación `+90°` | Toda la ventana, al **soltar** |
+| Botón derecho | Alterna la reflexión | Solo sobre el tablero |
+| `Ctrl` (tap) | Alterna la reflexión | Toda la ventana, al **soltar** |
+| Barra espaciadora | Play / pausa | Toda la ventana |
+| Click en una celda | Coloca la pieza y la escucha | El tablero |
+
+Tres cosas que parecen bugs y no lo son:
+
+- **Con el cursor sobre el tablero la página no scrollea.** Es el precio de que la rueda rote sin
+  scrollear a la vez, que sería peor que no rotar. Queda toda la paleta, el panel de señal y el margen
+  para scrollear, y es el trato que hace cualquier mapa embebido.
+- **`Ctrl`+rueda hace el zoom del navegador y no rota**, y `Ctrl`+C no da vuelta la reflexión. Los
+  modificadores actúan al **soltar** y solo si mientras estuvieron abajo no llegó otra tecla ni la
+  rueda: un gesto del sistema le gana a uno nuestro.
+- **Con el botón de Play enfocado, la barra activa ese botón** — y con el foco sobre `Reset`, activa
+  `Reset`. Es el comportamiento nativo, y es el correcto: el foco dice qué control está armado.
+
+El tablero **no se alcanza con el teclado** (las celdas son `div` sin `tabIndex`); es deuda conocida y
+está en [specs/deuda.md](../../specs/deuda.md). Los atajos de arriba son globales y funcionan sin foco,
+así que no dependen de eso.
+
 ## Flujos de trabajo típicos
 
 ### Agregar una pieza o cambiar una forma

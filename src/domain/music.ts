@@ -48,8 +48,9 @@ export function notesForRotation(basePc: number, octave: number, rot: number): n
  *
  * Es la derivacion completa `(pieza, rotacion, reflexion) -> notas`, y existe porque
  * hasta el cierre de los seguimientos del 007/009/010 estaba escrita CUATRO veces —en
- * `App.tsx`, en `PlacedList.tsx`, en `resolve()` del `simulate_board` y en los helpers
- * de dos tests—, cada una componiendo a mano `BASE_MAP` + `notesForRotation` + el
+ * `App.tsx`, en `PlacedList.tsx` (que murio con el spec 014), en `resolve()` del
+ * `simulate_board` y en los helpers de dos tests—, cada una componiendo a mano
+ * `BASE_MAP` + `notesForRotation` + el
  * `reverse`. `PlacedPiece.notes` existia para no repetirla, pero guardarla en el estado
  * la volvia un dato que podia contradecir a la pieza: nada impedia construir una
  * `PlacedPiece` con `rotation: 1` y las notas de la rotacion 0, y el tablero —que ya
