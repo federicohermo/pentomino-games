@@ -16,15 +16,20 @@ transform.ts ← board.ts                    domain/ no importa nada de fuera de
 `domain/` y `audio/` son **hermanos sin aristas entre ellos**: el motor habla números MIDI y no sabe
 qué es un pentominó.
 
-**La verifica el linter, no la revisión.** `eslint.config.js` tiene un override por capa con
-`@typescript-eslint/no-restricted-imports` — la variante de `typescript-eslint` y no la core, porque
-también ve los `import type`, que son justo los que un refactor descuidado usaría para colarse. Agregar
-a mano un import prohibido falla `pnpm lint` con el mensaje de la capa; está probado desde un módulo y
-desde un test.
+**La verifica el linter, no la revisión.** Desde el spec 029 la verifica por **ruta**:
+`import-x/no-restricted-paths` con una zona por arista prohibida, todas en una sola regla y no en un
+override por capa. Agregar a mano un import prohibido falla `pnpm lint` con el mensaje de la zona;
+está probado desde un módulo y desde un test.
 
-**Los patrones cubren la profundidad actual.** Llevan `../` y `../../` porque `types/`, `constants/` y
-`__tests__/` están un nivel más abajo que los módulos. Si algún día aparece `domain/sub/x.ts`, **hay que
-agregar el patrón**: esto es una red, no una prueba formal.
+**Y dejó de ser una red.** Hasta el 029 se prohibía el *string* del import, así que los patrones tenían
+que llevar `../` y `../../` —porque `types/`, `constants/` y `__tests__/` están un nivel más abajo que
+los módulos— y un `domain/sub/x.ts` nuevo habría quedado sin cubrir hasta que alguien agregara el
+patrón. Las zonas resuelven la ruta contra el filesystem: la carpeta nueva queda cubierta sola.
+
+**Lo que sigue en `no-restricted-imports` son los paquetes**, porque un paquete de npm no tiene ruta en
+el repo: React para `domain/` y `audio/`, y los de estado global para todo `src/`. Ahí sí se usa la
+variante de `typescript-eslint` y no la core, porque también ve los `import type`, que son justo los que
+un refactor descuidado usaría para colarse.
 
 **Adentro de `domain/` también hay dirección, y desde el cierre de los seguimientos del 009 también la
 verifica el linter.** Era la única del repo que vivía sólo como dibujo en `CLAUDE.md`: las cuatro capas
@@ -32,9 +37,12 @@ tenían su override, pero un `board.ts` importando `sequence.ts` pasaba el lint 
 `DOMAIN_INTERNO` en `eslint.config.js` la escribe módulo por módulo, en tres niveles —`transform.ts`
 abajo; `board.ts` y `music.ts` encima de ella y **sin conocerse entre sí**, porque que las reglas del
 tablero y el modelo musical sean ortogonales es una propiedad del instrumento; `sequence.ts` e
-`invariants.ts` como hojas que no se importan entre sí—. Cada override **repite** los patrones de la
-capa: en flat config el más específico reemplaza al anterior en vez de sumarse, así que sin esa
-repetición darle a `board.ts` su regla interna lo dejaría libre de importar React.
+`invariants.ts` como hojas que no se importan entre sí—. Desde el 029 esas cinco filas se expanden a
+cinco **zonas** de la misma regla, así que el trap de flat config —el override más específico reemplaza
+al anterior en vez de sumarse, y sin repetir los patrones de la capa `board.ts` habría quedado libre de
+importar React— ya no aplica acá: no hay override que pisar. Donde sí sigue aplicando es en los dos
+bloques de `no-restricted-imports` que quedaron, y por eso los grupos son constantes con nombre
+(`GRUPO_ESTADO`, `GRUPO_REACT`) y no listas escritas dos veces.
 
 El efecto más importante es indirecto: `voice.ts` y `scheduler.ts` reciben el `AudioContext` por
 parámetro y **no pueden** tocar el singleton, porque vive en `engine.ts` y ellos no lo importan. El
@@ -65,6 +73,16 @@ módulo `transform.ts`.
 **Los módulos no declaran constantes.** Si aparece un literal con significado, va a `constants/`. Los
 únicos números que quedan en un módulo son los que no tienen nombre posible: un `+ 1` de índice, un
 `% 12` que es la aritmética de las clases de altura, el `440`/`69` que *define* el anclaje MIDI.
+
+**Lo verifica el linter en `domain/` y en `audio/`, y no en `components/`** (spec 029). La línea es la
+del motivo, que está en el párrafo siguiente: lo que hizo daño fue un valor escrito en dos lugares, y
+una constante privada de un solo componente no puede desincronizarse con nada. `Spectrum.tsx` tiene
+`BAR_COUNT`, `GAP`, `MIN_BAR` e `IDLE_TEXT`; `Playhead.tsx`, `BORDE_COLOR`, `VELO_CAJA` y `VELO_TAPA`.
+Las siete se quedan: sus docblocks explican el **mecanismo** de dibujo —por qué `box-shadow` y no
+`transform: scale`, por qué las clases de Tailwind van escritas enteras— y esa explicación pertenece al
+lado del código que explica, no en una carpeta de datos. El selector tampoco mira `ObjectExpression`,
+por lo que el spec 022 ya dejó escrito sobre `MOTOR` y `RUTA_VACIA`: son cableado de funciones, no
+valores fijos.
 
 El motivo es medible, no estético: antes de la separación había cuatro pares de números que tenían que
 coincidir y nada sincronizaba — el `0.35` de `NOTE_DUR` estaba también como default de `scheduleVoice`,

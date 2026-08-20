@@ -13,7 +13,7 @@ pentomino-games/           # raíz del repo: la app vive acá, sin subdirectorio
 ├── .mcp.json              # Registra el server; commiteado, sin nada que configurar
 ├── index.html             # Entry point de Vite (en la raíz, no en public/)
 ├── vite.config.ts         # Plugins: react() + tailwindcss()
-├── eslint.config.js       # Flat config v9 + los overrides de dirección de dependencia
+├── eslint.config.js       # Flat config v9: zonas de dirección + las reglas de CLAUDE.md
 ├── netlify.toml           # Config de deploy (ver infra/deploy.md)
 ├── pnpm-workspace.yaml    # Workspace de dos paquetes: `.` y `mcp-server`
 ├── pnpm-lock.yaml         # Lockfile único, cubre los dos paquetes
@@ -73,7 +73,9 @@ src/
 │   ├── constants/                # los datos del modelo. Solo importan tipos
 │   │   ├── pieces.constants.ts   #   SHAPES · ANCHOR_INDEX
 │   │   ├── board.constants.ts    #   GRID_W · GRID_H · SEAM · CROSS_COST
-│   │   └── music.constants.ts    #   CHROMATIC · PENT_* · BASE_MAP · DEFAULT_OCTAVE
+│   │   ├── music.constants.ts    #   CHROMATIC · PENT_* · BASE_MAP · DEFAULT_OCTAVE
+│   │   ├── sequence.constants.ts #   PASOS_MAX
+│   │   └── invariants.constants.ts #   ROTATIONS
 │   └── __tests__/                # uno por módulo
 │       └── transform · board · music · sequence · invariants
 ├── audio/                        # Web Audio; habla MIDI, no conoce el dominio ni la UI
@@ -149,8 +151,9 @@ transform.ts ← board.ts                    domain/ no importa nada de fuera de
 ```
 
 `domain/` y `audio/` son **hermanos sin aristas entre ellos**: el motor habla números MIDI y no sabe
-qué es un pentominó. Agregar a mano un import prohibido falla `pnpm lint` con el mensaje del override
-de `eslint.config.js`. El porqué de cada regla está en
+qué es un pentominó. Agregar a mano un import prohibido falla `pnpm lint` con el mensaje de la zona de
+`eslint.config.js` — desde el spec 029 se verifica por ruta y no por el string del import, así que una
+carpeta nueva queda cubierta sola. El porqué de cada regla está en
 [conventions.md](../guides/conventions.md).
 
 Todos los archivos de `src/` están vivos. Los residuos de las plantillas de Create React App y de Vite

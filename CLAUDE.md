@@ -23,8 +23,14 @@ pregunta es si vuelve al instrumento más expresivo, no más difícil.
 La lista está en `package.json`. Lo que ese archivo no dice:
 
 **`pnpm verify` es el nodo de convergencia** — corre `lint ‖ typecheck ‖ test ‖ mcp:test` en paralelo y
-es lo que hay que correr antes de un PR. Medido con caché caliente: 8,8 s en serie contra 4,0 s en
+es lo que hay que correr antes de un PR. Medido con caché caliente: 18,5 s en serie contra 11,8 s en
 paralelo, y un nodo rojo devuelve exit 1.
+
+**Esos números los subió el spec 029**, y el que manda es el de `lint`: el linting con tipos lo llevó
+de ~2,5 s a 10,2 s y lo convirtió en el nodo más lento de los cuatro, así que hoy `verify` dura lo que
+dura el lint. Se pagó con la medición al lado — `recommendedTypeChecked` sobre el repo entero da 100
+hallazgos y 97 son un solo patrón de `node:test`— y ya se recortó lo que no valía: `import-x/no-cycle`
+costaba **15 s más** y encontraba cero ciclos, así que no está.
 
 Su forma exacta —`pnpm --filter "{.}" run --parallel "/^(…)$/"`— tiene dos cosas que **no** son
 cosméticas, y las dos se descubrieron fallando en verde:
@@ -100,24 +106,39 @@ texto cuesta un párrafo y detectado en dos carriles cuesta un rebase.
 
 Estas son las reglas:
 
-- **La dirección de dependencia la verifica el linter**, no la revisión. `eslint.config.js` tiene un
-  override por capa con `@typescript-eslint/no-restricted-imports` —la variante que también ve los
-  `import type`— y un import prohibido falla `pnpm lint` con el mensaje de la capa. También cubre la
-  dirección **adentro** de `domain/`, módulo por módulo (`DOMAIN_INTERNO`): el dibujo de Arquitectura
-  es hoy una regla, no una convención. Los patrones cubren `../` y `../../`, que es la profundidad de hoy:
-  al crear un subdirectorio nuevo hay que agregar el patrón. Es una red, no una prueba formal.
+- **La dirección de dependencia la verifica el linter**, no la revisión. Desde el spec 029 se prohíbe
+  por **ruta** y no por el string del import: `import-x/no-restricted-paths` con una zona por arista
+  —las cuatro capas, `mcp-server/`, y `DOMAIN_INTERNO` módulo por módulo adentro de `domain/`—, todas
+  en una sola regla. Dejó de ser una red: la ruta se resuelve contra el filesystem, así que un
+  `domain/sub/x.ts` nuevo queda cubierto sin tocar la config, y ya no hay `../` que contar ni tres
+  formas del mismo specifier que listar. Lo único que quedó en `no-restricted-imports` son los
+  **paquetes** —React para las dos capas puras, y los de estado global—, porque un paquete de npm no
+  tiene ruta en el repo.
 - **Sin barrels, con extensión explícita, sin alias.** Todo import local lleva extensión
   (`./domain/transform.ts`) — omitirla **no rompe la app**, porque Vite resuelve igual, así que el
   error sería invisible del lado del navegador y solo aparecería al cargar `domain/` con node crudo.
+  Desde el 029 **lo verifica el linter** (`no-restricted-syntax`), que es lo que permitió que la
+  dirección interna de `domain/` deje de listar las tres formas de escribir el mismo import.
 - **Los módulos no declaran constantes.** Un `.ts` de capa tiene funciones y nada más; los valores
   fijos van a `<capa>/constants/` y los tipos a `<capa>/types/`. El motivo es medible: antes había
-  cuatro pares de números que tenían que coincidir y nada sincronizaba.
+  cuatro pares de números que tenían que coincidir y nada sincronizaba. Lo verifica el linter **en
+  `domain/` y en `audio/`, no en `components/`**, y la línea es la del motivo: el problema medido es
+  un valor que existe dos veces, y una constante privada de un solo componente no puede
+  desincronizarse con nada. Las siete de `Spectrum.tsx` y `Playhead.tsx` se quedan donde están, con
+  los docblocks que explican el mecanismo de dibujo al lado del dibujo.
 - **Español** en comentarios, commits y specs.
-- **Cero `enum`.** El `erasableSyntaxOnly` del tsconfig los rechaza, y es la misma opción que permite
-  que node cargue `src/domain/` sin compilar. Conjunto cerrado = const-object + union type derivado.
+- **Cero `enum`.** El `erasableSyntaxOnly` del tsconfig los rechaza —y es la misma opción que permite
+  que node cargue `src/domain/` sin compilar—, y desde el 029 también el linter, con el motivo del
+  repo en el mensaje. Conjunto cerrado = const-object + union type derivado.
 - **Cero `any` y cero `@ts-ignore`.** Los tres que hubo estaban tapando problemas de diseño, no de
-  tipos. Si aparece la tentación de uno nuevo, sospechar del diseño antes que de TypeScript.
-- **Sin estado global.** Ni Context, ni Redux, ni Zustand.
+  tipos. Si aparece la tentación de uno nuevo, sospechar del diseño antes que de TypeScript. Su
+  contraparte lint es `noInlineConfig`: **no hay `eslint-disable`**, porque silenciar la regla es la
+  otra forma de tapar el problema. Si hace falta una excepción real, va como override por archivo en
+  `eslint.config.js` —que se ve en el diff y se explica— y no como un comentario suelto.
+- **Sin estado global.** Ni Context, ni Redux, ni Zustand — y desde el 029 lo verifica el linter, por
+  el paquete y por la llamada a `createContext`.
+- **Nada de `.only` ni `.skip` en un test.** `@vitest/eslint-plugin` los rechaza, más el test sin una
+  sola aserción. Es la misma familia de bug que el `--filter "{.}"` y el `$` del regex: fallar en verde.
 - **Los comentarios explican el porqué**, no el qué: una decisión, una restricción, un bug evitado.
 - **Los borrados van en su propio commit**, para que revertirlos sea trivial.
 
