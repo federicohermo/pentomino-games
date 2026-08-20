@@ -379,3 +379,43 @@ sin spec en [deuda.md](./deuda.md).
   cruza sus dos ramas.** El `research.md` comparó los 48 arpegios de cada régimen como conjuntos y como
   listas; nadie los había comparado *celda contra celda al mismo ángulo*, que es justo la comparación
   que hace el consumidor real — `noteAtCell`, o sea la altura que suena al pisar una celda cruzada.
+- **2026-08-20 — El ítem de deuda más viejo del repo pedía infra y lo cerró una firma.** AC10 del spec
+  008 —que el botón de transporte diga si el reloj *arrancó de verdad* y no si se lo apretó— esperaba
+  desde hace catorce specs, y el registro nombraba las dos salidas: «extraer el handler de `App.tsx`
+  **o** agregar testing-library». La segunda arrastraba `jsdom` en su propio bloque de config; la
+  primera resultó ser **tres líneas**. Lo que la hizo posible no fue extraer sino **cómo**: el motor
+  entra a `alternarTransporte` por parámetro y no por import, así que la discrepancia que hay que
+  testear —se pidió arrancar y no arrancó— se escribe con un objeto de una línea
+  (`corriendo: () => false`) en vez de armarse desde un mock. La lección de método es la que conviene
+  recordar la próxima vez que un ítem de deuda diga «cuando exista la infra»: **antes de agregar la
+  infra, mirar si la firma la vuelve innecesaria.** Y el corolario del registro: el ítem había
+  escrito las dos salidas, así que la información para cerrarlo estaba ahí desde el 008 — lo que
+  faltaba era leerlo como una decisión y no como una espera.
+- **2026-08-20 — El 022 no pudo partir `PiecePalette` como decía su propio plan, y el motivo estaba a
+  medio medir.** El spec pedía que `PanelDeOrientacion` se llevara las doce miniaturas, el régimen, la
+  reflexión y el lector de notas, devolviendo un **fragmento** para no tocar el ritmo vertical del
+  `space-y-2`. Su `research.md` §10 había medido la trampa a medias: vio que la fila de los clicks
+  (transporte) cae **entre** dos bloques de orientación, pero no que el bloque de tónica + `Notas
+  actuales` viene **después** de esa fila, ni que la grilla de miniaturas cuelga de la tarjeta y no del
+  `space-y-2`. Con las tres cosas juntas la orientación vive en **tres regiones no adyacentes y en dos
+  niveles de anidamiento**, y ningún componente puede cubrirlas con el único nodo que devuelve. Se
+  resolvió a favor del oráculo duro —AC18, cero cambio visual, del que dependen tres specs que ya
+  midieron sobre ese DOM—: cada panel se llevó un subárbol **contiguo** (las miniaturas y el bloque
+  `border-t`) y las cuatro filas del medio quedaron en el contenedor. La lección de método:
+  **cuando se mide una interpolación, hay que contar todas las regiones, no la primera que aparece.**
+  Contar una sola hizo que el plan pareciera posible con un fragmento, y eso se descubrió al escribir
+  el JSX y no al escribir el spec.
+  La segunda mitad es sobre cómo se verificó: se renderizó la versión de `main` y la nueva con
+  `renderToStaticMarkup` sobre las **32** combinaciones de rotación × reflexión × `playing` × `clicks`
+  y se comparó el markup carácter por carácter. Salió idéntico en las 32, y eso costó veinte líneas de
+  test temporal. **«Cero cambio visual» era verificable sin jsdom y el spec lo daba por verificable
+  sólo a ojo**: `react-dom/server` corre en `environment: 'node'` sin DOM, así que la afirmación que
+  parecía pedir navegador se podía falsar en un segundo. Vale para cualquier refactor de JSX que
+  prometa no mover un píxel.
+- **2026-08-20 — Un hook que cablea un módulo va al lado del módulo, y eso contradecía la tabla de
+  roles.** `conventions.md` mandaba los hooks a `<capa>/hooks/` como `useCamelCase.ts`, y los dos que
+  este spec creó fueron a `components/` en kebab-case: `use-motor.ts` al lado de `motor.ts`, y
+  `use-entrada.ts` al lado de `input.ts`. La regla nueva no es un permiso, es lo que hace legible la
+  partición: **la decisión vive en el archivo sin `use-` y el cableado en el que lo tiene**, y mandar
+  el segundo a otra carpeta parte cada par en dos lugares por una convención de nombre. `hooks/` queda
+  reservado para un hook que no sea el cableado de ningún módulo — y sigue sin existir.
