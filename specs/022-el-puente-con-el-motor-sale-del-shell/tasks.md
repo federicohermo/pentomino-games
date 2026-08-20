@@ -192,10 +192,33 @@ una persona y no bloquea el cierre.
       `audio/engine.ts:177-181`. Son **comentarios**: no mueven ninguna firma, así que el borde con
       `mcp-server/` sigue intacto y AC13 se cumple igual — **AC21**
 - [x] T019 [P] `CLAUDE.md:74` — **AC9**
-- [x] T020 [P] `docs/architecture/overview.md`: **`:23`** (el diagrama ASCII), **`:68`** (la prosa) y
-      **`:71-73`** (el párrafo que los enumera). Los tres en una tarea y no en tres `[P]`: es el mismo
+- [x] T020 [P] `docs/architecture/overview.md`: **`:23`** (el diagrama ASCII), **`:68`** (la prosa),
+      **`:71-73`** (el párrafo que los enumera) y **`:171-173`** (la sección «El estado es la fuente de
+      verdad; los efectos reconcilian»). Los cuatro en una tarea y no en cuatro `[P]`: es el mismo
       archivo. El párrafo de `:71-73` no se borra —ya parte los seis en «cuatro de reconciliación» y
-      «dos de entrada», que es el corte de este spec— sino que pasa a nombrar los dos archivos — **AC9**
+      «dos de entrada», que es el corte de este spec— sino que pasa a nombrar los dos archivos.
+      **La cuarta región la agregó el code review del PR**, y el motivo de que se escapara vale
+      anotarlo: no dice «los seis efectos» —el oráculo de AC9— sino «un único `useEffect` observa
+      `[placed]`», que es la MISMA frase que este spec sí actualizó en `audio.md:280` y en
+      `conventions.md:221-227`. El barrido por oráculo encuentra la frase que el oráculo nombra; el
+      gemelo hay que buscarlo aparte — **AC9**
+- [x] T065 [P] `docs/guides/troubleshooting.md:97-99`: «Es deliberado: `@types/jest` sigue en el árbol
+      de dependencias». Después del paso 3 es **falso**, y el seguimiento `T037` de este mismo archivo
+      ya lo dice al revés. Se conserva el hecho —`globals` sigue desactivado— y se reemplaza el motivo:
+      hoy está disponible y sin ejercer, porque ejercerlo es sacarle el import a 16 archivos de test.
+      Lo encontró el code review del PR: es la guía que alguien abre justo cuando choca con ese error,
+      así que un motivo vencido acá cuesta más que en otro lado
+- [x] T067 [P] `docs/guides/troubleshooting.md:126-128`: «hay una sola llamada —
+      `setSequence(buildSequence(placed, regimen))`—». Es el **tercer gemelo** del snippet que el
+      primer code review del PR (`7f477d9`) arregló en `audio.md#reconciliación-de-loops` —y este
+      archivo linkea justo a esa sección—: entrega la `Sequence` del dominio directo al motor, salteándose la
+      proyección. Hoy no typechequea, pero se copia igual. Pasa a `setSequence(proyectarAlMotor(secuencia))`,
+      nombra dónde vive el efecto, y deja escrito por qué la forma vieja está mal. Salió al barrer los
+      dos hallazgos de arriba — o sea que el gemelo tenía un tercero
+- [x] T066 [P] `DESIGN.md:128`: la fila de D7 le atribuye a `PiecePalette` que el color pinta la forma
+      de la pieza en miniatura. Después del paso 4 eso lo renderiza `PanelDeOrientacion.tsx`, que es
+      quien importa `PIECE_COLOR`. Se nombran los dos —la tarjeta sigue llamándose así— sin tocar el
+      argumento de contraste, que no cambia. Lo encontró el code review del PR
 - [x] T021 [P] `.claude/rules/ui.md:9-11`: dos cosas en la misma frase. «Los seis efectos» (**AC9**) y
       «`domain/`, que es lo único que puede testearse», que **ya era falso antes de este spec** —
       `input.ts`, `cell-text.ts`, `piece-mini.ts` y `route-source.ts` tienen tests— y con `motor.ts`

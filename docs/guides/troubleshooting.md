@@ -95,8 +95,11 @@ cambiar el `environment` global, que rompería los tests de audio.
 import { describe, it, expect } from 'vitest';
 ```
 
-Es deliberado: `@types/jest` sigue en el árbol de dependencias y declara las mismas globales con firmas
-distintas.
+Es deliberado, y **el motivo cambió con el spec 022**. Hasta ahí lo forzaba `@types/jest`, que estaba en
+el árbol declarando las mismas globales con firmas distintas; ese paquete se fue con las otras seis
+`devDependencies` huérfanas, así que hoy `globals: true` está **disponible y sin ejercer**. No se ejerce
+porque ejercerlo es sacarle el import a los 16 archivos de test y no compra nada: el import explícito
+dice de dónde sale `describe`, que es lo que se pierde con las globales.
 
 ## Audio
 
@@ -121,9 +124,15 @@ distintas.
 ### Loops que siguen sonando después de borrar la pieza
 
 Era un bug real, corregido. Si reaparece, el sospechoso es que alguien le haya hablado al motor **fuera**
-del efecto de reconciliación. Desde el spec 009 hay una sola llamada —`setSequence(buildSequence(placed, regimen))`—
-y toda la gestión tiene que pasar por ese efecto — ver
+del efecto de reconciliación, que desde el spec 022 vive en `components/use-motor.ts` y no en el shell.
+Desde el spec 009 hay una sola llamada —`setSequence(proyectarAlMotor(secuencia))`— y toda la gestión
+tiene que pasar por ese efecto — ver
 [audio.md](../architecture/audio.md#reconciliación-de-loops).
+
+**No es `setSequence(buildSequence(placed, regimen))`**, que es como se escribía acá antes del 022: la
+`Sequence` del dominio no es la del motor y en el medio va la proyección de `components/motor.ts`, que
+deja caer `pieceId` y `cell`. Hoy escribirlo así ni siquiera typechequea; el motivo de que igual importe
+está en el docblock de `proyectarAlMotor`.
 
 Para ver la secuencia activa desde la consola:
 

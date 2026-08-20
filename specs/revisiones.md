@@ -503,3 +503,29 @@ un play/pausa con estado, y de ahí sale la regla que se quedó: el icono **es**
 - El docblock de `components/route-source.ts` sobre por qué se guarda la tabla por offset y no la
   `Sequence` cruda. Nombra el spec 010 y el spec 014, pero cada párrafo justifica una línea de código
   que hoy tiene que ser así.
+
+## 2026-08-20 — El segundo code review del 022: el barrido por oráculo tiene un punto ciego
+
+El spec 022 barrió la documentación con un oráculo duro —AC9: que ningún archivo afirme «los seis
+efectos» en presente— y lo cumplió: `grep` devuelve cero fuera de `specs/`. El segundo review encontró
+igual **tres afirmaciones falsas** que el barrido no podía ver, y las tres por el mismo motivo: **no
+contenían la frase del oráculo.**
+
+- `overview.md:171` decía «Un único `useEffect` observa `[placed]`» — la MISMA afirmación que el spec sí
+  actualizó en `audio.md:280` y en `conventions.md:221`, escrita con otras palabras.
+- `troubleshooting.md:98` daba `@types/jest` por presente en el árbol para explicar por qué `globals`
+  está desactivado, cuando el paso 3 lo había borrado — y el propio `tasks.md` del spec lo registraba al
+  revés en su seguimiento.
+- `troubleshooting.md:127` mostraba `setSequence(buildSequence(placed, regimen))`, que es el mismo
+  snippet sin proyección que el primer review ya había arreglado en `audio.md`. Apareció recién al ir a
+  arreglar los dos de arriba.
+
+**La lección de método: un oráculo de `grep` mide la ejecución del barrido, no su cobertura.** Encuentra
+todas las apariciones de la frase que nombra y ninguna del hecho que la frase describe. La sonda que sí
+funciona es la inversa y cuesta un minuto: cuando se actualiza un párrafo, buscar su **gemelo** —el que
+dice lo mismo en el otro registro— por el hecho y no por la redacción. Acá el hecho era «dónde vive el
+efecto de reconciliación y qué observa», y estaba escrito en cinco lugares con cinco redacciones.
+
+El corolario para escribir el próximo spec: **el oráculo se elige después de contar los lugares, no
+antes.** AC9 midió cuatro y nombró cuatro; los otros tres nunca entraron a la lista, así que el AC podía
+darse por cumplido con el trabajo a medias y sin que nada fallara.
