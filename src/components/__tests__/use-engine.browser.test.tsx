@@ -78,7 +78,7 @@ describe('useMotorSincronizado — los cuatro efectos', () => {
     // archivo: una dependencia de mas aca significa reencolar el circuito entero cada
     // vez que alguien arrastra el slider de tempo.
     const p = props(UNA, 110);
-    const { rerender } = await renderHook((q: typeof p) => useMotorSincronizado(q), { initialProps: p });
+    const { rerender } = await renderHook((q?: typeof p) => useMotorSincronizado(q ?? p), { initialProps: p });
     expect(colaDeDibujo.encolar).toHaveBeenCalledTimes(1);
 
     await rerender({ ...p, tempo: 132 });
@@ -89,7 +89,7 @@ describe('useMotorSincronizado — los cuatro efectos', () => {
 
   it('cambiar los clicks tampoco, y no toca el tempo', async () => {
     const p = props(UNA, 110, false);
-    const { rerender } = await renderHook((q: typeof p) => useMotorSincronizado(q), { initialProps: p });
+    const { rerender } = await renderHook((q?: typeof p) => useMotorSincronizado(q ?? p), { initialProps: p });
     expect(motor.setBpm).toHaveBeenCalledTimes(1);
 
     await rerender({ ...p, clicks: true });
@@ -100,7 +100,7 @@ describe('useMotorSincronizado — los cuatro efectos', () => {
 
   it('cambiar el tablero reencola, y el transporte no entra en la cuenta', async () => {
     const p = props(UNA);
-    const { rerender } = await renderHook((q: typeof p) => useMotorSincronizado(q), { initialProps: p });
+    const { rerender } = await renderHook((q?: typeof p) => useMotorSincronizado(q ?? p), { initialProps: p });
 
     const q = props(DOS);
     await rerender(q);
@@ -131,7 +131,7 @@ describe('useMotorSincronizado — los cuatro efectos', () => {
     // regimen ahi haria que la limpieza corriera en cada cambio de regimen, frenando el
     // reloj y vaciando la secuencia — que es justo lo que AC7 del 022 prohibe.
     const p = props(UNA);
-    const { rerender } = await renderHook((q: typeof p) => useMotorSincronizado(q), { initialProps: p });
+    const { rerender } = await renderHook((q?: typeof p) => useMotorSincronizado(q ?? p), { initialProps: p });
 
     await rerender(props(DOS));
     await rerender(props(UNA, 132, true));
