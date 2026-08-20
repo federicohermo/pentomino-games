@@ -166,8 +166,8 @@ describe('scheduleClick — el cruce por una celda vacia (spec 009, D4)', () => 
     // (~11 000 Hz el ruido contra ~2 100 la campana): `spectrum.ts` documenta que un
     // AnalyserNode no rinde nada offline y el repo no tiene DFT, asi que un test de
     // centroide empezaria por escribir una. Y ademas seria fragil: el centroide de la
-    // campana da 2 643 Hz con ventana rectangular y 2 093 —la fundamental exacta— con
-    // Hann, o sea que el 2 645 del research mide el borde de la ventana y no el timbre.
+    // campana da 2 645 Hz con ventana rectangular y 2 093 —la fundamental exacta— con
+    // Hann, o sea que ese numero del research mide el borde de la ventana y no el timbre.
     // La tasa de cruces no depende de eso. El centroide se queda en el research.
     const hz = zeroCrossHz(d, at + 0.002, at + 0.015);
     expect(Math.abs(hz - midiToHz(CLICK_MIDI)) / midiToHz(CLICK_MIDI)).toBeLessThan(0.02);

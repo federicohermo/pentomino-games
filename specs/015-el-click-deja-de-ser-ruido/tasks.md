@@ -113,7 +113,14 @@ una persona y no bloquea el cierre.
 
 - [x] T025 Rama `feature/015-el-click-deja-de-ser-ruido` desde `main`
 - [x] T026 El PR declara que **cambia lo que suena en todo tablero** y que da vuelta un default
-- [ ] T027 [M] `/pr-review` antes de pedir revisión
+- [x] T027 [M] `/pr-review` antes de pedir revisión. Cinco hallazgos, todos corregidos en la rama: dos
+      tablas de markdown rotas (`audio.md` se comía un párrafo entero en la fila `Default`, `log.md`
+      tenía la fila del 015 partida en dos líneas), el centroide citado con dos valores distintos
+      —2 643 contra 2 645—, `audio.md` diciendo "ruido (hasta el 014)" tres párrafos debajo de "hasta
+      el 015", y `CLICK_EPSILON` sin declarar que es el **piso** del `vel` de `scheduleClick` y no
+      solo su destino. El código de audio pasó la revisión sin cambios: las mediciones del docblock se
+      reprodujeron contra el dominio real (12/12 clases de altura, registro MIDI 60–87, 40 dB a los
+      29,4 ms, centroide Hann 2 093,1 Hz)
 - [x] T028 `specs/log.md`: estado del 015
 
 ## Seguimiento (no bloquea)

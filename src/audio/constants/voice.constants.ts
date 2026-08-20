@@ -235,6 +235,15 @@ export const CLICK_SECONDS = 0.05;
  * largo de `CLICK_SECONDS`: por eso los 40 dB caen a los 29,5 ms, que es el numero con
  * el que la tabla de `CLICK_SECONDS` decide que dos clicks no se pisan. Bajarlo hace la
  * campana mas seca y subirlo la deja colgada; cambiarlo obliga a rehacer esa tabla.
+ *
+ * **Es un piso para el `vel` de `scheduleClick`, no solo un destino.** La rampa es
+ * exponencial, asi que solo cae si arranca POR ENCIMA de este valor: con un `vel` menor
+ * la misma llamada se vuelve un swell en vez de una campana, y con `vel = 0` tira —la
+ * rampa lineal a 0 que habia hasta el spec 015 aguantaba cualquier amplitud y esta no—.
+ * Hoy no es alcanzable: el unico llamador de produccion es `engine.ts`, que usa el
+ * default `CLICK_VELOCITY` (0,25), 2 500 veces este numero. Queda escrito porque el dia
+ * que alguien agregue un llamador con volumen propio —una pieza muteada mas suave, por
+ * ejemplo— el limite no se deduce de ninguna firma.
  */
 export const CLICK_EPSILON = 0.0001;
 

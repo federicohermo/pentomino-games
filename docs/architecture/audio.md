@@ -226,14 +226,16 @@ del ruido caía en **~11 000 Hz**, casi dos octavas por encima del techo del ins
 **~2 100 Hz** de la campana. Y no era un evento marginal — en un tablero de 3 piezas el **44 %** de
 los eventos de un ciclo son clicks.
 
-| | ruido (hasta el 014) | campana (desde el 015) |
+| | ruido (hasta el 015) | campana (desde el 015) |
 |---|---|---|
 | Fuente | `AudioBufferSourceNode` con muestras aleatorias | oscilador senoidal |
 | Altura | ninguna | fija, `CLICK_MIDI` = 2 093 Hz |
 | Duración | 20 ms | 50 ms |
-| Centroide medido | ~11 000 Hz | ~2 100 Hz (2 643 con ventana rectangular) |
+| Centroide medido | ~11 000 Hz | ~2 100 Hz (2 645 con ventana rectangular) |
 | Cae 40 dB en | 19,6 ms | 29,5 ms |
-| Default | encendido | **apagado** | Sobre celda **ocupada** suena la nota de esa celda —la misma que la celda muestra
+| Default | encendido | **apagado** |
+
+Sobre celda **ocupada** suena la nota de esa celda —la misma que la celda muestra
 desde el spec 007— como una floritura: más corta y más suave que la nota de una pieza
 (`GRACE_INTERVALS`, `GRACE_VELOCITY` en `voice.constants.ts`, junto a `NOTE_INTERVALS` y no a
 `CLICK_SECONDS`, porque a diferencia del click sí tiene altura), agendada con `scheduleVoice` — no
