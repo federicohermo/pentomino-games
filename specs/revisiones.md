@@ -586,3 +586,65 @@ Verificado: `pnpm verify` en verde (322 tests de `src/` + 85 del MCP server), **
 los nombres viejos fuera de `specs/022-*`, y el diagrama de cajas de `overview.md` y el árbol de
 `directory-structure.md` re-alineados a mano — `engine-bridge.ts` mide siete columnas más que
 `motor.ts` y les rompía el ancho fijo.
+
+## 2026-08-20 — El spec 029: tres cosas salieron distinto, y las tres se descubrieron midiendo
+
+### 1. El coverage no se puede medir sin decidir antes qué es el denominador
+
+El primer número que salió —61,97 %— no era el primero que se midió. Sin `--coverage.all`, vitest
+mide **sólo los archivos que algún test importó**, así que los diez que estaban en cero absoluto no
+aparecían en la tabla: el número salía más lindo y no significaba nada. La lección es que un reporte
+de coverage sin el denominador declarado responde una pregunta distinta de la que uno cree estar
+haciendo. (Y en vitest 4 el flag `all` ya no existe: alcanza con declarar `include`, y el typecheck
+rechaza el `all` que la 3 pedía.)
+
+### 2. `App.tsx` no era el problema; el `.tsx` sí
+
+La hipótesis al escribir el spec era que el hueco grande era UI y que la UI se cubre montando
+componentes. Resultó ser más específico y más interesante: **tres archivos no podían llegar al 100 %
+por una regla del repo**, no por una limitación del test. `react-refresh/only-export-components`
+prohíbe que un `.tsx` exporte algo además del componente, así que el bucle de `Playhead` (100 líneas),
+el de `Spectrum` (80) y sus guardas no se podían exportar y por lo tanto no se podían llamar. La
+salida fue la misma que el 005 usó para el dominio y el 022 para la proyección al motor: sacarlos a un
+`.ts` —`playhead-loop.ts` y `spectrum-loop.ts`— sin cambiar una línea de comportamiento.
+
+O sea que el spec de coverage terminó siendo, en su parte más difícil, un spec de **dónde vive la
+lógica**. Y eso no es un desvío: es el mismo mecanismo que hizo nacer `domain/`. Un archivo que no se
+puede exportar es un archivo que no se puede verificar, y el coverage sólo lo hace visible.
+
+### 3. El quinto nodo de `verify` rompía los presupuestos del 009, y la primera solución no alcanzaba
+
+El spec preveía un nodo `coverage` al lado de `test`, y preveía **un** motivo para que fueran dos:
+bajo instrumentación v8 los presupuestos de performance miden 11,3 ms contra un techo de 5, o sea que
+medirían el instrumento. Eso se resolvió con `skipIf`.
+
+Lo que el spec **no** preveía es el segundo motivo, que apareció corriendo `verify`: con cinco
+procesos pesados en paralelo —dos de ellos vitest, uno con navegador— la contención de CPU sube la
+mediana igual, y el presupuesto se caía en la pasada limpia. Es exactamente el modo de falla que el
+comentario de AC8 en `sequence.test.ts` ya había documentado cuando subió su techo de 2 a 4: «un test
+que se cae dos de cada tres veces en el nodo de convergencia no mide rendimiento, mide carga de la
+máquina».
+
+La salida fue encadenarlas en un solo script (`suite = test && coverage`), lo que deja **cuatro**
+nodos concurrentes — la misma contención que había antes del spec — en vez de aflojar un techo. Medido
+en tres corridas: 25,0 / 25,6 / 26,0 s, verde las tres. La forma que el spec declaraba (cinco nodos)
+era la equivocada, y el AC2 quedó revisado por su propia verificación.
+
+### 4. El pase de mutación encontró cuatro tests que estaban verdes con el código roto
+
+Y ésta es la nota que más vale la pena guardar, porque contradice la intuición de que el 100 % de
+coverage dice algo sobre la calidad de los tests. Con las cuatro métricas en 100, **cuatro de
+dieciocho mutaciones sobrevivieron**: la caja fija de las miniaturas, el rearmado del velo, la
+idempotencia de `startClock` y —aparentemente— el listener no pasivo.
+
+El cuarto resultó ser un falso positivo con una lección propia: la cadena `{ passive: false }`
+aparece **primero en un comentario** tres líneas más arriba, así que la mutación editaba el comentario
+y no el código. **Un pase de mutación también hay que verificarlo**: un mutante que "sobrevive" puede
+ser un mutante que nunca nació.
+
+Los otros tres eran reales y compartían la misma forma de error: **el test afirmaba una consecuencia
+que se cumplía por otro camino.** Los anchos de las miniaturas se comparaban entre sí, y con
+`min-content` colapsan todos por igual. El velo se comprobaba con la cabeza todavía parada sobre la
+celda, que la volvía a destapar sola. `startClock` se comprobaba con `clockRunning()`, que sigue
+diciendo que sí porque lo que queda roto es un timer huérfano. En los tres casos el arreglo fue
+afirmar la **causa** y no el síntoma.

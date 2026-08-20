@@ -171,6 +171,20 @@ describe('playNotes / playNow', () => {
     await vi.waitFor(() => expect(c.state).toBe('running'));
   });
 
+  it('y con el contexto ya corriendo no lo toca', async () => {
+    // El caso normal: el gesto del usuario que reanuda es el PRIMERO, y desde ahi
+    // `playNow` es `playNotes` con una pregunta de mas.
+    const e = await motor();
+    const c = e.audio()!;
+    expect(c.state).toBe('running');
+    const reanudar = vi.spyOn(c, 'resume');
+
+    e.playNow([69, 71]);
+    expect(reanudar).not.toHaveBeenCalled();
+    expect(c.state).toBe('running');
+    reanudar.mockRestore();
+  });
+
   it('con un arpegio vacio no agenda nada y tampoco falla', async () => {
     const e = await motor();
     e.audio();
@@ -278,9 +292,21 @@ describe('el reloj', () => {
     e.startClock();
 
     await vi.waitFor(() => expect(e.sequenceInfo().length).toBe(CICLO.length), { timeout: 2000 });
+
+    // El ciclo entero, para que el despacho llegue al click MUDO del offset 3 con el
+    // interruptor apagado: es la rama que se apaga, y apagarla no puede acortar nada.
+    let maximo = -1;
+    for (let i = 0; i < 80 && maximo < CICLO.length - 1; i++) {
+      const off = e.playheadOffset();
+      if (off !== null) maximo = Math.max(maximo, off);
+      await esperar(20);
+    }
+    expect(maximo).toBeGreaterThanOrEqual(CICLO.length - 1);
+
     // Los clicks siguen en la secuencia y `collectHits` los sigue emitiendo: lo unico
     // que cambia es que `tick()` no los cablea a sonido.
     expect(e.sequenceInfo().clicks).toBe(1);
+    expect(e.sequenceInfo().length).toBe(CICLO.length);
   });
 });
 
@@ -313,18 +339,28 @@ describe('playheadOffset()', () => {
     // o sea el offset MAXIMO, y ese numero destapaba de un saque las cinco celdas del
     // velo: el estreno celda por celda no se veia nunca.
     //
-    // Se poletea cada 2 ms y no con `vi.waitFor`, cuyo intervalo por defecto es mas
-    // ancho que la ventana entera.
+    // ## El muestreo cede el hilo en cada vuelta y no duerme un intervalo fijo
+    //
+    // La ventana va del primer tick (25 ms) a `origin` (50 ms despues), o sea ~50 ms, y
+    // el swap ocurre adentro de un `setInterval`: para verlo hay que devolverle el hilo
+    // al event loop, pero durmiendo 2 ms por vuelta se pierden muestras y el test
+    // PARPADEA bajo instrumentacion, que es donde mas lento va todo. Con `setTimeout(0)`
+    // se cede el hilo sin gastar ventana, y el corte es por reloj de pared y no por
+    // cantidad de vueltas — que es lo que lo hace independiente de la velocidad de la
+    // maquina.
+    //
+    // `vi.waitFor` no sirve: su intervalo por defecto es mas ancho que la ventana entera.
     let visto = false;
-    for (let i = 0; i < 60 && !visto; i++) {
+    let llego = false;
+    const hasta = performance.now() + 400;
+    while (performance.now() < hasta && !visto && !llego) {
       if (e.sequenceInfo().length > 0) {
-        expect(e.playheadOffset()).toBeNull();
-        visto = true;
-      } else {
-        await esperar(2);
+        if (e.playheadOffset() === null) visto = true;
+        else llego = true;   // `origin` ya paso: se perdio la ventana
       }
+      await esperar(0);
     }
-    expect(visto, 'el swap tiene que ocurrir antes de que `origin` pase').toBe(true);
+    expect(visto, 'la ventana entre el swap y `origin` tiene que observarse al menos una vez').toBe(true);
 
     await esperar(CLOCK_START_DELAY * 1000 + TICK_MS * 4);
     const off = e.playheadOffset();

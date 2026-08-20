@@ -14,10 +14,19 @@
 
 ```bash
 pnpm install
+pnpm exec playwright install chromium
 pnpm dev
 ```
 
 Desde la raíz del repo: no hay subdirectorio de app.
+
+**El segundo comando hace falta una sola vez, y no se puede saltear si vas a correr los tests.**
+Desde el spec 029 los tests de `src/` son dos proyectos de Vitest y uno corre en un Chromium de
+verdad —es la única forma de cubrir el canvas del espectro y el `AudioContext` del motor—. El binario
+del navegador **no está en el lockfile**, así que `pnpm install` no lo trae y `pnpm verify` falla con
+un error de Playwright hasta que se lo instala. Ocupa ~700 MB en la caché del usuario
+(`%LOCALAPPDATA%\ms-playwright` en Windows, `~/.cache/ms-playwright` en Linux) y se comparte entre
+todos los repos de la máquina.
 
 El dev server queda en `http://localhost:5173`. Para fijar otro puerto:
 
@@ -37,8 +46,11 @@ pnpm dev            # Dev server con HMR
 pnpm build          # tsc -b && vite build → dist/
 pnpm lint           # ESLint
 pnpm preview        # Sirve dist/ como lo haría producción
-pnpm test           # Vitest
-pnpm mcp:test       # MCP server: typecheck + node --test
+pnpm test           # Vitest: los dos proyectos, sin instrumentar
+pnpm coverage       # Vitest con coverage y umbral 100 en las cuatro métricas
+pnpm suite          # test y después coverage, que es lo que corre verify
+pnpm verify         # lint ‖ typecheck ‖ suite ‖ mcp:test — el nodo de convergencia
+pnpm mcp:test       # MCP server: typecheck + node --test, con umbral 100
 pnpm mcp:typecheck  # MCP server: solo tsc
 ```
 

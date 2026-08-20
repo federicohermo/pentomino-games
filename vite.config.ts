@@ -4,6 +4,17 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { playwright } from '@vitest/browser-playwright'
 
+/**
+ * Si esta corrida esta instrumentada.
+ *
+ * Se lee de `process.argv` porque es el unico lugar donde el dato existe cuando se arma
+ * la config: los workers no ven los flags con los que arranco vitest, y un
+ * `COVERAGE=1 vitest` adelante del comando no funciona en Windows —`cross-env` seria una
+ * dependencia nueva para dos lineas—. Gobierna dos cosas, las dos con el mismo motivo:
+ * bajo instrumentacion se mide el instrumento y no el producto.
+ */
+const BAJO_COVERAGE = process.argv.some(a => a.startsWith('--coverage'))
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -84,7 +95,22 @@ export default defineConfig({
     // por el script de npm porque un `COVERAGE=1 vitest` adelante del comando no
     // funciona en Windows, y `cross-env` seria una dependencia nueva para dos
     // lineas.
-    env: { COVERAGE: process.argv.some(a => a.startsWith('--coverage')) ? '1' : '' },
+    env: { COVERAGE: BAJO_COVERAGE ? '1' : '' },
+
+    // ## El timeout se afloja bajo coverage, y no es pereza
+    //
+    // v8 instrumenta insertando contadores en cada rama, y los tests combinatorios del
+    // dominio —los que recorren las 96 orientaciones o resuelven tableros de 12 piezas—
+    // son justo los que mas ramas ejecutan. Medido sobre los presupuestos del 009: 11,3
+    // ms contra 1,8 sin instrumentar, o sea entre 2x y 4x. Con los CINCO nodos de
+    // `verify` compitiendo por CPU al mismo tiempo, eso lleva a alguno de esos tests por
+    // encima de los 5 s del default y lo pone en rojo **sin que nada este mal**.
+    //
+    // Un rojo espurio en el nodo de convergencia es peor que no tener el nodo: entrena a
+    // leer el rojo como ruido. El presupuesto de TIEMPO sigue verificandose donde
+    // corresponde —`pnpm test`, sin instrumentar, con sus techos de 5 y 4 ms—; aca lo
+    // unico que se mide es cobertura.
+    testTimeout: BAJO_COVERAGE ? 30_000 : 5_000,
 
     coverage: {
       provider: 'v8',
@@ -113,6 +139,22 @@ export default defineConfig({
       // el reporte es justo la que no lo da.
       reporter: ['text'],
       reportOnFailure: true,
+
+      // ## Cien, y no noventa y cinco
+      //
+      // Un umbral por debajo del 100 es un presupuesto de deuda SIN DUENO: nadie sabe
+      // cuales son las lineas que el margen permite dejar sin cubrir, asi que nadie las
+      // revisa y el margen se llena solo. El 100 no admite esa ambiguedad — cada linea
+      // que entra al repo o esta cubierta, o esta excluida por nombre y con un motivo
+      // escrito arriba— y muda la discusion del promedio al archivo, que es donde se
+      // puede resolver.
+      //
+      // Es la misma forma que el repo ya eligio dos veces: «cero `any` y cero
+      // `@ts-ignore`», no "pocos". Y el corolario vale igual: si una rama parece
+      // inalcanzable, la salida es borrarla o volverla alcanzable, nunca un
+      // `/* v8 ignore */`. Las cuatro que aparecieron en este spec se resolvieron asi,
+      // y estan anotadas en el `research.md` del 029.
+      thresholds: { lines: 100, statements: 100, functions: 100, branches: 100 },
     },
   },
 })

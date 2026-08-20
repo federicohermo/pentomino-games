@@ -12,10 +12,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
+    "suite": "pnpm run test && pnpm run coverage",
     "typecheck": "tsc -b --noEmit",
     "mcp:test": "pnpm --filter mcp-server test",
     "mcp:typecheck": "pnpm --filter mcp-server typecheck",
-    "verify": "pnpm --filter \"{.}\" run --parallel \"/^(lint|typecheck|test|coverage|mcp:test)$/\""
+    "verify": "pnpm --filter \"{.}\" run --parallel \"/^(lint|typecheck|suite|mcp:test)$/\""
   },
   "dependencies": {
     "react": "^19.1.1",
