@@ -19,7 +19,8 @@ import { cycleGeneration } from '../audio/engine.ts';
  * que este spec existe para hacer visibles.
  *
  * Vive en `components/` y no en `audio/` por esa misma frontera: habla `Cell`. Es el
- * mismo cruce que `App.tsx` ya hace al proyectar la secuencia para `setSequence`.
+ * mismo cruce que `proyectarAlMotor` (`components/motor.ts`) ya hace al proyectar la
+ * secuencia para `setSequence`.
  *
  * Singleton de modulo y NO estado de React a proposito: lo lee un loop de
  * requestAnimationFrame, igual que `readSpectrum()`. Meterlo en estado seria un render
@@ -72,7 +73,7 @@ let estrenando: string[] = [];
 let veloActual: CeldaPorEstrenar[] = [];
 
 /**
- * Encola el recorrido nuevo. La llama el mismo efecto de `App` que ya hace
+ * Encola el recorrido nuevo. La llama el mismo efecto de `use-motor.ts` que ya hace
  * `setSequence`: las dos colas se encolan juntas, o la cabeza y el sonido quedarian
  * mirando ciclos distintos.
  *
@@ -172,8 +173,8 @@ function construir(s: Sequence, placed: readonly PlacedPiece[]): Ruta {
 
   for (const step of s.steps) {
     const pieza = porId.get(step.pieceId);
-    // No puede pasar: `App` deriva la secuencia y el tablero del MISMO `placed` en el
-    // mismo efecto. Si igual pasara, ese paso queda sin marcas y la cabeza lo cruza a
+    // No puede pasar: el shell deriva la secuencia de `placed` con un `useMemo` y le
+    // pasa las dos al hook, que las entrega juntas en el mismo efecto. Si igual pasara, ese paso queda sin marcas y la cabeza lo cruza a
     // oscuras en vez de dibujar una celda inventada — el silencio es preferible a la
     // mentira, porque una celda equivocada se lee como que el modelo esta mal.
     if (!pieza) continue;
