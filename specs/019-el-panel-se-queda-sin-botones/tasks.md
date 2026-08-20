@@ -16,10 +16,12 @@ una persona y no bloquea el cierre.
       `mirror` se quedan** — las usan la miniatura del 016 y la línea nueva de T007 — **AC12**
 
 - [ ] T035 `PiecePalette.tsx`: los comentarios que se quedan sin referente al borrar las dos filas.
-      Son tres y están medidos: el docblock del componente (`:12`, «eleccion de pieza, rotacion,
-      reflexion…»), el del botón de recorrido (`:205`, «con el mismo idioma que Reflexion») y el del
-      transporte (`:283`, «lo activo en Rotacion y Reflexion» y «el "apagado" de esos dos»). El idioma
-      visual sobrevive en el régimen; lo que se va son los nombres que citan
+      Son **cuatro** y están medidos: el docblock del componente (`:12`, «eleccion de pieza, rotacion,
+      reflexion…»), el de la prop `regimen` (`:24`, «completa la frase de su propia fila», que deja de
+      ser cierto en cuanto T003 la asciende a fila propia), el del botón de recorrido (`:205`, «con el
+      mismo idioma que Reflexion») y el del transporte (`:283-287`, «lo activo en Rotacion y Reflexion»
+      y «el "apagado" de esos dos»). El idioma visual sobrevive en el régimen; lo que se va son los
+      nombres que citan
 
 > T001–T005 escriben el mismo archivo, así que ninguna lleva `[P]`. **Los borrados van en su propio
 > commit** (convención del repo), pero en el **mismo commit que el paso 2**: separarlos dejaría un
@@ -72,11 +74,20 @@ una persona y no bloquea el cierre.
 > devuelve ~20 px y está en el mismo commit, así que la paleta real queda en ~490 y el que manda
 > sigue siendo el ancho. Escribir el docblock desde §2 es escribirle una cifra que la app no tiene —y
 > es el mismo docblock que ya se equivocó dos veces por esto exacto.
+>
+> **Y lo que este paso escribe, el 021 lo borra**: su `T002` reescribe este docblock entero y se lleva
+> la tabla de «quién manda» y el párrafo del colchón; su `T025` se lleva el de `MINI_CELL_PX`. Se
+> escribe igual por dos razones, y conviene tenerlas a la vista para repartir el esfuerzo: el 019
+> mergea antes y no puede dejar el comentario mintiendo, y **la medición de T022 es el insumo del piso
+> del 021** (`021/tasks.md` T001, que toma el 73 de acá y no de `main`). O sea: **la prosa se escribe
+> corta y el número se escribe exacto**, porque de los dos sólo el número sobrevive al 021.
 
 - [ ] T016 `layout.constants.ts`: agregar la fila del 019 a la tabla de «quién manda», con **lo que
       midió T022** — **AC9**
 - [ ] T017 `layout.constants.ts`: reescribir el párrafo de los 26 px de colchón con el colchón real
-      (~30 px si la medición confirma la cuenta). Anotar que el 020 agrega otra línea
+      (~30 px si la medición confirma la cuenta). Anotar que el 020 le mete el botón `0°` **inline a
+      esa misma línea** —no una fila nueva—, o sea ~10 px más de los ~30, y que ahí el margen queda en
+      décimas: la próxima fila que salga del panel sí achica el tablero
 - [ ] T033 `layout.constants.ts`: el párrafo de abajo de la tabla —«agrandar el tablero hoy pide más
       ANCHO … el alto ya sobra»— y el bullet del **techo útil**, que cita `730,7 × 464` y «por alto
       77,3» sobre una paleta de 496 px que deja de existir. Sin esto el docblock se contradice consigo
@@ -97,7 +108,15 @@ sí mantiene al día, y las tres lo afirman **en presente**. **AC14**.
 
 - [ ] T036 [P] `docs/guides/quickstart.md:58-59`: el mecanismo por el que «los atajos se descubren
       solos» era ver iluminarse `180°` en la paleta. Ese botón muere; el lector nuevo es la línea de
-      AC4, y la frase tiene que decir eso. La tabla de gestos de `:65-70` sigue siendo correcta
+      AC4, y la frase tiene que decir eso. La cita del spec decía `:58-59` y es `:59-61`. La tabla de
+      gestos de `:65-70` sigue siendo correcta. **Y en el mismo archivo, `:80-81`**: «con el foco sobre
+      `Reset`, activa `Reset`» nombra al botón por su etiqueta visible, que pasa a ser `↺`. La frase
+      sobre el foco no cambia; el nombre sí.
+      **Si el 018 ya está mergeado, todos esos números se corrieron**: agrega una fila a la tabla (las
+      doce letras) y la frase de arriba deja de poder decir «los **tres** gestos que gobiernan la pieza
+      por colocar», porque la letra es una cuarta vía de entrada. Buscar por texto y no por número de
+      línea. La tabla en sí sigue siendo correcta; lo que cambia es dónde empieza y cuántas filas tiene
+      — **AC8**, **AC14**
 - [ ] T037 [P] `docs/architecture/audio.md:247`: «el toggle «Recorrido en el vacío» de la paleta» pasa
       a ser el icono de metrónomo de la fila de transporte. La etiqueta sobrevive en `title` y
       `aria-label`, y eso es lo que hay que escribir
@@ -107,7 +126,7 @@ sí mantiene al día, y las tres lo afirman **en presente**. **AC14**.
 
 ## Verificación
 
-- [ ] T021 `pnpm verify` en verde
+- [ ] T021 `pnpm verify` en verde — **AC15**
 - [ ] T022 [M] Navegador: medir `CELL_PX` en el DOM y confirmar que sigue en **73** — **AC9**. Es la
       única forma de verificarlo de verdad
 - [ ] T023 [M] Navegador: rotar una `X` cuatro veces y confirmar que la línea de texto es lo único que
@@ -115,6 +134,12 @@ sí mantiene al día, y las tres lo afirman **en presente**. **AC14**.
 - [ ] T024 [M] Navegador: rueda, `Shift`, botón derecho y `Ctrl` siguen rotando y reflejando — **AC2**
 - [ ] T025 [M] Navegador: el SVG del metrónomo está ópticamente alineado con ▶ y ↺
 - [ ] T026 [M] Navegador: el metrónomo enciende y apaga el recorrido, y su color lo dice — **AC6**
+- [ ] T039 [M] Navegador: el metrónomo **apagado** y `↺` se distinguen uno del otro. Son
+      `bg-slate-100` contra `bg-slate-200` y ahora están en la misma fila, que es el par que el 008
+      rechazó por indistinguible (`PiecePalette.tsx:285-287`) — **AC6**
+- [ ] T040 [M] Navegador: `↺` sigue haciendo las **dos** cosas — vacía el tablero y frena el
+      transporte —. `resetBoard` (`App.tsx:176-180`) no se toca, así que el riesgo es bajo; el AC no
+      tenía contraparte igual — **AC8**
 
 ## PR
 

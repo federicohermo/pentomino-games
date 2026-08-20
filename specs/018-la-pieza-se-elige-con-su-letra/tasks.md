@@ -8,7 +8,9 @@ una persona y no bloquea el cierre.
 - [ ] T001 `components/constants/input.constants.ts`: `ACCION` suma `seleccionar`. Const-object, sin
       `enum` (`erasableSyntaxOnly`), con el comentario de por qué sigue sin haber una cuarta acción
       `no-hacer-nada`. El docblock arranca con «Las **tres** acciones que un gesto de entrada puede
-      pedirle al shell» (línea 2): pasa a cuatro y las nombra a las cuatro
+      pedirle al shell» (línea 2): pasa a cuatro y las nombra a las cuatro. Y el párrafo de la línea 10
+      dice hoy «No hay una **cuarta** acción `no-hacer-nada`»: con `seleccionar` adentro esa cuarta ya
+      existe, así que ahí dice **quinta**
 
 ## Paso 2 — El evento gana los tres modificadores
 
@@ -17,16 +19,19 @@ una persona y no bloquea el cierre.
       parámetro. Comentario de por qué `shiftKey` **no** entra (AC3 no lo usa)
 - [ ] T026 `components/types/input.types.ts`: los tres comentarios que este spec falsifica en el mismo
       archivo — «Las **tres** acciones de entrada» (línea 3), «las **cinco** guardas quedan cubiertas»
-      (línea 15) y el del campo `key`, que hoy enumera `'Shift'`, `'Control'` o `' '` y desde acá
-      también son las doce letras
+      (línea 14) y el del campo `key` (línea 23), que hoy enumera `'Shift'`, `'Control'` o `' '` y desde
+      acá también son las doce letras
 - [ ] T027 `components/__tests__/input.test.ts`: el factory `tecla` (línea 19) suma los tres campos en
       `false`. Va **antes** que los tests del paso 3: sin esto el archivo entero no typechequea y
-      ninguno de los siete se puede ver fallar
+      ninguno de los siete se puede ver fallar. En el mismo paso, el docblock de la línea 12 —«Las
+      decisiones de los **cinco** gestos del spec 013»— pasa a nombrar también al de este spec
 
 ## Paso 3 — Las dos puras y sus tests
 
 - [ ] T003 `components/input.ts`: `piezaDeTecla(key)` — mayúscula + type predicate propio
-      (`(k: string): k is PieceKey`) con el `in`-check contra `SHAPES` adentro, **sin `as`**. El `in` a
+      (`(k: string): k is PieceKey`) con el `in`-check contra `SHAPES` adentro, **sin `as`**. `SHAPES`
+      se importa como **valor** de `../domain/constants/pieces.constants.ts` (con extensión, sin
+      barrel): hasta hoy `input.ts` solo importaba tipos de `domain/`. El `in` a
       secas no estrecha y está medido (`research.md` §8). Docblock con por qué valida contra `SHAPES` y
       no contra una lista propia — **AC1**, **AC2**, **AC7**
 - [ ] T004 `components/input.ts`: `accionDeTecla` gana la rama de las letras, con la guarda de
@@ -61,13 +66,20 @@ una persona y no bloquea el cierre.
 
 - [ ] T013 `App.tsx`: el objeto `evento` del `despachar` suma `ctrlKey`, `metaKey` y `altKey`
 - [ ] T014 `App.tsx`: la rama `ACCION.seleccionar`, preguntando por `piezaDeTecla` y saliendo si es
-      `null` — **sin `!`**, con el comentario de por qué la redundancia contra la pura es deliberada
+      `null` — **sin `!`**, con el comentario de por qué la redundancia contra la pura es deliberada.
+      Va como `else if` **antes** del `else togglePlay()` de `App.tsx:311`, que hoy es el catch-all sin
+      condición: agregada como `if` suelto después de la cadena, la letra arranca además el transporte
+      y eso pasa typecheck y lint — **AC11**
 - [ ] T015 `App.tsx`: verificar que las dependencias del efecto de teclado **no** cambian (`setSelected`
       es un setter de `useState`, identidad estable)
-- [ ] T016 Footer: sumar el gesto en el idioma de los tres del 013 — **AC9**
-- [ ] T030 `docs/guides/quickstart.md`: la tabla «Cómo se toca» (línea 62) suma la fila de las letras
-      —`F I L N P T U V W X Y Z` · Selecciona esa pieza · Toda la ventana, en `keydown`—. Es la única
-      doc del repo que enumera los gestos; el footer es producto y no la reemplaza
+- [ ] T016 Footer de `App.tsx` (líneas 446-452, los tres `<span>` de 449-451): sumar el gesto en el
+      idioma de los tres del 013 — **AC9**
+- [ ] T030 `docs/guides/quickstart.md`: la tabla «Cómo se toca» (encabezado en la línea 57, filas de la
+      63 a la 70) suma la fila de las letras —`F I L N P T U V W X Y Z` · Selecciona esa pieza · Toda la
+      ventana, al **apretar**—. Y el párrafo que la introduce (línea 59) dice «Los **tres** gestos que
+      gobiernan la pieza por colocar»: con este spec son cuatro. Es la única doc del repo que enumera
+      los gestos —verificado por grep sobre `docs/`, `.claude/rules/`, `DESIGN.md` y `CLAUDE.md`—; el
+      footer es producto y no la reemplaza
 
 ## Verificación
 
@@ -77,6 +89,10 @@ una persona y no bloquea el cierre.
 - [ ] T020 [M] Navegador: `Ctrl`+`F` abre la búsqueda del navegador y **no** selecciona — **AC4**
 - [ ] T021 [M] Navegador: con el foco en el slider de tempo, las letras no seleccionan — **AC5**
 - [ ] T022 [M] Navegador: apretar `F` dos veces no cambia nada — **AC10**
+- [ ] T031 [M] Navegador: apretar una letra con el transporte parado **no lo arranca**, y con el
+      transporte corriendo **no lo para**. Es el único lugar donde se ve si la rama nueva quedó del
+      lado equivocado del `else togglePlay()` (T014): la pura no lo puede atrapar, porque el bug vive
+      en la cadena de `App.tsx` y no en `accionDeTecla` — **AC11**
 
 ## PR
 

@@ -22,15 +22,19 @@ convierten en dos copias del mismo número y AC6 deja de ser verificable.
 - **Sin estado de React para `cellPx`.** Un `useState` re-renderiza `App` y con él las 60 celdas de
   `Board` por cada evento de resize, que es exactamente el re-render que la custom property existe
   para evitar. El número vive en `--cell` y en ningún otro lado.
-- Un `useLayoutEffect` que escucha `resize` y escribe
-  `boardRef.current.style.setProperty('--cell', …)`. **Layout y no `useEffect`**: con `--cell` sin
+- Un `useLayoutEffect` que escucha `resize` y escribe `--cell` sobre el **contenedor raíz de
+  `App.tsx`** (un `ref` propio, no `boardRef`). **Sobre la raíz y no sobre el tablero**: la custom
+  property hereda hacia abajo, y los dos flotantes del paso 3 son `fixed` y viven fuera de `Board`, o
+  sea que colgándola de `boardRef` (`Board.tsx:193`) el `calc(var(--cell) * n)` de sus cajas no
+  resuelve. La raíz es el ancestro común de la grilla, la cabeza lectora y los dos paneles.
+  **Layout y no `useEffect`**: con `--cell` sin
   definir, `repeat(10, var(--cell))` es inválido y la grilla colapsa a una columna en el primer cuadro.
   **Sin debounce**, con el motivo escrito: la única escritura por evento es una custom property, el
   navegador ya coalesce por frame, y el debounce le mete latencia a un gesto continuo.
 - `100dvh` y no `100vh`, o `visualViewport.height` cuando existe: en iOS `100vh` incluye la barra del
   navegador y el tablero salta al scrollear.
 
-`--cell` se setea por `setProperty` sobre el ref y **no** por `style={{ '--cell': … }}`, que necesita un
+`--cell` se setea por `setProperty` sobre ese ref y **no** por `style={{ '--cell': … }}`, que necesita un
 `as React.CSSProperties`. El repo prohíbe `any` y `@ts-ignore` porque tapan problemas de diseño, y un
 cast que existe sólo para saltear el tipado es de la misma familia.
 
@@ -47,11 +51,13 @@ cast que existe sólo para saltear el tipado es de la misma familia.
 - **El `overflow-x-auto` se queda**, y su comentario también: sigue siendo lo que evita que la grilla
   empuje scroll horizontal a la página cuando gana el piso.
 
-`Playhead.tsx`: son **seis** sitios, no cuatro. Las cuatro escrituras de `style` (`left`, `top`,
-`width`, `height`, `:172-175`) son las del **velo**; la cabeza usa además el `transform` (`:240`) y su
-propia caja en el JSX (`style={{ width: CELL_PX, height: CELL_PX }}`, `:270`). Los seis pasan a
-`calc(var(--cell) * n)`. Y `VELO_CAJA`/`VELO_TAPA` repiten a propósito el aire y el redondeo de la
-baldosa de `Board.tsx`: si allá pasan a `calc()` y acá no, el velo deja de cubrir la baldosa exacta.
+`Playhead.tsx`: son **seis** sitios de `CELL_PX`, no cuatro. Las cuatro escrituras de `style` (`left`,
+`top`, `width`, `height`, `:172-175`) son las del **velo**; la cabeza usa además el `transform`
+(`:240`) y su propia caja en el JSX (`style={{ width: CELL_PX, height: CELL_PX }}`, `:270`). Los seis
+pasan a `calc(var(--cell) * n)`. Y hay **cuatro más** que no nombran a `CELL_PX` pero repiten a
+propósito el aire y el redondeo de la baldosa de `Board.tsx`, en dos pares: `VELO_CAJA` / `VELO_TAPA`
+(`:129-130`) del velo, y el `p-0.5` de la caja de la cabeza (`:269`) con el `rounded-lg` de su resalte
+(`:274`). Si allá pasan a `calc()` y acá no, ni el velo ni el anillo cubren la baldosa exacta.
 Eso es todo el cambio del archivo, y es lo que hace que
 AC6 y AC7 no se peleen: la cabeza deja de leer un número de JS y pasa a leer el mismo valor que la
 grilla, resuelto por el navegador. El docblock tiene que decir por qué — es el punto entero del paso.
@@ -107,8 +113,14 @@ Y tres archivos que lo afirman en presente: `DESIGN.md` (la tabla de `:79-81` co
 tablero de 730 × 438 y el `md:col-span-8`, más las medidas de la baldosa en `:99-102` y `:112`),
 `.claude/rules/ui.md:66-68` (los `col-span` en la tarjeta de cada componente, y `CELL_PX` derivado de
 la tarjeta real) y `docs/guides/conventions.md:247-248` (las celdas dimensionadas con
-`style={{ width: CELL_PX, … }}`). **`docs/architecture/overview.md` no entra**: se verificó y no
-describe el layout.
+`style={{ width: CELL_PX, … }}`).
+
+**`docs/architecture/overview.md` sí entra, aunque no por el layout**: no menciona `col-span` ni
+`max-w-6xl`, pero afirma en presente «los seis efectos» (`:23`) y la tabla de estado de `App.tsx`
+(`:101-109`), y este spec agrega un `useLayoutEffect` y dos `useState`. Lo mismo con la línea de
+`CLAUDE.md` que describe `App.tsx` como «el shell: estado, derivados, handlers, los seis efectos y la
+composición». Los dos son de los archivos que este repo mantiene al día, así que la corrección es
+obligatoria y no opcional. Ver §9 del research.
 
 ## Verificación
 

@@ -72,14 +72,24 @@ que `frenaElDefault` siga diciendo `false` para todas.
 1. El objeto `evento` suma `ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey`.
 2. La cadena de `if`/`else` suma la rama `ACCION.seleccionar` → `setSelected(piezaDeTecla(e.key)!)`.
 
-Ese `!` no va. La forma correcta es preguntar por la pieza y salir si es `null`:
+**Dónde va la rama importa tanto como qué hace.** La cadena de hoy (`App.tsx:306-311`) termina en un
+`else togglePlay()` **sin condición**: es el catch-all del transporte. Una rama nueva agregada como
+`if` suelto **después** de la cadena deja que la letra arranque el transporte y además seleccione, y
+eso pasa el typecheck y el lint. Va como `else if` **antes** del `else togglePlay()`, que sigue siendo
+el catch-all:
 
 ```ts
-if (accion === ACCION.seleccionar) {
+if (accion === ACCION.rotar) setRotation((rotation + 1) % 4);
+else if (accion === ACCION.reflejar) setMirror(!mirror);
+else if (accion === ACCION.seleccionar) {
   const pieza = piezaDeTecla(e.key);
   if (pieza !== null) setSelected(pieza);
 }
+else togglePlay();
 ```
+
+Y ese `!` del punto 2 no va: la forma correcta es preguntar por la pieza y salir si es `null`, como
+arriba.
 
 Redundante contra la pura y **a propósito**: el repo prohíbe `any` y `@ts-ignore`, y un `!` es la misma
 afirmación sin prueba. Dos llamadas a una función pura sobre el mismo string no son un costo.

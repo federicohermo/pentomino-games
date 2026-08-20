@@ -37,6 +37,21 @@ La explicación es que las dos tarjetas están en la misma fila del grid y se es
 es la paleta. El contenido real del tablero mide `6 × 73 + 32 = 470`, así que antes de este spec la
 tarjeta tenía **50 px de aire muerto** abajo de la grilla. Este spec se los come exactos.
 
+### Contra qué base vale este −50, y hasta cuándo
+
+Los 50 px de aire muerto no son una propiedad del panel sino **del layout declarado en el encabezado**:
+dos tarjetas en la misma fila de un `max-w-6xl grid-cols-12`, estirándose a la más alta. Ese layout es
+el que **el 021 borra**, y con él `CELL_PX` deja de ser un número fijo para pasar a ser función del
+viewport. En el orden del lote —019 → 020 → 021— la medición vale; **al revés no existe**, y entonces
+esta sección se remide, no se traduce.
+
+**Y el «antes» de 520 no es el 496 que dice el docblock.** La paleta medía 496 con el 016 y hoy mide
+520 porque el **017 le agregó la segunda línea de la fila de Rotación**: son los 24 px que separan el 32
+de una fila normal de los 56 que el §1 le mide a la de Rotación. O sea que el docblock de `CELL_PX` ya
+está desactualizado en `main` por 24 px **antes** de que este spec toque nada: su interior de
+`730,7 × 464` es hoy `730,7 × 488`, y su «por alto 77,3» es 81,3. T033 no arregla sólo lo que este spec
+mueve.
+
 ### La medición de arriba es de la RESTA sola, y este spec también suma
 
 **Ojo con leerla como el estado final.** Se tomó ocultando las tres filas en el DOM, o sea con el paso
@@ -161,17 +176,20 @@ vacío» era todo lo que quedaba de esa aclaración. El `title` la puede decir e
 
 `domain/` y `audio/` no se tocan. **No cruza el borde de paquete.**
 
-**Y hay tres archivos de documentación que este spec falsifica**, agregados por el review. No son
-specs viejos —esos no se reescriben— sino las páginas que el repo sí mantiene al día, y las tres
-afirman **en presente**:
+**Y hay tres archivos de documentación que este spec falsifica**, en **cuatro** lugares, agregados por
+el review. No son specs viejos —esos no se reescriben— sino las páginas que el repo sí mantiene al día,
+y las cuatro afirman **en presente**:
 
 | Archivo | Qué afirma hoy |
 |---|---|
-| `docs/guides/quickstart.md:58-59` | Que los atajos «se descubren solos —se rota con la rueda y se ve iluminarse `180°` en la paleta—». Es justo el botón que muere, y el reemplazo es la línea de AC4 |
+| `docs/guides/quickstart.md:59-61` | Que los atajos «se descubren solos —se rota con la rueda y se ve iluminarse `180°` en la paleta—». Es justo el botón que muere, y el reemplazo es la línea de AC4 |
+| `docs/guides/quickstart.md:80-81` | Que «con el foco sobre `Reset`, activa `Reset`». Nombra al botón por su **etiqueta visible**, que pasa a ser `↺`. La frase sobre el foco sigue siendo correcta; el nombre no |
 | `docs/architecture/audio.md:247` | «el toggle «Recorrido en el vacío» de la paleta», que pasa a ser un icono en el transporte |
 | `DESIGN.md:250-251` | «el panel lo enciende con «Recorrido en el vacío»», con la etiqueta a la vista |
 
-`App.tsx:447-451` —el footer— **no** entra por AC10: hoy no menciona ningún botón.
+`App.tsx:447-451` —el footer— **no** entra por AC10: hoy no menciona ningún botón. Y
+`docs/architecture/overview.md:155` tampoco, aunque nombre a «Reset»: lo hace **en pasado**, contando un
+bug viejo, y al lado de «Quitar», que ya no existe desde el 014.
 
 ## 8. Las props que pueden morir
 
@@ -191,7 +209,7 @@ afirman **en presente**:
 | Quien usaba los botones no descubre los gestos | **Alto, y es el riesgo central** | El footer los nombra desde el 013 y AC10 lo mantiene. Es el costo aceptado del spec |
 | `↺` es destructivo, sin confirmación y sin deshacer, pegado a ▶ | Medio | Separarlo del par ▶/metrónomo con un gap mayor o un divisor. **No** se agrega confirmación: el botón hacía exactamente lo mismo cuando decía «Reset», y agregarla es otro spec |
 | El metrónomo sin texto no dice qué apaga | Medio | `title` largo, que es más de lo que la etiqueta decía |
-| Gastar el colchón de alto deja al tablero sin margen | **Real y medido** | AC9 obliga a rehacer la medición y escribirla. El 020 devuelve el margen al agregar una línea |
+| Gastar el colchón de alto deja al tablero sin margen | **Real y medido** | AC9 obliga a rehacer la medición y escribirla. **El 020 no devuelve el margen**: su botón `0°` va *junto a* la línea de AC4 y no en una fila nueva, así que gasta ~10 px más (lo mide su AC15). El margen que devuelve la línea de AC4 es de este spec y ya está contado arriba |
 | El SVG desalineado contra ▶ | Bajo | `1em` + `currentColor`, y una tarea `[M]` que lo mira |
 
 ## 10. Lo que este spec le deja al 020 y al 021

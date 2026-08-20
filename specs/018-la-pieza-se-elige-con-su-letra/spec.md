@@ -77,6 +77,7 @@ primer caso donde la respuesta a la primera es sí y a la segunda es no.
   transporte con `Ctrl`, `Alt` o `Meta` abajo: la guarda de modificadores es **de la rama de las
   letras** y no un `return` al tope de `accionDeTecla`, que se la aplicaría también a la barra y a los
   dos modificadores sin que ningún AC lo pida.
+- **AC12** — `pnpm verify` en verde (lint ‖ typecheck ‖ test ‖ mcp:test). Es el gate mecánico que el 013 (AC12) y el 017 (AC12) ya fijaron como criterio propio y no solo como tarea.
 
 ## Límites de Alcance
 

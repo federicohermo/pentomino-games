@@ -5,7 +5,12 @@ una persona y no bloquea el cierre.
 
 ## Paso 1 — `--cell`, la única fuente del tamaño de celda
 
-- [ ] T001 `layout.constants.ts`: `CELL_PX` pasa a `CELL_PX_MIN = 73` (el **piso**, no el tamaño)
+- [ ] T001 `layout.constants.ts`: `CELL_PX` pasa a `CELL_PX_MIN = 73` (el **piso**, no el tamaño).
+      **El 73 no es un dato de `main`: es el que el 019 re-deriva y confirma con el panel nuevo puesto**
+      (`019/spec.md` AC9, medido en el navegador por su `T022`), y sobrevive ahí por 0,1 px. Leerlo de
+      ahí antes de escribirlo: si esa medición dio otro número, se mueven **también** las dos
+      proporciones de T003 —`19/73` y `13/73` sólo valen si la celda del piso es 73— y con ellas la tabla
+      de viewports de T005
 - [ ] T002 `layout.constants.ts`: reescribir el docblock entero — se va la tabla de repartos de
       columnas, se queda la medición del `Range`, y entra **por qué el piso se movió de 60 a 73** al
       volverse proporcional la fuente — **AC15**
@@ -16,8 +21,13 @@ una persona y no bloquea el cierre.
 - [ ] T005 Test en `src/components/__tests__/cell-px.test.ts` con la tabla de viewports del research
       (ocho casos, incluidos los dos donde gana el piso) — **AC2**, **AC5**. **No lleva `[P]`**: la
       escribe contra la firma de T004, así que depende de ella
+- [ ] T054 `src/App.tsx`: `ref` propio sobre el **contenedor raíz** (el que el paso 3 deja a `100dvh`)
+      para colgar ahí `--cell`. **No es `boardRef`**: la custom property hereda hacia abajo y los dos
+      flotantes de T017/T018 son `fixed` fuera de `Board`, así que colgada de `boardRef`
+      (`Board.tsx:193`) el `calc(var(--cell) * n)` de T045 no resuelve en ninguno de los dos. `boardRef`
+      queda como está, para los listeners del 013 — **AC8**, **AC9**
 - [ ] T006 `src/App.tsx`: efecto de `resize` que llama a `cellPxPara` y escribe
-      `boardRef.current.style.setProperty('--cell', …)`. **Sin debounce**, con el motivo escrito.
+      `raizRef.current.style.setProperty('--cell', …)`. **Sin debounce**, con el motivo escrito.
       **Sin estado de React para `cellPx`**: guardarlo en `useState` re-renderiza las 60 celdas por
       evento de resize, que es el re-render que la custom property existe para evitar (§1)
 - [ ] T043 `src/App.tsx`: la primera escritura de `--cell` va en `useLayoutEffect` y no en
@@ -35,24 +45,44 @@ una persona y no bloquea el cierre.
       — **AC3**
 - [ ] T011 `Board.tsx`: el aire entre baldosas, el redondeo y la posición del `#N` pasan a `calc()`
       con su proporción de hoy sobre 73. No es cosmética: de esas tres medidas depende que la baldosa
-      «se lea como una ficha y no como un casillero»
+      «se lea como una ficha y no como un casillero» — **AC18**
 - [ ] T012 `Board.tsx`: muere la tarjeta (`col-span-8 bg-white rounded-2xl shadow p-4`) y con ella la
       tabla de repartos del docblock — **AC1**
 - [ ] T013 `Board.tsx`: **conservar** el `overflow-x-auto` y su comentario — sigue siendo lo que evita
       que la grilla empuje scroll horizontal a la página cuando gana el piso — **AC5**
 - [ ] T053 `Board.tsx`: el `pb-2` de la baldosa es el **cuarto** número fijo y su comentario lo
       declara portante («no es estética: es lo que deja crecer la nota»). Pasa a `calc()` con `8/73 =
-      0,1096` — **AC3**
+      0,1096` — **AC18**
+- [ ] T062 `Board.tsx`: el `border border-slate-900` de la baldosa (`:292`) es el **quinto** número
+      fijo y **se queda fijo a propósito** —es la única de las cinco que no se convierte—. Escribir el
+      porqué al lado, porque sin eso el próximo que lea el archivo lo va a leer como un olvido de este
+      spec: (a) un filete de 1 px es un **delimitador**, no un elemento tipográfico —`DESIGN.md:83` ya
+      lo argumenta así, «el tablero se define reforzando la celda, no rellenando el fondo»— y crece a
+      2,5 px a celda 180, donde 60 baldosas contorneadas dejan de leerse como fichas y pasan a leerse
+      como una grilla dibujada; (b) un borde en `calc()` da píxeles fraccionarios que el navegador
+      redondea distinto por arista, y sobre 60 celdas **adyacentes** eso se ve como un enrejado
+      irregular — el artefacto más visible posible justo en el elemento que se repite 60 veces.
+      No toca la alineación que T054/T055 cuidan: el borde se dibuja **adentro** de la caja de la
+      baldosa — **AC20**
+- [ ] T063 [M] Navegador: al **techo** (celda 180, viewport 1920×1080) el filete de 1 px sigue
+      separando las baldosas y no desaparece contra el fondo. Es lo que vuelve falsable a T062: la
+      decisión de dejarlo fijo se apoya en que a 180 todavía se lee, y eso es exactamente lo que ningún
+      cálculo contesta — **AC20**
 - [ ] T014 `Playhead.tsx`: los **seis** sitios que dependen del tamaño de celda pasan a
       `calc(var(--cell) * n)`. No son cuatro: las cuatro escrituras de `rearmar` (`:172-175`) son las
       del **velo**, y la cabeza usa además el `transform` (`:240`) **y el
       `style={{ width: CELL_PX, height: CELL_PX }}` del JSX (`:270`)**, que es su propia caja — si ese
       queda en 73, el anillo marca un cuadrado de 73 px en el medio de una celda de 180 —
       **AC6**, **AC17**
-- [ ] T044 `Playhead.tsx`: `VELO_CAJA` (`p-[2px]`) y el `rounded-lg` de `VELO_TAPA` repiten **a
-      propósito** el aire y el redondeo de la baldosa de `Board.tsx`. Si T011/T011b los vuelven
-      `calc()` allá y acá quedan literales, el velo deja de cubrir la baldosa exacta — que es lo único
-      que esas dos constantes existen para garantizar — **AC17**
+- [ ] T044 `Playhead.tsx`: `VELO_CAJA` (`p-[2px]`, `:129`) y el `rounded-lg` de `VELO_TAPA` (`:130`)
+      repiten **a propósito** el aire y el redondeo de la baldosa de `Board.tsx`. Si T011/T053 los
+      vuelven `calc()` allá y acá quedan literales, el velo deja de cubrir la baldosa exacta — que es
+      lo único que esas dos constantes existen para garantizar — **AC17**
+- [ ] T055 `Playhead.tsx`: el **segundo par**, el de la cabeza y no el del velo — el `p-0.5` de su
+      caja (`:269`) y el `rounded-lg` de su resalte (`:274`), cuyo comentario al lado (`:272-273`)
+      dice «Misma caja que la baldosa de `Board.tsx` —2 px de aire y `rounded-lg`— para que el borde
+      cubra la celda exacta y no medio pixel afuera». Con T011 en `calc()` y estos dos literales, a
+      celda 180 el anillo de la cabeza cubre 2 px de aire sobre una baldosa que tiene 4,9 — **AC17**
 - [ ] T015 `Playhead.tsx`: docblock con por qué. Es lo que deja que la cabeza siga fuera del estado de
       React (**AC7**) **y** siga alineada al redimensionar (**AC6**): las dos leen el mismo valor,
       resuelto por el navegador
@@ -71,7 +101,8 @@ una persona y no bloquea el cierre.
       `3 × 1`, vía `calc(var(--cell) * n)`. Con px fijos, a 1366×768 el dock tapa `(9,5)` (§4 del
       research) — **AC9**
 - [ ] T046 `src/components/PiecePalette.tsx`: scroll interno propio. A `CELL_PX = 73` el dock queda en
-      146 × 292 px y el panel de hoy mide 349 × 496 — sin scroll, crece y se come celdas
+      146 × 292 px y el panel mide hoy del orden de 349 × 496 (medición sobre `main`; el 019 y el 020
+      la mueven, ver §4 del research) — sin scroll, crece y se come celdas — **AC19**
 - [ ] T047 `src/App.tsx`: el `<footer>` con la leyenda de gestos (`:446-455`) **se muda adentro de un
       flotante**, no se borra: es hoy el único lugar donde los cuatro gestos del 013 están escritos, y
       dejarlo debajo del tablero da scroll vertical de página — **AC1**, **AC16**
@@ -94,16 +125,31 @@ una persona y no bloquea el cierre.
       fila». **Con el layout nuevo no hay fila** — el argumento entero desaparece y hay que
       reemplazarlo por el que corresponda al dock
 - [ ] T026 [P] `docs/guides/conventions.md:247-248`: las celdas ya no se dimensionan con
-      `style={{ width: CELL_PX, … }}` sino con `var(--cell)`. **`docs/architecture/overview.md` sale de
-      la lista**: se verificó y no tiene ninguna afirmación de `col-span`, `max-w-6xl` ni `CELL_PX`
-- [ ] T048 [P] `DESIGN.md:79-81`: la tabla afirma en presente `CELL_PX` **73**, «Tablero **730 × 438
-      px**» y «Tarjeta del tablero **`md:col-span-8`**». Y `:99-102` y `:112`, las medidas fijas de la
-      baldosa. Es el archivo que más queda mintiendo
-- [ ] T049 [P] `.claude/rules/ui.md:66-68`: «los `col-span` no viven en `App.tsx` sino en la tarjeta de
-      cada componente» y «`CELL_PX` sale de `min(interior/10, interior/6)` sobre la tarjeta real». Sin
-      tarjetas las dos reglas quedan sin referente
-- [ ] T027 [P] `specs/deuda.md`: anotar que este spec **agranda** la deuda de accesibilidad del
-      tablero — dos paneles plegables más que sólo se alcanzan con el mouse
+      `style={{ width: CELL_PX, … }}` sino con `var(--cell)`
+- [ ] T059 [P] `docs/architecture/overview.md`: **entra a la lista**, aunque no por el layout. Afirma
+      en presente «los seis efectos» en **dos** lugares —el diagrama de `:23` y la prosa de `:68`, y
+      dejar uno de los dos es peor que dejar los dos— más la tabla de estado de `App.tsx` (`:101-109`),
+      y este spec agrega un `useLayoutEffect` y dos `useState`. No se toca lo que ya venía corto de antes
+      (la tabla lista siete estados contra nueve): eso es deuda previa
+- [ ] T060 [P] `CLAUDE.md`: «el shell: estado, derivados, handlers, **los seis efectos** y la
+      composición» pasa a siete, por el `useLayoutEffect` de T043
+- [ ] T048 [P] `DESIGN.md:79-83`: la tabla afirma en presente `CELL_PX` **73**, «Tablero **730 × 438
+      px**», «Tarjeta del tablero **`md:col-span-8`**» y —las dos filas que faltaban en esta lista—
+      «Aire de la baldosa **2 px** por lado» y «Borde de la baldosa **1 px**». Y `:99-102` (la baldosa
+      con sus medidas fijas) y `:110-114` (el párrafo de debajo de `md`, que habla del «panel» y de los
+      730 px fijos). Es el archivo que más queda mintiendo
+- [ ] T049 [P] `.claude/rules/ui.md`, **dos regiones del mismo archivo** —por eso van en una sola
+      tarea y no en dos `[P]` que se pisarían—. En `:66-68`: «los `col-span` no viven en `App.tsx` sino
+      en la tarjeta de cada componente» y «`CELL_PX` sale de `min(interior/10, interior/6)` sobre la
+      tarjeta real» — sin tarjetas las dos reglas quedan sin referente. Y en **`:9`**: «el shell:
+      estado con `useState` local, derivados, handlers, **los seis efectos**», que pasa a siete por el
+      `useLayoutEffect` de T043. Es el cuarto lugar del repo que afirma «seis» en presente, y el que
+      más caro sale dejar viejo: esta regla se **carga sola** al tocar `App.tsx`
+- [ ] T027 [P] `specs/deuda.md`: anotar **en qué** este spec agranda la deuda de accesibilidad del
+      tablero, con los tres puntos de los Límites de Alcance —once celdas que exigen plegar un panel
+      antes de alcanzarse, el orden de tabulación que deja de seguir al visual con dos `fixed`, y la
+      operación destructiva que además puede quedar tapada—. **No** «dos paneles que sólo se alcanzan
+      con el mouse»: T022 los hace `<button>` con `aria-expanded`, así que esa frase sería falsa
 
 ## Verificación
 
@@ -129,6 +175,21 @@ una persona y no bloquea el cierre.
 - [ ] T051 [M] Navegador: la leyenda de gestos sigue visible desde el tablero — **AC16**
 - [ ] T052 [M] Navegador: a celda 180, el anillo de la cabeza y el velo cubren la baldosa exacta —
       **AC17**
+- [ ] T056 [M] Navegador: a celda 180, leer `padding`, `border-radius` y `padding-bottom` computados de
+      la baldosa y confirmar que divididos por `CELL_PX` dan las mismas razones que a 73 (±0,5 px).
+      Es la contraparte de T011 y T053, que hasta ahora apuntaban a **AC3** y AC3 sólo habla de las dos
+      fuentes — **AC18**
+- [ ] T057 [M] Navegador: a `CELL_PX = 73` (dock de 146 × 292 px) las doce miniaturas y todos los
+      controles de la paleta se alcanzan con el scroll interno, sin desbordar ni empujar la grilla —
+      **AC19**
+- [ ] T058 [M] Navegador: en un viewport apaisado y bajo (`vh < 438`, p. ej. 1280 × 400) el desborde
+      vertical lo absorbe el contenedor del tablero y **no la página** — es la mitad de **AC5** que
+      T037 no cubre, y la que sostiene **AC1** en ese viewport — **AC5**, **AC1**
+- [ ] T061 [P] `specs/016-la-pieza-se-ve-antes-de-colocarse/tasks.md`: declarar que este spec cierra su
+      `T033`. Proponía «alinear la grilla arriba y dejar el sobrante abajo» si el aire muerto de la
+      tarjeta del tablero quedaba feo, y acá **muere la tarjeta entera** (T012): no queda ni aire que
+      alinear ni tarjeta donde hacerlo. Ya está marcada cerrada del lado del 016 —esto es la otra
+      mitad—; cerrarla en un solo lado deja a `spec_status` reportando trabajo que ya no existe
 
 ## PR
 

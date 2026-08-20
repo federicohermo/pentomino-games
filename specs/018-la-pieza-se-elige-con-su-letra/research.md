@@ -90,8 +90,8 @@ del DOM.
 | `src/components/types/input.types.ts` | `EventoDeTecla` gana `ctrlKey`, `metaKey`, `altKey` |
 | `src/components/input.ts` | `accionDeTecla` gana la rama de las letras; nueva pura `piezaDeTecla` |
 | `src/components/__tests__/input.test.ts` | Los casos de AC1–AC7 y AC11, **y el factory `tecla` de la línea 19**, que arma el evento con defaults y deja de compilar apenas el tipo gana tres campos obligatorios |
-| `src/App.tsx` | Llena los tres campos nuevos; despacha `ACCION.seleccionar`; footer |
-| `docs/guides/quickstart.md` | La tabla «Cómo se toca» (línea 62) es la única doc que enumera los gestos: gana la fila de las letras. El footer de AC9 no la reemplaza |
+| `src/App.tsx` | Llena los tres campos nuevos; despacha `ACCION.seleccionar` **antes** del `else togglePlay()` de la línea 311, que hoy es el catch-all sin condición; footer (líneas 446-452) |
+| `docs/guides/quickstart.md` | La tabla «Cómo se toca» (encabezado en la línea 57, filas 63-70) es la única doc que enumera los gestos: gana la fila de las letras, y el párrafo de la línea 59 deja de decir «los **tres** gestos». El footer de AC9 no la reemplaza |
 
 Ninguno en `domain/` ni en `audio/`. **No cruza el borde de paquete**: `mcp-server/` importa 31
 símbolos del dominio y este spec no toca ninguno.
@@ -109,8 +109,13 @@ enumeradas, y el único que nada sincroniza — exactamente lo que la regla «lo
 constantes» existe para evitar, con el agravante de que el desincronizado sería silencioso: agregar
 una pieza trece y olvidarse de la lista deja una tecla muerta que no falla en ningún test.
 
-`input.ts` puede importar de `domain/`: el override de eslint sobre `components/**` lo permite —lo hace
-ya para `PieceKey` y `PlacedPiece`— y la dirección de dependencia es la correcta.
+`input.ts` puede importar de `domain/`, y conviene ser preciso sobre por qué: `eslint.config.js` **no
+tiene** un override para `components/**`. El único bloque que le aplica es el de `src/**/*.{ts,tsx}`,
+que restringe solo `MCP_SERVER`; los overrides con `FUERA_DE_DOMAIN` y su hermano de `audio/` valen
+para `src/domain/**` y `src/audio/**`, no acá. O sea que la dirección `components/ → domain/` está
+permitida por omisión y es la correcta. `input.ts` ya lo hace para `PieceKey` y `PlacedPiece`, aunque
+esos son `import type`: `SHAPES` sería el **primer import de valor** del archivo hacia `domain/`, que
+es exactamente lo que `App.tsx`, `PiecePalette.tsx`, `cell-text.ts` y `piece-mini.ts` ya hacen.
 
 `Object.keys(SHAPES)` devuelve `string[]`, así que la pura tiene que estrechar. El `in`-check **a secas
 no estrecha**, y está medido: `return k in SHAPES ? k : null` falla con `TS2322: Type 'string' is not
@@ -136,7 +141,16 @@ segunda sale limpia. El `in` sigue siendo el runtime correcto; lo que hacía fal
 ## 10. Lo que este spec le deja al 020
 
 Nada que lo bloquee, y una cosa que conviene saber: cuando el 020 haga la orientación por pieza,
-`ACCION.seleccionar` va a pasar a restaurar también la rotación y la reflexión recordadas de esa
-pieza. Eso es un cambio del **handler** en `App.tsx`, no de esta pura: `piezaDeTecla` seguirá
-contestando qué pieza, y nada más. Los dos specs son ortogonales y se pueden implementar en cualquier
-orden.
+seleccionar por letra va a restaurar también la rotación y la reflexión recordadas de esa pieza
+**sin una línea de handler**. El `log.md` decía que era «un cambio del handler de `App.tsx`» y con el
+diseño que el 020 terminó eligiendo no lo es: la orientación se deriva de `orientaciones[selected]`, así
+que el `setSelected` que ya hace esta rama alcanza y los consumidores re-derivan solos. Esta pura no se
+entera: `piezaDeTecla` sigue contestando qué pieza, y nada más.
+
+Ortogonales **en el modelo**, no en el archivo: los dos escriben el mismo `despachar` del efecto de
+teclado de `App.tsx` (el 020 lo declara en su T009, «el efecto de teclado escribe una sola ranura con
+setter funcional»), y el 020 además le cambia las dependencias que este spec da por fijas
+(`[rotation, mirror, togglePlay]`, `App.tsx:329`). El cruce es de **merge**, no de diseño: en el orden
+018 → 020 el 020 reescribe una cadena que ya tiene la rama `seleccionar`; en el orden inverso, T013 y
+T014 se aplican sobre una cadena distinta de la citada acá. Cualquiera de los dos órdenes funciona
+mientras los dos no se implementen en carriles paralelos.

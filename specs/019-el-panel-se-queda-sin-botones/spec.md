@@ -108,7 +108,10 @@ tacho promete *borrar* algo elegido, que es una operación con alcance y no la q
   de AC4 no recibe la pieza, así que «es correcta para seis piezas» sólo se puede verificar cruzándola
   con `miniCells`.
 - **AC6** — El botón de recorrido está en la fila de transporte, es solo-icono, y su estado se lee por
-  color.
+  color. **Y apagado se distingue de `↺`**: el plan le da `bg-slate-100` y a `↺` `bg-slate-200`, que es
+  exactamente el par que el 008 rechazó por indistinguible cuando quedaron pegados
+  (`PiecePalette.tsx:285-287`, sobre ▶/Reset). El gap de T015 no alcanza como respuesta: el AC se firma
+  mirando los dos botones apagados uno al lado del otro, no leyendo el diff.
 - **AC7** — El metrónomo tiene `aria-label` y `title`; el SVG lleva `aria-hidden`, porque el nombre
   accesible lo da el botón.
 - **AC8** — Reset dice `↺`, con `aria-label` y `title`, y sigue haciendo las dos cosas que hacía:
@@ -127,10 +130,19 @@ tacho promete *borrar* algo elegido, que es una operación con alcance y no la q
 - **AC13** — La derivación de la orientación se escribe **una sola vez**: el `aria-label` de los doce
   botones —que hoy la arma inline en `PiecePalette.tsx:115`— consume la misma pura de AC4. Dos copias
   del mismo texto en el mismo archivo es justo lo que la convención de constantes existe para evitar.
-- **AC14** — Las tres páginas que describen **en presente** lo que este spec cambia quedan al día:
-  `docs/guides/quickstart.md` (el mecanismo de descubrimiento de los atajos era «ver iluminarse `180°`
-  en la paleta»), `docs/architecture/audio.md` y `DESIGN.md` (los dos llaman al botón de recorrido
-  «el toggle de la paleta», con su etiqueta a la vista).
+  **El `aria-label` no se degrada para conseguirlo**: hoy dice `X, rotación 180°, reflejada` y tiene que
+  seguir diciendo la palabra «rotación». Bajarlo al formato visible (`X, 180° · reflejada`) le saca el
+  sustantivo y le mete un separador que el lector de pantalla deletrea — o sea, saldaría AC13 agrandando
+  la deuda de accesibilidad. Una sola derivación, dos formatos compuestos por el `.tsx`.
+- **AC14** — Las tres páginas que describen **en presente** lo que este spec cambia quedan al día, en
+  **cuatro** lugares: `docs/guides/quickstart.md` dos veces —`:59-61`, donde el mecanismo de
+  descubrimiento de los atajos era «ver iluminarse `180°` en la paleta», y `:80-81`, que nombra a
+  **`Reset`** por su etiqueta visible («con el foco sobre `Reset`, activa `Reset`»)—, más
+  `docs/architecture/audio.md` y `DESIGN.md` (los dos llaman al botón de recorrido «el toggle de la
+  paleta», con su etiqueta a la vista).
+- **AC15** — `pnpm verify` en verde (lint ‖ typecheck ‖ test ‖ mcp:test). Es el gate mecánico que el 014
+  (AC13), el 016 (AC12), el 017 (AC12) y el 018 (AC12) ya fijaron como criterio propio y no sólo como
+  tarea. `check_invariants` no entra: este spec no toca `domain/`.
 
 ## Límites de Alcance
 

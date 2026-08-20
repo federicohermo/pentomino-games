@@ -135,10 +135,16 @@ casillas abiertas como próxima tarea.
 - **018 → 019 → 020 → 021 sale de un pedido de seis features cortado en cuatro specs.** El corte no es
   por tamaño: **2, 3 y 4 del pedido son una sola decisión** —qué queda en el panel y con qué idioma— y
   por eso van juntos en el 019. Los otros tres son independientes entre sí.
-- **018 y 020 son ortogonales, y el orden entre ellos da igual.** Uno decide *qué pieza* está en la
-  mano; el otro, *en qué orientación*. Cuando los dos estén puestos, seleccionar por letra va a
-  restaurar además la orientación recordada de esa pieza — y eso es un cambio del handler de `App.tsx`,
-  no de la pura del 018, que sigue contestando qué pieza y nada más.
+- **018 es un carril suelto, pero no es ortogonal al 020: converge con él en `App.tsx`.** Uno decide
+  *qué pieza* está en la mano; el otro, *en qué orientación*, y en el **modelo** eso sí es ortogonal
+  —con la memoria por pieza del 020, seleccionar por letra restaura la orientación recordada **sin una
+  línea de handler**: los consumidores leen `orientaciones[selected]` y el cambio de `selected` alcanza—.
+  En el **archivo** no lo es: los dos escriben la misma cadena de `if`/`else` del efecto de teclado, y
+  la rama `ACCION.seleccionar` que agrega el 018 **no lee `rotation` ni `mirror`**, así que el typecheck
+  con el que el 020 enumera sus consumidores no la marca — es el mismo mecanismo por el que el 020 tuvo
+  que cazar `handleContextMenu` a mano. Por eso el **018 cierra antes que el 020**, y el 020 lleva la
+  tarea de verificar que la rama sobrevivió (`020/tasks.md` T040), que se cierra con «no existía» si el
+  018 todavía no llegó.
 - **019 va antes que 020, y es lo que evita escribir el lector dos veces.** El 019 borra los botones de
   grados y tiene que compensarlo con una línea de texto que diga la orientación, porque la miniatura no
   puede: **29 de 96 orientaciones suenan distinto sin verse distinto**, en 6 de 12 piezas (`I T U V W
@@ -151,9 +157,13 @@ casillas abiertas como próxima tarea.
 - **019 y 020 se pasan el colchón de alto, y está medido.** El 019 borra tres filas del panel: la paleta
   baja de 520 a 470 px, que son **exactamente** los 50 px de aire muerto que la tarjeta del tablero
   tenía abajo de la grilla. `CELL_PX` re-derivado sigue en 73 —73,0 por alto contra 73,1 por ancho— o
-  sea que **sobrevive por 0,1 px** y el colchón que el 016 dejó se gasta entero. El 020, que agrega una
-  línea, lo devuelve. Es la tercera vez que este número cambia de mano y la primera en que queda sin
-  margen: la próxima fila que salga del panel sí achica el tablero.
+  sea que **sobrevive por 0,1 px**. Pero ese −50 es la **resta sola**, y el 019 no es sólo una resta: en
+  el mismo commit suma la línea de orientación (~+20 px), así que la paleta real queda en ~490 y el
+  colchón baja de 50 a **~30**, con el **ancho** siguiendo al mando. Y el 020 **no lo devuelve**: su
+  botón `0°` va *junto a* esa línea y no en una fila nueva, o sea que **gasta** ~10 px más. Es la
+  tercera vez que este número cambia de mano y la primera en que el margen es de décimas: la próxima
+  fila que salga del panel sí achica el tablero. **El número final no lo fija esta entrada sino la
+  medición de T022 del 019** en el navegador — y de ahí lo toma el piso del 021.
 - **021 va último porque borra el layout sobre el que trabajan los otros tres.** Toca los cuatro
   componentes, mata el `max-w-6xl grid-cols-12`, y reescribe docblocks que el 019 acaba de tocar. Al
   revés, el 019 mediría un colchón de alto que el 021 hace desaparecer.

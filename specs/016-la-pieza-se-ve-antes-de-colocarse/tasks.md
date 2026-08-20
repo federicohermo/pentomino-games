@@ -116,6 +116,11 @@ una persona y no bloquea el cierre.
       la registra como «un `number` sin acotar, comparada contra `0|1|2|3` en cuatro lugares», con el
       reemplazo ya decidido (const-object + union type, nunca `enum`). No se arregla acá porque cambia
       firmas de `domain/` y AC11 lo prohíbe, pero el spec que lo haga tiene que contar este consumidor
-- [ ] T033 Si el aire muerto en la tarjeta del tablero (T016) queda feo, la salida no es achicar la
+- [x] T033 ~~Si el aire muerto en la tarjeta del tablero (T016) queda feo, la salida no es achicar la
       paleta sino **alinear la grilla arriba y dejar el sobrante abajo**, que es lo que ya pasa hoy con
-      51,6 px sin que nadie lo haya notado
+      51,6 px sin que nadie lo haya notado~~
+      **Cerrada por el 019 y el 021, y ninguno de los dos la resuelve como estaba pensada.** El 019 se
+      come la mayor parte de ese aire con la resta de filas del panel —queda en ~30 px— y el 021 borra
+      la tarjeta entera (`021/tasks.md` T012), así que no queda ni aire muerto que alinear ni tarjeta
+      donde alinearlo. Se cierra acá y el 021 lo declara de su lado: cerrarla en un solo lado dejaría a
+      `spec_status` reportando trabajo que ya no existe

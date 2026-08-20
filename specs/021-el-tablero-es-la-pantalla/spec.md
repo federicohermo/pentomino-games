@@ -138,10 +138,28 @@ Arriba se descartó por medición: una barra superior tapa el borde de arriba en
   hoy el único lugar donde los cuatro gestos del 013 están escritos, y borrarla los vuelve invisibles
   otra vez — el problema que su propio comentario dice haber resuelto.
 - **AC17** — La cabeza lectora y su velo se dibujan sobre la baldosa exacta a cualquier `CELL_PX`: los
-  **seis** sitios de `Playhead.tsx` que dependen del tamaño de celda derivan de `--cell`, y el aire y
-  el redondeo de `VELO_CAJA`/`VELO_TAPA` siguen coincidiendo con los de `Board.tsx`.
+  **seis** sitios de `CELL_PX` de `Playhead.tsx` derivan de `--cell`, y los **cuatro** lugares de
+  geometría de baldosa del mismo archivo —`VELO_CAJA`/`VELO_TAPA` del velo, y el `p-0.5` de la caja de
+  la cabeza con el `rounded-lg` de su resalte— siguen coincidiendo con los de `Board.tsx`. Diez
+  conversiones en total, no seis: los cuatro últimos no nombran a `CELL_PX` y por eso se pasan por alto.
 - **AC15** — El docblock de `CELL_PX` se reescribe: se va la tabla de repartos de columnas, se queda la
   medición del piso, y entra la fórmula con la tabla de viewports.
+- **AC18** — Los cuatro números fijos de la baldosa escalan con la celda y **no sólo las dos fuentes**:
+  el aire entre baldosas (`2/73`), el redondeo (`8/73`), la posición del `#N` (`bottom-0.5 right-1.5`)
+  y la reserva `pb-2` (`8/73`). Falsable en el DOM: a `CELL_PX = 180`, `padding`, `border-radius` y
+  `padding-bottom` computados divididos por `CELL_PX` dan las mismas razones que a 73, con ±0,5 px de
+  tolerancia de redondeo del navegador. Es lo que sostiene que la baldosa «se lea como una ficha y no
+  como un casillero».
+- **AC19** — El dock de piezas muestra **las doce miniaturas y todos sus controles** dentro de sus
+  2 × 4 celdas, con scroll interno propio y sin desbordar la caja ni empujar la grilla. Se verifica en
+  el peor caso, que es el piso: `CELL_PX = 73`, o sea 146 × 292 px.
+- **AC20** — El borde de 1 px de la baldosa **no escala**, y el archivo dice por qué. Es el quinto
+  número fijo y el único que sobrevive a AC18: un filete es un delimitador y no un elemento
+  tipográfico, y un borde en `calc()` da fracciones que el navegador redondea distinto por arista
+  —sobre 60 celdas adyacentes, un enrejado irregular—. Falsable en las dos mitades: el comentario
+  está junto al `border` de `Board.tsx`, y **al techo** (celda 180) el filete sigue separando las
+  baldosas en vez de desaparecer. La segunda mitad es la que puede dar que no, y si da que no la
+  decisión se revierte a `calc()` con piso de 1 px.
 
 ## Límites de Alcance
 
@@ -149,8 +167,16 @@ Arriba se descartó por medición: una barra superior tapa el borde de arriba en
 - **No toca `domain/` ni `audio/`.** `GRID_W` y `GRID_H` siguen siendo 10 y 6. **No cruza el borde de
   paquete.**
 - **No arregla la accesibilidad del tablero.** Las celdas siguen sin recibir foco: es deuda conocida y
-  necesita su propio spec. Este spec **la agranda**, y hay que decirlo: con dos paneles plegables hay
-  más superficie que sólo se alcanza con el mouse.
+  necesita su propio spec. Este spec **la agranda**, y hay que decir **en qué** —el toggle en sí no,
+  porque T022 lo hace un `<button>` con `aria-expanded`—:
+  1. **Once celdas dejan de ser alcanzables sin plegar un panel.** Hoy las 60 se ven todas; con los
+     flotantes abiertos, llegar a `(8,1)`…`(9,4)` y `(0,5)`…`(2,5)` exige un gesto previo. Para el
+     mouse es un click; para un teclado que todavía no alcanza ninguna celda, es una celda tapada más.
+  2. **El orden de tabulación deja de seguir al orden visual.** Dos paneles `position: fixed` se
+     pintan donde el `fixed` los pone y se tabulan donde el DOM los tiene, y eso no lo arregla el
+     `aria-controls`.
+  3. **La operación destructiva sigue siendo sólo de mouse.** El click que quita una pieza no tiene
+     equivalente de teclado ni deshacer, y ahora además puede quedar debajo de un panel.
 - **No agrega pantalla completa del navegador** (`requestFullscreen`). El tablero llena el viewport, que
   es otra cosa.
 - **No cambia qué muestra una celda.** La nota, el `#N` y los colores son los del 007 y el 012.

@@ -35,7 +35,7 @@ Y **ocho** consumidores, todos derivados de esos dos:
 
 | Consumidor | Qué hace con ellos |
 |---|---|
-| `transformedShape` (`useMemo`, `App.tsx:102`) | `rotateN` + `reflect` para el fantasma y la colocación |
+| `transformedShape` (`useMemo`, `App.tsx:101`) | `rotateN` + `reflect` para el fantasma y la colocación |
 | `noteSet` (`useMemo`, `App.tsx:124`) | `arpeggioFor(selected, rotation, mirror, regimen)` |
 | `handleCellClick` (`App.tsx:153`) | los guarda en el `PlacedPiece` nuevo |
 | `PiecePalette` (props, `App.tsx:401`) | las doce miniaturas (`miniCells(key, rotation, mirror)`) |
@@ -67,6 +67,12 @@ abre esa puerta.
 
 O sea que el modelo ya trataba la orientación como una propiedad de la pieza; el único lugar donde
 seguía siendo global era la **pieza por colocar**, que es la que no tiene registro propio.
+
+**AC5 tampoco cuesta un handler.** «Elegir una pieza restaura su orientación» cae solo: los ocho
+consumidores pasan a leer `orientaciones[selected]`, así que cambiar `selected` ya los re-deriva.
+Vale para las dos vías de selección —el `onSelect` de la paleta y la tecla de letra que agrega el
+018, que también es un `setSelected` y nada más—, o sea que **el handler del 018 no se toca**. Lo
+único que este spec le agrega a `App.tsx` en materia de escritura es el handler del botón `0°`.
 
 ## 4. Los dos efectos de entrada, y el que cambia de forma
 
@@ -113,12 +119,12 @@ paleta pasa de llamarla doce veces con el mismo par a llamarla doce veces con do
 no cambia.**
 
 Y la caja fija de 5×5 del 016 pasa a ser **más** necesaria, no menos. Su docblock
-(`src/components/piece-mini.ts:18`) dice:
+(`src/components/piece-mini.ts:19`, sección «Por qué la caja es fija, y por qué mide 5») dice:
 
 > La `I` pasa de 5×1 a 1×5 al rotar: con cajas ajustadas, los doce botones reflowearían en cada
 > rotación.
 
-El mismo argumento está en `DESIGN.md:147` y el número 5 se declara en
+El mismo argumento está en `DESIGN.md:149` —el bullet «La caja es fija, de 5×5 celdas»— y el número 5 se declara en
 `src/components/constants/layout.constants.ts` (`MINI_BOX`), que son los tres lugares donde el
 comentario de este spec tiene que quedar coherente.
 
@@ -139,14 +145,32 @@ dos veces.
 El botón `0°` va **acá** y no en el 019 porque sólo existe si hay memoria por pieza. O sea que el 019
 saca botones del panel y el 020 devuelve uno — asimetría real, escrita en las dependencias del log.
 
+### 7.1 Lo que ese botón le cuesta al alto, contra la base `main` + 019
+
+El 019 mide su propio colchón así: la paleta baja de 520 a 470 px al borrar tres filas, su línea de
+orientación devuelve ~20 px, y queda en ~490 px con **~30 px** de aire muerto en la tarjeta del
+tablero. `CELL_PX` re-derivado da 73,1 por ancho contra ~76,3 por alto: manda el **ancho**, y `73`
+sobrevive.
+
+Este spec **no agrega una fila**: el `0°` va inline al lado de esa misma línea. Lo que crece es el
+alto de esa fila —de texto (~20 px) a botón (`px-2 py-1` + borde, ~30 px como los que ya están)—, o
+sea ~10 px de los ~30 que quedaban. Por cálculo el alto pasa a ~74,7 y el ancho sigue mandando con
+73,1, así que `CELL_PX = 73` no se mueve. **Pero es cálculo, no medición**, y con ~20 px de colchón el
+número dejó de tener margen: AC15 lo manda a medir en el DOM y T039 lo hace.
+
+Nota para quien lea el 019: su tabla de riesgos anota «el 020 devuelve el margen al agregar una
+línea». Con el `0°` inline eso no pasa — el 019 ya se había cobrado esos ~20 px con su propia línea
+de AC4, y este spec **gasta**, no devuelve. El número que vale es el de acá.
+
 ## 8. Archivos afectados
 
 | Archivo | Qué cambia |
 |---|---|
 | `src/components/types/` | `Orientacion` y el tipo de la memoria |
 | `src/components/constants/` | La orientación inicial |
-| `src/App.tsx` | Los dos `useState` → un `Record`; los siete consumidores; los dos efectos |
-| `src/components/PiecePalette.tsx` | Las doce miniaturas leen doce pares; el botón `0°`; la línea del 019 |
+| `src/App.tsx` | Los dos `useState` → un `Record`; los ocho consumidores; los dos efectos; el handler del botón `0°` |
+| `src/components/PiecePalette.tsx` | Las doce miniaturas leen doce pares; el botón `0°` y su prop; la línea del 019; salen las props `rotation` y `mirror` |
+| `src/components/constants/layout.constants.ts` | El docblock de `MINI_BOX` (T018). **Superficie compartida con el 019**, que reescribe en el mismo archivo el docblock de `CELL_PX` y verifica el de `MINI_CELL_PX`: son bloques distintos, pero el orden importa y el 019 va primero |
 | `docs/architecture/overview.md` | El diagrama (`:24`) y la tabla de estado (`:104`–`:105`) declaran `rotation` `0..3` y `mirror` `boolean` como dos escalares del shell. Este spec los reemplaza por un `Record` |
 | `DESIGN.md` | `:142` afirma que el botón se dibuja «en la orientación que está seleccionada ahora mismo» — singular y global. Pasa a ser la **suya** |
 
@@ -161,7 +185,7 @@ así que dejarlos afirmando en presente algo que este spec falsifica es la deuda
 
 | Riesgo | Cuánto | Mitigación |
 |---|---|---|
-| Un consumidor de los siete se queda leyendo el par viejo | **Alto si se hace a mano** | Borrar los dos `useState` **primero**: el typecheck marca los siete. Es la misma técnica que el 017 usó al sacarle el default al parámetro del régimen |
+| Un consumidor de los ocho se queda leyendo el par viejo | **Alto si se hace a mano** | Borrar los dos `useState` **primero**: el typecheck marca los ocho. Es la misma técnica que el 017 usó al sacarle el default al parámetro del régimen |
 | Doce orientaciones independientes vuelven la paleta ruidosa | Medio | Es información honesta y a pedido; la alternativa (mostrar las once en canónica) haría que el botón prometa una forma que al apretarlo no entrega |
 | El efecto de la rueda re-suscribe al cambiar de pieza | Bajo | Doce valores posibles, dos `addEventListener`. Se elige eso antes que un ref que esconda de dónde sale `selected` |
 | Estado invisible que sobrevive a `↺` | **Real, y aceptado** | Es la decisión de D3: `↺` conserva alcance único y la orientación tiene su propio botón. Queda escrito en el spec, no tapado |

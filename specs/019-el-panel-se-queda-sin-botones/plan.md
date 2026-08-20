@@ -55,6 +55,12 @@ texto inline (`PiecePalette.tsx:115`, `rotación ${rotation * 90}°${mirror ? ',
 no lo consume, el archivo queda con dos copias de la misma derivación en dos formatos, que es la clase
 de par que el repo mandó a `constants/` justamente porque nada los sincroniza. AC13.
 
+Los dos formatos **no se unifican bajando el `aria-label` al de la línea visible**. `X, 180° · reflejada`
+le saca el sustantivo «rotación» y le mete un separador que el lector de pantalla deletrea: sería saldar
+AC13 agrandando la deuda de accesibilidad, que es la que este spec ya roza al pasar dos botones a
+solo-icono. La pura sirve a los dos con un parámetro de forma —o devolviendo las partes— y el `.tsx`
+compone; lo que AC13 prohíbe es que `rotation * 90` y el sufijo de reflexión estén escritos dos veces.
+
 ## Paso 3 — La fila de transporte
 
 ```
