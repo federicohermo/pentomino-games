@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 import { tools } from '../tools/index.ts';
 import { describePiece } from '../tools/describePiece.ts';
 import { checkInvariants, pieceOf } from '../tools/checkInvariants.ts';
-import { simulateBoard } from '../tools/simulateBoard.ts';
+import { simulateBoard, nombreDeHz } from '../tools/simulateBoard.ts';
+import { findSymbol } from '../tools/findSymbol.ts';
+import { specStatus } from '../tools/specStatus.ts';
 import { PIECE_KEYS } from '../pieces.ts';
 import { routeBetween } from '../../../src/domain/board.ts';
-import { CELLS_PER_PIECE } from '../../../src/domain/constants/pieces.constants.ts';
-import { NOTES_PER_PIECE } from '../../../src/domain/constants/music.constants.ts';
+import { SHAPES, CELLS_PER_PIECE } from '../../../src/domain/constants/pieces.constants.ts';
+import { NOTES_PER_PIECE, REGIMEN } from '../../../src/domain/constants/music.constants.ts';
 import type { Cell } from '../../../src/domain/types/transform.types.ts';
 import type { PlacedPiece } from '../../../src/domain/types/board.types.ts';
 import type { ToolDef } from '../tools/types.ts';
@@ -141,6 +143,25 @@ describe('describe_piece', () => {
     assert.deepEqual(f.cells, [[0, 1], [1, 0], [1, 1], [1, 2], [2, 2]]);
   });
 
+  test('`scale` cuenta el regimen, y en `orden` cuenta bien el singular', () => {
+    // En `escala` la etiqueta sale de una tabla; en `orden` se arma, y ahi el texto
+    // es lo unico que distingue una rotacion de otra —la formula es siempre la
+    // pentatonica mayor—. Un "1 posiciones" en la respuesta de una tool que existe
+    // para NO tener que derivar a mano es exactamente la clase de detalle que hace
+    // dudar del resto.
+    const scale = (rotation: number, regimen: 'escala' | 'orden') =>
+      call(describePiece, { piece: 'F', rotation, regimen }).scale;
+
+    assert.equal(scale(0, REGIMEN.orden), 'pentatónica mayor, sin correr (rotación 0°)');
+    assert.equal(scale(1, REGIMEN.orden), 'pentatónica mayor corrida 1 posición (rotación 90°)');
+    assert.equal(scale(2, REGIMEN.orden), 'pentatónica mayor corrida 2 posiciones (rotación 180°)');
+    assert.equal(scale(3, REGIMEN.orden), 'pentatónica mayor corrida 3 posiciones (rotación 270°)');
+
+    // Y el otro regimen no pasa por ahi: a rotacion 0 los dos suenan igual y la
+    // etiqueta igual tiene que decir cual se uso.
+    assert.notEqual(scale(0, REGIMEN.escala), scale(0, REGIMEN.orden));
+  });
+
   test('el paso es el grado sin reflexion y su inverso con ella, en las 96', () => {
     // La unica diferencia entre las dos numeraciones, y la razon de que existan las
     // dos: el grado dice QUE NOTA tiene la celda —la reflexion no lo mueve, eso es
@@ -249,6 +270,38 @@ describe('check_invariants', () => {
     assert.equal(pieceOf('F: tiene 4 celdas y deberia tener 5'), 'F');
     assert.equal(pieceOf('dos piezas comparten tonica'), null);
     assert.equal(pieceOf('Q: pieza inexistente'), null);
+  });
+
+  test('con un fallo real, el filtro acota los mensajes y no el veredicto', () => {
+    // El docblock de `pieceOf` dice por que se exporta: «con los cinco chequeos en
+    // verde no hay ni un fallo real con el que ejercitar el filtro desde la tool».
+    // Se fabrica uno rompiendo una forma, que es la unica manera de recorrer el
+    // camino que la tool toma cuando algo esta mal — o sea, el unico que importa.
+    const original = SHAPES.I;
+    SHAPES.I = [[0, 0], [1, 0], [2, 0]];
+    try {
+      const formas = (r: Record<string, unknown>) =>
+        (r.checks as { name: string; failures: string[]; failuresOtherPieces: number }[])
+          .find(c => c.name === 'formas')!;
+
+      const sinFiltro = call(checkInvariants, {});
+      assert.equal(sinFiltro.ok, false);
+      assert.equal(formas(sinFiltro).failures.length, 1);
+      assert.match(formas(sinFiltro).failures[0], /^I: tiene 3 celdas/);
+      assert.equal(formas(sinFiltro).failuresOtherPieces, 0);
+
+      // Acotado a otra pieza: el mensaje desaparece de la lista PERO `ok` sigue
+      // siendo el del modelo entero. Un "todo bien" acotado a la Z mientras la I
+      // esta rota seria la respuesta enganosa que el comentario del fuente rechaza.
+      const conFiltro = call(checkInvariants, { piece: 'Z' });
+      assert.equal(conFiltro.ok, false);
+      assert.equal(conFiltro.scope, 'Z');
+      assert.deepEqual(formas(conFiltro).failures, []);
+      // Y se dice cuantos se escondieron, que es lo que evita leer el [] como "nada".
+      assert.equal(formas(conFiltro).failuresOtherPieces, 1);
+    } finally {
+      SHAPES.I = original;
+    }
   });
 });
 
@@ -628,5 +681,128 @@ describe('simulate_board', () => {
     assert.ok(cuentas(normal).crosses > 0, 'este tablero cruza de verdad');
     assert.equal(cuentas(conMute).crosses, 0);
     assert.deepEqual(ruta(conMute).hops.flatMap(h => h.crossed), []);
+  });
+
+  test('la reflexion llega hasta la simulacion: mismas celdas, arpegio al reves', () => {
+    // La `X` es una de las cuatro piezas donde el espejo NO cambia la forma, asi que
+    // aisla lo que este test mira: la reflexion no se ve en `cells` y si se oye en la
+    // `timeline`. Con una pieza asimetrica el retrogrado quedaria mezclado con el
+    // cambio de celdas y el test afirmaria dos cosas a la vez.
+    const enX = (mirror: boolean) =>
+      call(simulateBoard, { pieces: [{ piece: 'X', at: [2, 2], mirror }], cycles: 1 });
+    const derecho = enX(false);
+    const espejo = enX(true);
+
+    // Como CONJUNTO y no como lista: el espejo deja la forma igual pero reordena el
+    // array, que es justo lo que el invariante del orden garantiza —el indice k sigue
+    // siendo la imagen de la celda k— y lo que hace que el retrogrado tenga sentido.
+    const celdas = (r: Record<string, unknown>) =>
+      new Set((r.placements as { cells: Cell[] }[])[0].cells.map(c => c.join(',')));
+    assert.deepEqual(celdas(espejo), celdas(derecho), 'en la X el espejo no se ve');
+
+    const notas = (r: Record<string, unknown>) =>
+      linea(r).filter(e => e.note !== undefined).map(e => e.note);
+    assert.equal(notas(derecho).length, NOTES_PER_PIECE);
+    assert.deepEqual(notas(espejo), [...notas(derecho)].reverse());
+  });
+
+  test('un `hz` que el mapa no conoce se dice en Hz, no como `undefined`', () => {
+    // La regla vive en `nombreDeHz` y no en un `??` dentro del `map` justamente para
+    // poder ejercerla: desde la tool no se alcanza, porque hoy todo `Hit` con altura
+    // sale de las notas con las que se arma el mapa. Que no se alcance no la vuelve
+    // irrelevante — la vuelve invisible, que es peor.
+    const mapa = new Map([[440, 'A4']]);
+    assert.equal(nombreDeHz(mapa, 440), 'A4');
+    assert.equal(nombreDeHz(mapa, 523.2511), '523Hz');
+  });
+});
+
+/**
+ * Las dos tools que leen el disco, y las unicas cuyo `run` no tenia un solo test.
+ *
+ * Se las corre sobre el repo REAL a proposito —es lo que hacen en produccion, y
+ * montar un `src/` de mentira verificaria el parser contra un dialecto inventado—
+ * pero se afirma la FORMA y las invariantes de la respuesta, nunca su contenido:
+ * un simbolo nuevo o un spec nuevo no tienen que poner el build en rojo. Es la
+ * misma linea que ya traza el docblock de `specs.test.ts`, aplicada al otro lado.
+ */
+describe('find_symbol', () => {
+  test('sin `name` devuelve el outline entero, y los contadores son los del mapa que viaja', () => {
+    const r = call(findSymbol, { includeTests: false });
+    const outline = r.outline as Record<string, string[]>;
+
+    // La regresion que el comentario del fuente nombra: los contadores se derivaban
+    // del indice crudo —que cuenta los tests— sobre un outline que los omite, y
+    // decia 84 sobre 36 arriba de una lista de 78 sobre 26.
+    assert.equal(r.archivos, Object.keys(outline).length);
+    assert.equal(r.simbolos, Object.values(outline).reduce((n, xs) => n + xs.length, 0));
+    assert.ok(r.archivos as number > 0, 'el indice no puede salir vacio');
+
+    // Y sin tests: ningun archivo del outline vive en `__tests__/`.
+    assert.deepEqual(Object.keys(outline).filter(f => f.includes('__tests__')), []);
+  });
+
+  test('`includeTests` es lo unico que cambia entre las dos vistas, y suma', () => {
+    const sin = call(findSymbol, { includeTests: false });
+    const con = call(findSymbol, { includeTests: true });
+    assert.ok((con.simbolos as number) > (sin.simbolos as number));
+    assert.ok((con.archivos as number) > (sin.archivos as number));
+  });
+
+  test('con `name` trae la firma y el `usedBy` resuelto por el grafo, no por texto', () => {
+    const r = call(findSymbol, { name: 'notesForRotation', includeTests: false });
+    const matches = r.matches as { name: string; file: string; usedBy: string[] }[];
+    assert.equal(r.query, 'notesForRotation');
+    assert.equal(r.nota, undefined, 'ni miss ni corte: no hay nota que dar');
+
+    const hit = matches.find(m => m.name === 'notesForRotation');
+    assert.ok(hit, 'el simbolo tiene que estar');
+    assert.equal(hit.file, 'src/domain/music.ts');
+    // La arista que justifica indexar `mcp-server/` como solo-grafo: sin ella
+    // `usedBy` sub-reporta y la tool queda mas pobre que el grep que reemplaza.
+    assert.ok(
+      hit.usedBy.some(f => f.startsWith('mcp-server/')),
+      'una tool del server importa este simbolo, y esa arista cuenta',
+    );
+    // Resuelto por grafo y no por coincidencia de texto: cada usuario aparece UNA vez.
+    assert.equal(new Set(hit.usedBy).size, hit.usedBy.length);
+  });
+
+  test('un miss se dice, en vez de devolver una lista vacia muda', () => {
+    const r = call(findSymbol, { name: 'noExisteEsteSimboloEnNingunLado', includeTests: false });
+    assert.deepEqual(r.matches, []);
+    assert.match(r.nota as string, /Ningún símbolo exportado de src\/ coincide/);
+  });
+
+  test('un corte tambien se dice, que es distinto de devolver 20 y callarse', () => {
+    // Una subcadena de una letra barre casi todo el indice: lo que se afirma no es
+    // cuantos hay —eso cambia con cada simbolo nuevo— sino que al cortar lo diga y
+    // que el numero de la nota sea el total y no el truncado.
+    const r = call(findSymbol, { name: 'e', includeTests: false });
+    const matches = r.matches as unknown[];
+    assert.equal(matches.length, 20, 'el tope de la tool');
+    assert.match(r.nota as string, /coincide por subcadena con \d+ símbolos; van los primeros 20/);
+    const total = Number((r.nota as string).match(/con (\d+) símbolos/)![1]);
+    assert.ok(total > matches.length, 'la nota reporta el total, no lo que entro');
+  });
+});
+
+describe('spec_status', () => {
+  test('responde sobre las carpetas reales sin depender de lo que digan', () => {
+    const r = call(specStatus, {});
+    const specs = r.specs as { id: string; dir: string; notas: string[] }[];
+    const totales = r.totales as Record<string, number>;
+
+    assert.ok(specs.length > 0, 'el repo tiene specs');
+    assert.equal(totales.specs, specs.length);
+
+    // Los totales se derivan de los estados que aparecen, sin lista propia: la suma
+    // de las clases tiene que dar el total, o hay un spec contado dos veces.
+    const porEstado = Object.entries(totales).filter(([k]) => k !== 'specs');
+    assert.equal(porEstado.reduce((n, [, v]) => n + v, 0), specs.length);
+
+    // Y el orden es el de las carpetas, que es lo que hace la respuesta estable.
+    assert.deepEqual(specs.map(s => s.dir), [...specs.map(s => s.dir)].sort());
+    for (const s of specs) assert.match(s.dir, /^\d+-/);
   });
 });

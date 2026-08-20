@@ -1,6 +1,9 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseLog, parseTasks } from '../specs.ts';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { parseLog, parseTasks, readSpecStatus } from '../specs.ts';
 
 /**
  * Sobre strings fijos y NO sobre los archivos del repo: si estos tests leyeran
@@ -197,5 +200,111 @@ describe('parseTasks — ID y marcadores', () => {
 
   test('CRLF tampoco rompe los marcadores', () => {
     assert.deepEqual(parseTasks(MARCADAS.replace(/\n/g, '\r\n')), parseTasks(MARCADAS));
+  });
+});
+
+/**
+ * `readSpecStatus` es la parte que toca el disco, y la unica que cruza las dos
+ * mitades: las CARPETAS mandan, y el log se cruza contra ellas.
+ *
+ * Va sobre un `specs/` de mentira en un temporal y no sobre el del repo, por la
+ * misma razon que el resto de este archivo: sus casos son un spec sin fila, un spec
+ * sin `tasks.md` y un spec terminal con casillas abiertas, o sea estados que el repo
+ * real no tiene —ni queremos que tenga— y que aparecerian y desaparecerian solos.
+ */
+describe('readSpecStatus', () => {
+  /** Arma un `specs/` desechable. `null` en `log` es "este directorio no tiene log.md". */
+  function fixture(log: string | null, dirs: Record<string, string | null>): string {
+    const raiz = mkdtempSync(join(tmpdir(), 'spec-status-'));
+    if (log !== null) writeFileSync(join(raiz, 'log.md'), log, 'utf8');
+    for (const [dir, tasks] of Object.entries(dirs)) {
+      mkdirSync(join(raiz, dir));
+      if (tasks !== null) writeFileSync(join(raiz, dir, 'tasks.md'), tasks, 'utf8');
+    }
+    return raiz;
+  }
+
+  const fila = (dir: string, estado: string) =>
+    `| [${dir.split('-', 1)[0]}](./${dir}/spec.md) | 2026-08-20 | ${estado} | Titulo de ${dir} |`;
+
+  const CABECERA = '| Spec | Fecha | Estado | Descripción |\n|---|---|---|---|\n';
+  const UNA_ABIERTA = '## Tareas\n- [x] T001 Hecha\n- [ ] T002 Abierta\n';
+  const TODAS_HECHAS = '## Tareas\n- [x] T001 Hecha\n- [x] T002 Tambien\n';
+
+  test('las carpetas mandan y el log se cruza contra ellas', () => {
+    const raiz = fixture(
+      CABECERA + fila('001-con-todo', 'Implementado') + '\n',
+      {
+        '001-con-todo': UNA_ABIERTA,
+        '002-sin-fila': UNA_ABIERTA,
+        '003-sin-tasks': null,
+        // No empieza con digitos: no es un spec y no tiene que aparecer.
+        'borrador': null,
+      },
+    );
+    try {
+      const { specs, totales } = readSpecStatus(raiz);
+
+      assert.deepEqual(specs.map(s => s.dir), ['001-con-todo', '002-sin-fila', '003-sin-tasks']);
+
+      const [conTodo, sinFila, sinTasks] = specs;
+      assert.deepEqual(conTodo.notas, []);
+      assert.equal(conTodo.estado, 'Implementado');
+      assert.equal(conTodo.tareas?.pendientes, 1);
+
+      // Un spec con carpeta y sin fila es el descuido que conviene VER, no esconder:
+      // se responde igual, con el id sacado del nombre de la carpeta y la nota puesta.
+      assert.deepEqual(sinFila.notas, ['sin fila en log.md']);
+      assert.equal(sinFila.id, '002');
+      assert.equal(sinFila.estado, null);
+      assert.equal(sinFila.titulo, null);
+
+      assert.deepEqual(sinTasks.notas, ['sin fila en log.md', 'sin tasks.md']);
+      assert.equal(sinTasks.tareas, null);
+
+      // Los totales se derivan de los estados que aparecen, sin lista propia.
+      assert.equal(totales.specs, 3);
+      assert.equal(totales.Implementado, 1);
+      assert.equal(totales['sin estado'], 2);
+    } finally {
+      rmSync(raiz, { recursive: true, force: true });
+    }
+  });
+
+  test('de un spec terminal no sale trabajo, y la nota dice por que', () => {
+    const raiz = fixture(
+      CABECERA + fila('001-descartado', 'Descartado') + '\n' + fila('002-superado', 'Superado') + '\n',
+      { '001-descartado': UNA_ABIERTA, '002-superado': TODAS_HECHAS },
+    );
+    try {
+      const [descartado, superado] = readSpecStatus(raiz).specs;
+
+      // Las casillas abiertas siguen contadas —el historico no se borra— pero
+      // `pendientes` va a 0 y no hay proxima: nadie le debe eso a nadie.
+      assert.equal(descartado.tareas?.total, 2);
+      assert.equal(descartado.tareas?.hechas, 1);
+      assert.equal(descartado.tareas?.pendientes, 0);
+      assert.equal(descartado.tareas?.proxima, null);
+      assert.equal(descartado.tareas?.proximaId, null);
+      assert.deepEqual(descartado.notas, ['Descartado: las 1 casillas abiertas son historia, no deuda']);
+
+      // Y un terminal SIN casillas abiertas no gana una nota que no tiene que dar.
+      assert.equal(superado.tareas?.pendientes, 0);
+      assert.deepEqual(superado.notas, []);
+    } finally {
+      rmSync(raiz, { recursive: true, force: true });
+    }
+  });
+
+  test('sin log.md contesta igual: son las carpetas las que existen', () => {
+    const raiz = fixture(null, { '001-huerfano': UNA_ABIERTA });
+    try {
+      const { specs, totales } = readSpecStatus(raiz);
+      assert.equal(specs.length, 1);
+      assert.deepEqual(specs[0].notas, ['sin fila en log.md']);
+      assert.equal(totales['sin estado'], 1);
+    } finally {
+      rmSync(raiz, { recursive: true, force: true });
+    }
   });
 });

@@ -41,13 +41,13 @@ persona y no bloquea el cierre.
 
 ### `mcp-server` — de 92,38 % a 100 %
 
-- [ ] T030 [P] Agregar `--test-coverage-include='src/**'` y `--test-coverage-exclude='src/__tests__/**'` al script `test` del server, **sin umbrales todavía**, y confirmar que el reporte deja afuera los `../src/**` del dominio
-- [ ] T031 [P] `tools/findSymbol.ts` 68-96: la función `run`, hoy en **0 % de funciones**
-- [ ] T032 [P] `tools/specStatus.ts`: la función `run`, hoy en **0 % de funciones**
-- [ ] T033 [P] `specs.ts` 176-181 y 191-237: el 40 % de funciones sin cubrir
-- [ ] T034 [P] `symbols.ts` 241-249 y 271-295
-- [ ] T035 [P] Las ramas sueltas de `checkInvariants.ts` (87,50 %), `describePiece.ts` (92,86 %), `render.ts` (96 %) y `simulateBoard.ts` (96 %)
-- [ ] T036 Excluir `mcp-server/src/index.ts` por nombre y con su comentario — D3, AC11
+- [x] T030 [P] Agregar `--test-coverage-include='src/**'` y `--test-coverage-exclude='src/__tests__/**'` al script `test` del server, **sin umbrales todavía**, y confirmar que el reporte deja afuera los `../src/**` del dominio
+- [x] T031 [P] `tools/findSymbol.ts` 68-96: la función `run`, hoy en **0 % de funciones**
+- [x] T032 [P] `tools/specStatus.ts`: la función `run`, hoy en **0 % de funciones**
+- [x] T033 [P] `specs.ts` 176-181 y 191-237: el 40 % de funciones sin cubrir
+- [x] T034 [P] `symbols.ts` 241-249 y 271-295
+- [x] T035 [P] Las ramas sueltas de `checkInvariants.ts` (87,50 %), `describePiece.ts` (92,86 %), `render.ts` (96 %) y `simulateBoard.ts` (96 %)
+- [x] T036 Excluir `mcp-server/src/index.ts` por nombre y con su comentario — D3, AC11
 
 ## Fase 3 — `audio/engine.ts` ⟨024⟩
 
@@ -73,7 +73,7 @@ persona y no bloquea el cierre.
 ## Fase 5 — El gate y el registro
 
 - [ ] T050 Poner `thresholds: { lines: 100, statements: 100, functions: 100, branches: 100 }` en `vite.config.ts` — AC1
-- [ ] T051 Poner `--test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100` en el `test` del server — AC5
+- [x] T051 Poner `--test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100` en el `test` del server — AC5
 - [ ] T052 **Verificar que el gate muerde**: comentar una rama cubierta, correr `pnpm verify`, confirmar exit 1 y que el mensaje nombra la métrica, revertir. Un gate que nunca se vio fallar no es un gate
 - [ ] T053 `grep -rn "v8 ignore\|c8 ignore" src mcp-server` devuelve vacío — AC10
 - [ ] T054 `CLAUDE.md`: `verify` pasa a cinco nodos, con la medición nueva de serie contra paralelo y el segundo motivo del ancla `$` — AC12

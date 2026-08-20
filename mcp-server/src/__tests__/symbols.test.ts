@@ -348,3 +348,60 @@ describe('outline', () => {
     );
   });
 });
+
+/**
+ * Los cuatro bordes del parser, que ningun archivo del repo ejerce.
+ *
+ * Son justamente los que un indice construido EN LA CONSULTA no puede darse el lujo
+ * de tener rotos: `find_symbol` corre sobre lo que haya en el arbol en ese momento,
+ * incluido un archivo a medio escribir. Que hoy `src/` no tenga ninguno de estos
+ * cuatro casos es una propiedad del repo de hoy, no del parser.
+ */
+describe('parseModule — los bordes que el repo no tiene', () => {
+  test('un docblock vacio no cuenta como doc', () => {
+    const [e] = parseModule('/** */\nexport const A = 1;\n', 'x.ts').exports;
+    assert.equal(e.doc ?? null, null);
+  });
+
+  test('un archivo sin un solo docblock tampoco', () => {
+    const [e] = parseModule('export const A = 1;\n', 'x.ts').exports;
+    assert.equal(e.doc ?? null, null);
+  });
+
+  test('un `/**` sin cerrar no se lee como documentacion', () => {
+    // El caso del archivo a medio escribir. Va DESPUES del export a proposito: un
+    // bloque sin cerrar al principio se come el resto del archivo en el parser de
+    // TypeScript y no habria export que documentar. Lo que se afirma aca es la otra
+    // guarda —la del `indexOf('*/')` que devuelve -1— sin la cual el `slice` daria
+    // basura y la tool la mostraria como si fuera doc.
+    const m = parseModule('export const A = 1;\n/** empieza y no termina\n', 'x.ts');
+    assert.equal(m.exports.length, 1);
+    assert.equal(m.exports[0].doc ?? null, null);
+  });
+
+  /**
+   * El doc de nivel de archivo solo se busca para un `export default` SIN doc propio
+   * —es la unica forma de export que suele documentarse arriba de todo y no encima—,
+   * asi que sus dos guardas viven detras de esa puerta.
+   */
+  test('un default sin doc propio ni doc de archivo no inventa documentacion', () => {
+    const [e] = parseModule('export default function A() {}\n', 'x.tsx').exports;
+    assert.equal(e.esDefault, true);
+    assert.equal(e.doc ?? null, null);
+  });
+
+  test('un default cuyo unico `/**` esta sin cerrar tampoco', () => {
+    // Sin la guarda del `indexOf('*/')`, el `slice` hasta un -1 devolveria basura y
+    // la tool la mostraria como si fuera la primera frase del archivo.
+    const [e] = parseModule('export default function A() {}\n/** sin cerrar\n', 'x.tsx').exports;
+    assert.equal(e.doc ?? null, null);
+  });
+
+  test('un export desestructurado no entra al indice, y no rompe el archivo', () => {
+    // `export const { a, b } = obj` no tiene un identificador que nombrar, asi que
+    // se saltea. Lo que importa es que los exports NORMALES del mismo archivo sigan
+    // saliendo: un solo caso raro no puede dejar el modulo sin indexar.
+    const m = parseModule('export const { a, b } = obj;\nexport const C = 1;\n', 'x.ts');
+    assert.deepEqual(m.exports.map(e => e.name), ['C']);
+  });
+});

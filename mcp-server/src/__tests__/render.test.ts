@@ -100,4 +100,14 @@ describe('renderCellNumbers', () => {
   test('sin celdas devuelve el string vacio', () => {
     assert.equal(renderCellNumbers([], []), '');
   });
+
+  test('lo que no es un digito solo cae a `#` y la grilla no se desalinea', () => {
+    // La regla que el docblock declara —un numero de dos digitos desalinearia la
+    // grilla— tiene tres formas de incumplirse, y las tres caen al mismo lado. El
+    // ancho de la fila es lo que se afirma: es lo que la regla existe para sostener.
+    const fila: Cell[] = [[0, 0], [1, 0], [2, 0], [3, 0]];
+    assert.equal(renderCellNumbers(fila, [10, -1, 2.5, 7]), '###7');
+    // Y una celda sin valor tampoco inventa nada.
+    assert.equal(renderCellNumbers(fila, [0]), '0###');
+  });
 });
