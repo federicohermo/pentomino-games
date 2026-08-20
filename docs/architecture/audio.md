@@ -147,8 +147,8 @@ de secuencia al cerrar un ciclo — ver [más abajo](#el-swap-en-el-cierre-de-ci
 ## El recorrido en el scheduler
 
 `domain/sequence.ts` arma el circuito y los offsets; el motor no recalcula ni reordena nada, solo lee
-lo que le entregan. `App.tsx` llama a `buildSequence(placed, regimen)` y proyecta el resultado a la `Sequence`
-del motor, que **no lleva celdas**:
+lo que le entregan. El shell llama a `buildSequence(placed, regimen)` en un `useMemo` y
+`proyectarAlMotor` (`components/motor.ts`) lo lleva a la `Sequence` del motor, que **no lleva celdas**:
 
 ```ts
 // audio/types/scheduler.types.ts
@@ -262,7 +262,7 @@ interruptor de clicks queda, pero ya no es la única mitigación: la mitigación
 
 **Desde el spec 015 ese interruptor arranca en `false`** —los clicks nacen apagados, y el default vive
 en dos lugares que tienen que decir lo mismo: el `useState` de `App.tsx` y `clicksAudible` en
-`engine.ts`—. El argumento del 009 no se negó: sin clicks un salto largo es un silencio mudo, y
+`engine.ts`, que el efecto de `components/use-motor.ts` pisa al montar—. El argumento del 009 no se negó: sin clicks un salto largo es un silencio mudo, y
 apagarlos apaga el 44 % de los eventos de un tablero chico. Lo que cambió es quién decide. Por eso el
 `T070` del 011, que proponía **borrar** el botón, quedó cerrado con un "no": con el default dado vuelta
 el botón es la única forma de **encender** el recorrido.
@@ -276,8 +276,9 @@ está cerrado: AC11 del 011 lo deja abierto a confirmarse escuchando, y moverlo 
 
 ## Reconciliación de loops
 
-Un único `useEffect` en `App.tsx` observa `[placed]` y le entrega al motor la secuencia donde debe
-estar. Los handlers solo cambian estado.
+Un único `useEffect` —en `components/use-motor.ts` desde el spec 022, en `App.tsx` hasta ahí— observa
+`[secuencia, placed]` y le entrega al motor la secuencia donde debe estar. Los handlers solo cambian
+estado.
 
 ```ts
 useEffect(() => {
@@ -304,7 +305,11 @@ Dos cosas del snippet que no son detalle:
 
 Antes este efecto iteraba piezas y armaba un job por cada una; hoy es **una sola llamada**:
 `buildSequence` (`domain/sequence.ts`) arma el circuito entero —orden, offsets y clicks— de una vez, y
-`App.tsx` sigue siendo el único puente entre las dos capas, ahora más chico que antes.
+y el puente entre las dos capas es una sola pura, `proyectarAlMotor`. Que sea una pura y no dos
+bloques de efecto es del spec 022: hasta ahí el mismo cruce estaba escrito dos veces —el efecto de
+reconciliación y el de desmontaje—, con un comentario que ya admitía que escribirlo distinto invitaría a
+divergir. Con la pura eso pasa a ser imposible de escribir, y los tres estados de `Click.note` tienen
+test por primera vez.
 
 **Por qué reemplazar la secuencia entera es seguro acá**, cuando con Tone habría reiniciado la fase de
 cada loop: `setSequence` no agenda nada, solo deja la secuencia nueva como **pendiente** — `tick()` la
