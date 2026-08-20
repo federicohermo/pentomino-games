@@ -96,24 +96,31 @@ src/
     ├── PiecePalette.tsx          # paleta, rotación, reflexión, tempo, transporte, clicks
     ├── Board.tsx                 # grilla 10×6: color por pieza, nota por celda, y el fantasma
     │                             #   diciendo lo mismo antes de colocar
-    ├── PlacedList.tsx            # lista de piezas colocadas
     ├── Spectrum.tsx              # canvas del espectro: rAF + HiDPI, sin props
     ├── Playhead.tsx              # cabeza lectora: rAF + estilo imperativo, sin props (spec 010)
     ├── route-source.ts           # singleton fuera de React (no un componente): espeja active/
     │                             #   pending del motor con la Sequence del dominio, con celdas
     ├── cell-text.ts              # qué dice cada celda: su nota (por grado) y su #N (por paso).
     │                             #   Fuera del .tsx para poder testearla (spec 012, fix del #N)
+    ├── piece-mini.ts             # la forma de una pieza centrada en la caja de 5×5 de la paleta,
+    │                             #   ya rotada y reflejada (spec 016). Fuera del .tsx por lo mismo
+    ├── input.ts                  # la decisión de cada gesto de entrada: rueda, tecla, menú
+    │                             #   contextual y click sobre una celda (specs 013 y 014)
     ├── constants/
-    │   ├── layout.constants.ts   # CELL_PX · TEMPO_MIN · TEMPO_MAX
+    │   ├── layout.constants.ts   # CELL_PX · MINI_BOX · MINI_CELL_PX · TEMPO_MIN · TEMPO_MAX
     │   ├── palette.constants.ts  # los 12 colores y su color de texto (ver DESIGN.md)
-    │   └── route.constants.ts    # MARCA: los estados de una celda bajo la cabeza lectora
+    │   ├── route.constants.ts    # MARCA: los estados de una celda bajo la cabeza lectora
+    │   └── input.constants.ts    # ACCION y EDICION: lo que puede pedir un gesto
     ├── types/
     │   ├── cell-text.types.ts    # CellText: lo que una celda muestra
-    │   └── route.types.ts        # Marca · CeldaPorEstrenar
+    │   ├── route.types.ts        # Marca · CeldaPorEstrenar
+    │   └── input.types.ts        # Accion · Edicion · los campos de evento que las puras miran
     └── __tests__/
         ├── palette.test.ts       # contraste WCAG recalculado desde el fondo; puro, sin jsdom
         ├── route-source.test.ts  # el par activa/pendiente y el velo, con el motor mockeado
-        └── cell-text.test.ts     # el #N es el paso y la nota es el grado, en las 96
+        ├── cell-text.test.ts     # el #N es el paso y la nota es el grado, en las 96
+        ├── input.test.ts         # la decisión de cada gesto: rueda, teclas y click (013 y 014)
+        └── piece-mini.test.ts    # la forma entra y queda centrada en la caja, en las 96
 ```
 
 ## La dirección de dependencia

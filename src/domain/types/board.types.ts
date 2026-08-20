@@ -20,4 +20,21 @@ export interface PlacedPiece {
   rotation: number;
   mirror: boolean;
   cells: Cell[];
+  /**
+   * La pieza ocupa su lugar y su tiempo en el circuito pero NO suena sus notas: donde
+   * habria ido su arpegio van cinco clicks, uno por celda, en los mismos offsets. El
+   * orden de visita, los offsets del resto y el largo del ciclo no cambian.
+   *
+   * Va acá por el mismo argumento que `cells` y no por el que retiró a `notes`: **no es
+   * derivable**. No sale de la pieza, ni de la rotacion, ni de las celdas — sale de un
+   * gesto, que es informacion que solo existe en el click.
+   *
+   * **Obligatorio y no `muted?: boolean`.** Opcional daria dos formas de decir "no
+   * muteada" —`false` y ausente— y este repo ya pago ese error una vez: en `Click.note`
+   * la AUSENCIA del campo significa algo distinto de un `undefined` explicito, y hay un
+   * ternario puesto a proposito en la proyeccion de `App.tsx` para no producir el tercer
+   * estado. Acá no hay nada que la ausencia pueda significar, asi que no se le da la
+   * oportunidad.
+   */
+  muted: boolean;
 }

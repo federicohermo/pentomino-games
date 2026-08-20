@@ -35,7 +35,7 @@ beforeEach(async () => {
 });
 
 /** La cadena de colocacion completa, igual a la de `App.tsx` y a `sequence.test.ts`. */
-const colocar = (piece: PieceKey, rot: number, mirror: boolean, x: number, y: number): PlacedPiece => {
+const colocar = (piece: PieceKey, rot: number, mirror: boolean, x: number, y: number, muted = false): PlacedPiece => {
   const base = rotateN(SHAPES[piece], rot);
   const shape = mirror ? reflect(base) : base;
   return {
@@ -44,6 +44,7 @@ const colocar = (piece: PieceKey, rot: number, mirror: boolean, x: number, y: nu
     rotation: rot,
     mirror,
     cells: cellsAt(shape, ANCHOR_INDEX[piece], x, y),
+    muted,
   };
 };
 
@@ -246,5 +247,40 @@ describe('AC5 — el velo de lo que todavia no sono', () => {
     cerrarCiclo();
     rs.rutaActiva();
     expect(rs.velo()).not.toBe(alEncolar);
+  });
+});
+
+describe('AC19 — la cabeza recorre la pieza muteada, con el borde del click', () => {
+  const MUTEADA = [colocar('F', 0, false, 2, 2, true), colocar('L', 0, true, 7, 1)];
+
+  it('sus cinco celdas siguen marcadas, pero con MARCA.click y no MARCA.nota', () => {
+    // Sigue ocupando ese tiempo: la cabeza no puede saltearla, o el recorrido se leeria
+    // mas corto de lo que dura. Lo que cambia es el borde, y cambia porque lo que suena
+    // ahi ES un click — no es un efecto colateral de que las marcas se armen de
+    // `s.clicks`, es la razon por la que armarlas de ahi es correcto.
+    encolarTablero(MUTEADA);
+    cerrarCiclo();
+    const marcas = rs.rutaActiva();
+    const celdas = cellsByPlayOrder(MUTEADA[0]);
+    const s = buildSequence(MUTEADA, REGIMEN.escala);
+
+    // Sin `Step` para la pieza muteada: sus celdas entran por la rama de los clicks.
+    expect(s.steps.map((st) => st.pieceId)).toEqual(['L']);
+    for (let j = 0; j < celdas.length; j++) {
+      expect(marcas[j], `celda ${j}`).toEqual({ cell: celdas[j], kind: MARCA.click });
+    }
+    // Y el ciclo sigue cubierto entero.
+    expect(marcas).toHaveLength(s.length);
+    expect(marcas.filter((m) => m === null)).toEqual([]);
+  });
+
+  it('AC9 — la pieza muteada no tiene velo de estreno, y la otra si', () => {
+    // Decision (a) del spec: el velo dice "esto todavia no sono", y una pieza muteada no
+    // va a sonar nunca. Atenuarla hasta que le "toque" prometeria algo que no pasa, y
+    // ademas la opacidad ya esta ocupada diciendo eso.
+    encolarTablero(MUTEADA);
+    cerrarCiclo();
+    rs.rutaActiva();
+    expect(new Set(rs.velo().map((e) => e.id))).toEqual(new Set(['L']));
   });
 });

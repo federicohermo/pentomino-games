@@ -172,8 +172,15 @@ export const setBpm = (v: number): void => { bpm = v; };
  * — apagarlo dejaria el recorrido diciendo que cruzo por el vacio donde cruzo por una
  * pieza. Es tambien la razon por la que `HIT` tiene tres claves y no dos con un campo
  * opcional: sin discriminante, esta funcion no tendria a quien apagar.
+ *
+ * **Arranca en `false` desde el spec 015**, y este es el segundo lugar donde vive ese
+ * default: el otro es el `useState` de `App.tsx`, que lo pisa en el efecto de montaje.
+ * Que se pisen no vuelve inofensivo dejarlos en desacuerdo — es el mismo valor
+ * declarado dos veces, exactamente lo que `App.tsx` evita tomando el tempo de
+ * `DEFAULT_BPM`. El argumento del cambio esta escrito donde el usuario lo ve, que es
+ * `App.tsx`.
  */
-let clicksAudible = true;
+let clicksAudible = false;
 export const setClicksAudible = (v: boolean): void => { clicksAudible = v; };
 
 /**
@@ -319,6 +326,24 @@ function tick(): void {
   // Tres clases y tres ramas (AC13 del spec 011). El cruce con altura vuelve a pasar
   // por `scheduleVoice` y no por una funcion nueva: es una nota, con otros dos numeros.
   // Y no lo mira `clicksAudible`, que apaga solo la rama muda (D6).
+  //
+  // **Y no hay una cuarta rama, ni la va a haber por dos motivos distintos.**
+  //
+  // No hay acento en el primer click del ciclo (D6 del spec 015): todos son identicos
+  // porque el circuito **no tiene un tiempo fuerte**. `buildSequence` fija el arranque
+  // en el indice 0 solo para eliminar las rotaciones equivalentes del mismo recorrido,
+  // asi que el "1" es un punto de partida convencional y no el comienzo de nada.
+  // Acentuarlo le inventaria un principio al circuito, y eso seria una decision del
+  // MODELO y no del timbre — el lugar donde se discutiria es `domain/sequence.ts`.
+  //
+  // Y una pieza muteada no tiene rama propia: sus celdas emiten el mismo `Click` sin
+  // `note` que una celda vacia, asi que pasan por este mismo `clicksAudible`. Con los
+  // clicks apagados eso da **silencio total** sobre una pieza muteada, y esa es la
+  // respuesta buscada y no un caso sin cubrir: mutear una pieza es sacarla del sonido,
+  // y apagar los clicks es sacar del sonido lo que el recorrido dice al pasar por el
+  // vacio — las dos cosas apuntan al silencio, asi que el silencio es lo correcto.
+  // Separar los dos significados costaria un cuarto `HIT` y un discriminante en
+  // `Click`, o sea dos tipos nuevos para distinguir dos maneras de callarse.
   for (const hit of w.hits) {
     if (hit.kind === HIT.note) scheduleVoice(c, master, hit.hz, hit.at, dur, rel);
     else if (hit.kind === HIT.cross) scheduleVoice(c, master, hit.hz, hit.at, grace, rel, GRACE_VELOCITY);

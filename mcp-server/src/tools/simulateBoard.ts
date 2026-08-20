@@ -48,6 +48,11 @@ const placementSchema = z.object({
   piece: z.enum(PIECE_KEYS),
   rotation: z.number().int().min(0).max(3).default(0),
   mirror: z.boolean().default(false),
+  // Una pieza muteada ocupa su lugar y su tiempo en el circuito pero no suena sus
+  // notas: donde iba su arpegio van cinco clicks (spec 014). Se acepta aca para que la
+  // tool pueda contestar "que cambia si muteo esta" sin que nadie lo derive a mano, y
+  // el default es `false` porque es el tablero de siempre.
+  muted: z.boolean().default(false),
   at: z.tuple([z.number().int(), z.number().int()])
     .describe(`Celda [x, y] donde cae la CELDA DE AGARRE, no la esquina. Tablero de ${GRID_W}x${GRID_H}, y crece hacia abajo.`),
 });
@@ -152,7 +157,7 @@ function resolve(entries: z.output<typeof inputSchema>['pieces']): { resolved: R
       // Sin `notes`: el arpegio ya no se guarda en la pieza, lo deriva `buildSequence`
       // con la misma `arpeggioFor` que usa la app. Antes se componia aca a mano, que era
       // una de las cuatro copias de esa derivacion.
-      const p: PlacedPiece = { id, piece: e.piece, rotation: e.rotation, mirror: e.mirror, cells };
+      const p: PlacedPiece = { id, piece: e.piece, rotation: e.rotation, mirror: e.mirror, cells, muted: e.muted };
       placed.push(p);
       gates = gatesOf(p);
     }
@@ -226,7 +231,10 @@ export const simulateBoard = defineTool({
     // Etapa 2 — la secuencia del recorrido, la misma que arma la app. Una pieza
     // invalida no esta en `placed` y por lo tanto no entra al circuito.
     const seq = buildSequence(placed, regimen);
-    const n = seq.steps.length;
+    // El circuito y no los pasos: desde el spec 014 una pieza MUTEADA visita su lugar
+    // sin emitir `Step`, asi que contar pasos reportaria un recorrido al que le faltan
+    // nodos y fusionaria dos tramos en uno.
+    const n = seq.order.length;
 
     // La proyeccion a la `Sequence` del MOTOR, que no lleva `pieceId` ni `cell`:
     // `src/audio/**` tiene prohibido importar `Cell` (AC12), asi que las dos formas
@@ -276,10 +284,10 @@ export const simulateBoard = defineTool({
     // que es lo que `cellDistance` media antes de que el spec 011 la reemplazara:
     // `.steps` es el equivalente de hoy, no `.cost`). Que el ciclo igual dure lo
     // dice `cycle`, que son los 5 intervalos del arpegio y no un salto.
-    const hops = n === 1 ? [] : seq.steps.map((step, t) => {
+    const hops = n === 1 ? [] : seq.order.map((step, t) => {
       const ultima = step.offset + CELLS_PER_PIECE - 1;
-      const siguiente = t + 1 < n ? seq.steps[t + 1].offset : seq.length;
-      const to = seq.steps[(t + 1) % n].pieceId;
+      const siguiente = t + 1 < n ? seq.order[t + 1].offset : seq.length;
+      const to = seq.order[(t + 1) % n].pieceId;
       // Los clicks del tramo enteros y no solo sus celdas: `path` y `crossed` son dos
       // lecturas de ESTA lista, asi que no pueden discrepar (D3).
       const tramo = seq.clicks.filter(c => c.offset > ultima && c.offset < siguiente);
@@ -323,6 +331,7 @@ export const simulateBoard = defineTool({
         rotation: pieces[i].rotation,
         mirror: pieces[i].mirror,
         at: pieces[i].at,
+        muted: pieces[i].muted,
         cells: r.cells,
         valid: r.valid,
         // Las puertas reemplazan a la `phase` del spec 004: la columna del ancla
@@ -330,7 +339,9 @@ export const simulateBoard = defineTool({
         // como entra al recorrido es por que celda lo recibe y por cual lo deja.
         ...(r.gates !== null ? { gates: r.gates } : { reason: r.reason }),
       })),
-      route: { order: seq.steps.map(s => s.pieceId), hops },
+      // El orden del CIRCUITO, que incluye a las piezas muteadas: siguen siendo nodos
+      // del recorrido aunque no suenen (spec 014).
+      route: { order: seq.order.map(o => o.pieceId), hops },
       // `coincident` se fue. Media cuantos onsets caian juntos, que era la pregunta
       // del modelo viejo: dos piezas en la misma columna se apilaban. En el
       // recorrido dos onsets no pueden coincidir POR CONSTRUCCION —las notas de una

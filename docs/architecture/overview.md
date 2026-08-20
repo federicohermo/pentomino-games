@@ -4,7 +4,8 @@
 
 Pentomino Games es un prototipo de instrumento musical. El usuario elige uno de los 12 pentominós, lo
 rota o refleja, y lo coloca en un tablero de 10×6. Cada colocación dispara un arpegio de cinco notas
-cuya identidad depende de la pieza y cuya escala depende de la orientación.
+cuya identidad depende de la pieza y cuya escala depende de la orientación — a menos que la pieza esté
+**muteada** (spec 014), que la deja ocupando su lugar y su tiempo en el circuito sin sonar.
 
 No hay objetivo, puntaje ni condición de victoria: es un instrumento, no un juego con reglas de
 resolución. Esa distinción importa al decidir features — lo que se evalúa es si algo se vuelve más
@@ -19,7 +20,7 @@ expresivo, no más difícil.
                            │
 ┌──────────────────────────▼──────────────────────────────┐
 │  src/App.tsx — el shell                                 │
-│   estado · derivados · handlers · los cuatro efectos    │
+│   estado · derivados · handlers · los seis efectos      │
 │   selected · rotation · mirror · tempo                  │
 │   playing · placed[] · hover                            │
 └───────┬─────────────────────────────┬───────────────────┘
@@ -27,7 +28,7 @@ expresivo, no más difícil.
 ┌───────▼──────────────────┐  ┌───────▼───────────────────┐
 │  src/components/         │  │  src/audio/               │
 │   PiecePalette · Board   │  │   voice.ts     síntesis   │
-│   PlacedList · Spectrum  │  │   scheduler.ts lookahead  │
+│   Spectrum · Playhead    │  │   scheduler.ts lookahead  │
 │                          │  │   engine.ts    singletons │
 │   presentacionales:      │  │   spectrum.ts  bins→barras│
 │   props, sin estado      │  │                           │
@@ -64,8 +65,12 @@ que un `.tsx` exporte algo además del componente, así que mientras la geometr�
 `App.tsx` **no podían exportarse, y por lo tanto no podían testearse**. La organización no era neutral:
 condenaba al dominio a no ser verificable. Hoy `src/domain/` tiene tests donde antes había cero.
 
-Lo que queda en `App.tsx` es el shell: estado, derivados, handlers, los cuatro efectos y la composición de
+Lo que queda en `App.tsx` es el shell: estado, derivados, handlers, los seis efectos y la composición de
 los componentes. Ninguna función pura y ningún literal de dominio.
+
+Los seis son cuatro de reconciliación —tempo, clicks, la secuencia contra el tablero, y la limpieza al
+desmontar— y los **dos de entrada** que agregó el spec 013: el del teclado sobre `window` y el de la
+rueda sobre el nodo del tablero. Van separados porque no comparten ni el target ni las dependencias.
 
 ## Las cuatro capas
 

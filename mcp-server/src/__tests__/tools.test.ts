@@ -594,4 +594,39 @@ describe('simulate_board', () => {
     const porOmision = call(simulateBoard, { pieces: BASE });
     assert.equal(porOmision.regimen, 'escala');
   });
+
+  test('AC12 del spec 014 — una pieza muteada reporta sus clicks y no su arpegio', () => {
+    // La tool es una fachada sobre `buildSequence`, asi que esto no verifica la regla
+    // del muteo —eso vive en `src/domain/__tests__/sequence.test.ts`— sino que la
+    // fachada la deje pasar entera: sin `muted` en el schema, la entrada se caia en
+    // silencio y la respuesta describia otro tablero.
+    // Un ciclo y no los dos del default: asi los conteos de `onsets` se leen contra el
+    // ciclo del tablero y no contra un multiplo suyo.
+    const normal = call(simulateBoard, { pieces: CON_CRUCE, cycles: 1 });
+    const conMute = call(simulateBoard, {
+      pieces: CON_CRUCE.map((p, i) => i === 0 ? { ...p, muted: true } : p),
+      cycles: 1,
+    });
+
+    // El circuito no se mueve: mismo orden de visita, mismos saltos y mismo ciclo. Es lo
+    // que hace que la tool pueda contestar "que cambia si muteo esta" — si el recorrido
+    // se moviera, la pregunta cambiaria la respuesta.
+    assert.deepEqual(ruta(conMute).order, ruta(normal).order);
+    assert.deepEqual(ruta(conMute).hops.map(h => h.distance), ruta(normal).hops.map(h => h.distance));
+    assert.equal(ciclo(conMute).intervals, ciclo(normal).intervals);
+
+    // La pieza muteada sigue siendo un nodo del recorrido, aunque no emita `Step`.
+    assert.ok(ruta(conMute).order.includes('1'));
+    assert.equal((r => (r.placements as { muted: boolean }[])[0].muted)(conMute), true);
+
+    // Cinco notas menos y cinco clicks mas, con el total intacto: el hueco se escucha en
+    // su lugar y no como un patron acortado.
+    assert.equal(cuentas(conMute).notes, cuentas(normal).notes - 5);
+    assert.equal(cuentas(conMute).total, cuentas(normal).total);
+    // Y los cruces sobre la pieza muteada dejan de sonar: la floritura del 011 es
+    // exactamente la nota que el muteo apago.
+    assert.ok(cuentas(normal).crosses > 0, 'este tablero cruza de verdad');
+    assert.equal(cuentas(conMute).crosses, 0);
+    assert.deepEqual(ruta(conMute).hops.flatMap(h => h.crossed), []);
+  });
 });

@@ -1,6 +1,6 @@
 import type { Cell } from './types/transform.types.ts';
 import type { PlacedPiece } from './types/board.types.ts';
-import type { Step, Click, Sequence } from './types/sequence.types.ts';
+import type { Step, Click, Visita, Sequence } from './types/sequence.types.ts';
 import type { RegimenDeRotacion } from './types/music.types.ts';
 import { routeBetween, occupantAt, occupantCellIndex } from './board.ts';
 import { degreeByCellIndex, playOrderByCellIndex, arpeggioFor, notesForRotation } from './music.ts';
@@ -128,16 +128,47 @@ export function noteAtCell(p: PlacedPiece, cell: Cell, regimen: RegimenDeRotacio
 }
 
 /**
- * El click de una celda del camino: con altura si hay una pieza abajo, sin ella si la
- * celda esta vacia.
+ * El click de una celda del camino: con altura si hay una pieza abajo que suene, sin
+ * ella si la celda esta vacia **o si la pieza que la ocupa esta muteada**.
  *
- * Que `note` FALTE es lo que dice "vacia", asi que no hay un `note: null` intermedio
- * que alguien pueda leer como un tercer estado (ver `Click`).
+ * Que `note` FALTE es lo que dice "no hay nota que dar", asi que no hay un `note: null`
+ * intermedio que alguien pueda leer como un tercer estado (ver `Click`).
+ *
+ * La condicion del muteo no es una simetria decorativa: la altura del cruce es la
+ * floritura del spec 011, o sea exactamente la nota que el muteo apago. Sin ella una
+ * pieza muteada seguiria sonando cada vez que el recorrido la pisa — y el 011 midio que
+ * el cruce sobrevive en el 32 % de los tableros de tres piezas, asi que es uno de cada
+ * tres y no un caso raro. El cruce no desaparece: sigue siendo un click, mudo, igual que
+ * sobre una celda vacia. Lo unico que cambia es su `kind` del lado de la UI.
  */
 function clickEn(offset: number, celda: Cell, placed: readonly PlacedPiece[], regimen: RegimenDeRotacion): Click {
   const ocupante = occupantAt(placed, celda[0], celda[1]);
-  const nota = ocupante === null ? null : noteAtCell(ocupante, celda, regimen);
+  const nota = ocupante === null || ocupante.muted ? null : noteAtCell(ocupante, celda, regimen);
   return nota === null ? { offset, cell: celda } : { offset, cell: celda, note: nota };
+}
+
+/**
+ * Los cinco clicks con los que suena una pieza muteada: uno por celda, en los mismos
+ * offsets que habrian tenido sus cinco notas y en el mismo orden de reproduccion.
+ *
+ * ## Por que reusa `Click` en vez de un `Step` con una bandera
+ *
+ * `Click` ya tiene exactamente la forma que hace falta —`{ offset, cell, note? }`, con
+ * la AUSENCIA de `note` significando "esta celda no tiene nota que dar"— y una celda
+ * muteada **es** una celda que el recorrido pisa y no tiene nota que dar. Reusa el caso
+ * que ya existe en vez de inventar un tercero.
+ *
+ * La alternativa —un `Step` con `muted: true` y las notas adentro— deja al motor
+ * decidiendo si suena algo que ya viene en el mensaje, que es justo el reparto que
+ * `.claude/rules/audio.md` no quiere: lo que llega al motor es lo que suena, sin
+ * condiciones que evaluar.
+ *
+ * Sale gratis en el circuito: el largo del ciclo, el orden de visita y los offsets del
+ * resto no dependen de si la pieza suena, solo de sus puertas y de su lugar. Mutear
+ * cambia QUE se oye en esos cinco intervalos y no CUANDO.
+ */
+function clicksDeMuteada(p: PlacedPiece, offset: number): Click[] {
+  return cellsByPlayOrder(p).map((cell, j) => ({ offset: offset + j, cell }));
 }
 
 /**
@@ -308,10 +339,25 @@ function shortestCircuit(cost: readonly (readonly number[])[]): number[] {
  * dispara cada pieza y que altura suena un cruce, y no toca el circuito ni las puertas
  * ni los offsets. Es a proposito — el 017 corre el arpegio y no la entrada, justamente
  * para no reordenar el tablero al cambiar de regimen (D1).
+ *
+ * ## La pieza muteada ocupa su lugar y su tiempo, y no suena (spec 014)
+ *
+ * El muteo entra DESPUES de que el circuito esta elegido, y eso no es un detalle de
+ * implementacion: es la propiedad. `puertas`, `rutas` y `circuito` no miran `muted`, asi
+ * que el orden de visita, los offsets del resto y el `length` son identicos a los del
+ * mismo tablero sin mutear. Lo unico que cambia son esos cinco intervalos, que pasan de
+ * un `Step` con cinco notas a cinco `Click`s sin `note`.
+ *
+ * Por eso `order` existe aparte de `steps`: la pieza muteada esta en el circuito y no en
+ * los pasos, asi que leer el recorrido de `steps` se saltearia justamente a las piezas
+ * que no suenan.
+ *
+ * El otro borde lo pone `clickEn`: un tramo que CRUZA una pieza muteada tampoco suena su
+ * nota. Sin eso el muteo seria parcial en uno de cada tres tableros.
  */
 export function buildSequence(placed: readonly PlacedPiece[], regimen: RegimenDeRotacion): Sequence {
   const n = placed.length;
-  if (n === 0) return { steps: [], clicks: [], length: 0 };
+  if (n === 0) return { steps: [], clicks: [], order: [], length: 0 };
 
   // Con UNA pieza no hay salto: el ciclo es su arpegio y vuelve a empezar contiguo.
   //
@@ -330,10 +376,17 @@ export function buildSequence(placed: readonly PlacedPiece[], regimen: RegimenDe
   // primera de la siguiente caerian en el MISMO instante. Con 5 la repeticion es
   // contigua —la nota siguiente cae un intervalo despues de la ultima—, que es la
   // misma regla que AC3 le da a dos piezas adyacentes.
+  //
+  // La rama de la pieza muteada va TAMBIEN aca y no solo en el bucle: este retorno
+  // temprano arma su `Step` sin pasar por el, asi que una implementacion que solo
+  // tocara el bucle dejaria al unico tablero enteramente muteado —el de una sola
+  // pieza— como el unico que suena.
   if (n === 1) {
+    const p = placed[0];
     return {
-      steps: [{ pieceId: placed[0].id, offset: 0, notes: arpeggioFor(placed[0].piece, placed[0].rotation, placed[0].mirror, regimen) }],
-      clicks: [],
+      steps: p.muted ? [] : [{ pieceId: p.id, offset: 0, notes: arpeggioFor(p.piece, p.rotation, p.mirror, regimen) }],
+      clicks: p.muted ? clicksDeMuteada(p, 0) : [],
+      order: [{ pieceId: p.id, offset: 0 }],
       length: CELLS_PER_PIECE,
     };
   }
@@ -345,25 +398,32 @@ export function buildSequence(placed: readonly PlacedPiece[], regimen: RegimenDe
   // `placed` entero y no "las demas piezas": un tramo puede pisar tambien a las dos que
   // une, y esquivarlas es igual de deseable.
   const rutas = puertas.map((desde) => puertas.map((hasta) => routeBetween(desde.salida, hasta.entrada, placed)));
-  const order = shortestCircuit(rutas.map((fila) => fila.map(claveDeTramo)));
+  const circuito = shortestCircuit(rutas.map((fila) => fila.map(claveDeTramo)));
 
   const steps: Step[] = [];
+  const order: Visita[] = [];
   const clicks: Click[] = [];
   let offset = 0;
 
   for (let t = 0; t < n; t++) {
-    const p = placed[order[t]];
+    const p = placed[circuito[t]];
+    order.push({ pieceId: p.id, offset });
+    // La pieza muteada no emite `Step` y emite sus cinco clicks en los mismos offsets.
+    // Lo que NO cambia es nada de lo de abajo: el circuito ya esta elegido —`order` sale
+    // de las puertas y del costo, que no miran el muteo— y `offset` avanza igual. Mutear
+    // cambia que se oye, no cuando.
+    if (p.muted) clicks.push(...clicksDeMuteada(p, offset));
     // `arpeggioFor` devuelve un array nuevo en cada llamada, asi que no hay copia
     // defensiva que hacer: `Step.notes` es mutable por contrato y no aliasa nada. La
     // copia que habia aca protegia de mutar `PlacedPiece.notes`, que ya no existe.
-    steps.push({ pieceId: p.id, offset, notes: arpeggioFor(p.piece, p.rotation, p.mirror, regimen) });
+    else steps.push({ pieceId: p.id, offset, notes: arpeggioFor(p.piece, p.rotation, p.mirror, regimen) });
 
     const ultima = offset + (CELLS_PER_PIECE - 1);
-    const ruta = rutas[order[t]][order[(t + 1) % n]];
+    const ruta = rutas[circuito[t]][circuito[(t + 1) % n]];
     for (let m = 0; m < ruta.path.length; m++) clicks.push(clickEn(ultima + 1 + m, ruta.path[m], placed, regimen));
 
     offset = ultima + ruta.steps;
   }
 
-  return { steps, clicks, length: offset };
+  return { steps, clicks, order, length: offset };
 }

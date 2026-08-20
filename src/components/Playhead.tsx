@@ -82,11 +82,14 @@ import type { CeldaPorEstrenar } from './types/route.types.ts';
  *
  * ## Y por que NO se usa `transform: scale`, que es lo obvio
  *
- * Porque `scale` cuenta para el overflow SCROLLEABLE del contenedor: medido en el DOM,
- * con la cabeza en (9,5) y `scale(1.10)` el `scrollHeight` del `overflow-x-auto` de
- * `Board` pasa de 378 a 381 y aparecen las barras de desplazamiento —las dos, porque
- * Tailwind fija solo `overflow-x` y entonces el eje Y computa a `auto`—. `box-shadow`
- * es ink overflow: pinta afuera de la caja sin agrandar la region scrolleable.
+ * Porque `scale` cuenta para el overflow SCROLLEABLE del contenedor: medido en el DOM
+ * con `CELL_PX` en 63 —grilla de 630 x 378— con la cabeza en (9,5) y `scale(1.10)`, el
+ * `scrollHeight` del `overflow-x-auto` de `Board` pasaba de 378 a 381 y aparecian las
+ * barras de desplazamiento —las dos, porque Tailwind fija solo `overflow-x` y entonces
+ * el eje Y computa a `auto`—. El spec 014 movio la celda a 71 y esos dos numeros no se
+ * remidieron; lo que no depende del tamano es el MECANISMO, que es lo que decide:
+ * `scale` agranda la region scrolleable y `box-shadow` es ink overflow, o sea que pinta
+ * afuera de la caja sin agrandarla.
  *
  * Gris pizarra y no un color: el color es IDENTIDAD —que pieza es— y el estado nunca se
  * comunica con hue. Es la misma regla por la que el fantasma es gris y no verde.
@@ -132,7 +135,7 @@ const claveDe = (e: CeldaPorEstrenar): string => `${e.id}:${e.cell[0]},${e.cell[
 export default function Playhead() {
   const capaRef = useRef<HTMLDivElement>(null);
   const ref = useRef<HTMLDivElement>(null);
-  // Dos refs para la cabeza y no una: el `transform` va en la caja de 63 px —que es la
+  // Dos refs para la cabeza y no una: el `transform` va en la caja de `CELL_PX` —que es la
   // que se mueve sobre la grilla— y el borde en la baldosa de adentro, 2 px mas chica,
   // que es la que tiene la forma y el redondeo de la celda. Dibujarlo en la caja externa
   // daria un rectangulo que pisa la separacion entre celdas.

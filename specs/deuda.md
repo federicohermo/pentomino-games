@@ -37,6 +37,10 @@ esta lista y entra como fila en [log.md](./log.md).
   cubriera, que es peor que no anotarlo — hacía ver el hueco como resuelto. Arreglarlo es decidir el
   modelo de foco de una grilla de 60 celdas (¿una tab stop y flechas, o 60 tab stops?), y toca
   `Board.tsx` entero, así que necesita spec propio.
+  **El spec 014 lo subió de prioridad y no lo cerró** (`T047`): hasta ahí era un hueco de *lectura*, y
+  desde el 014 la grilla tiene dos operaciones que solo existen ahí —el click quita la pieza y
+  `Alt`+click la mutea—, o sea que hay una operación **destructiva** que no se puede ejecutar de
+  ninguna otra forma. Tampoco hay deshacer.
 - **`postcss` y `autoprefixer`** están en `devDependencies` sin ningún config que los use — Tailwind 4
   va por el plugin de Vite. Candidatos a borrar.
 - **`@types/jest`** sigue en el árbol y es lo que impide usar `globals: true` en Vitest.

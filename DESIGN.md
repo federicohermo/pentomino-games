@@ -76,9 +76,9 @@ texto blanco **sin oscurecer ni un color de la lámina** — bajo 2.1 las dos co
 
 | Medida | Valor | Por qué |
 |---|---|---|
-| `CELL_PX` | **63** (era 28) | el piso son 60 —`D#5` mide 35,4 px medidos a `text-[19px]`— y 63 es lo que la tarjeta deja |
-| Tablero | **630 × 378 px** (era 280 × 168) | 10 × 6 × `CELL_PX` en una tarjeta de 633 × 380: llena las dos dimensiones |
-| Tarjeta del tablero | **`md:col-span-7`** (era 6) | con 6 sobraban 68 px de alto: 10 × 6 no tenía la proporción de la tarjeta |
+| `CELL_PX` | **73** (era 71, y 63 y 28 antes) | el piso son 60 —`D#5` mide 35,4 px medidos a `text-[19px]`— y 73 es lo que la tarjeta deja hoy: 63 → 71 al morir `PlacedList` (014) y 71 → 73 cuando las miniaturas hicieron más alta la paleta (016). Cuál de las dos dimensiones manda cambió de lado dos veces, y está escrito en el docblock de la constante |
+| Tablero | **730 × 438 px** (era 710 × 426) | 10 × 6 × `CELL_PX` en una tarjeta de 730,7 × 464: llena el ancho, y los 26 px de alto que sobran son el precio de que la paleta muestre las doce formas |
+| Tarjeta del tablero | **`md:col-span-8`** (era 7, y 6 antes) | el 014 borró `PlacedList` y liberó dos columnas; la novena no le compraría un píxel al tablero y va a la paleta |
 | Aire de la baldosa | **2 px** por lado | separa las fichas sin sumar un segundo número al ancho |
 | Borde de la baldosa | **1 px `slate-900`** | el tablero se define reforzando la celda, no rellenando el fondo |
 
@@ -96,7 +96,7 @@ hacia atrás. El número que se ve tiene que seguir a lo que se ve moverse. La t
 celda de grado 0, pero eso ya no se lee del número: se lee de la nota, que es el dato que la reflexión
 no mueve.
 
-**Cada celda es una baldosa redondeada, no un casillero.** Los 63 px son la pista; adentro va una ficha
+**Cada celda es una baldosa redondeada, no un casillero.** Los `CELL_PX` de la pista son la caja externa; adentro va una ficha
 `rounded-lg` con 2 px de aire alrededor. Es el lenguaje de la lámina: una pieza colocada se lee como
 cinco fichas apoyadas sobre la grilla, no como cinco celdas de una tabla. El aire lo hace el padding de
 la pista y no un `gap` de la grilla, así que el ancho del tablero sigue siendo exactamente 10 × `CELL_PX`.
@@ -108,7 +108,7 @@ colores, que es lo único que este tablero está para comunicar. Queda **un bord
 baldosa**, ocupada o vacía: la grilla se dibuja sola y el resto del panel sigue blanco.
 
 **Debajo del breakpoint `md` el tablero no entra y scrollea en horizontal.** A 375 px de viewport el
-panel deja 311 px útiles contra 630 px de pistas fijas. Lo absorbe un `overflow-x-auto` en el contenedor
+panel deja 311 px útiles contra 730 px de pistas fijas. Lo absorbe un `overflow-x-auto` en el contenedor
 de la grilla —scrollea el tablero, no la página— y deliberadamente **no** un `CELL_PX` menor: el nombre
 de nota es lo que hay que poder leer, así que achicar la celda debajo de `md` devuelve el problema que
 el número existe para resolver.
@@ -125,23 +125,74 @@ comunicaba identidad de pieza, y nunca sobre el canal de estado.*
 | Dónde | Qué hace el color | Por qué |
 |---|---|---|
 | `Board` | celda ocupada = color de pieza | identidad debajo, estado encima |
-| `PiecePalette` | **el fondo del botón no se toca**; el color entra al costado | el fondo ya es el canal de "seleccionado" |
-| `PlacedList` | la letra va **sobre** el color de pieza | texto plano: no hay estado que pisar |
+| `PiecePalette` | **el fondo del botón no se toca**; el color pinta **la forma** de la pieza, dibujada en miniatura | el fondo ya es el canal de "seleccionado" |
 
-En `PlacedList` la letra va **sobre** el color y no *pintada* del color, y la diferencia no es de gusto:
-como texto sobre el blanco de la tarjeta, el amarillo de `V` da **1,07 de contraste**. Sobre su propio
-fondo vale el par `bg`/`fg` de `PIECE_COLOR`, que es el que el test de la paleta mantiene en AA. Es el
-mismo criterio que en el tablero, donde la celda ocupada también es color de fondo con texto medido.
+*(`PlacedList` era el tercer caso y se fue con el spec 014: la letra iba **sobre** el color de pieza y
+no *pintada* del color, porque como texto sobre el blanco de la tarjeta el amarillo de `V` da **1,07 de
+contraste**. Ese argumento no se pierde — sigue valiendo en el tablero, donde la celda ocupada es color
+de fondo con texto medido por el par `bg`/`fg` de `PIECE_COLOR`— pero la lista ya no existe: el tablero
+se edita en el tablero.)*
 
 *(`PiecePreview` era el cuarto caso y ya no existe: mostraba la pieza aparte, sin notas, mientras el
 fantasma la muestra en el lugar donde va a caer y con la nota de cada celda. Dos vistas del mismo objeto
 donde una es estrictamente mejor no es lenguaje visual, es alto de pantalla gastado.)*
+
+### El botón de la paleta muestra la forma, no la letra
+
+Desde el spec 016 cada botón dibuja **la pieza**, pintada con su color y **en la orientación que está
+seleccionada ahora mismo**, con la letra chica debajo. Antes decía sólo la letra, con un punto de 8 px al
+costado para la identidad — y esas doce letras son nombres arbitrarios: la `N` no se parece a una N, y
+la `V` y la `L` son la misma forma con un brazo de distinto largo.
+
+Tres cosas que hacen que eso sea posible sin romper nada de lo de arriba:
+
+- **La caja es fija, de 5×5 celdas.** Es la más chica que contiene cualquier pentominó en cualquiera de
+  sus 8 orientaciones. Sin ella, la `I` —que pasa de 5×1 a 1×5— haría reflowear los doce botones en cada
+  rotación, que es el mismo bug que la línea de notas de esa tarjeta ya tenía documentado: *un panel de
+  control que se acomoda solo cuando lo tocás mueve el botón justo cuando vas a apretarlo.*
+- **El fondo del botón sigue sin tocarse**, porque sigue siendo el único canal de «seleccionada».
+- **El punto de color se fue** y su borde se quedó, en cada celda de la miniatura: varios de los 12
+  colores (el amarillo de `V`, el lima de `F`) casi no se ven contra el gris claro del botón sin
+  apoyarse. Es el mismo motivo por el que las baldosas del tablero llevan borde desde el 007. Lo que
+  **no** se heredó es su color fijo, y ahí hay un número que conviene tener a mano: **el borde se
+  invierte con el estado del botón**, porque en cada estado falla un conjunto distinto de piezas y los
+  dos son disjuntos. Medido en razón WCAG 2.1 —acá aplica 1.4.11, *objeto gráfico*, piso **3:1**, y no
+  el APCA con el que se elige el color de texto—: contra el botón sin seleccionar (`slate-100`) hay
+  **7 de 12** bajo el piso, la peor `V` con **1,02**; contra el seleccionado (`slate-900`) hay **una**,
+  `W` con **2,08**. Un borde `slate-900` da 16,30 sobre el claro pero **1,00** sobre el oscuro —es el
+  mismo color del fondo—, así que sobre el botón seleccionado el borde pasa a `slate-400`, que ahí da
+  6,96. Fijarlo en uno solo no alcanza: `slate-400` sobre el claro da 2,34, también bajo el piso.
+
+Y una que no cambia: **la miniatura no dice notas ni pasos**. Eso lo dice el tablero a 73 px por celda;
+en una mini-celda de 8 px no entra un `D#5`, y meterlo es lo que hacía que la previsualización del 007
+repitiera al fantasma. La paleta contesta *cuál* y *cómo está girada*; el tablero contesta *qué suena*.
 
 Lo que **no** se comunica con el color de pieza, porque el color ya está ocupado diciendo *qué pieza es*:
 
 - **El fantasma de previsualización** (`bg-slate-300`) — dónde caería la pieza que estás por colocar.
 - **El choque** (`bg-rose-500`) y el **fantasma inválido** (`bg-rose-300`) — que ahí no entra.
 - **El hover** — dónde está el cursor.
+- **El muteo** (spec 014) — que la pieza está y no suena.
+
+### El muteo: la ausencia de color
+
+Una pieza **muteada** ocupa su lugar y su tiempo en el circuito y no suena sus notas. El canal es la
+**ausencia de color**: la baldosa cae al blanco de una celda libre y **conserva su nota y su `#N`**, con
+el texto en el gris del tablero.
+
+Los dos canales obvios estaban tomados, y las reglas de arriba los protegen:
+
+- **el color no puede ser**, porque es identidad de pieza y nunca estado — y además los 12 pares
+  `bg`/`fg` están medidos en contraste, así que desaturarlos rompe la medición;
+- **la opacidad tampoco**, porque la usa el velo de `Playhead` para decir «esta celda no se estrenó». Si
+  muteado también atenuara, una pieza muteada recién colocada sería indistinguible de una esperando su
+  turno.
+
+Lo que queda dice exactamente lo que pasó: *esta pieza dejó de afirmar que suena, pero sigue siendo esta
+pieza, en estas celdas, con estas notas y estos pasos.* No se confunde con una celda libre porque una
+celda libre **no tiene texto** — es la misma distinción que ya separa a una libre de una del fantasma. Y
+el texto no puede seguir usando `PIECE_COLOR[p].fg`: ese valor está elegido contra el `bg` de su pieza y
+sobre blanco varios son ilegibles, algunos directamente blancos.
 
 El fantasma es gris y no verde a propósito: verde era un color más compitiendo con los 12 de la lámina.
 Pero **sí dice lo mismo que va a decir la celda una vez colocada** —su nota y su grado, celda por celda,
@@ -171,10 +222,12 @@ así que engrosar hacia adentro es un cambio de grado contra un campo lleno de b
 exterior es lo que agrega el salto de tamaño: la celda se lee más grande sin que crezca su caja.
 
 **Por qué no `transform: scale`, que es lo obvio.** Porque `scale` cuenta para el overflow
-**scrolleable** del contenedor. Medido en el DOM: con la cabeza en `(9,5)` y `scale(1.10)`, el
-`scrollHeight` del `overflow-x-auto` de `Board` pasa de 378 a 381 y aparecen las barras de
-desplazamiento —las dos, porque Tailwind fija solo `overflow-x` y entonces el eje Y computa a `auto`—.
-`box-shadow` es *ink overflow*: pinta afuera de la caja sin agrandar la región scrolleable.
+**scrolleable** del contenedor. Medido en el DOM con `CELL_PX` en 63 —grilla de 630 × 378—: con la
+cabeza en `(9,5)` y `scale(1.10)`, el `scrollHeight` del `overflow-x-auto` de `Board` pasaba de 378 a
+381 y aparecían las barras de desplazamiento —las dos, porque Tailwind fija solo `overflow-x` y
+entonces el eje Y computa a `auto`—. El 014 movió la celda a 71 y el 016 a 73, y esos dos números no se
+remidieron; lo que no depende del tamaño es el mecanismo, que es lo que decide: `box-shadow` es *ink
+overflow*, pinta afuera de la caja sin agrandar la región scrolleable.
 
 **El color del resalte es gris pizarra (`#0f172a`) y no un color de pieza.** Es la regla de arriba sin
 excepción: el hue dice *qué pieza es*, nunca *qué está pasando*. Misma razón por la que el fantasma es
@@ -193,6 +246,11 @@ nada más. Los valores viven en `Playhead.tsx`:
 
 Nota fuerte, cruce intermedio, click tenue: si se vieran igual, el recorrido parecería tener piezas
 donde no hay, o confundiría un turno con un roce.
+
+**Los tres escalones se ven aunque el click no se oiga.** Desde el spec 015 el click nace apagado y el
+panel lo enciende con «Recorrido en el vacío» —que es como se llama esa clase de evento de cara al
+usuario; «click» es la palabra del código—. El borde de 2 px se dibuja igual: el recorrido es el mismo
+con el sonido apagado, y el interruptor es de mezcla y no del modelo.
 
 **La cabeza salta, no se desliza.** El instrumento está cuantizado a la grilla de intervalos, y un
 movimiento continuo sugeriría una continuidad que no existe.

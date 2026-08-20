@@ -72,12 +72,15 @@ export const RELEASE_INTERVALS = 0.88;
  * Cuanto dura un CRUCE por celda ocupada, en INTERVALOS. Su release es el mismo
  * `RELEASE_INTERVALS` de una nota: lo que cambia es el cuerpo, no el timbre.
  *
- * En intervalos y no en segundos como `CLICK_SECONDS`. La excepcion del click esta
- * justificada en que NO tiene altura —es un transitorio y su identidad es la brevedad
- * absoluta—; el cruce si la tiene: es la nota de la celda que se piso (D5 del spec
- * 011), asi que su precedente es `NOTE_INTERVALS` y tiene que mantener su relacion
- * con el pulso a cualquier tempo. Quien la multiplica por `intervalDuration(bpm)` es
- * `engine.ts`, que es donde vive el bpm.
+ * En intervalos y no en segundos como `CLICK_SECONDS`. Lo que sostiene la excepcion del
+ * click es la brevedad ABSOLUTA sola: desde el spec 015 el click SI tiene altura —una
+ * campana fija en `CLICK_MIDI`—, asi que el motivo viejo ("no tiene altura") ya no
+ * aplica y no se puede seguir citando. Lo que separa a los dos sigue en pie igual: el
+ * click es una marca y su altura nunca cambia, mientras que la del cruce es la nota de
+ * la celda que se piso (D5 del spec 011), o sea MODELO. Por eso su precedente es
+ * `NOTE_INTERVALS` y tiene que mantener su relacion con el pulso a cualquier tempo.
+ * Quien la multiplica por `intervalDuration(bpm)` es `engine.ts`, que es donde vive el
+ * bpm.
  *
  * **Menor que uno**, porque el cruce es una floritura y no puede disputarle el turno
  * a la pieza: con 0,75 el cuerpo se apaga a tres cuartos del camino a la casilla
@@ -116,9 +119,16 @@ export const DEFAULT_VELOCITY = 0.8;
  * ~15 clicks, o sea que el click es minoria pero no ruido de fondo. Si no se
  * escucha, el recorrido se vuelve inaudible y el spec pierde su razon de ser.
  *
- * Ademas el click dura `CLICK_SECONDS` (20 ms) contra los ~136 ms de una nota a 110
+ * Ademas el click dura `CLICK_SECONDS` (50 ms) contra los ~136 ms de una nota a 110
  * bpm, y un transitorio tan corto ya se percibe bastante mas debil que una nota
  * sostenida de la misma amplitud: bajar el numero seria descontar dos veces lo mismo.
+ *
+ * **Y hay un argumento en contra que el render offline no cierra** (spec 015): a igual
+ * pico, la campana tiene 15% MENOS de RMS que el ruido que reemplazo (0,0141 contra
+ * 0,0167) pero vive en la banda de maxima sensibilidad del oido (`CLICK_MIDI`), asi
+ * que puede percibirse mas FUERTE aun midiendo menos. Los dos efectos apuntan en
+ * direcciones opuestas y ninguna medicion los suma: eso se decide escuchando, y el
+ * numero se queda en 0,25 hasta que alguien lo haga.
  */
 export const CLICK_VELOCITY = 0.25;
 
@@ -150,23 +160,92 @@ export const CLICK_VELOCITY = 0.25;
 export const GRACE_VELOCITY = 0.45;
 
 /**
+ * La ALTURA del click, en MIDI. 96 = `C7` = 2 093,0 Hz.
+ *
+ * Desde el spec 015 el click es una campana de altura fija y ya no ruido blanco. Que
+ * tenga altura no lo convierte en una linea melodica: lo que dibuja una linea es tener
+ * alturas DISTINTAS, y esta nunca cambia. Un metronomo tiene altura y no toca nada.
+ *
+ * **Fuera del REGISTRO, porque de la escala no se puede salir.** Esto esta MEDIDO y es
+ * lo que evita que alguien vuelva a intentar "elegir una nota que no se use": el
+ * instrumento usa las 12 clases de altura sobre 12 — son 12 tonicas (`BASE_MAP` le da
+ * una clase distinta a cada pieza) por cuatro formulas pentatonicas, asi que el
+ * temperamento queda cubierto entero y no hay ni una nota libre. "Fuera de la escala"
+ * no existe en este instrumento.
+ *
+ * Lo que si se puede es salir del registro, que va de `C4` (MIDI 60, 261,6 Hz) a `D#6`
+ * (MIDI 87, 1 244,5 Hz). Ese techo ya incluye el corrimiento de octava que
+ * `notesForRotation` aplica cuando la suma pasa de `B`, asi que no se puede deducir de
+ * `DEFAULT_OCTAVE` a ojo. `C7` queda NUEVE semitonos por encima: ninguna pieza puede
+ * llegar a esa altura ni enmascararla.
+ *
+ * **Y 2 kHz y no mas agudo, porque es donde el oido es mas sensible.** La banda de 2 a
+ * 4 kHz es el maximo de la audicion humana, asi que una campana ahi se oye a MENOR
+ * amplitud que la misma campana dos octavas arriba — que es exactamente lo que
+ * `CLICK_VELOCITY` busca: que el recorrido acompanie sin competir. Subirla a `E7`
+ * (MIDI 100) la haria mas "fuera del camino" en el papel y mas estridente en la
+ * practica. Los candidatos mas graves se descartaron por el registro: `A6` (MIDI 93)
+ * queda a 6 semitonos del techo contra los 9 de `C7`.
+ */
+export const CLICK_MIDI = 96;
+
+/**
  * Cuanto dura un click, en SEGUNDOS.
  *
  * Es la excepcion deliberada a lo que dice `NOTE_INTERVALS`: lo musical se mide en
  * intervalos para que sobreviva al cambio de tempo, pero el click es un transitorio y
  * su identidad perceptual es la brevedad ABSOLUTA, no la proporcion con el pulso. Si
- * se estirara con el tempo, a 60 bpm (intervalo de 0,25 s) duraria 37 ms y empezaria
- * a tener cuerpo y altura en vez de sonar como un golpe.
+ * se estirara con el tempo duraria 0,367 intervalos, o sea 92 ms a 60 bpm, y empezaria
+ * a tener cuerpo. El ancla de esa cuenta es `DEFAULT_BPM` (110 bpm, intervalo de
+ * 136,4 ms), que es la misma que usa el resto del docblock: mezclar dos anclas en un
+ * parrafo es lo que lo vuelve ilegible.
  *
- * 20 ms: a 110 bpm el intervalo mide 0,136 s y el click ocupa el 15%; aun a 160 bpm
- * (intervalo de 0,094 s) ocupa el 21%. O sea que dos clicks consecutivos no se pisan
- * a ningun tempo del instrumento, y ninguno invade la nota que viene despues.
+ * **50 ms, y el numero que decide si dos clicks se pisan no es este sino la caida.**
+ * Medido renderizando offline: la campana cae 40 dB a los 29,5 ms.
  *
- * No fija el timbre: quien lo elige —ruido con `createBuffer`, que el research
- * verifico que `node-web-audio-api` soporta, u oscilador con envolvente corta— es el
- * scheduler. Aca solo esta cuanto dura.
+ * ```
+ * bpm            intervalo   el click ocupa   ya cayo 40 dB al
+ * 60             250,0 ms    20 %             12 %
+ * 110            136,4 ms    37 %             22 %
+ * 160 TEMPO_MAX   93,8 ms    53 %             31 %
+ * ```
+ *
+ * En el peor caso —160 bpm, el tope del slider— quedan 64 ms de aire entre la caida y
+ * el evento siguiente. Con 80 ms la campana ocuparia el 85 % del intervalo a ese tempo
+ * y caeria 40 dB recien a la mitad: dos clicks consecutivos se encimarian de forma
+ * audible.
+ *
+ * **50 y no 20**: 20 ms de senoidal a 2 093 Hz son 42 ciclos, suficientes para que se
+ * oiga la altura, pero la caida queda tan abrupta que el evento vuelve a leerse como un
+ * golpe. Con 50 ms la campana DECAE, y ahi es donde suena a metronomo.
  */
-export const CLICK_SECONDS = 0.02;
+export const CLICK_SECONDS = 0.05;
+
+/**
+ * El valor en el que muere la caida del click. Absoluto, no relativo a la amplitud.
+ *
+ * Existe porque la caida del click es EXPONENCIAL y `exponentialRampToValueAtTime` no
+ * admite llegar a 0 — hay que rampar a un epsilon y cortar con `stop()`. Al reves que
+ * en `scheduleVoice`, donde la lineal es obligada justamente porque la envolvente de
+ * una nota tiene que cerrar en silencio: aca la caida ES el timbre, y una exponencial
+ * a un epsilon es lo que suena a resonancia que se apaga en vez de a golpe.
+ *
+ * **0,0001 y no un valor mas redondo, porque es el que da la caida medida.** Desde
+ * `CLICK_VELOCITY` (0,25) hasta 0,0001 hay 68 dB, repartidos linealmente en dB a lo
+ * largo de `CLICK_SECONDS`: por eso los 40 dB caen a los 29,5 ms, que es el numero con
+ * el que la tabla de `CLICK_SECONDS` decide que dos clicks no se pisan. Bajarlo hace la
+ * campana mas seca y subirlo la deja colgada; cambiarlo obliga a rehacer esa tabla.
+ *
+ * **Es un piso para el `vel` de `scheduleClick`, no solo un destino.** La rampa es
+ * exponencial, asi que solo cae si arranca POR ENCIMA de este valor: con un `vel` menor
+ * la misma llamada se vuelve un swell en vez de una campana, y con `vel = 0` tira —la
+ * rampa lineal a 0 que habia hasta el spec 015 aguantaba cualquier amplitud y esta no—.
+ * Hoy no es alcanzable: el unico llamador de produccion es `engine.ts`, que usa el
+ * default `CLICK_VELOCITY` (0,25), 2 500 veces este numero. Queda escrito porque el dia
+ * que alguien agregue un llamador con volumen propio —una pieza muteada mas suave, por
+ * ejemplo— el limite no se deduce de ninguna firma.
+ */
+export const CLICK_EPSILON = 0.0001;
 
 /**
  * Colchon entre el final del release y el `stop()` del oscilador, en segundos.

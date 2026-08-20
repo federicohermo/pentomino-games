@@ -21,6 +21,22 @@ celda, ver [abajo](#forma--qué-celda-tiene-qué-nota)— pero no decide *cuánd
 mapeo dice dónde está cada nota, no en qué momento. La **fila** (`y`) tampoco: octava, duración y
 velocity son los candidatos obvios, y van de a un eje por vez.
 
+### Una pieza colocada puede no sonar
+
+Desde el spec 014 una pieza puede estar **muteada**: sigue ocupando sus cinco celdas, sigue siendo un
+nodo del circuito y sigue gastando su tiempo, pero **no suena sus notas**. Donde iba su arpegio van cinco
+clicks, uno por celda, en los mismos offsets — y un tramo que la *cruza* tampoco suena la floritura del
+spec 011, porque esa floritura es exactamente la nota que el muteo apagó.
+
+Lo que **no** cambia es el circuito: `gates`, `routeBetween` y el Held-Karp no miran `muted`, así que el
+orden de visita, los offsets del resto y el largo del ciclo son idénticos a los del mismo tablero sin
+mutear. Es la propiedad entera del gesto: sirve para contestar «¿cómo suena esto sin la `N`?» sin que la
+pregunta cambie la respuesta, que es justo lo que pasaba cuando la única forma de callar una pieza era
+quitarla.
+
+Por eso `Sequence` lleva **dos** listas y no una: `order` es el circuito —todas las piezas, con el
+intervalo donde le toca a cada una— y `steps` son las que suenan. Antes del 014 eran la misma.
+
 ## El recorrido: orden y silencio entre piezas
 
 Hasta el spec 008 el tablero era un compás: cada pieza sonaba una vez por compás, en la fracción que le
@@ -77,8 +93,13 @@ la nota siguiente cae exactamente un intervalo después de la última de la ante
 Separar dos piezas en el tablero es la forma de crear espacio entre ellas, y no hay tope porque uno
 volvería la distancia ilegible pasado cierto punto.
 
-**Las celdas que el recorrido cruza sin detenerse suenan.** Sobre celda vacía suena un click sin altura
-y a volumen bajo — si no, un salto de varias celdas es un silencio mudo. Sobre celda **ocupada** suena
+**Las celdas que el recorrido cruza sin detenerse suenan.** Sobre celda vacía suena un click a volumen
+bajo — si no, un salto de varias celdas es un silencio mudo. Ese click **no tiene altura del modelo**:
+desde el spec 015 es una campana de altura fija que no sale de ninguna escala ni de ninguna pieza, y
+que está fuera del registro del instrumento justamente para que no se lea como una nota. Antes del 015
+era ruido blanco, o sea sin altura ninguna; lo que sigue siendo cierto es que **el click no dice nada
+sobre la celda**, y ésa es la propiedad del modelo. Además arranca **apagado** (spec 015): el
+recorrido sobre el vacío se enciende desde el panel. Sobre celda **ocupada** suena
 la nota de esa celda —la misma altura que la celda muestra desde el spec 007— como una floritura más
 corta y más suave que la nota de una pieza (spec 011). `routeBetween(a, b, placed)` (`domain/board.ts`)
 materializa esas celdas intermedias: es el camino de **costo mínimo** sobre las 60 celdas —peso 1 en
