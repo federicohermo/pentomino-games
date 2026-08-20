@@ -9,19 +9,19 @@ persona y no bloquea el cierre.
 
 ## Fase 1 — El instrumento
 
-- [ ] T001 Agregar `@vitest/coverage-v8` a `devDependencies` del raíz, en la versión exacta de `vitest` (peer estricto)
-- [ ] T002 Escribir el bloque `test.coverage` en `vite.config.ts`: `provider: 'v8'`, `include: ['src/**/*.{ts,tsx}']`, `reporter: ['text']`, `reportOnFailure: true`. **Sin `thresholds` todavía** (plan, §Orden)
-- [ ] T003 Escribir `coverage.exclude` con los tres archivos de `src/` que fija D3, cada uno con su comentario al lado — AC11
-- [ ] T004 Agregar el script `coverage` a `package.json`, que fije la env var que T010 consume
-- [ ] T005 Subir `verify` a cinco nodos: `"/^(lint|typecheck|test|coverage|mcp:test)$/"`. Verificar que los cinco corren de verdad —el modo de falla del filtro `{.}` ya está documentado en `CLAUDE.md`— contando los nodos en la salida
-- [ ] T006 Confirmar que `pnpm coverage` imprime la tabla y devuelve **0** (todavía sin gate)
+- [x] T001 Agregar `@vitest/coverage-v8` a `devDependencies` del raíz, en la versión exacta de `vitest` (peer estricto)
+- [x] T002 Escribir el bloque `test.coverage` en `vite.config.ts`: `provider: 'v8'`, `include: ['src/**/*.{ts,tsx}']`, `reporter: ['text']`, `reportOnFailure: true`. **Sin `thresholds` todavía** (plan, §Orden)
+- [x] T003 Escribir `coverage.exclude` con los tres archivos de `src/` que fija D3, cada uno con su comentario al lado — AC11
+- [x] T004 Agregar el script `coverage` a `package.json`, que fije la env var que T010 consume
+- [x] T005 Subir `verify` a cinco nodos: `"/^(lint|typecheck|test|coverage|mcp:test)$/"`. Verificar que los cinco corren de verdad —el modo de falla del filtro `{.}` ya está documentado en `CLAUDE.md`— contando los nodos en la salida
+- [x] T006 Confirmar que `pnpm coverage` imprime la tabla y devuelve **0** (todavía sin gate)
 
 ## Fase 2 — Lo que se cierra sin navegador
 
 ### Los presupuestos de performance
 
-- [ ] T010 `skipIf` sobre los dos presupuestos de `domain/__tests__/sequence.test.ts` (`:863` y `:918`), con el comentario que deja los números medidos: 11,3 ms contra techo de 5, y 6,8 contra 4 — AC4
-- [ ] T011 Confirmar que `pnpm test` (sin instrumentar) **sigue** corriendo los dos y midiendo contra los techos originales — AC3
+- [x] T010 `skipIf` sobre los dos presupuestos de `domain/__tests__/sequence.test.ts` (`:863` y `:918`), con el comentario que deja los números medidos: 11,3 ms contra techo de 5, y 6,8 contra 4 — AC4
+- [x] T011 Confirmar que `pnpm test` (sin instrumentar) **sigue** corriendo los dos y midiendo contra los techos originales — AC3
 
 ### `domain/invariants.ts` — de 83,33 % a 100 % de ramas
 
