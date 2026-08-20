@@ -35,6 +35,7 @@ casillas abiertas como próxima tarea.
 | [019](./019-el-panel-se-queda-sin-botones/spec.md) | 2026-08-20 | Propuesto | Mueren los cuatro botones de grados y el ON/OFF de Reflexión —desde el 013 rueda, `Shift`, botón derecho y `Ctrl` hacen lo mismo sin soltar el tablero—; `Recorrido en el vacío` se muda a la fila de transporte como metrónomo **SVG** solo-icono (Unicode no tiene metrónomo) y `Reset` pasa a `↺`. Medido: borrar esas filas se come **exactamente** los 50 px de aire muerto de la tarjeta del tablero, y `CELL_PX` re-derivado sigue en **73** por 0,1 px. Y otra medición lo obliga a no ser sólo una resta: **29 de 96 orientaciones suenan distinto sin verse distinto**, así que agrega un lector textual de la orientación. **No cambia una nota** |
 | [020](./020-la-orientacion-es-de-la-pieza/spec.md) | 2026-08-20 | Propuesto | La rotación y la reflexión dejan de ser del instrumento y pasan a ser **de cada pieza**: `Record<PieceKey, Orientacion>`, las doce miniaturas cada una en la suya, y un botón `0°` sobre la seleccionada. Medido: hoy rotar una pieza **mueve 11 de las 12 miniaturas**, y la orientación que queda no es la elegida sino la que dejó la última pieza tocada. `↺` **no** toca las orientaciones (D3). **No toca `domain/`**: `PlacedPiece` ya guarda la suya |
 | [021](./021-el-tablero-es-la-pantalla/spec.md) | 2026-08-20 | Propuesto | Muere el `max-w-6xl grid-cols-12`: el tablero llena el viewport y los paneles de piezas y señal flotan encima, plegables. `CELL_PX` deja de ser constante y pasa a `max(73, min(vw/10, vh/6))` con tipografía proporcional — en escritorio la celda va de 73 a **120–180 px**, o sea entre 2,7× y 6× de área. Medido: el tablero ocupa hoy el **15 %** de una pantalla de 1920×1080; los dos flotantes tapan **11 de 60** celdas y **ninguna de la costura**. El piso salió **73 y no 60**: los 60 valían con la fuente clavada. **No cambia una nota** |
+| [022](./022-el-puente-con-el-motor-sale-del-shell/spec.md) | 2026-08-20 | Propuesto | **`App.tsx` pierde los seis efectos** y baja de 455 líneas a ≈250; `PiecePalette` pasa de dieciséis props a **dos**, partida en `PanelDeOrientacion` y `PanelDeTransporte`; se borra la única duplicación real de `src/` —la proyección al motor, escrita dos veces—; y los comentarios que cuentan *cómo se llegó* se mudan a `revisiones.md`. Cierra los **tres ítems de dependencias huérfanas de `deuda.md`** —las siete `devDependencies`— y le saca al de «No hay tests de UI» la parte de AC10 del 008, que esperaba desde hace catorce specs y pedía testing-library: se cierra por la otra vía que el propio registro nombra, **sin jsdom**. Medido: se mudan **166 líneas** de efectos y el **75 % son comentario**; el precio son **31 tareas** de 018–021 que cambian de destino. **No cambia una nota, ni un píxel** |
 
 ## Dependencias entre specs
 
@@ -177,6 +178,32 @@ casillas abiertas como próxima tarea.
   clavada en 19 px**, y el 021 la vuelve proporcional: a 60 de celda la nota renderiza a 15,6 px, o sea
   por debajo de lo que el repo midió como necesario. El piso coherente es **73**, que además deja la
   promesa de que el tablero nunca es más chico que hoy, sólo más grande.
+
+- **022 va antes del lote 018–021, y es el mismo argumento con el que el 005 fue antes del 001, 003 y
+  004.** Es el único que reordena `src/` **sin cambiar comportamiento**, y los cuatro que vienen escriben
+  `App.tsx` y `PiecePalette.tsx`: mergearlo antes hace más chicas sus ramas. La diferencia con el 005 es
+  que acá el precio está **medido y escrito**: **31 tareas** de esos cuatro specs cambian de archivo de
+  destino —018 (3), 019 (10), 020 (13) y 021 (5)— y el 022 las reescribe una por una (`T018`,
+  `T039`–`T041`, `T054`–`T056`). No es gratis y no se disimula.
+- **Lo que compra pagarlo es que el 020 se achica.** Los dos hooks de entrada del 022 reciben
+  **callbacks y no setters**, así que cuando el 020 convierta `rotation` y `mirror` en una ranura de un
+  `Record`, ese cambio cae en `App.tsx` y no adentro del hook: cinco tareas sobre el cuerpo de un efecto
+  pasan a ser tres callbacks. La colisión se paga una vez en el 022 y deja de existir para el 020.
+- **Y una arista que hoy no declara nadie pasa a estar escrita.** `tapLimpio` lo escriben **los dos**
+  efectos —el del teclado en cada `keydown` y el de la rueda a `false`— y lo lee el del teclado, todo por
+  cierre léxico; lo único que lo explica es un comentario de seis líneas. Al mudarlos, el ref entra por parámetro a los dos hooks y la arista queda en las dos
+  firmas. Es también el riesgo más alto del 022 —si alguien lo mete adentro del hook del teclado,
+  `Ctrl`+rueda vuelve a reflejar la pieza al soltar— y **ningún test automático lo atrapa**: por eso
+  tiene AC propio (AC15) y verificación en el navegador.
+- **El 022 le deja tres tareas para recontar al 021.** Sus `T059`, `T060` y `T049` actualizan «los seis
+  efectos» a «siete» en cuatro archivos; con el 022 puesto el número base ya no es seis. Lo arregla el
+  `T018` del 022, con el precedente de siempre: el 015 cerró el `T070` del 011 y el 021 cierra el `T033`
+  del 016.
+- **El 022 no difiere nada, y eso fue una decisión explícita.** Su primera versión dejaba tres de sus
+  seis frentes para después del 020 y del 021 —el teclado, la rueda y la paleta— anotados en `deuda.md`
+  con su dueño al lado. Se amplió a los seis con el costo a la vista, y por eso `deuda.md` **pierde tres
+  ítems y no gana ninguno**. Lo que queda abierto ahí es lo que el 022 no toca: los tests de UI y el
+  `manifest.json`.
 
 ## Lo que dejó de vivir acá
 
