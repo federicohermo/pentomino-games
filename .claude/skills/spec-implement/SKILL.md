@@ -1,12 +1,17 @@
 ---
 name: spec-implement
-description: Especialización de /spec-implement para pentomino-games. El grafo no se adivina: los tasks.md nuevos declaran el paralelismo por tarea con [P], y [M] marca lo que ningún agente puede cerrar. Se lee junto con el skill global, que aporta el método; acá está solo lo que difiere.
+description: Especialización de /spec-implement para pentomino-games: el paralelismo viene declarado por tarea con [P], y [M] marca lo que ningún agente cierra. Se lee junto con el skill global.
 ---
 
 # spec-implement — pentomino-games
 
 Este archivo **no reemplaza** al skill global: aporta lo que en este repo es distinto. El fake-edge
 test, las reglas de andamiaje y la convergencia salen de allá.
+
+> **Y por eso no lleva `context: fork`.** Un skill forkeado convierte su contenido en el prompt de un
+> subagente **sin acceso al historial de la conversación**, y este archivo no es una tarea: es la
+> mitad de una, que sólo tiene sentido leída encima del skill global ya cargado. Forkearlo haría que
+> el subagente arranque con las excepciones del repo y sin el método al que corrigen.
 
 ## El paralelismo viene declarado — no lo derives de cero
 

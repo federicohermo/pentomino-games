@@ -1,9 +1,27 @@
 ---
 name: spec-implement-batch
-description: Reparte un lote de specs de specs/ en carriles y los implementa — un carril por cadena de dependencias, cada uno en su worktree, delegando cada spec a spec-implement. Usar al implementar dos o más specs de una, al preguntar si un grupo de specs se puede paralelizar, o cuando specs/log.md los declara encadenados. Para un spec solo, spec-implement.
+description: Implementa un lote de specs de specs/ repartiéndolo en carriles —uno por cadena de dependencias, cada uno en su worktree—, delegando cada spec a spec-implement. Usar al implementar dos o más specs de una. Para un spec solo, spec-implement.
+argument-hint: "<NNN NNN ...> | <NNN-MMM> | --propuestos [--dry]"
 ---
 
 # spec-implement-batch — pentomino-games
+
+## Matriz del lote
+
+<!-- Inyección dinámica: el comando corre ANTES de que el modelo procese este archivo, así que la
+     matriz llega con el skill ya cargado en vez de costar un turno de tool. `matriz.sh` entiende las
+     tres formas del `argument-hint`, que es lo que deja pasarle `$ARGUMENTS` crudo.
+
+     Ruta literal y no `${CLAUDE_SKILL_DIR}`: la sustitución existe pero su orden respecto de la
+     inyección `!` no está documentado, y acá una que no ocurre no degrada — hace fallar la carga.
+
+     Este skill sigue **sin `allowed-tools`**, o sea sin restricción. Declarar una lista parcial para
+     nombrar el script le sacaría todo lo que no estuviera en ella —`Agent`, los `git worktree`, el
+     `pnpm verify`— y lo rompería en silencio. -->
+
+!`.claude/skills/spec-implement-batch/scripts/matriz.sh $ARGUMENTS`
+
+---
 
 `spec-implement` abanica los **pasos** de un spec. Este reparte **specs** en carriles.
 
@@ -38,10 +56,11 @@ Derivá el grafo de los archivos, y recién después contrastalo contra «Depend
 `log.md`. Ese texto dice qué quiso el autor; el grafo dice qué va a pasar. **Si difieren, eso es el
 hallazgo** y va en el reporte.
 
-1. **Corré [`scripts/matriz.sh`](./scripts/matriz.sh) con los números del lote.** Devuelve la matriz
-   archivo × spec y, por cada archivo compartido, las líneas de tarea que lo citan — que es lo que
-   decide arista o conflicto. No filtra las menciones que vienen de tareas de documentación: eso lo
-   decide el verbo, y se lee en las líneas que el script ya trajo.
+1. **La matriz ya está arriba**, inyectada por [`scripts/matriz.sh`](./scripts/matriz.sh) al cargar
+   este archivo: matriz archivo × spec y, por cada archivo compartido, las líneas de tarea que lo
+   citan — que es lo que decide arista o conflicto. No la vuelvas a pedir por Bash. No filtra las
+   menciones que vienen de tareas de documentación: eso lo decide el verbo, y se lee en las líneas
+   que el script ya trajo.
 2. Aplicá la tabla de arriba a cada casilla marcada `<- compartido`.
 3. **Preguntale al MCP en vez de abrir archivos.** `find_symbol` contesta quién importa qué —la arista
    real, no la que el texto insinúa— y `spec_status` da estado y próxima tarea de los N specs en una
@@ -81,6 +100,12 @@ Lo que salga es una decisión de diseño que le falta al spec. **Reportala y fre
 respuesta en mano, escribila en el `tasks.md` que corresponda antes de lanzar.
 
 **Terminado cuando** las cuatro preguntas tienen respuesta escrita, incluidas las que dieron que no.
+
+> **Por eso este skill no lleva `context: fork`, y acá el motivo es doble.** `AskUserQuestion` **no
+> existe en un subagente** (docs de Claude Code, *user-input · Limitations*), así que forkeado esta
+> parada no se rechazaría: se ejecutaría eligiendo sola. Y además este skill **escribe código** en N
+> worktrees y corre `pnpm verify`: esconder eso del usuario no es ahorrar contexto, es sacarle de
+> encima el trabajo que tiene que poder frenar a mitad de camino.
 
 ---
 

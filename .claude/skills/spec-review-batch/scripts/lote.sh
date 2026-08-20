@@ -1,8 +1,14 @@
 #!/usr/bin/env sh
 # Insumo del Paso 2 de spec-review-batch: de que se agarra un spec del lote y que le mueve otro.
 #
-# Uso, desde la raiz del repo:
+# Uso, desde la raiz del repo — las mismas tres formas que el `argument-hint` del skill:
 #   .claude/skills/spec-review-batch/scripts/lote.sh 018 019 020 021
+#   .claude/skills/spec-review-batch/scripts/lote.sh 018-021
+#   .claude/skills/spec-review-batch/scripts/lote.sh --propuestos
+#
+# El SKILL.md lo INYECTA con !`... $ARGUMENTS`, asi que su salida llega con el skill ya
+# cargado y no cuesta un turno de tool. Por eso entiende las tres formas: recibe crudo lo
+# que el usuario tipeo.
 #
 # Emite tres bloques, y ninguno es una conclusion:
 #
@@ -22,7 +28,37 @@
 # de la tarea — y un script que lo adivine se equivoca en silencio.
 set -eu
 
-[ $# -ge 2 ] || { echo "uso: $(basename "$0") NNN MMM [NNN...]" >&2; exit 2; }
+# Entiende las TRES formas del `argument-hint` del skill, no solo los numeros sueltos, y esa
+# paridad es lo que deja que el SKILL.md lo inyecte con !`lote.sh $ARGUMENTS` sin un caso
+# especial: lo que el usuario tipea es lo que el script recibe. Con el guard viejo
+# —numeros sueltos y nada mas— `018-021` y `--propuestos` salian por `exit 2`, o sea que la
+# inyeccion habria funcionado en una de las tres formas y fallado en silencio en las otras dos.
+#
+# `--dry` se ignora en vez de rechazarse: es un flag del SKILL, no del script, y viene pegado
+# en el mismo $ARGUMENTS.
+expandir() {
+  for a in "$@"; do
+    case "$a" in
+      --dry) ;;
+      --propuestos)
+        # La tabla de log.md, columna de estado. Es la misma fuente que lee `spec_status`.
+        sed -n 's/^| \[\([0-9][0-9][0-9]\)\](.*|[ ]*Propuesto[ ]*|.*/\1/p' specs/log.md ;;
+      [0-9][0-9][0-9]-[0-9][0-9][0-9])
+        # Los ceros a la izquierda se sacan antes del `-le`: `018` es octal invalido para la
+        # aritmetica de shell y el rango moriria con un error que no dice eso.
+        lo=$(printf '%s' "${a%-*}" | sed 's/^0*//; s/^$/0/')
+        hi=$(printf '%s' "${a#*-}" | sed 's/^0*//; s/^$/0/')
+        n=$lo; while [ "$n" -le "$hi" ]; do printf '%03d\n' "$n"; n=$((n + 1)); done ;;
+      [0-9][0-9][0-9]) printf '%s\n' "$a" ;;
+      *) echo "argumento no reconocido: $a" >&2; exit 2 ;;
+    esac
+  done
+}
+
+# shellcheck disable=SC2046 # el split por whitespace es lo que convierte las lineas en argumentos
+set -- $(expandir "$@" | sort -u)
+
+[ $# -ge 2 ] || { echo "uso: $(basename "$0") <NNN NNN ...> | <NNN-MMM> | --propuestos" >&2; exit 2; }
 
 dir_de() {
   d=$(find specs -maxdepth 1 -type d -name "$1-*" | head -1)

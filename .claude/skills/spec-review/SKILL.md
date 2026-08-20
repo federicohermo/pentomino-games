@@ -1,12 +1,17 @@
 ---
 name: spec-review
-description: Especialización de /spec-review para pentomino-games. Cablea las rutas de specs/, el formato de tarea del repo y las tools MCP de dominio. Se lee junto con el skill global, que aporta los ejes; acá está solo lo que difiere.
+description: Especialización de /spec-review para pentomino-games: rutas de specs/, formato de tarea y tools MCP de dominio. Se lee junto con el skill global.
 ---
 
 # spec-review — pentomino-games
 
 Este archivo **no reemplaza** al skill global: aporta lo que en este repo es distinto. Los ejes A–F,
 los gates y el formato del reporte salen de allá.
+
+> **Y por eso no lleva `context: fork`.** Un skill forkeado convierte su contenido en el prompt de un
+> subagente **sin acceso al historial de la conversación**, y este archivo no es una tarea: es la
+> mitad de una. Forkearlo dejaría al subagente con las rutas y las excepciones del repo, y sin los
+> ejes que corrigen.
 
 ## Rutas — dónde está cada cosa acá
 

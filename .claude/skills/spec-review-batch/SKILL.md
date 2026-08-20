@@ -1,7 +1,10 @@
 ---
 name: spec-review-batch
-description: Revisa un lote de specs de specs/ en paralelo —un agente por spec, sin worktrees— más un carril de coherencia que mira el lote entero y caza las contradicciones entre specs mientras todavía son texto editable. Usar al revisar dos o más specs de una, antes de implementar un lote encadenado, o cuando specs/log.md declara una cadena. No usar para revisar un spec solo.
+description: Revisa N specs de specs/ en paralelo —un agente por spec— más un carril de coherencia que caza las contradicciones ENTRE specs mientras todavía son texto editable. Usar al revisar dos o más specs de una. Para un spec solo, spec-review.
 argument-hint: "<NNN NNN ...> | <NNN-MMM> | --propuestos [--dry]"
+# `describe_piece` y `simulate_board` estuvieron acá y se fueron: ningún paso las nombraba.
+# No costaban contexto —`allowed-tools` no entra al prompt del agente— pero le daban a un
+# review la capacidad de simular un tablero, que no es lo suyo.
 allowed-tools:
   - Agent
   - Skill
@@ -12,8 +15,6 @@ allowed-tools:
   - AskUserQuestion
   - mcp__pentomino-domain__spec_status
   - mcp__pentomino-domain__find_symbol
-  - mcp__pentomino-domain__describe_piece
-  - mcp__pentomino-domain__simulate_board
   - Bash(git status:*)
   - Bash(git worktree list:*)
   - Bash(git branch:*)
@@ -22,6 +23,21 @@ allowed-tools:
 ---
 
 # spec-review-batch — pentomino-games
+
+## Matriz del lote
+
+<!-- Inyección dinámica: el comando corre ANTES de que el modelo procese este archivo, así que
+     la matriz llega con el skill ya cargado en vez de costar un turno de tool (la llamada más
+     su resultado). `lote.sh` entiende las tres formas del `argument-hint`, que es lo que deja
+     pasarle `$ARGUMENTS` crudo sin un caso especial.
+
+     Ruta literal y no `${CLAUDE_SKILL_DIR}`: la sustitución existe, pero su orden respecto de
+     la inyección `!` no está documentado, y acá una sustitución que no ocurre no degrada — hace
+     fallar la carga del skill. No compra ni un token, así que no vale la apuesta. -->
+
+!`.claude/skills/spec-review-batch/scripts/lote.sh $ARGUMENTS`
+
+---
 
 Un review de spec audita **uno** contra el repo. Este audita **N contra el repo y entre sí**.
 
@@ -81,9 +97,11 @@ pregunta está mal formulada para todos menos el primero: el 020 cita cosas que 
 **La base de cada spec es `main` + los specs del lote que lo preceden.** Derivá el orden y pasáselo a
 cada agente, o el lote devuelve una avalancha de citas rotas falsas.
 
-1. Corré [`scripts/lote.sh`](./scripts/lote.sh) con los números del lote: da la matriz archivo × spec,
-   las líneas de tarea que citan cada archivo compartido, y **los `X → Y` de cada `tasks.md`**, que es
-   la arista que ningún import delata.
+1. **La matriz ya está arriba**, inyectada por [`scripts/lote.sh`](./scripts/lote.sh) al cargar este
+   archivo: matriz archivo × spec, las líneas de tarea que citan cada archivo compartido, y **los
+   `X → Y` de cada `tasks.md`**, que es la arista que ningún import delata. No la vuelvas a pedir por
+   Bash — ya la tenés. Si arriba salió un mensaje de uso en vez de la matriz, el lote está mal
+   escrito y eso se resuelve en el Paso 0.
 2. Contrastá contra «Dependencias entre specs» del `log.md`. Ese texto dice qué quiso el autor; la
    matriz dice qué archivos se pisan. **Si difieren, eso es hallazgo** y se edita el `log.md`.
 3. Un spec que **declara tolerar** llegar antes que su dependencia sale de la cadena: es permiso
@@ -167,6 +185,21 @@ re-audita: cruza.
 La asimetría del review vale igual acá: **endurecer se aplica** —un cruce que falta se escribe en el
 `tasks.md` del spec que corresponda—; **aflojar se propone**. Si el cruce obliga a elegir entre dos
 diseños, frená con `AskUserQuestion`: un párrafo ahora contra dos ramas rebaseadas después.
+
+> **Y por eso este skill NO lleva `context: fork`.** Correrlo forkeado sacaría de esta conversación
+> los N+1 reportes y la convergencia entera, que es el gasto de contexto más grande del skill — es
+> tentador y está medido. Pero `AskUserQuestion` **no existe en un subagente** (docs de Claude Code,
+> *user-input · Limitations*: «it is not available in subagents spawned via the Agent tool»), así que
+> el fork no rechazaría esta línea: la ejecutaría eligiendo solo, en silencio, exactamente en el punto
+> donde el skill decidió no elegir.
+>
+> El gate del Paso 0 —«sin argumentos, preguntá»— cae por lo mismo.
+>
+> Forkearlo pide primero mover las dos preguntas a los bordes: que el fork **devuelva** las decisiones
+> pendientes en su reporte y el padre las pregunte y aplique. Es viable —el Paso 3 ya obliga a los
+> agentes a devolver ediciones con `path:línea` y texto exacto, que es justo lo que el padre
+> necesitaría— pero cambia el contrato del skill: las preguntas pasan de bloquear a diferirse. Es una
+> decisión, no una optimización, y hasta que se tome el fork queda afuera.
 
 ## Paso 5 — Aplicar lo compartido y reportar
 
