@@ -1,5 +1,5 @@
 import type { Cell } from '../../domain/types/transform.types.ts';
-import { MARCA } from '../constants/route.constants.ts';
+import type { MARCA } from '../constants/route.constants.ts';
 
 /** Los tres sonidos que puede pisar la cabeza: ver `MARCA` en `route.constants.ts`. */
 export type MarcaKind = (typeof MARCA)[keyof typeof MARCA];

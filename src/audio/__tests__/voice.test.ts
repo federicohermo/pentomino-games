@@ -210,7 +210,7 @@ describe('el release en intervalos (cierre del seguimiento del 008)', () => {
     }
   });
 
-  it('a 110 bpm la envolvente es la misma que con los 0,12 s de antes', async () => {
+  it('a 110 bpm la envolvente es la misma que con los 0,12 s de antes', () => {
     // El valor de `RELEASE_INTERVALS` se eligio para esto: al tempo por defecto el
     // instrumento suena exactamente igual que antes del cambio.
     expect(RELEASE_INTERVALS * intervalDuration(110)).toBeCloseTo(0.12, 10);
