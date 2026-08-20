@@ -103,9 +103,10 @@ una persona y no bloquea el cierre.
 - [ ] T046 `src/components/PiecePalette.tsx`: scroll interno propio. A `CELL_PX = 73` el dock queda en
       146 × 292 px y el panel mide hoy del orden de 349 × 496 (medición sobre `main`; el 019 y el 020
       la mueven, ver §4 del research) — sin scroll, crece y se come celdas — **AC19**
-- [ ] T047 `src/App.tsx`: el `<footer>` con la leyenda de gestos (`:446-455`) **se muda adentro de un
-      flotante**, no se borra: es hoy el único lugar donde los cuatro gestos del 013 están escritos, y
-      dejarlo debajo del tablero da scroll vertical de página — **AC1**, **AC16**
+- [ ] T047 `src/App.tsx`: el `<footer>` con la leyenda de gestos (era `:446-455`; el 022 achicó el
+      archivo de 455 a 319 líneas y hoy está en `:310-316`) **se muda adentro de un flotante**, no se
+      borra: es hoy el único lugar donde los cuatro gestos del 013 están escritos, y dejarlo debajo del
+      tablero da scroll vertical de página — **AC1**, **AC16**
 - [ ] T020 `z-index` explícito por encima del tablero, y fondo semiopaco con `backdrop-blur`: abajo hay
       celdas con nota, y un panel opaco las esconde mientras uno translúcido dice que están ahí
 
@@ -126,25 +127,37 @@ una persona y no bloquea el cierre.
       reemplazarlo por el que corresponda al dock
 - [ ] T026 [P] `docs/guides/conventions.md:247-248`: las celdas ya no se dimensionan con
       `style={{ width: CELL_PX, … }}` sino con `var(--cell)`
-- [ ] T059 [P] `docs/architecture/overview.md`: **entra a la lista**, aunque no por el layout. Afirma
-      en presente «los seis efectos» en **dos** lugares —el diagrama de `:23` y la prosa de `:68`, y
-      dejar uno de los dos es peor que dejar los dos— más la tabla de estado de `App.tsx` (`:101-109`),
-      y este spec agrega un `useLayoutEffect` y dos `useState`. No se toca lo que ya venía corto de antes
-      (la tabla lista siete estados contra nueve): eso es deuda previa
-- [ ] T060 [P] `CLAUDE.md`: «el shell: estado, derivados, handlers, **los seis efectos** y la
-      composición» pasa a siete, por el `useLayoutEffect` de T043
+- [ ] T059 [P] `docs/architecture/overview.md`: **entra a la lista**, aunque no por el layout — pero
+      no por el motivo que este spec preveía. El 022 ya sacó «los seis efectos» de acá: el diagrama
+      dice «el shell, sin un solo efecto» (hoy `:22`) y la prosa de «Qué vive dónde» dice «con **cero
+      `useEffect`**» (hoy `:74`). No queda «seis» para pasar a «siete»: la tarea es llevar esos dos
+      «cero»/«sin un solo efecto» a **uno**, nombrando el `useLayoutEffect` de T043. Sigue sin tocarse
+      la tabla de estado de `App.tsx` (sección «2. Componente — estado y render», hoy `:119-127`, no
+      `:101-109`): ya venía corta antes de este spec —siete estados listados contra los que hay— y
+      este spec agrega dos más (T021); es la misma deuda previa, más vieja pero no de acá
+- [ ] T060 [P] `CLAUDE.md`: el 022 ya sacó «los seis efectos» de la línea 4 de «Arquitectura» — hoy
+      dice «el shell: estado, derivados, handlers y la composición. Desde el spec 022 **sin un solo
+      `useEffect`**» (`:74-76`). No hay «seis» para pasar a «siete»: cambiar «sin un solo `useEffect`»
+      por «con un `useEffect`» y nombrarlo — el `useLayoutEffect` que escribe `--cell` (T043). La
+      mención a que los cuatro de reconciliación viven en `use-motor.ts` y los dos de entrada en
+      `use-entrada.ts` sigue siendo cierta y no se toca
 - [ ] T048 [P] `DESIGN.md:79-83`: la tabla afirma en presente `CELL_PX` **73**, «Tablero **730 × 438
       px**», «Tarjeta del tablero **`md:col-span-8`**» y —las dos filas que faltaban en esta lista—
       «Aire de la baldosa **2 px** por lado» y «Borde de la baldosa **1 px**». Y `:99-102` (la baldosa
       con sus medidas fijas) y `:110-114` (el párrafo de debajo de `md`, que habla del «panel» y de los
       730 px fijos). Es el archivo que más queda mintiendo
 - [ ] T049 [P] `.claude/rules/ui.md`, **dos regiones del mismo archivo** —por eso van en una sola
-      tarea y no en dos `[P]` que se pisarían—. En `:66-68`: «los `col-span` no viven en `App.tsx` sino
-      en la tarjeta de cada componente» y «`CELL_PX` sale de `min(interior/10, interior/6)` sobre la
-      tarjeta real» — sin tarjetas las dos reglas quedan sin referente. Y en **`:9`**: «el shell:
-      estado con `useState` local, derivados, handlers, **los seis efectos**», que pasa a siete por el
-      `useLayoutEffect` de T043. Es el cuarto lugar del repo que afirma «seis» en presente, y el que
-      más caro sale dejar viejo: esta regla se **carga sola** al tocar `App.tsx`
+      tarea y no en dos `[P]` que se pisarían—. La primera (era `:66-68`; el 022 corrió el archivo y
+      hoy está en `:84-86`, bajo «## El tablero se edita en el tablero»): «Los `col-span` no viven en
+      `App.tsx`, sino en la tarjeta de cada componente» y «`CELL_PX`… sale de `min(interior / 10,
+      interior / 6)` sobre la tarjeta real» — sin tarjetas (T012 mata la de `Board.tsx`; T017 vuelve la
+      de `PiecePalette.tsx` un dock `fixed`) las dos reglas quedan sin referente. La segunda sigue en
+      `:9`, pero el 022 ya le sacó el «seis»: hoy dice «el shell: estado con `useState` local,
+      derivados, handlers y la composición. Desde el spec 022 **no declara un solo `useEffect`**». No
+      hay «seis» para pasar a «siete»: este spec le agrega uno —el `useLayoutEffect` de T043—, así que
+      pasa a «declara un `useEffect`: el que escribe `--cell` al medir el viewport». No tocar `:65`,
+      que dice en pasado «la que le sacó al shell sus seis `useEffect` con el spec 022» — eso sigue
+      siendo cierto
 - [ ] T027 [P] `specs/deuda.md`: anotar **en qué** este spec agranda la deuda de accesibilidad del
       tablero, con los tres puntos de los Límites de Alcance —once celdas que exigen plegar un panel
       antes de alcanzarse, el orden de tabulación que deja de seguir al visual con dos `fixed`, y la

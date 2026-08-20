@@ -10,20 +10,15 @@ esta lista y entra como fila en [log.md](./log.md).
 
 - **`public/manifest.json` tiene los valores por defecto de CRA** (`"name": "Create React App
   Sample"`).
-- **Las `@testing-library/*` siguen sin consumidor.** Ningún test renderiza un componente, y montarlos
-  va a requerir `jsdom` en su propio bloque de config, sin tocar el `environment: 'node'` global que
-  necesita el audio.
-- **No hay tests de UI**, así que los cuatro componentes de `components/` se verifican a ojo. El spec 007
+- **No hay tests de UI**, así que los componentes de `components/` se verifican a ojo. El spec 007
   la deja **abierta pero no más grande**: la derivación de la que depende lo que se ve —de `(x, y)` al
   nombre de nota— no vive en `Board.tsx` sino en `domain/board.ts` (`occupantCellIndex`, AC14), así que
   el componente sigue siendo un encadenado de puras testeadas en `environment: 'node'`. Su
   `components/__tests__/palette.test.ts` es el primer test de la carpeta, pero es de constantes: no
-  renderiza nada y **no** desbloquea ni requiere jsdom.
-  **El primer caso a cubrir cuando exista la infra es AC10 del spec 008**: que el botón de transporte
-  refleje si el reloj *arrancó de verdad* (`setPlaying(clockRunning())`) y no si se lo apretó. El spec
-  lo daba por falsable sin navegador y terminó verificado por lectura; testearlo pide extraer el
-  handler de `App.tsx` o agregar testing-library. Vivía en el seguimiento del 008, que ya no es su
-  dueño.
+  renderiza nada y **no** desbloquea ni requiere jsdom. El spec 022 sumó `motor.test.ts` por la misma
+  vía: es de puras, corre en `node` y no monta nada. Los componentes pasaron de cuatro a seis
+  —`PiecePalette` se partió en tres— y **se siguen verificando a ojo**: el hueco es el mismo, sólo que
+  reparte su superficie en más archivos.
 - **`L` (`#29ABE2`) e `Y` (`#FF7BAC`) no llegan al piso de contraste con ningún color de texto**: Lc
   55,8 y 56,9 contra un piso de 60. Les falta contraste al `bg`, no al `fg`, así que ninguna elección
   de texto las arregla y subirlas exige mover el color de la lámina — o sea, es una decisión de
@@ -41,9 +36,6 @@ esta lista y entra como fila en [log.md](./log.md).
   desde el 014 la grilla tiene dos operaciones que solo existen ahí —el click quita la pieza y
   `Alt`+click la mutea—, o sea que hay una operación **destructiva** que no se puede ejecutar de
   ninguna otra forma. Tampoco hay deshacer.
-- **`postcss` y `autoprefixer`** están en `devDependencies` sin ningún config que los use — Tailwind 4
-  va por el plugin de Vite. Candidatos a borrar.
-- **`@types/jest`** sigue en el árbol y es lo que impide usar `globals: true` en Vitest.
 - **La colocación no se repliega sobre la costura.** El *recorrido* sí —`(0,0)` y `(9,5)` son
   adyacentes desde el spec 009— pero una pieza no se puede colocar cruzando ese borde: `isValid`
   rechaza toda celda fuera de la grilla. O sea que el tablero es un cilindro para el circuito y un
@@ -68,7 +60,19 @@ esta lista y entra como fila en [log.md](./log.md).
 
 Ya resueltos: los archivos huérfanos de las plantillas de CRA y Vite (`src/App.css`, `src/logo.svg`,
 `src/assets/react.svg`, `public/vite.svg`, `src/setupTests.ts`) y la dependencia `web-vitals`, que
-quedó sin consumidor cuando `reportWebVitals.ts` no se migró. También el anclaje de la fase a la
+quedó sin consumidor cuando `reportWebVitals.ts` no se migró.
+
+También las **siete `devDependencies` sin consumidor** —las cuatro `@testing-library/*`, `@types/jest`,
+`postcss` y `autoprefixer`—, que el spec 022 borró en su propio commit. Con `@types/jest` fuera del
+árbol, `globals: true` queda **disponible y sin ejercer** en Vitest: ejercerlo es sacarle el import a 16
+archivos de test y no compra nada.
+
+Y con ellas **AC10 del spec 008**, que era el ítem más viejo del registro: que el botón de transporte
+refleje si el reloj *arrancó de verdad* y no si se lo apretó. Pedía «extraer el handler de `App.tsx` **o**
+agregar testing-library», y se cerró por la primera de las dos vías que él mismo nombraba —
+`alternarTransporte` en `components/motor.ts`, con el motor por parámetro, y un motor falso de una línea
+(`corriendo: () => false`) para la rama en la que se pidió arrancar y no arrancó—. **Sin jsdom.** Vale
+anotar la forma, porque es la que va a servir la próxima vez: el ítem pedía infra y lo cerró una firma. También el anclaje de la fase a la
 columna (spec 004, AC8), que no tenía test automático porque las puras no se podían exportar desde
 `App.tsx`: hoy vive en `domain/board.ts` y lo cubre `domain/__tests__/board.test.ts`.
 
