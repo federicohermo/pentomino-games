@@ -68,28 +68,35 @@ export default function PiecePalette({ orientacion, transporte }: Props) {
             régimen y una desviación, que es justo la lectura que D4 rechaza — no son
             dificultades, son dos reglas. El idioma visual sí es el mismo que el resto de
             la tarjeta usa para lo activo: fondo oscuro. */}
+        {/* Los dos grupos de abajo son `role="group"` y NO `radiogroup`, aunque los cuatro
+            de rotación y los dos de régimen sean conjuntos exclusivos. Un `radiogroup`
+            obliga a un modelo de foco —una sola parada de tabulación para el grupo entero
+            y flechas para moverse adentro— y ese modelo lo fija el spec 026, que es el que
+            contesta la pregunta que `specs/deuda.md` tiene abierta para el tablero.
+            Decidirlo acá de refilón sería decidirlo dos veces y probablemente distinto: el
+            `aria-pressed` de cada botón ya anuncia el estado sin comprometer el foco. */}
         <div>
           <div className="flex items-center justify-between">
-            <span className="font-medium">Rotación</span>
-            <div className="flex gap-1">
+            <span id="rotacion-etiqueta" className="font-medium">Rotación</span>
+            <div role="group" aria-labelledby="rotacion-etiqueta" className="flex gap-1">
               {[0,1,2,3].map(r=> (
-                <button key={r} onClick={()=> onRotate(r)} className={`px-2 py-1 rounded ${rotation===r?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{r*90}°</button>
+                <button key={r} onClick={()=> onRotate(r)} aria-pressed={rotation===r} className={`px-2 py-1 rounded ${rotation===r?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{r*90}°</button>
               ))}
             </div>
           </div>
           <div className="flex items-center justify-between gap-1 mt-1">
-            <span className="text-xs text-slate-600">cambia</span>
-            <div className="flex gap-1">
+            <span id="regimen-etiqueta" className="text-xs text-slate-600">cambia</span>
+            <div role="group" aria-labelledby="regimen-etiqueta" className="flex gap-1">
               {([REGIMEN.escala, REGIMEN.orden] as const).map(r=> (
-                <button key={r} onClick={()=> onRegimen(r)}
+                <button key={r} onClick={()=> onRegimen(r)} aria-pressed={regimen===r}
                         className={`px-2 py-0.5 rounded text-xs ${regimen===r?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{r}</button>
               ))}
             </div>
           </div>
         </div>
         <div className="flex items-center justify-between">
-          <span className="font-medium">Reflexión</span>
-          <button onClick={onMirror} className={`px-3 py-1 rounded ${mirror?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{mirror? 'ON':'OFF'}</button>
+          <span id="reflexion-etiqueta" className="font-medium">Reflexión</span>
+          <button onClick={onMirror} aria-labelledby="reflexion-etiqueta" aria-pressed={mirror} className={`px-3 py-1 rounded ${mirror?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{mirror? 'ON':'OFF'}</button>
         </div>
         {/* El click MUDO del recorrido, con el mismo idioma que Reflexion: activo en
             oscuro. Es un interruptor de MEZCLA y no del modelo — el recorrido sigue
@@ -113,8 +120,8 @@ export default function PiecePalette({ orientacion, transporte }: Props) {
             bloques de orientacion, asi que llevarselo a `TransportPanel` reordenaria
             el DOM (AC18 del 022). Ver el docblock de arriba. */}
         <div className="flex items-center justify-between">
-          <span className="font-medium">Recorrido en el vacío</span>
-          <button onClick={onToggleClicks} className={`px-3 py-1 rounded ${clicks?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{clicks? 'ON':'OFF'}</button>
+          <span id="recorrido-etiqueta" className="font-medium">Recorrido en el vacío</span>
+          <button onClick={onToggleClicks} aria-labelledby="recorrido-etiqueta" aria-pressed={clicks} className={`px-3 py-1 rounded ${clicks?'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}>{clicks? 'ON':'OFF'}</button>
         </div>
         <div className="pt-2 text-sm text-slate-600">
           <p><b>{selected}</b> → tónica {CHROMATIC[BASE_MAP[selected]]}</p>
