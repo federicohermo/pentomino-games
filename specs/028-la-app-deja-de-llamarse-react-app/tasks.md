@@ -134,7 +134,10 @@ que es ortogonal en semántica y no en texto: ver la sección 10 del research. N
       **en presente** que `favicon.ico`, `logo192.png` y `logo512.png` están «Vivos, referenciados desde
       `index.html` y `manifest.json`», y que `manifest.json` está «Vivo pero **con valores por defecto
       de CRA**». Este spec falsifica las dos. Es doc en presente y el repo la mantiene al día: mismo
-      caso que `fb910df`, donde el 029 dejó cuatro archivos diciendo un solo proyecto de Vitest
+      caso que `fb910df`, donde el 029 dejó cuatro archivos diciendo un solo proyecto de Vitest.
+      **La fila nueva no escribe los nombres viejos**: AC2a los grepea sobre `docs/` y sobre los
+      registros de `specs/`, así que la historia se cuenta como «los tres íconos de la plantilla de
+      CRA» y no listándolos. Mismo criterio en el ítem cerrado de `deuda.md` (T023)
 - [x] T038 `specs/revisiones.md` — entrada del 028 con la lección, que no es sobre íconos: **el
       argumento central de la sección 4 del research se falsificó solo en cinco días**. El README
       recomendaba una config que el repo rechazaba; el 030 la adoptó y ahora el README propone algo ya

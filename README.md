@@ -24,7 +24,7 @@ pnpm verify                             # el gate antes de un PR
 Chromium no está en el lockfile y el proyecto `browser` de Vitest lo necesita: sin esa segunda línea
 el primer `verify` de un clone recién sacado falla. `verify` corre `lint ‖ typecheck ‖ suite ‖
 mcp:test`, y `suite` incluye coverage con umbral 100 en las cuatro métricas. El resto de los scripts
-está en `package.json`.
+está en `package.json`. Ojo: `mcp:test` pide Node ≥ 22.18, porque corre TypeScript sin compilar.
 
 ## A dónde ir
 

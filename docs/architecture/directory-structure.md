@@ -235,7 +235,7 @@ Se copia tal cual a `dist/`. Las rutas se referencian desde la raíz del sitio (
 | Archivo | Estado |
 |---|---|
 | `_redirects` | **Vivo y necesario.** Regla SPA para Netlify: `/* /index.html 200` |
-| `favicon.ico`, `icon-192.png`, `icon-512.png` | Vivos, referenciados desde `index.html` y `manifest.json`. Reemplazan a los tres íconos de la plantilla de CRA (`favicon.ico`, `logo192.png`, `logo512.png`, el logo de React) desde el spec 028: la pieza `X` en `#00A99D`, dibujada con el lenguaje de `DESIGN.md`. Los `.png` se renombran a propósito —`logoNNN.png` era el nombre de CRA—; `favicon.ico` conserva el nombre |
+| `favicon.ico`, `icon-192.png`, `icon-512.png` | Vivos, referenciados desde `index.html` y `manifest.json`. Reemplazan a los tres íconos de la plantilla de CRA —el logo de React— desde el spec 028: la pieza `X` en `#00A99D`, dibujada con el lenguaje de `DESIGN.md`. Los `.png` se renombran a propósito —`logoNNN.png` era el nombre de CRA—; `favicon.ico` conserva el nombre |
 | `manifest.json` | Vivo, con `name`/`short_name` propios y `theme_color`/`background_color` = `#f8fafc` (spec 028; antes tenía los valores por defecto de CRA, `"name": "Create React App Sample"`) |
 | `robots.txt` | Vivo |
 

@@ -11,8 +11,8 @@ esta lista y entra como fila en [log.md](./log.md).
 - **~~`public/manifest.json` tiene los valores por defecto de CRA~~ (`"name": "Create React App
   Sample"`) — CERRADO por el spec 028.** Era un ítem y resultaron ocho: el manifest —que pasa a tener
   `name`/`short_name` propios y `theme_color`/`background_color` = `#f8fafc`— más los tres íconos de
-  la plantilla de CRA (`favicon.ico`, `logo192.png`, `logo512.png`, el logo de React), reemplazados
-  por `favicon.ico`, `icon-192.png` e `icon-512.png` dibujados con el lenguaje de `DESIGN.md`; las
+  la plantilla de CRA —el logo de React—, reemplazados por `favicon.ico`, `icon-192.png` e
+  `icon-512.png` dibujados con el lenguaje de `DESIGN.md`; las
   tres metas de `index.html` (`description`, `theme-color`, `apple-touch-icon`); y el `README.md`,
   que no estaba registrado acá y era el más visible de los ocho — 69 líneas de la plantilla de Vite
   que no nombraban el proyecto ni una vez.
