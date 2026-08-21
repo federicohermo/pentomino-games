@@ -90,6 +90,14 @@ navegador ya esta en `main` desde el **029** —con `src/__tests__/App.browser.t
       `onMouseLeave` de `App.tsx:286` **no** borra `hover`. Sin esto, sacar el mouse de la grilla apaga
       el fantasma de la celda enfocada y el roving tabindex se queda sin ancla — o sea que «la celda
       enfocada ES el hover» es una promesa que el mouse rompe — **AC16**
+- [x] T064 **Y la mitad que hacía que T053 se volviera contra el mouse** (hallazgo del code review del
+      PR #30): un `div` con `tabIndex` es enfocable **por click**, así que el primer click del mouse
+      prendía `focoEnTablero` y desde ahí el mouse quedaba inerte. Medido en Chromium sobre el shell:
+      tras clickear (2,1), mover el mouse a (7,4) dejaba cinco celdas con texto —sólo la pieza
+      colocada— contra diez con el foco afuera. El fix es un `preventDefault` en el `mousedown` de la
+      celda: el foco entra al tablero **sólo por teclado**, que es además lo que hace verdadero que el
+      anillo sea de teclado. Con test de navegador y click de VERDAD: un `dispatchEvent('click')` no
+      dispara `mousedown` y por lo tanto no mueve el foco, o sea que sería verde con el bug puesto
 - [x] T054 Mover el foco con una flecha llama a `.focus()` sobre la celda destino: cambiar el `tabIndex`
       no mueve el foco del DOM, y sin la llamada el `0` y el foco real se separan a la primera flecha.
       Es React pidiéndole foco a un nodo que React renderiza, no el loop tocándolo (`ui.md:42`)
@@ -182,6 +190,15 @@ global de `window` en la misma página. Dos `[P]` del mismo bloque no pueden toc
       afuera**. Son dos ejes distintos, y por eso agotar uno no agota el otro
 - [x] T040 [P] `Board.tsx`: reescribir el párrafo del `title` que hoy dice «NO es accesibilidad».
       **Ahora sí lo es**, y el `title` pasa a ser el eco del nombre en vez de la única fuente
+- [x] T065 **La doc que este spec volvió falsa** (hallazgo del code review del PR #30):
+      `docs/guides/quickstart.md` decía «el tablero **no se alcanza con el teclado** (las celdas son
+      `div` sin `tabIndex`); es deuda conocida y está en `specs/deuda.md`», remitiendo al ítem que el
+      T036 borra. Pasa a decir el modelo: una parada de tabulación, flechas adentro, y qué teclas se
+      queda el tablero
+- [x] T066 **Y el registro de archivos**: `docs/architecture/directory-structure.md` enumera cada `.ts`
+      de `components/` y no tenía `cell-name.ts`, ni los dos anchos del anillo en la línea de
+      `layout.constants.ts`. En el mismo pase, la lista de puros del proyecto `node` de
+      `.claude/rules/ui.md:24-26` —que está escrita cerrada, «y los dos `-loop.ts`»— gana `cell-name.ts`
 - [x] T041 `pnpm verify` verde, con el coverage al **100** en las cuatro métricas que dejó el 029:
       `cell-name.ts`, las ramas nuevas de `input.ts` y los handlers de `Board.tsx`/`App.tsx` vienen con
       su test — **AC13**

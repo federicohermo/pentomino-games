@@ -427,6 +427,22 @@ export default function Board({
                 tabIndex={x === cursorX && y === cursorY ? 0 : -1}
                 onClick={(e) => onCellClick(x, y, e.altKey)}
                 onKeyDown={(e) => alTeclear(e, x, y)}
+                /* El click NO enfoca la celda, y este `preventDefault` es todo el motivo:
+                   un `div` con `tabIndex` es enfocable POR CLICK, asi que sin el, el
+                   primer click del mouse prendia `focoEnTablero` y a partir de ahi el
+                   `onMouseEnter` de abajo quedaba vetado para siempre. Medido en Chromium
+                   sobre el shell entero: despues de clickear (2,1), mover el mouse a (7,4)
+                   dejaba cinco celdas con texto —solo la pieza colocada— contra diez con el
+                   foco afuera. O sea que el fantasma se congelaba en la celda clickeada y
+                   no volvia a seguir al mouse hasta salir del tablero con `Tab`, y eso es
+                   el gesto primario del producto.
+                   El tablero no pierde nada: el `0` del roving tabindex viaja con `hover`,
+                   que el mouse sigue escribiendo, asi que el `Tab` posterior a un click
+                   aterriza justo en la celda que estaba abajo del cursor. Y de paso deja
+                   verdadera la otra mitad: el foco entra al tablero SOLO por teclado —`Tab`
+                   o una flecha—, que es lo que hace que el anillo sea de teclado y no
+                   aparezca bajo el mouse. */
+                onMouseDown={(e) => e.preventDefault()}
                 /* El foco escribe el MISMO cursor que el mouse, y por eso el fantasma, la
                    validez y `hoverEdita` funcionan con teclado sin una linea de dibujo
                    nueva. Va en la celda y no en el contenedor porque el nombre del hecho es
@@ -435,8 +451,10 @@ export default function Board({
                 /* Con el tablero enfocado el mouse NO escribe el cursor: manda el foco
                    (AC16). Es la misma regla que hace que sacar el mouse de la grilla no
                    apague el fantasma, dicha del otro lado — un solo cursor, y mientras el
-                   teclado lo tiene el mouse queda inerte hasta que se sale con `Tab` o se
-                   clickea (el click enfoca la celda, asi que el cursor lo sigue igual).
+                   teclado lo tiene el mouse queda inerte hasta que se sale con `Tab`. Y el
+                   "mientras el teclado lo tiene" es exacto justamente por el `onMouseDown`
+                   de arriba: el foco solo llega a una celda por teclado, asi que esta
+                   guarda nunca se prende sola por usar el mouse.
 
                    La alternativa era que el mouse ARRASTRARA el foco —`focus()` sobre la
                    celda que entra— para que el anillo y el fantasma no se separaran nunca.

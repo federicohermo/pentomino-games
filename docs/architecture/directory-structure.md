@@ -110,6 +110,9 @@ src/
     │                             #   pending del motor con la Sequence del dominio, con celdas
     ├── cell-text.ts              # qué dice cada celda: su nota (por grado) y su #N (por paso).
     │                             #   Fuera del .tsx para poder testearla (spec 012, fix del #N)
+    ├── cell-name.ts              # qué ANUNCIA cada celda: su nombre accesible y el texto de la
+    │                             #   región aria-live de las tres ediciones (spec 026). Fuera
+    │                             #   del .tsx por lo mismo que cell-text.ts
     ├── piece-mini.ts             # la forma de una pieza centrada en la caja de 5×5 de la paleta,
     │                             #   ya rotada y reflejada (spec 016). Fuera del .tsx por lo mismo
     ├── input.ts                  # la decisión de cada gesto de entrada: rueda, tecla, menú
@@ -122,7 +125,8 @@ src/
     ├── use-input.ts              # los dos efectos de entrada del 013: teclado y rueda. Reciben
     │                             #   callbacks, no setters, y el tapLimpio del shell
     ├── constants/
-    │   ├── layout.constants.ts   # CELL_PX · MINI_BOX · MINI_CELL_PX · TEMPO_MIN · TEMPO_MAX
+    │   ├── layout.constants.ts   # CELL_PX · MINI_BOX · MINI_CELL_PX · TEMPO_MIN · TEMPO_MAX ·
+    │   │                         #   los dos anchos del anillo de foco de la celda (spec 026)
     │   ├── palette.constants.ts  # los 12 colores y su color de texto (ver DESIGN.md)
     │   ├── route.constants.ts    # MARCA: los estados de una celda bajo la cabeza lectora
     │   ├── input.constants.ts    # ACCION y EDICION: lo que puede pedir un gesto

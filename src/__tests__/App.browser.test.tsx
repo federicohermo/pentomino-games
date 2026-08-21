@@ -735,4 +735,29 @@ describe('App — el tablero se toca con el teclado (spec 026)', () => {
     expect(conNota(container)).toBe(SHAPES.F.length);
     expect(notaDelFantasma(container)).toBe(conFoco);
   });
+
+  it('un click del mouse NO le saca el mando al mouse: el fantasma sigue al cursor', async () => {
+    // La otra dirección de la misma regla, y el bug que costó el review: un `div` con
+    // `tabIndex` es enfocable POR CLICK, así que sin el `preventDefault` del `mousedown`
+    // el primer click prendía `focoEnTablero` y desde ahí el mouse quedaba inerte — el
+    // fantasma congelado en la celda clickeada hasta salir del tablero con `Tab`. Es el
+    // gesto primario del producto, roto al primer click.
+    //
+    // Click y hover de VERDAD, por Playwright, y ahí está toda la razón de ser del test:
+    // un `dispatchEvent('click')` no dispara `mousedown` y por lo tanto **no mueve el
+    // foco**, así que con eventos sintéticos esta afirmación sería verde con el bug
+    // puesto. Es el mismo modo de falla que el de las flechas, unas líneas más arriba.
+    const { container } = await render(<App />);
+    aLaVista(container);
+
+    await userEvent.click(celda(container, 2, 1));
+    await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length));
+    // Y el foco no se quedó en el tablero, que es lo que la guarda garantiza.
+    expect(celdas(container)).not.toContain(document.activeElement);
+
+    // Cinco celdas de la pieza colocada más las cinco del fantasma nuevo: si el mouse
+    // hubiera quedado inerte, seguirían siendo cinco.
+    await userEvent.hover(celda(container, 7, 4));
+    await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length * 2));
+  });
 });
