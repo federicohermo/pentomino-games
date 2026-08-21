@@ -18,8 +18,24 @@ export default function TransportPanel({ transporte }: { transporte: PropsDeTran
   return (
     <div className="mt-4 border-t pt-3 space-y-2">
       <div className="flex items-center justify-between">
-        <span className="font-medium">Tempo</span>
-        <input type="range" min={TEMPO_MIN} max={TEMPO_MAX} value={tempo} onChange={e=>onTempo(parseInt(e.target.value))} />
+        <span id="tempo-etiqueta" className="font-medium">Tempo</span>
+        {/* `aria-labelledby` y no `aria-label`: el nombre toma el mismo texto que ya se
+            ve en el span de arriba, en vez de escribirlo dos veces. Si alguien cambia la
+            etiqueta visible, la anunciada lo sigue sola.
+
+            Y `aria-valuetext` es el argumento del comentario de abajo —"110" a secas no
+            dice si son bpm o intervalos, y desde el spec 008 el instrumento maneja las
+            dos unidades— aplicado al oido, donde no hay span al lado que lo salve: un
+            `range` se anuncia con su valor numerico crudo salvo que lo tenga. */}
+        <input
+          type="range"
+          min={TEMPO_MIN}
+          max={TEMPO_MAX}
+          value={tempo}
+          onChange={e=>onTempo(parseInt(e.target.value))}
+          aria-labelledby="tempo-etiqueta"
+          aria-valuetext={`${tempo} bpm`}
+        />
         {/* Con la unidad: "110" a secas no dice si son bpm o intervalos, y desde el
             spec 008 el instrumento maneja las dos unidades. `w-16` y no `w-10`
             porque " bpm" agrega ~24 px; lo absorbe el `range`, que es el unico
