@@ -67,6 +67,17 @@ una persona y no bloquea el cierre.
       —un import prohibido en `domain/`, que es lo que el repo verifica con el linter—, confirmar que la
       CI falla, y revertirlo. Un CI que nunca se vio fallar no está verificado — **AC7**.
       `[M]` porque leer una corrida de Actions pide la web o `gh`, y `gh` no está en el PATH de este repo
+
+      > **Al implementar: la primera corrida salió en rojo sola, sin plantarle nada.** El job llegó al
+      > final —los seis pasos previos pasaron, incluido Chromium— y `pnpm verify` salió con exit 1
+      > ([run 32486122534](https://github.com/federicohermo/pentomino-games/actions/runs/32486122534)).
+      > Eso deja **medio T017 cumplido de casualidad** —el rojo existe y llega al check del PR— y deja
+      > **T018 como el bloqueante real**: el log pide sign-in, así que no se pudo determinar de qué nodo
+      > vino. Descartado que sea el entorno (`CI=true pnpm verify` local da exit 0) y descartada una
+      > deriva del lockfile (`--frozen-lockfile` local da exit 0). La hipótesis con evidencia es la
+      > contención de CPU sobre los presupuestos de performance del 009: son **los mismos dos tests**
+      > que fallaron en la primera pasada local de esta rama con cinco worktrees compitiendo. Si es eso,
+      > **el arreglo no es de este spec**: tocar ese presupuesto es tocar `src/`, y AC10 lo prohíbe
 - [ ] T018 [M] Confirmar que el rojo del T017 vino de `lint` y no de otro nodo: es lo que prueba que el
       paralelo de `verify` reporta el nodo correcto a través de Actions
 - [ ] T028 [M] **Ver morder el gate de coverage en un PR** — **AC9**, que es **AC13 del 029** diferido
