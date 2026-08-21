@@ -80,7 +80,11 @@ archivos que existen** y ninguno queda `[M]`.
       de código del spec que nada falsea, y es justo el que existe para una regresión futura — **AC6**
 - [ ] T031 Test de `environment: 'node'` que lee `index.html` y afirma `lang="es"`. Va ahí y no en el
       proyecto de navegador porque el browser mode **sirve su propio documento** y nunca carga ese
-      archivo — **AC12**
+      archivo — **AC12**. **Va en `src/__tests__/documento.test.ts`**, y el nombre no es libre: el
+      `T039` del **028** crea el otro test del lote que lee `index.html` del disco —la sincronía del
+      color de fondo entre CSS, manifest y `<meta>`— y si los dos eligen el nombre obvio
+      (`index-html.test.ts`) el segundo carril que mergee pisa al primero sin que el merge lo vea, que
+      es un archivo entero perdido en verde. El del 028 va en `src/__tests__/fondo-sincronizado.test.ts`
 - [ ] T020 [M] Recorrer la tarjeta entera con `Tab` y un lector de pantalla, y confirmar que ningún
       control se anuncia con su valor en lugar de su identidad — que es el defecto exacto que este spec
       arregla (`research.md` §3)
@@ -89,7 +93,10 @@ archivos que existen** y ninguno queda `[M]`.
 
 - [ ] T021 Confirmar **AC9**: mismo DOM salvo atributos, mismas clases, mismo orden. `git diff` no puede
       mostrar un solo cambio de `className`
-- [ ] T022 `pnpm verify` verde — **AC10**
+- [ ] T022 `pnpm verify` verde — **AC10**. **Sin conteo absoluto de tests**: los cinco specs del lote
+      023–028 agregan tests, así que el `457 + 105` de `main` sólo vale para el primero que mergee. Lo
+      que se afirma es que **no baja** y que el coverage sigue en 100 en las cuatro métricas — el
+      número exacto lo fija el merge, no la rama
 - [ ] T023 [M] Actualizar la fila del 025 en `specs/log.md` a `Implementado` — el estado lo mueve el
       merge. Va `[M]` para que `spec_status` no la cuente como trabajo pendiente para siempre
 - [ ] T024 PR contra `main`

@@ -121,8 +121,10 @@ que es ortogonal en semántica y no en texto: ver la sección 10 del research. N
 
 - [ ] T023 `specs/deuda.md`: se borra el ítem del `manifest.json` — **AC8**. Anotar que era **uno** y
       resultaron **ocho**, con el `README.md` como el que no estaba registrado y el más visible de todos
-- [ ] T024 Confirmar **AC9**: la parte mecánica es T025 (`pnpm verify` verde, los 562 tests del 029 y
-      el umbral 100 intacto) más T035, que es el único que mira el fondo
+- [ ] T024 Confirmar **AC9**: la parte mecánica es T025 (`pnpm verify` verde, el umbral 100 intacto)
+      más T035, que es el único que mira el fondo. **El `562` del 029 es un piso y no una igualdad**:
+      los otros cuatro specs del lote 023–028 agregan tests, así que si alguno mergea antes el conteo
+      sube. Y este spec suma dos propios (T035 y T039), con lo cual su propio verde ya no da 562
 - [ ] T037 [M] La parte de AC9 que ningún test cubre: abrir la app y confirmar que el layout y los doce
       colores son los de antes. Va marcado porque sin `[M]` `spec_status` lo reporta como trabajo
       pendiente para siempre

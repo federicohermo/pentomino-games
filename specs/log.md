@@ -251,9 +251,22 @@ casillas abiertas como próxima tarea.
   enfocado, y el 027 mide re-renders provocados por el mouse: ninguna de las tres cosas existe en
   `environment: 'node'`, y las tres necesitan el proyecto de navegador. Pero **ese proyecto ya está en
   `main`**: lo diseñó el 024 y lo construyó el 029, que también lo consumía. Así que los tres pueden
-  implementarse hoy, en carriles independientes y sin esperar a nadie — y los tests que el 026 usa como
-  oráculo de layout (`Board.browser.test.tsx:73-95`) los trajo el 029. Lo único que el 024 todavía le
-  debía a otro spec es su AC10, y lo paga el 023.
+  implementarse hoy, **sin esperar al 024** — y los tests que el 026 usa como oráculo de layout
+  (`Board.browser.test.tsx:73-95`) los trajo el 029. Lo único que el 024 todavía le debía a otro spec es
+  su AC10, y lo paga el 023.
+- **«Sin esperar al 024» no es «sin esperar a nadie»: el 026 va último de los tres.** Este párrafo decía
+  «en carriles independientes» y el propio review del lote lo desmintió al escribir las tareas, de los
+  dos lados y sin volver acá. Son **tres aristas**, y todas entran al 026:
+  - **027 → 026**, sobre `App.tsx:253-257`. El `T018` del 027 escribe ahí el número de re-renders de la
+    paleta y dice «este spec va primero y mide sólo su mitad»; el `T063` del 026 dice «el número del 027
+    se escribe ahí primero y esta nota va debajo». Es la arista dura: el 026 anota que el número quedó
+    corto, y sin el número la nota no tiene de qué colgarse.
+  - **025 → 026**, sobre `.claude/rules/ui.md` (`T038` del 026: «debajo de lo que ya escribió el 025»).
+  - **025 → 026**, sobre `DESIGN.md` (`T039`: «ese párrafo lo toca el 025 primero», y `T061`, que escribe
+    que el anillo de foco y el canal del 025 son complementarios).
+  Las dos del 025 son de posición y la del 027 es de contenido, pero el efecto de carril es el mismo: un
+  PR apilado tiene una sola base, así que el 026 no puede apilarse sobre los dos a la vez y **el lote se
+  reparte en tres carriles y no en cinco** — `025 → 027 → 026`, `023`, `028`.
 - **La versión que el 023 le pasaba al 024 ya la puso el 029.** `@vitest/browser-playwright` se publica
   **pinneado a la versión exacta** de `vitest`, así que el patch a 4.1.11 era precondición y no mejora.
   Hoy `package.json` tiene los dos —y `@vitest/browser` y `@vitest/coverage-v8`— en `4.1.11` **sin

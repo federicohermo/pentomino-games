@@ -74,7 +74,10 @@ una persona y no bloquea el cierre.
 ## Cierre
 
 - [ ] T019 `pnpm verify` verde: **457 tests de `src/` en 26 archivos + 105 del server**, y coverage en
-      100 en las cuatro métricas — **AC5**
+      100 en las cuatro métricas — **AC5**. Los dos números están **medidos en `main` hoy** y son el
+      piso, no la igualdad: los otros cuatro specs del lote 023–028 agregan tests, así que si alguno
+      mergea antes que éste el conteo sube y el AC se lee como **«no baja de 457 + 105, y el coverage
+      sigue en 100»**. Este spec no toca `src/`, así que no puede moverlos él
 - [ ] T029 Confirmar que el diff no toca `src/`, `eslint.config.js` ni `vite.config.ts`:
       `git diff --name-only main` — **AC10**
 - [ ] T020 [P] `CLAUDE.md`: la sección de Comandos dice que `verify` lo corre la CI sobre cada PR, con

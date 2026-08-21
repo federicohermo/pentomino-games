@@ -46,7 +46,12 @@ navegador ya esta en `main` desde el **029** —con `src/__tests__/App.browser.t
       DIRECTOS del contenedor y con filas devuelven seis en vez de sesenta:
       `components/__tests__/Board.browser.test.tsx:57` (`div.grid > div`) y `:82` (`div.grid`), y
       `src/__tests__/App.browser.test.tsx:55` y `:202` (`div.grid.w-max`). Sin esto los tests del T013
-      **no confirman: fallan**, y un rojo por selector viejo no se distingue de un rojo por píxel movido
+      **no confirman: fallan**, y un rojo por selector viejo no se distingue de un rojo por píxel movido.
+      **La lista de cuatro es la de `main` y hay que re-derivarla, no creerle**: el 026 va último en su
+      carril, detrás del 027 y del 025, y el 027 (`T017`) y el 028 (`T035`) agregan tests nuevos a
+      `src/__tests__/App.browser.test.tsx`. Correr
+      `git grep -nE "div\.grid|> div|gridcell|querySelectorAll" -- src` sobre la base real antes de
+      empezar el paso, y arreglar **todos** los que aparezcan
 - [ ] T011 `role="grid"` en el contenedor de la grilla, con `aria-label` y `aria-rowcount`/`aria-colcount`
       leídos de `GRID_W`/`GRID_H` y no escritos a mano — **AC9**
 - [ ] T012 Comentario con por qué son **filas reales** y no `display: contents`: esa técnica ha sacado el
@@ -152,7 +157,11 @@ global de `window` en la misma página. Dos `[P]` del mismo bloque no pueden toc
       ahí su regla de nombre accesible (las tres cláusulas), así que esto se agrega abajo y no la pisa.
       El modelo de foco del repo — una parada por región compuesta, flechas adentro, roving tabindex, y
       el estado del cursor viviendo en el shell. Al escribirla **se cierra por su nombre el `T025` de
-      Seguimiento del 025**, que quedó esperando exactamente este modelo para su `radiogroup`
+      Seguimiento del 025**, que quedó esperando exactamente este modelo para su `radiogroup`.
+      **«Cerrar por su nombre» es escribir la regla, no marcar la casilla**: el `[x]` del `T025` del
+      025 no se toca desde acá. Cada rama marca sólo lo que hizo, y esa casilla está bajo
+      `Seguimiento`, que `spec_status` ya descuenta — marcarla desde otro spec la sacaría del
+      registro sin que nadie haya escrito el `radiogroup`
 - [ ] T060 Y en el mismo archivo (sin `[P]`: es el mismo `ui.md` del T038), la guarda del handler global (`.claude/rules/ui.md:143-145`) gana
       su tercer caso. Se escribe **acá y no antes**: hoy esa línea describe el repo tal cual es, y
       adelantarla la haría describir un repo que todavía no existe. Texto:
