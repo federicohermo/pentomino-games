@@ -15,7 +15,7 @@ import PiecePalette from "./components/PiecePalette.tsx";
 import Board from "./components/Board.tsx";
 import Spectrum from "./components/Spectrum.tsx";
 import { alternarTransporte } from "./components/engine-bridge.ts";
-import { MOTOR, frenarTransporte, useMotorSincronizado } from "./components/use-engine.ts";
+import { MOTOR, frenarTransporte, reiniciarRecorrido, useMotorSincronizado } from "./components/use-engine.ts";
 import { useAtajosDeTeclado, useRuedaRota } from "./components/use-input.ts";
 import {
   rotacionPorRueda, reflejaElContextMenu, accionDeClick, esLaPiezaEnLaMano,
@@ -177,8 +177,16 @@ export default function App(){
   // a cero, no una edición del tablero, así que es el único lugar donde saltearse D5 es
   // lo correcto. Lo que queda es la latencia de pausar, que el motor ya documenta: los
   // 100 ms del lookahead más la cola del arpegio ya agendado.
+  //
+  // Y ese párrafo valía para UNA de las dos colas. La otra —la de dibujo, en
+  // `components/route-source.ts`— avanza sólo cuando el motor cierra un ciclo, o sea
+  // nunca con el reloj parado: sin reiniciarla, el velo de las piezas que ya no están
+  // se seguía dibujando sobre un tablero vacío hasta el próximo Play (spec 027). Las
+  // dos se reinician juntas o vuelve el bug, y las dos entran por `use-engine.ts`, que
+  // es el único módulo por el que este shell le habla al motor.
   function resetBoard(){
     frenarTransporte();
+    reiniciarRecorrido();
     setPlaying(false);
     setPlaced([]); // el efecto de reconciliación se encarga de vaciar la secuencia
   }

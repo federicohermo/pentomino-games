@@ -9,7 +9,7 @@ import type { Sequence } from '../domain/types/sequence.types.ts';
 import type { PlacedPiece } from '../domain/types/board.types.ts';
 import type { MotorDeTransporte } from './types/engine.types.ts';
 import { proyectarAlMotor } from './engine-bridge.ts';
-import { encolar } from './route-source.ts';
+import { encolar, reiniciar } from './route-source.ts';
 
 /**
  * Los cuatro efectos de reconciliación que mantienen al motor mirando el mismo tablero
@@ -61,6 +61,21 @@ export const MOTOR: MotorDeTransporte = {
  * importando `audio/engine.ts` por una sola línea.
  */
 export function frenarTransporte(): void { stopClock(); }
+
+/**
+ * La otra mitad del Reset: devolver a cero la cola de DIBUJO.
+ *
+ * Va acá al lado de `frenarTransporte()` y por el mismo motivo, que es lo que este spec
+ * arregla: el Reset tiene que hablarles a las dos colas, y éste es el único módulo de
+ * `components/` por donde el shell le habla a las dos. Si `App.tsx` importara
+ * `route-source.ts` para esta línea, la segunda cola se reiniciaría por un camino
+ * distinto del de la primera — que es exactamente la asimetría que dejó al velo
+ * dibujado sobre un tablero vacío.
+ *
+ * El porqué del reinicio —y por qué no lo hace `encolar` sola al ver una secuencia
+ * vacía— está en el docblock de `reiniciar()` en `route-source.ts`.
+ */
+export function reiniciarRecorrido(): void { reiniciar(); }
 
 interface Reconciliacion {
   /**
