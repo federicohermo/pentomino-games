@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node src/index.ts",
     "typecheck": "tsc",
-    "test": "pnpm run typecheck && node --test \"src/__tests__/*.test.ts\""
+    "test": "pnpm run typecheck && node --test --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-exclude=\"src/__tests__/**\" --test-coverage-exclude=\"src/index.ts\" --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \"src/__tests__/*.test.ts\""
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",

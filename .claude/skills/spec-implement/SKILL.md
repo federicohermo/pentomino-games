@@ -41,9 +41,10 @@ dice el global. No los reescribas para agregárselos.
 
 - **`check_invariants` en proceso fresco**, antes y después. El MCP de la sesión cachea los módulos y
   contesta con el código viejo — está pisado como tarea en varios specs porque ya pasó.
-- **`pnpm verify` es el nodo de convergencia**, no `pnpm test`. Corre lint ‖ typecheck ‖ test ‖
+- **`pnpm verify` es el nodo de convergencia**, no `pnpm test`. Corre lint ‖ typecheck ‖ suite ‖
   mcp:test en paralelo y es lo único que typechequea cruzando el borde de paquete hacia
-  `mcp-server/`, que importa 31 símbolos del dominio.
+  `mcp-server/`, que importa 31 símbolos del dominio. `suite` son las dos pasadas de vitest —la
+  limpia y la de coverage, con umbral 100— encadenadas a propósito (spec 029).
 - **El gestor es pnpm.** Nunca `npm install`: deja un `package-lock.json` que Netlify puede preferir.
 
 ## Al cerrar

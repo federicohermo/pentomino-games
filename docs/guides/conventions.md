@@ -76,11 +76,16 @@ módulo `transform.ts`.
 
 **Lo verifica el linter en `domain/` y en `audio/`, y no en `components/`** (spec 030). La línea es la
 del motivo, que está en el párrafo siguiente: lo que hizo daño fue un valor escrito en dos lugares, y
-una constante privada de un solo componente no puede desincronizarse con nada. `Spectrum.tsx` tiene
-`BAR_COUNT`, `GAP`, `MIN_BAR` e `IDLE_TEXT`; `Playhead.tsx`, `BORDE_COLOR`, `VELO_CAJA` y `VELO_TAPA`.
-Las siete se quedan: sus docblocks explican el **mecanismo** de dibujo —por qué `box-shadow` y no
-`transform: scale`, por qué las clases de Tailwind van escritas enteras— y esa explicación pertenece al
-lado del código que explica, no en una carpeta de datos. El selector tampoco mira `ObjectExpression`,
+una constante privada de un solo componente no puede desincronizarse con nada.
+
+Cuando el 030 lo midió, las siete de `components/` vivían en los `.tsx` —`BAR_COUNT`, `GAP`, `MIN_BAR`
+e `IDLE_TEXT` en `Spectrum.tsx`; `BORDE_COLOR`, `VELO_CAJA` y `VELO_TAPA` en `Playhead.tsx`— y el
+argumento para dejarlas ahí era que sus docblocks explican el **mecanismo** de dibujo y no el valor.
+**Hoy no queda ninguna**: el spec 029 sacó los dos bucles a `.ts`, eso las dejó en módulos de capa
+—donde la regla escrita sí aplicaba— y se mudaron a `components/constants/` con los docblocks enteros.
+El alcance del linter no cambia por eso; lo que cambia es que el ejemplo ya no sostiene la parte
+estética del argumento: mudarlas no alejó ninguna explicación de su código. Lo que sostiene la línea
+es lo medible — una privada no se desincroniza con nada. El selector tampoco mira `ObjectExpression`,
 por lo que el spec 022 ya dejó escrito sobre `MOTOR` y `RUTA_VACIA`: son cableado de funciones, no
 valores fijos.
 

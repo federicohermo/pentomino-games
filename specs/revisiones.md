@@ -587,7 +587,67 @@ los nombres viejos fuera de `specs/022-*`, y el diagrama de cajas de `overview.m
 `directory-structure.md` re-alineados a mano — `engine-bridge.ts` mide siete columnas más que
 `motor.ts` y les rompía el ancho fijo.
 
----
+## 2026-08-20 — El spec 029: tres cosas salieron distinto, y las tres se descubrieron midiendo
+
+### 1. El coverage no se puede medir sin decidir antes qué es el denominador
+
+El primer número que salió —61,97 %— no era el primero que se midió. Sin `--coverage.all`, vitest
+mide **sólo los archivos que algún test importó**, así que los diez que estaban en cero absoluto no
+aparecían en la tabla: el número salía más lindo y no significaba nada. La lección es que un reporte
+de coverage sin el denominador declarado responde una pregunta distinta de la que uno cree estar
+haciendo. (Y en vitest 4 el flag `all` ya no existe: alcanza con declarar `include`, y el typecheck
+rechaza el `all` que la 3 pedía.)
+
+### 2. `App.tsx` no era el problema; el `.tsx` sí
+
+La hipótesis al escribir el spec era que el hueco grande era UI y que la UI se cubre montando
+componentes. Resultó ser más específico y más interesante: **tres archivos no podían llegar al 100 %
+por una regla del repo**, no por una limitación del test. `react-refresh/only-export-components`
+prohíbe que un `.tsx` exporte algo además del componente, así que el bucle de `Playhead` (100 líneas),
+el de `Spectrum` (80) y sus guardas no se podían exportar y por lo tanto no se podían llamar. La
+salida fue la misma que el 005 usó para el dominio y el 022 para la proyección al motor: sacarlos a un
+`.ts` —`playhead-loop.ts` y `spectrum-loop.ts`— sin cambiar una línea de comportamiento.
+
+O sea que el spec de coverage terminó siendo, en su parte más difícil, un spec de **dónde vive la
+lógica**. Y eso no es un desvío: es el mismo mecanismo que hizo nacer `domain/`. Un archivo que no se
+puede exportar es un archivo que no se puede verificar, y el coverage sólo lo hace visible.
+
+### 3. El quinto nodo de `verify` rompía los presupuestos del 009, y la primera solución no alcanzaba
+
+El spec preveía un nodo `coverage` al lado de `test`, y preveía **un** motivo para que fueran dos:
+bajo instrumentación v8 los presupuestos de performance miden 11,3 ms contra un techo de 5, o sea que
+medirían el instrumento. Eso se resolvió con `skipIf`.
+
+Lo que el spec **no** preveía es el segundo motivo, que apareció corriendo `verify`: con cinco
+procesos pesados en paralelo —dos de ellos vitest, uno con navegador— la contención de CPU sube la
+mediana igual, y el presupuesto se caía en la pasada limpia. Es exactamente el modo de falla que el
+comentario de AC8 en `sequence.test.ts` ya había documentado cuando subió su techo de 2 a 4: «un test
+que se cae dos de cada tres veces en el nodo de convergencia no mide rendimiento, mide carga de la
+máquina».
+
+La salida fue encadenarlas en un solo script (`suite = test && coverage`), lo que deja **cuatro**
+nodos concurrentes — la misma contención que había antes del spec — en vez de aflojar un techo. Medido
+en tres corridas: 25,0 / 25,6 / 26,0 s, verde las tres. La forma que el spec declaraba (cinco nodos)
+era la equivocada, y el AC2 quedó revisado por su propia verificación.
+
+### 4. El pase de mutación encontró cuatro tests que estaban verdes con el código roto
+
+Y ésta es la nota que más vale la pena guardar, porque contradice la intuición de que el 100 % de
+coverage dice algo sobre la calidad de los tests. Con las cuatro métricas en 100, **cuatro de
+dieciocho mutaciones sobrevivieron**: la caja fija de las miniaturas, el rearmado del velo, la
+idempotencia de `startClock` y —aparentemente— el listener no pasivo.
+
+El cuarto resultó ser un falso positivo con una lección propia: la cadena `{ passive: false }`
+aparece **primero en un comentario** tres líneas más arriba, así que la mutación editaba el comentario
+y no el código. **Un pase de mutación también hay que verificarlo**: un mutante que "sobrevive" puede
+ser un mutante que nunca nació.
+
+Los otros tres eran reales y compartían la misma forma de error: **el test afirmaba una consecuencia
+que se cumplía por otro camino.** Los anchos de las miniaturas se comparaban entre sí, y con
+`min-content` colapsan todos por igual. El velo se comprobaba con la cabeza todavía parada sobre la
+celda, que la volvía a destapar sola. `startClock` se comprobaba con `clockRunning()`, que sigue
+diciendo que sí porque lo que queda roto es un timer huérfano. En los tres casos el arreglo fue
+afirmar la **causa** y no el síntoma.
 
 ## 2026-08-20 — El spec 030 salió distinto en dos lugares, y los dos son la misma lección
 
@@ -601,12 +661,20 @@ El primer selector daba **21 hallazgos**. Ninguno era deuda:
 
 - **Ocho eran `let`**, no `const`. `let ctx: AudioContext | null = null` es estado mutable de módulo,
   que es lo contrario de una constante. Faltaba el ancla `kind='const'`, y con ella bajaron a 9.
-- **Siete de los nueve restantes están en `components/`** —`BAR_COUNT`, `GAP`, `MIN_BAR` e `IDLE_TEXT`
-  en `Spectrum.tsx`; `BORDE_COLOR`, `VELO_CAJA` y `VELO_TAPA` en `Playhead.tsx`— y **tampoco** son
+- **Siete de los nueve restantes estaban en `components/`** —`BAR_COUNT`, `GAP`, `MIN_BAR` e `IDLE_TEXT`
+  en `Spectrum.tsx`; `BORDE_COLOR`, `VELO_CAJA` y `VELO_TAPA` en `Playhead.tsx`— y **tampoco** eran
   deuda. Son privadas de su archivo, y sus docblocks no explican el *valor* sino el **mecanismo**: por
   qué `box-shadow` y no `transform: scale` (con la medición del `scrollHeight` en el DOM), por qué las
   clases de Tailwind van escritas enteras. Mudarlas a `constants/` habría mudado esa explicación lejos
   del código que explica.
+
+  **Ese último argumento se cayó al mergear, y conviene dejarlo anotado en vez de taparlo.** El spec
+  029 sacó los dos bucles de los `.tsx` a `playhead-loop.ts` y `spectrum-loop.ts` —porque
+  `react-refresh/only-export-components` impedía exportarlos y por lo tanto cubrirlos—, eso dejó a las
+  siete en módulos de capa, y se mudaron a `components/constants/` **con los docblocks enteros**. O sea
+  que la explicación no se alejó de nada. Lo que sostiene el alcance de la regla es la otra mitad, la
+  medible: una constante privada de un solo archivo no se puede desincronizar. `components/` sigue
+  afuera por eso, y no por dónde queden mejor los comentarios.
 
 Lo que resolvió la duda fue releer el **motivo** escrito de la regla y no su enunciado: el daño medido
 fueron *cuatro pares de números que tenían que coincidir y nada sincronizaba*. Un valor privado de un
@@ -635,7 +703,14 @@ salida fue mirar el número —21 hallazgos, 15 segundos— y recién ahí volve
 
 ### Y un dato para la próxima
 
-`pnpm verify` pasó de **4,0 s a 11,8 s** y el nodo es `lint`. La mitad cara del linting con tipos es
-`mcp-server/`: **13,9 s** él solo contra **8,4 s** de `src/`, porque importa 31 símbolos del dominio y
-su programa de TypeScript es grande. Si algún día el tiempo molesta, eso es lo primero a soltar — y no
-`src/`, que es donde el tipo compra.
+El linting con tipos llevó `lint` de ~2,5 s a **11,0 s**. La mitad cara es `mcp-server/`: **13,9 s** él
+solo contra **8,4 s** de `src/`, porque importa 31 símbolos del dominio y su programa de TypeScript es
+grande. Si algún día el tiempo molesta, eso es lo primero a soltar — y no `src/`, que es donde el tipo
+compra.
+
+**Lo que este spec midió como 4,0 → 11,8 s ya no es el número de `verify`**, y el motivo es el 029, que
+se mergeó en el medio: con `suite` puesto, `verify` mide **41,2 s en serie contra 23,7 s en paralelo** y
+el nodo más lento pasa a ser `suite` (19,4 s) y no `lint` (11,0 s). Los dos specs previeron ser el nodo
+que manda el reloj y los dos midieron sin el otro puesto. La lección se repite con otra cara: **un
+número medido sobre el nodo de convergencia caduca cuando otra rama le agrega trabajo**, así que vale
+anotar al lado qué había puesto cuando se midió.

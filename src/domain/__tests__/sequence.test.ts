@@ -837,7 +837,23 @@ describe('determinismo', () => {
 });
 
 describe('AC10 — el tablero lleno', () => {
-  it('AC10 — 12 piezas se resuelven en menos de 5 ms (mediana de 21 corridas)', () => {
+  // ## Los dos presupuestos de abajo NO corren bajo coverage, y el motivo esta medido
+  //
+  // v8 instrumenta insertando contadores en cada rama, y estos dos tests son justamente
+  // los que mas ramas ejecutan del repo: 144 Dijkstras sobre 60 celdas. Medido el
+  // 2026-08-20 sobre esta misma suite: **11,3 ms** contra el techo de 5 del AC10 y
+  // **6,8 ms** contra el de 4 del AC8, o sea entre 2,3x y 3,7x. Sin instrumentar pasan
+  // los dos con el margen de siempre.
+  //
+  // Un presupuesto de performance medido sobre un build instrumentado no mide el
+  // producto: mide el instrumento. Las dos salidas malas son subir los techos —que los
+  // vuelve inutiles— o borrarlos. La buena es que `pnpm test` y `pnpm coverage` sean
+  // nodos distintos de `verify`: el primero mantiene estos dos honestos sobre un build
+  // limpio, el segundo mide cobertura. La env var la inyecta `vite.config.ts`, que es el
+  // unico lugar que ve con que flags arranco vitest.
+  const BAJO_COVERAGE = !!process.env.COVERAGE;
+
+  it.skipIf(BAJO_COVERAGE)('AC10 — 12 piezas se resuelven en menos de 5 ms (mediana de 21 corridas)', () => {
     // Mediana y no una sola corrida: el margen contra los 5 ms es de pocos multiplos
     // y una pausa de GC en una maquina cargada se lo come entero. La mediana de 21
     // deja 10 corridas para que se la coman sin que el test parpadee.
@@ -863,7 +879,7 @@ describe('AC10 — el tablero lleno', () => {
     expect(mediana).toBeLessThan(5);
   });
 
-  it('AC8 — la matriz de 12x12 rutas se mantiene despreciable (mediana de 21 corridas)', () => {
+  it.skipIf(BAJO_COVERAGE)('AC8 — la matriz de 12x12 rutas se mantiene despreciable (mediana de 21 corridas)', () => {
     // El pedazo que el spec 011 encarecio, medido aparte y con su propio tope: son las
     // 144 rutas con las que `buildSequence` arma la matriz que ordena el circuito. El
     // 009 hacia 144 restas; hoy son 144 Dijkstras sobre 60 celdas.

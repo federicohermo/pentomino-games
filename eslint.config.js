@@ -149,11 +149,18 @@ const REGLAS_DEL_REPO = [
  * **Se aplica a `domain/` y `audio/`, no a `components/`, y la linea es la del motivo.** Lo
  * que el problema medido describe es un valor que existe DOS VECES; una constante privada de
  * un solo componente no puede desincronizarse con nada. Verificado antes de acotarla: en
- * `components/` hay siete —`BAR_COUNT`, `GAP`, `MIN_BAR` e `IDLE_TEXT` en `Spectrum.tsx`,
- * `BORDE_COLOR`, `VELO_CAJA` y `VELO_TAPA` en `Playhead.tsx`— y las siete estan documentadas
- * donde estan, con docblocks que explican el MECANISMO de dibujo (por que `box-shadow` y no
- * `transform: scale`, por que las clases de Tailwind van enteras). Mudarlas a `constants/`
- * mudaria esa explicacion lejos del codigo que explica, que es un peor lugar. En `domain/` y
+ * `components/` habia siete —`BAR_COUNT`, `GAP`, `MIN_BAR` e `IDLE_TEXT` en `Spectrum.tsx`,
+ * `BORDE_COLOR`, `VELO_CAJA` y `VELO_TAPA` en `Playhead.tsx`— documentadas donde estaban, con
+ * docblocks que explican el MECANISMO de dibujo (por que `box-shadow` y no `transform: scale`,
+ * por que las clases de Tailwind van enteras).
+ *
+ * **Hoy no queda ninguna, y el dato vale anotarlo porque desarma medio argumento.** El spec 029
+ * saco los dos bucles de los `.tsx` a `playhead-loop.ts` y `spectrum-loop.ts`, eso dejo a las
+ * siete en modulos de capa —donde la regla escrita SI aplicaba— y se mudaron a
+ * `components/constants/` con los docblocks enteros. O sea que mudarlas no alejo ninguna
+ * explicacion de su codigo, que era la mitad estetica del motivo. La mitad que sostiene la
+ * linea es la otra, la medible: una constante privada de un solo archivo no se puede
+ * desincronizar. Por eso el alcance no se reabre y `components/` sigue afuera. En `domain/` y
  * `audio/`, en cambio, una constante es parte del modelo y `constants/` es su casa
  * documentada: las dos que quedaban fuera —`ROTATIONS` y `PASOS_MAX`— las mudo este spec.
  *

@@ -76,6 +76,25 @@ const inputSchema = z.object({
     ),
 });
 
+/**
+ * Nombre de nota de una frecuencia, o la frecuencia redondeada si no se la conoce.
+ *
+ * El mapa se arma con las notas de los `Step`, y hoy TODO `Hit` con altura sale de
+ * ahi —incluido el cruce del spec 011, cuya altura es la de una celda de una pieza
+ * que si tiene su paso—, asi que la segunda mitad no se alcanza desde la tool. Vive
+ * como funcion propia y no como un `??` colgado del `map` por eso mismo: la regla de
+ * que hacer con un `hz` desconocido es una decision —decirlo en Hz antes que mostrar
+ * `undefined`— y una decision que nadie puede ejercer es una que nadie puede revisar.
+ * Aca se la nombra, se la documenta y su test la ejerce.
+ *
+ * Que la busqueda acierte depende de la igualdad EXACTA de floats, y eso vale porque
+ * la clave se calcula con la misma `midiToHz` sobre la misma entrada que uso el
+ * scheduler. Si algun dia deja de valer, el sintoma es este fallback y no un `NaN`.
+ */
+export function nombreDeHz(nameByHz: ReadonlyMap<number, string>, hz: number): string {
+  return nameByHz.get(hz) ?? `${Math.round(hz)}Hz`;
+}
+
 /** Una colocacion ya resuelta: lo que la respuesta reporta de cada jugada. */
 interface Resolved {
   id: string;
@@ -372,7 +391,7 @@ export const simulateBoard = defineTool({
       // unico mudo es `HIT.click`. Sus celdas estan en `route.hops`.
       timeline: hits.map(h => h.kind === HIT.click
         ? { at: round4(h.at), kind: h.kind }
-        : { at: round4(h.at), kind: h.kind, note: nameByHz.get(h.hz) ?? `${Math.round(h.hz)}Hz` }),
+        : { at: round4(h.at), kind: h.kind, note: nombreDeHz(nameByHz, h.hz) }),
     });
   },
 });

@@ -77,7 +77,8 @@ una persona y no bloquea el cierre.
 
 ## Paso 6 — La doc
 
-- [x] T027 [P] `CLAUDE.md`: los números de `verify` (4,0 → 11,8 s) con el porqué; la regla de dirección
+- [x] T027 [P] `CLAUDE.md`: los números de `verify` (~~4,0 → 11,8 s~~; al mergear `main` con el 029
+      puesto quedaron 41,2 s en serie contra 23,7 en paralelo) con el porqué; la regla de dirección
       reescrita a «por ruta»; los bullets de extensión, constantes, `enum` y estado global anotando que
       ahora los verifica el linter; el `noInlineConfig` como contraparte del «cero `any`»; y el bullet
       nuevo de `.only` — **AC10**, **AC11**
@@ -106,9 +107,10 @@ una persona y no bloquea el cierre.
 
 ## Seguimiento (no bloquea)
 
-- [ ] T037 El linting con tipos dejó a `lint` como el nodo más lento de `verify` (10,2 s de 11,8). La
-      mitad cara es `mcp-server/`: 13,9 s él solo contra 8,4 s de `src/`. Si el tiempo molesta, lo
-      próximo a soltar es el linting con tipos ahí, no en `src/`
+- [ ] T037 El linting con tipos llevó `lint` a 11,0 s. La mitad cara es `mcp-server/`: 13,9 s él solo
+      contra 8,4 s de `src/`. Si el tiempo molesta, lo próximo a soltar es el linting con tipos ahí, no
+      en `src/`. ~~El nodo más lento de `verify`~~: al mergear `main` con el 029 puesto pasó a serlo
+      `suite`, con 19,4 s contra los 11,0 del lint
 - [ ] T038 `import-x/no-cycle` queda disponible y sin usar. El día que aparezca un subdirectorio con
       varios módulos hermanos sin zona propia, está a una línea — y ahí sí compra algo que las zonas no
 - [ ] T039 `strictTypeChecked` da 237 hallazgos y no entró. Las dos reglas sueltas que valdrían son
