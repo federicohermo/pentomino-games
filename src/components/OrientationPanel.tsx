@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { SHAPES } from '../domain/constants/pieces.constants.ts';
 import type { PieceKey } from '../domain/types/pieces.types.ts';
 import { MINI_BOX, MINI_CELL_PX } from './constants/layout.constants.ts';
@@ -15,8 +16,19 @@ import type { PropsDeOrientacion } from './types/panel.types.ts';
  * Devuelve el mismo `div` de la grilla que tenia `PiecePalette` y no lo envuelve en
  * nada: es un hijo directo de la tarjeta, y agregarle un nodo cambiaria el ritmo
  * vertical con las clases intactas.
+ *
+ * Va envuelto en `memo` desde el spec 027, y el motivo es un numero. `hover` vive en
+ * `App.tsx`, asi que cada celda que el cursor cruza re-renderiza el arbol entero — y esto
+ * son 337 elementos de los que ninguno depende del hover. Medido con `Profiler`, el commit
+ * por celda cruzada pasa de 4,9 ms a 1,9 ms: el 61 % del trabajo era este subarbol
+ * reconciliandose para llegar al mismo DOM.
+ *
+ * La otra mitad de la barrera es el `useMemo` del objeto `orientacion` en `App.tsx`: sin el,
+ * la prop tiene identidad nueva por render y la memo no cierra nunca. El argumento entero
+ * —incluido por que el que habia antes era circular— esta ahi, que es donde estaba escrita
+ * la decision contraria.
  */
-export default function OrientationPanel({ orientacion }: { orientacion: PropsDeOrientacion }) {
+export default memo(function OrientationPanel({ orientacion }: { orientacion: PropsDeOrientacion }) {
   const { selected, rotation, mirror, onSelect } = orientacion;
   return (
     /* El ancho lo gobierna la caja de la miniatura, que mide 5 × `MINI_CELL_PX` = 40 px
@@ -73,14 +85,23 @@ export default function OrientationPanel({ orientacion }: { orientacion: PropsDe
       {(Object.keys(SHAPES) as PieceKey[]).map(key=> {
         const celdas = miniCells(key, rotation, mirror);
         const ocupada = new Set(celdas.map(([x, y]) => `${x},${y}`));
-        // Una sola copia de "es la que esta en la mano": la leen el fondo del boton
-        // y el borde de la miniatura, y tienen que invertirse en el mismo momento.
+        // Una sola copia de "es la que esta en la mano": la leen el fondo del boton,
+        // el borde de la miniatura y el `aria-pressed`, y tienen que invertirse en el
+        // mismo momento.
         const activo = selected === key;
+        // `type="button"` y no el default, aca y en los otros seis sitios de JSX que
+        // renderizan los 22 botones de la app: hoy no hay un solo `<form>` en el arbol,
+        // asi que no hay bug. Pero el default de un `<button>` DENTRO de un formulario es
+        // `submit`, y en esta app eso significa recargar la pagina perdiendo el tablero
+        // entero, y no hay deshacer (`specs/deuda.md`). Va sin excepcion y sin discutir
+        // caso por caso: un boton de esta app nunca envia nada.
         return (
           <button
             key={key}
+            type="button"
             onClick={()=> onSelect(key)}
             aria-label={`${key}, rotación ${rotation * 90}°${mirror ? ', reflejada' : ''}`}
+            aria-pressed={activo}
             className={`px-2 py-1 rounded-lg border text-sm flex flex-col items-center justify-center gap-1 ${activo? 'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}
           >
             {/* CINCO pistas fijas y no `min-content` ni `auto`: es lo que hace que el
@@ -136,4 +157,4 @@ export default function OrientationPanel({ orientacion }: { orientacion: PropsDe
       })}
     </div>
   );
-}
+});

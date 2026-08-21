@@ -32,10 +32,16 @@ import { iniciarCabeza, borde } from './playhead-loop.ts';
  * Las baldosas de `Board.tsx` son `relative`, asi que son elementos POSICIONADOS y se
  * pintan en orden de documento entre ellos. Como la grilla viene despues de este
  * componente en el DOM, sin `z-index` la capa queda DEBAJO de todas las celdas — y como
- * hasta la celda vacia tiene fondo opaco (`bg-white`), queda directamente invisible. No
- * lo atrapa ningun test ni se ve en el atributo `style`: hay que mirar los pixeles, o
- * preguntarle a `elementFromPoint` quien esta arriba —habilitando el hit-testing un
- * instante, porque `pointer-events-none` hace que devuelva lo de abajo.
+ * hasta la celda vacia tiene fondo opaco (`bg-white`), queda directamente invisible.
+ *
+ * No se ve en el atributo `style`, y por eso durante veintidos specs este comentario
+ * decia que ningun test lo atrapaba: el `z-10` es una clase de Tailwind, asi que hay
+ * que leer el valor COMPUTADO y sin la hoja de estilos cargada da `auto`. Desde el
+ * 029 si lo atrapa `__tests__/Playhead.browser.test.tsx:65`, sobre las dos capas y
+ * junto con `pointer-events` y el orden en el DOM. La otra via —preguntarle a
+ * `elementFromPoint` quien esta arriba, habilitando el hit-testing un instante porque
+ * `pointer-events-none` hace que devuelva lo de abajo— sigue siendo la unica que mira
+ * los pixeles de verdad, y no hizo falta.
  *
  * ## Se mueve UN elemento, no cambian sesenta (D2)
  *

@@ -286,6 +286,74 @@ describe('AC19 — la cabeza recorre la pieza muteada, con el borde del click', 
 });
 
 /**
+ * El velo huerfano del spec 027, y su mitad que NO hay que arreglar.
+ *
+ * Este modulo avanza solo cuando `cycleGeneration()` sube, y ese contador lo mueve el
+ * reloj. Con el transporte parado nada avanza, pero `encolar` igual recomputa el velo
+ * leyendo `activa` y `estrenando` congelados: sin el reinicio, el Reset dejaba las cinco
+ * celdas de una pieza que ya no esta dibujadas sobre un tablero vacio.
+ *
+ * El transporte no llega hasta aca —este modulo no sabe si el reloj corre—, asi que lo
+ * unico que separa los dos tests de abajo es si hubo ORDEN explicita de volver a cero.
+ * Que sea eso y no el estado del reloj es justamente la decision: `reiniciar()` lo llama
+ * el Reset y nadie mas.
+ */
+describe('AC1 y AC2 (spec 027) — el reinicio es una orden, no una consecuencia', () => {
+  it('AC1 — tras el Reset el velo queda vacio aunque el reloj este parado', () => {
+    encolarTablero(UNA);
+    cerrarCiclo();
+    rs.rutaActiva();
+    expect(rs.velo()).toHaveLength(CELLS_PER_PIECE);
+
+    // El orden es el del shell: `resetBoard` da la orden y el efecto de reconciliacion
+    // reencola el tablero ya vacio en el render siguiente. Al reves tambien tiene que
+    // dar vacio, pero este es el que ocurre.
+    rs.reiniciar();
+    encolarTablero([]);
+
+    expect(rs.rutaActiva()).toEqual([]);
+    expect(rs.velo()).toEqual([]);
+  });
+
+  it('AC1 — el reinicio no adelanta el swap: la generacion se sincroniza, no vuelve a cero', () => {
+    // Si `reiniciar()` pusiera la generacion en 0 estando el motor en 1, el proximo
+    // cuadro veria una diferencia que no existe y estrenaria la pendiente FUERA del
+    // borde del ciclo — la misma mentira que `cycleGen` evita no reseteandose nunca.
+    encolarTablero(UNA);
+    cerrarCiclo();
+    rs.rutaActiva();
+
+    rs.reiniciar();
+    encolarTablero(UNA);
+    expect(rs.rutaActiva()).toEqual([]);   // todavia no: le falta SU borde
+
+    cerrarCiclo();
+    expect(rs.rutaActiva()).not.toEqual([]);
+    // Y estrena entera: despues del reinicio nada "ya venia sonando".
+    expect(new Set(rs.velo().map((e) => e.id))).toEqual(new Set(['F']));
+  });
+
+  it('AC2 — quitar la ultima pieza NO reinicia nada: el ciclo activo termina (D5 del 009)', () => {
+    encolarTablero(UNA);
+    cerrarCiclo();
+    const sonando = rs.rutaActiva();
+    expect(sonando).toHaveLength(buildSequence(UNA, REGIMEN.escala).length);
+
+    // Quitar es una EDICION del tablero: no hay orden de volver a cero, asi que hasta el
+    // borde la cabeza sigue recorriendo lo que suena y el velo sigue diciendo que a esas
+    // celdas todavia no les toco. Limpiar aca seria apagar una pieza que sigue sonando.
+    encolarTablero([]);
+    expect(rs.rutaActiva()).toBe(sonando);
+    expect(claves(rs.velo().map((e) => e.cell))).toEqual(claves(UNA[0].cells));
+
+    // Recien el cierre del ciclo la apaga, y ahi si el velo se vacia solo.
+    cerrarCiclo();
+    expect(rs.rutaActiva()).toEqual([]);
+    expect(rs.velo()).toEqual([]);
+  });
+});
+
+/**
  * El unico camino por el que `construir` puede recibir un paso sin pieza, y el unico por
  * el que `porPieza` puede no tener una entrada que `ids` si tiene.
  *

@@ -91,4 +91,30 @@ describe('TransportPanel', () => {
     expect(onReset).toHaveBeenCalledTimes(1);
     expect(onTogglePlay).not.toHaveBeenCalled();
   });
+
+  // Primer test del repo que pregunta por el arbol de accesibilidad en vez de por la
+  // estructura del DOM: `getByRole('slider', { name })` solo encuentra el control si el
+  // nombre accesible se resolvio de verdad (via `aria-labelledby`), asi que verifica la
+  // decision D2 del spec —nombre desde el span visible, sin duplicarlo en `aria-label`—
+  // y no solo "el atributo esta escrito". El nombre va anclado con regex porque
+  // `getByRole` empareja por SUBCADENA, que es el mismo tropiezo que
+  // `PiecePalette.browser.test.tsx:93-94` ya dejo anotado.
+  it('el slider de Tempo tiene nombre accesible "Tempo" y anuncia su valor con la unidad', async () => {
+    await render(<TransportPanel transporte={transporte({ tempo: 110 })} />);
+
+    const slider = page.getByRole('slider', { name: /^Tempo$/ });
+    await expect.element(slider).toBeInTheDocument();
+    expect(slider.element().getAttribute('aria-valuetext')).toBe('110 bpm');
+    // El nombre viene de `aria-labelledby`, no de un `aria-label` duplicado: si alguien
+    // reintroduce un `aria-label` con el mismo texto, esta aserción lo caza aunque el
+    // nombre accesible siga siendo "Tempo".
+    expect(slider.element().getAttribute('aria-label')).toBeNull();
+  });
+
+  it('aria-valuetext sigue al tempo: mismo numero que pinta el span visible, con su unidad', async () => {
+    await render(<TransportPanel transporte={transporte({ tempo: 96 })} />);
+
+    const slider = page.getByRole('slider', { name: /^Tempo$/ });
+    expect(slider.element().getAttribute('aria-valuetext')).toBe('96 bpm');
+  });
 });

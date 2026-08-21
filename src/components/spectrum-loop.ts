@@ -77,6 +77,20 @@ export function iniciarEspectro(canvas: HTMLCanvasElement | null): () => void {
   let h = 0;
   let fill: string | CanvasGradient = '#34d399';
 
+  // Clave de lo ULTIMO dibujado, no un booleano: la misma forma que `dibujado` en
+  // `playhead-loop.ts`, y por el mismo motivo ahi documentado -- "comparar strings
+  // evita comparar tuplas y deja el caso 'oculto' expresado como cadena vacia. Es lo
+  // que baja de 60 escrituras por segundo a entre 4 y 11, y lo que hace que en pausa
+  // el loop no toque el DOM ni una vez (AC7)". Ese loop ya tenia la guarda; este no
+  // la aplicaba: sin ella, `drawIdle` repetia 55 operaciones de canvas por cuadro
+  // -un `clearRect`, 48 `fillRect`, cinco asignaciones de estilo y un `fillText`-
+  // para pintar la misma imagen, o sea 3.300 por segundo mientras no hay audio. Un
+  // booleano de "ya dibuje el reposo" no alcanza: hace falta distinguir tambien la
+  // transicion senal -> reposo (readSpectrum vuelve a null con el contexto
+  // suspendido, no solo antes del primer click), y esa transicion es la que un
+  // booleano crudo confundiria con "reposo -> reposo".
+  let dibujado = '';
+
   const resize = () => {
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
@@ -93,6 +107,10 @@ export function iniciarEspectro(canvas: HTMLCanvasElement | null): () => void {
     grad.addColorStop(0, '#059669');
     grad.addColorStop(1, '#5eead4');
     fill = grad;
+    // Redimensionar borra el canvas (cambiar width/height lo limpia), asi que la
+    // clave se invalida para forzar el proximo `drawIdle` aunque el reposo no haya
+    // cambiado -si no, el canvas quedaria en blanco hasta que llegue senal.
+    dibujado = '';
   };
 
   // Observa el contenedor y no el canvas: cambiarle width/height al canvas
@@ -121,8 +139,16 @@ export function iniciarEspectro(canvas: HTMLCanvasElement | null): () => void {
   let raf = 0;
   const draw = () => {
     const bins = readSpectrum();
-    if (bins) drawBars(g, w, h, binsToBars(bins, BAR_COUNT), fill);
-    else drawIdle(g, w, h);
+    if (bins) {
+      // Sin clave: las barras cambian de valor en cada cuadro con senal, que es
+      // todo el punto del espectro. Lo que SI queda registrado es que lo ultimo
+      // dibujado fueron barras, para que la transicion senal -> reposo se detecte.
+      drawBars(g, w, h, binsToBars(bins, BAR_COUNT), fill);
+      dibujado = 'barras';
+    } else if (dibujado !== 'reposo') {
+      drawIdle(g, w, h);
+      dibujado = 'reposo';
+    }
     raf = requestAnimationFrame(draw);
   };
   raf = requestAnimationFrame(draw);

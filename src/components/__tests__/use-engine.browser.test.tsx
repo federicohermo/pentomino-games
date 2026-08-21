@@ -26,12 +26,15 @@ const motor = vi.hoisted(() => ({
   setSequence: vi.fn(), setBpm: vi.fn(), setClicksAudible: vi.fn(),
   startClock: vi.fn(), stopClock: vi.fn(), clockRunning: vi.fn(() => false),
 }));
-const colaDeDibujo = vi.hoisted(() => ({ encolar: vi.fn() }));
+// El mock de la cola de dibujo lista sus DOS funciones: desde el spec 027 el hook
+// tambien re-exporta el reinicio, y un mock parcial lo dejaria en `undefined` — que acá
+// falla con un TypeError que no dice nada sobre lo que se rompio.
+const colaDeDibujo = vi.hoisted(() => ({ encolar: vi.fn(), reiniciar: vi.fn() }));
 
 vi.mock('../../audio/engine.ts', () => motor);
 vi.mock('../route-source.ts', () => colaDeDibujo);
 
-const { useMotorSincronizado, MOTOR, frenarTransporte } = await import('../use-engine.ts');
+const { useMotorSincronizado, MOTOR, frenarTransporte, reiniciarRecorrido } = await import('../use-engine.ts');
 
 const colocar = (piece: PieceKey, x: number, y: number): PlacedPiece => ({
   id: piece,
@@ -54,7 +57,7 @@ const props = (placed: readonly PlacedPiece[], tempo = 110, clicks = false) => (
 
 beforeEach(() => {
   for (const fn of Object.values(motor)) fn.mockClear();
-  colaDeDibujo.encolar.mockClear();
+  for (const fn of Object.values(colaDeDibujo)) fn.mockClear();
 });
 
 describe('useMotorSincronizado — los cuatro efectos', () => {
@@ -155,5 +158,23 @@ describe('el cableado del transporte', () => {
     frenarTransporte();
     expect(motor.stopClock).toHaveBeenCalledTimes(1);
     expect(motor.startClock).not.toHaveBeenCalled();
+  });
+});
+
+describe('AC12 (spec 027) — el Reset les habla a las DOS colas desde este modulo', () => {
+  it('reiniciarRecorrido reinicia la cola de dibujo, y solo eso', () => {
+    // Que salga de acá y no de un import directo de `route-source.ts` en `App.tsx` es el
+    // hallazgo entero: las dos colas se reinician por el mismo camino, o vuelve la
+    // asimetria que dejaba el velo dibujado sobre un tablero vacio.
+    reiniciarRecorrido();
+    expect(colaDeDibujo.reiniciar).toHaveBeenCalledTimes(1);
+
+    // Frenar el reloj es la OTRA mitad y la da `frenarTransporte()`. Siguen siendo dos
+    // funciones porque el shell las compone: envolverlas juntas ataria el reinicio de la
+    // cola de dibujo a que el transporte se frene, que hoy es cierto y no tiene por qué.
+    expect(motor.stopClock).not.toHaveBeenCalled();
+    // Y no reencola: lo que reencola el tablero ya vacio es el efecto de reconciliacion,
+    // en el render siguiente.
+    expect(colaDeDibujo.encolar).not.toHaveBeenCalled();
   });
 });

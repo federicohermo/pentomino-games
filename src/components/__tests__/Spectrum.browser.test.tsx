@@ -261,3 +261,90 @@ describe('iniciarEspectro — las guardas y el dpr', () => {
     }
   });
 });
+
+describe('iniciarEspectro — el reposo no redibuja de balde', () => {
+  // Las tres transiciones de la clave `dibujado`. Un booleano de "ya dibuje el
+  // reposo" cubriria las dos primeras y fallaria muda en la tercera -es la
+  // diferencia que separa el arreglo correcto de cambiar una falla muda por otra.
+
+  it('reposo -> reposo: tras el primer cuadro, mas cuadros no vuelven a tocar el canvas', async () => {
+    const canvas = canvasSuelto();
+    const limpiar = loop.iniciarEspectro(canvas);
+    try {
+      // Primer cuadro: dibuja el reposo una vez (dibujado pasa de '' a 'reposo').
+      await cuadro();
+
+      // Espiar operaciones REALES de canvas y no `drawIdle` en si: es lo que el
+      // hallazgo cuenta -55 operaciones por cuadro repetidas de balde-, y espiar
+      // el modulo de produccion en vez del prototipo dejaria pasar un `drawIdle`
+      // reescrito que igual golpeara el canvas por otro camino.
+      const limpiado = vi.spyOn(CanvasRenderingContext2D.prototype, 'clearRect');
+      const escrito = vi.spyOn(CanvasRenderingContext2D.prototype, 'fillText');
+      try {
+        await cuadro();
+        await cuadro();
+        await cuadro();
+        expect(limpiado).not.toHaveBeenCalled();
+        expect(escrito).not.toHaveBeenCalled();
+      } finally {
+        limpiado.mockRestore();
+        escrito.mockRestore();
+      }
+    } finally {
+      limpiar();
+    }
+  });
+
+  it('un resize invalida la clave y vuelve a dibujar el reposo', async () => {
+    const canvas = canvasSuelto();
+    const limpiar = loop.iniciarEspectro(canvas);
+    try {
+      // Reposo ya estable: el cuadro siguiente, sin resize, no volveria a pintar.
+      await cuadro();
+
+      const escrito = vi.spyOn(CanvasRenderingContext2D.prototype, 'fillText');
+      try {
+        // Redimensionar borra el canvas (cambiar width/height lo limpia): la
+        // clave tiene que invalidarse o el canvas queda en blanco hasta que
+        // llegue senal.
+        canvas.parentElement!.style.width = '300px';
+        await vi.waitFor(() =>
+          expect(canvas.width).toBe(Math.round(300 * window.devicePixelRatio)));
+        await cuadro();
+        expect(escrito).toHaveBeenCalledWith(IDLE_TEXT, expect.any(Number), expect.any(Number));
+      } finally {
+        escrito.mockRestore();
+      }
+    } finally {
+      limpiar();
+    }
+  });
+
+  it('senal -> reposo: cuando readSpectrum vuelve a null, redibuja el reposo y no deja las barras congeladas', async () => {
+    const canvas = canvasSuelto();
+    const limpiar = loop.iniciarEspectro(canvas);
+    try {
+      await cuadro();
+
+      // Canvas lleno de barras: es el estado que un booleano de "ya dibuje el
+      // reposo" no distingue de "nunca dibuje nada".
+      motor.bins = new Uint8Array(128).fill(255);
+      await cuadro();
+      await cuadro();
+
+      motor.bins = null;
+      const escrito = vi.spyOn(CanvasRenderingContext2D.prototype, 'fillText');
+      try {
+        await cuadro();
+        await cuadro();
+        // `fillText` solo lo llama `drawIdle`: si aparecio, el reposo se
+        // redibujo de verdad y no quedo la ultima barra pintada.
+        expect(escrito).toHaveBeenCalledWith(IDLE_TEXT, expect.any(Number), expect.any(Number));
+      } finally {
+        escrito.mockRestore();
+      }
+    } finally {
+      limpiar();
+    }
+  });
+});
