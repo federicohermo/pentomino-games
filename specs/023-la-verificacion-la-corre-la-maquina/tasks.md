@@ -10,59 +10,74 @@ una persona y no bloquea el cierre.
 
 ## Paso 1 — Versiones
 
-- [ ] T001 `package.json`: subir `react` y `react-dom` a `^19.2.8`, `@types/react` a `^19.2.18` y
+- [x] T001 `package.json`: subir `react` y `react-dom` a `^19.2.8`, `@types/react` a `^19.2.18` y
       `@types/react-dom` a `^19.2.4`. Los cuatro juntos: los tipos y el runtime se mueven en pareja
-- [ ] T002 `package.json`: subir `node-web-audio-api` a `^2.2.0`. **Sin `[P]`**: toca el mismo archivo
+- [x] T002 `package.json`: subir `node-web-audio-api` a `^2.2.0`. **Sin `[P]`**: toca el mismo archivo
       que T001, T003 y T004. `typescript-eslint` **ya está** en `^8.67.0` (`package.json:45`) — lo subió
       el 030, así que acá sólo se verifica
-- [ ] T003 `package.json`: **verificar que `vitest` sigue en `4.1.11` SIN caret**, igual que
+- [x] T003 `package.json`: **verificar que `vitest` sigue en `4.1.11` SIN caret**, igual que
       `@vitest/browser`, `@vitest/browser-playwright` y `@vitest/coverage-v8` (`package.json:32-34,47`).
       La versión de la primera pasada de este spec decía «subir a `^4.1.11`» y **eso hoy es una
       regresión**: el 029 ya la subió y la pinneó exacta porque `@vitest/browser-playwright` se publica
       pinneado a la versión exacta del runner, así que un caret deja entrar un 4.1.12 y vuelve a partir
       el árbol en dos runners
-- [ ] T004 **`eslint-plugin-react-hooks` ya está en `^7.1.1`** (`package.json:38`). Lo subió el 030, en
+- [x] T004 **`eslint-plugin-react-hooks` ya está en `^7.1.1`** (`package.json:38`). Lo subió el 030, en
       el mismo commit que migró el preset a su forma flat — que era exactamente el motivo por el que
       este spec lo dejaba afuera. Acá sólo se verifica que no bajó. Ídem
       `eslint-plugin-react-refresh` en `^0.5.4` (`package.json:39`)
-- [ ] T005 Confirmar que ninguna subida es major, que `typescript` sigue en `~5.8.3` y que las cuatro
+- [x] T005 Confirmar que ninguna subida es major, que `typescript` sigue en `~5.8.3` y que las cuatro
       `vitest*` siguen sin caret — **AC6**
-- [ ] T006 `pnpm install` y commitear `pnpm-lock.yaml` en el mismo commit que `package.json`
-- [ ] T007 `pnpm verify` verde
+- [x] T006 `pnpm install` y commitear `pnpm-lock.yaml` en el mismo commit que `package.json`
+- [x] T007 `pnpm verify` verde
 
 ## Paso 2 — Los dos `package.json`
 
-- [ ] T008 [P] `package.json` raíz: `"engines": { "node": "^20.19.0 || >=22.12.0" }`, que es el
+- [x] T008 [P] `package.json` raíz: `"engines": { "node": "^20.19.0 || >=22.12.0" }`, que es el
       requisito de Vite 7 — **AC4**. Va el de Vite y **no** `>=22.18`: con Node 20 sólo se pierde el
       server, y el piso del server ya vive en el `engines` del server
-- [ ] T009 [P] `mcp-server/package.json`: `typescript` de `dependencies` a `devDependencies`, con el
+- [x] T009 [P] `mcp-server/package.json`: `typescript` de `dependencies` a `devDependencies`, con el
       argumento al lado (lo usa `tsc` en `typecheck`; **no** lo usa `start`, porque Node ≥22.18 hace
       type-stripping nativo — el mismo motivo del piso de `engines` que ese archivo ya declara) — **AC4**
-- [ ] T010 `CLAUDE.md:93`: la línea de Node deja de atribuir el requisito al `engines` de Vite y nombra
+- [x] T010 `CLAUDE.md:93`: la línea de Node deja de atribuir el requisito al `engines` de Vite y nombra
       el propio
-- [ ] T011 `pnpm install` y `pnpm mcp:test` verde: **105 tests**
-- [ ] T012 [M] `pnpm --filter mcp-server start` arranca y responde una tool
+- [x] T011 `pnpm install` y `pnpm mcp:test` verde: **105 tests**
+- [x] T012 [M] `pnpm --filter mcp-server start` arranca y responde una tool. **Hecho sin una persona:**
+      era el riesgo real de T009 —sacar `typescript` de `dependencies`— así que se verificó spawneando
+      `node src/index.ts` en un proceso fresco y hablándole JSON-RPC por stdio. `initialize` devolvió
+      `pentomino-domain 1.0.0` y `describe_piece({piece:"T"})` devolvió su `cellMap`. El proceso fresco
+      importa: el server de la sesión cachea los módulos y habría respondido con el código viejo
 
 ## Paso 3 — El workflow
 
-- [ ] T013 `.github/workflows/verify.yml`: disparadores `pull_request` y `push` a `main`
-- [ ] T014 Pasos, en este orden: `actions/checkout`, `pnpm/action-setup` (versión **desde
+- [x] T013 `.github/workflows/verify.yml`: disparadores `pull_request` y `push` a `main`
+- [x] T014 Pasos, en este orden: `actions/checkout`, `pnpm/action-setup` (versión **desde
       `packageManager`**, no escrita a mano), `actions/setup-node` con `node-version: 22` y
       `cache: pnpm` —después de pnpm, porque el caché necesita el binario ya instalado—,
       `pnpm install --frozen-lockfile`, `pnpm exec playwright install --with-deps chromium`,
       `pnpm verify` — **AC1**, **AC2**, **AC8**
-- [ ] T015 **El workflow corre el script, no la lista de nodos** — **AC3**. Comentario en el YAML con las
+- [x] T015 **El workflow corre el script, no la lista de nodos** — **AC3**. Comentario en el YAML con las
       dos razones: `verify` ya costó dos trampas (`{.}` y el `$` del regex) y enumerar sus nodos crearía
       un segundo lugar donde esa forma vive; y la evidencia de que funciona ya existe — el
       [029](../029-lo-que-no-se-cubre-no-se-mergea/spec.md) le cambió `test` por `suite`
       (`test && coverage`), así que un workflow con la lista habría seguido corriendo `test` a secas, o
       sea **verde sin el gate de coverage**
-- [ ] T016 Comentario con lo que **no** hace: no arma matriz de Node (D2) y no despliega — Netlify ya lo
+- [x] T016 Comentario con lo que **no** hace: no arma matriz de Node (D2) y no despliega — Netlify ya lo
       hace
 - [ ] T017 [M] **Ver el workflow en rojo antes de creerle el verde.** Romper algo a propósito en la rama
       —un import prohibido en `domain/`, que es lo que el repo verifica con el linter—, confirmar que la
       CI falla, y revertirlo. Un CI que nunca se vio fallar no está verificado — **AC7**.
       `[M]` porque leer una corrida de Actions pide la web o `gh`, y `gh` no está en el PATH de este repo
+
+      > **Al implementar: la primera corrida salió en rojo sola, sin plantarle nada.** El job llegó al
+      > final —los seis pasos previos pasaron, incluido Chromium— y `pnpm verify` salió con exit 1
+      > ([run 32486122534](https://github.com/federicohermo/pentomino-games/actions/runs/32486122534)).
+      > Eso deja **medio T017 cumplido de casualidad** —el rojo existe y llega al check del PR— y deja
+      > **T018 como el bloqueante real**: el log pide sign-in, así que no se pudo determinar de qué nodo
+      > vino. Descartado que sea el entorno (`CI=true pnpm verify` local da exit 0) y descartada una
+      > deriva del lockfile (`--frozen-lockfile` local da exit 0). La hipótesis con evidencia es la
+      > contención de CPU sobre los presupuestos de performance del 009: son **los mismos dos tests**
+      > que fallaron en la primera pasada local de esta rama con cinco worktrees compitiendo. Si es eso,
+      > **el arreglo no es de este spec**: tocar ese presupuesto es tocar `src/`, y AC10 lo prohíbe
 - [ ] T018 [M] Confirmar que el rojo del T017 vino de `lint` y no de otro nodo: es lo que prueba que el
       paralelo de `verify` reporta el nodo correcto a través de Actions
 - [ ] T028 [M] **Ver morder el gate de coverage en un PR** — **AC9**, que es **AC13 del 029** diferido
@@ -73,19 +88,45 @@ una persona y no bloquea el cierre.
 
 ## Cierre
 
-- [ ] T019 `pnpm verify` verde: **457 tests de `src/` en 26 archivos + 105 del server**, y coverage en
+- [x] T019 `pnpm verify` verde: **457 tests de `src/` en 26 archivos + 105 del server**, y coverage en
       100 en las cuatro métricas — **AC5**. Los dos números están **medidos en `main` hoy** y son el
       piso, no la igualdad: los otros cuatro specs del lote 023–028 agregan tests, así que si alguno
       mergea antes que éste el conteo sube y el AC se lee como **«no baja de 457 + 105, y el coverage
-      sigue en 100»**. Este spec no toca `src/`, así que no puede moverlos él
-- [ ] T029 Confirmar que el diff no toca `src/`, `eslint.config.js` ni `vite.config.ts`:
-      `git diff --name-only main` — **AC10**
-- [ ] T020 [P] `CLAUDE.md`: la sección de Comandos dice que `verify` lo corre la CI sobre cada PR, con
+      sigue en 100»**. Este spec no agrega ni borra un test de `src/` —lo único que le toca es la guarda
+      del T031, que no cambia el conteo—, así que no puede moverlos él
+- [x] T031 **Los dos presupuestos del 009 se saltean en CI**, con la misma guarda que ya los saltea
+      bajo coverage — `src/domain/__tests__/sequence.test.ts`. **Los techos no se tocan**: siguen en 5 y
+      4. Es la enmienda de AC10, y salió de dos corridas del workflow, no de una: el primer intento
+      subió los techos a 10 y 8 y la corrida siguiente rompió el 10 igual, con **15,687 ms** contra los
+      **8,426 ms** de la anterior. Esa variación de **1,86×** sobre el mismo código es lo que prueba que
+      el runner no tiene un número, y con ella no hay techo que sirva sin volver inútil al test. La
+      tabla completa y el precio —la CI no verifica estos dos— van en el bloque del `skipIf` del propio
+      test y en el AC, no acá
+- [x] T032 **`mcp-server/src/symbols.ts`: el comparador del `sort` de `walk()` deja de ser un `?:`.**
+      Lo encontró la CI y no se podía encontrar de otra forma: `mcp:test` daba
+      `99.64% branch coverage does not meet threshold of 100%` en el runner y **100 en las cuatro en
+      Windows**. La rama es `BRDA:243,72,0,0` — un lado del `a.name < b.name ? -1 : 1` que no se
+      ejecuta según el orden en que el filesystem entrega las entradas: NTFS las da alfabéticas y ext4
+      en orden de hash. O sea que **el umbral 100 que fijó el 029 dependía del sistema de archivos de
+      quien lo corriera**, y pasaba en verde porque nadie lo había corrido fuera de una máquina.
+      Debajo había un defecto latente: ese comparador devuelve 1 para dos nombres iguales, o sea afirma
+      `a > b`. Ahora es `Number(a.name > b.name) - Number(a.name < b.name)`: sin ramas, orden total, sin
+      depender del locale. El porqué entero va en el docblock de `walk()`
+- [x] T033 **El `node-version` del workflow pasa de `22` a `22.18.0`.** No arregla el T032 —se probó
+      primero con esa hipótesis y quedó falsificada, con el número idéntico— y se queda por el otro
+      argumento: `22` resuelve a la última 22.x del día, así que el mismo commit puede dar verde hoy y
+      rojo el mes que viene sin que nadie toque una línea. Un gate con runtime móvil es la misma familia
+      de falla que este spec viene a cerrar. El `engines` del proyecto no se estrecha
+- [x] T029 Confirmar que el diff no toca `eslint.config.js` ni `vite.config.ts`, y que de código toca
+      **dos archivos y ninguno de producción de la app**: la guarda del T031 en
+      `src/domain/__tests__/sequence.test.ts` y el comparador del T032 en `mcp-server/src/symbols.ts`.
+      `git diff --name-only main` — **AC10**, enmendado al implementarlo
+- [x] T020 [P] `CLAUDE.md`: la sección de Comandos dice que `verify` lo corre la CI sobre cada PR, con
       Chromium instalado por el workflow
-- [ ] T021 [P] `docs/guides/quickstart.md`: mencionar el workflow donde ya se nombran los comandos, y
+- [x] T021 [P] `docs/guides/quickstart.md`: mencionar el workflow donde ya se nombran los comandos, y
       aclarar que el `pnpm exec playwright install chromium` de la línea 17 es para el clone local — en
       CI lo hace el workflow
-- [ ] T030 [P] `specs/revisiones.md`: anotar §023 con las dos cosas que este spec aprendió al revisarse
+- [x] T030 [P] `specs/revisiones.md`: anotar §023 con las dos cosas que este spec aprendió al revisarse
       contra un `main` que ya no era el suyo — (1) el paso de Chromium se mudó del 024 al 023 porque el
       029 adelantó el proyecto de navegador, así que **AC10 y T022 del 024 quedan cumplidos por acá**; y
       (2) una subida de versión escrita en un spec caduca: `vitest` pasó de «subir a `^4.1.11`» a
@@ -93,10 +134,12 @@ una persona y no bloquea el cierre.
 - [ ] T022 [P] `README.md`: badge del workflow. **Verificado hoy**: el README sigue siendo las 69 líneas
       de la plantilla de Vite, sin un encabezado propio donde apoyarlo, así que la respuesta por defecto
       es **no ponerlo acá** — el badge va con el README que reescribe el 028. Si el 028 ya cerró cuando
-      se implemente esto, entonces sí
+      se implemente esto, entonces sí. **Resuelto al implementar: NO.** El 028 corre en otro carril del
+      mismo lote y no estaba mergeado; el `README.md` sigue siendo las 69 líneas de la plantilla de
+      Vite. Queda para el 028, que es quien va a tener dónde apoyarlo
 - [ ] T023 Actualizar la fila del 023 en `specs/log.md` a `Implementado` — **queda abierta a propósito**:
       en este repo el estado del spec lo mueve el **merge**, no la rama
-- [ ] T024 PR contra `main`
+- [x] T024 PR contra `main` — [#26](https://github.com/federicohermo/pentomino-games/pull/26)
 
 ## Seguimiento (no bloquea)
 

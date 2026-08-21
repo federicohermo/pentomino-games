@@ -846,17 +846,47 @@ describe('AC10 — el tablero lleno', () => {
   // los dos con el margen de siempre.
   //
   // Un presupuesto de performance medido sobre un build instrumentado no mide el
-  // producto: mide el instrumento. Las dos salidas malas son subir los techos —que los
-  // vuelve inutiles— o borrarlos. La buena es que `pnpm test` y `pnpm coverage` sean
-  // nodos distintos de `verify`: el primero mantiene estos dos honestos sobre un build
-  // limpio, el segundo mide cobertura. La env var la inyecta `vite.config.ts`, que es el
-  // unico lugar que ve con que flags arranco vitest.
+  // producto: mide el instrumento. Por eso `suite` son DOS pasadas y no una: `pnpm test`
+  // primero, que corre estos dos sobre un build limpio, y `pnpm coverage` despues, que
+  // mide cobertura. Encadenadas adentro del mismo nodo desde el 029 —no en paralelo, que
+  // volvia a romper el presupuesto por contencion de CPU—. La env var la inyecta
+  // `vite.config.ts`, que es el unico lugar que ve con que flags arranco vitest.
+  //
+  // ## Y tampoco corren en CI, desde el spec 023, por la MISMA razon
+  //
+  // Es el segundo entorno donde el numero no habla del producto. Aca no es la
+  // instrumentacion: es que el runner de Actions es una VM compartida sin numero propio.
+  //
+  // Medido cuando el 023 puso `pnpm verify` en un runner limpio por primera vez —cada
+  // celda es la mediana de 21 corridas que el test ya calcula, no una muestra suelta:
+  //
+  //            esta maquina   runner #1   runner #2
+  //     AC10       2,00 ms     8,426 ms   15,687 ms
+  //     AC8        1,31 ms     6,324 ms    3,803 ms
+  //
+  // Mismo codigo y mismo workflow entre las dos corridas del runner: **1,86x de
+  // variacion** en AC10 y 0,60x en AC8. No es lentitud constante que se compense
+  // subiendo el techo — se intento, con 10 y 8, y la corrida siguiente rompio el 10
+  // igual.
+  //
+  // Por eso no hay techo que sirva. Para cubrir el pico de 15,7 ms haria falta ~30, y
+  // contra los 2,0 ms de esta maquina eso deja el presupuesto **15x por encima de lo
+  // medido**: un test que no puede fallar. Se elige conservar el numero donde es
+  // confiable antes que conservar el test donde no lo es — que es exactamente el mismo
+  // criterio que el parrafo de arriba aplica al build instrumentado.
+  //
+  // Lo que se pierde, dicho sin adornos: la CI **no** verifica estos dos presupuestos.
+  // Los verifica `pnpm verify` local, que es donde los techos de 5 y 4 significan algo.
+  // Un rojo de aca sigue siendo una regresion de verdad.
   const BAJO_COVERAGE = !!process.env.COVERAGE;
+  // `CI` la pone GitHub Actions sola en todo runner; no hay que declararla en el YAML.
+  const EN_CI = !!process.env.CI;
+  const NO_ES_MEDIBLE = BAJO_COVERAGE || EN_CI;
 
-  it.skipIf(BAJO_COVERAGE)('AC10 — 12 piezas se resuelven en menos de 5 ms (mediana de 21 corridas)', () => {
-    // Mediana y no una sola corrida: el margen contra los 5 ms es de pocos multiplos
-    // y una pausa de GC en una maquina cargada se lo come entero. La mediana de 21
-    // deja 10 corridas para que se la coman sin que el test parpadee.
+  it.skipIf(NO_ES_MEDIBLE)('AC10 — 12 piezas se resuelven en menos de 5 ms (mediana de 21 corridas)', () => {
+    // Mediana y no una sola corrida: una pausa de GC en una maquina cargada se come el
+    // margen entero. La mediana de 21 deja 10 corridas para que se la coman sin que el
+    // test parpadee.
     //
     // 12 es el peor caso POSIBLE, no el tipico: hay 12 pentominos libres y no se
     // repiten, asi que `O(n^2 * 2^n)` esta acotado por las reglas del juego.
@@ -879,7 +909,7 @@ describe('AC10 — el tablero lleno', () => {
     expect(mediana).toBeLessThan(5);
   });
 
-  it.skipIf(BAJO_COVERAGE)('AC8 — la matriz de 12x12 rutas se mantiene despreciable (mediana de 21 corridas)', () => {
+  it.skipIf(NO_ES_MEDIBLE)('AC8 — la matriz de 12x12 rutas se mantiene despreciable (mediana de 21 corridas)', () => {
     // El pedazo que el spec 011 encarecio, medido aparte y con su propio tope: son las
     // 144 rutas con las que `buildSequence` arma la matriz que ordena el circuito. El
     // 009 hacia 144 restas; hoy son 144 Dijkstras sobre 60 celdas.
