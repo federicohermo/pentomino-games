@@ -26,6 +26,13 @@ La lista está en `package.json`. Lo que ese archivo no dice:
 es lo que hay que correr antes de un PR. Medido con caché caliente: 41,2 s en serie contra 23,7 s en
 paralelo, y un nodo rojo devuelve exit 1.
 
+**Y desde el spec 023 no depende de que alguien se acuerde:** `.github/workflows/verify.yml` lo corre
+sobre cada `pull_request` y cada push a `main`, con Chromium instalado por el propio workflow. El
+workflow corre el **script**, no la lista de nodos, y el porqué está comentado ahí: la forma exacta de
+`verify` ya costó dos trampas, y enumerarla en el YAML crearía un segundo lugar donde vive. La
+evidencia no es hipotética — el 029 le cambió `test` por `suite` y un workflow con la lista habría
+seguido en verde sin el gate de coverage.
+
 **`suite` son DOS pasadas de vitest, en secuencia y no en paralelo** (spec 029): primero `test` sin
 instrumentar y después `coverage`, con umbral **100** en las cuatro métricas. Los dos motivos están
 medidos y ninguno es preferencia:
@@ -85,7 +92,9 @@ capa sino por lo que el test necesita:
 
 El discriminante es el **sufijo** y no una carpeta: un test de `Board.tsx` que necesita navegador
 sigue siendo un test de `Board.tsx` y vive al lado. **Chromium no está en el lockfile**: un clone
-nuevo necesita `pnpm exec playwright install chromium` antes del primer `verify`.
+nuevo necesita `pnpm exec playwright install chromium` antes del primer `verify`. En CI eso no hace
+falta acordárselo: el workflow del 023 lo instala con `--with-deps`, que el runner de Ubuntu necesita
+para las librerías de sistema.
 
 Los del MCP server son de `node --test`, en su propio paquete, y desde el 029 corren con los
 `--test-coverage-*=100` de node.

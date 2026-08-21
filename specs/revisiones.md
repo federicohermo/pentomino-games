@@ -714,3 +714,46 @@ el nodo más lento pasa a ser `suite` (19,4 s) y no `lint` (11,0 s). Los dos spe
 que manda el reloj y los dos midieron sin el otro puesto. La lección se repite con otra cara: **un
 número medido sobre el nodo de convergencia caduca cuando otra rama le agrega trabajo**, así que vale
 anotar al lado qué había puesto cuando se midió.
+
+## 2026-08-21 — El spec 023 se revisó contra un `main` que ya no era el suyo, y perdió dos tareas
+
+Este spec se escribió cuando el 029 y el 030 eran ramas en paralelo, y se implementó cuando los dos ya
+estaban en `main`. Las dos cosas que aprendió no son sobre CI: son sobre qué le pasa a un spec que
+espera.
+
+### Una subida de versión escrita en un spec caduca, y puede darse vuelta de signo
+
+La primera pasada decía «subir `vitest` a `^4.1.11`». Entre que se escribió y que se implementó, el 029
+la subió — y la **pinneó exacta**, sin caret, porque `@vitest/browser-playwright` se publica pinneado a
+la versión exacta del runner y un `^` deja entrar un 4.1.12 que parte el árbol en dos runners. O sea
+que ejecutar la tarea tal como estaba escrita habría sido una **regresión**, no una subida.
+
+Lo caro no es que caduque: es que **caduca sin cambiar de aspecto**. «Subir X a ^N» y «verificar que X
+sigue en N sin caret» se leen igual de razonables, y la única forma de distinguirlas es mirar el
+`package.json` de hoy. Por eso las tareas afectadas del `tasks.md` **no se renumeraron ni se borraron**:
+pasaron de «subir» a «verificar que sigue así», que es trabajo real y falsable, y así los ACs que las
+referencian siguen apuntando a algo.
+
+De los seis paquetes que el spec listaba quedaron cuatro: el 030 ya había subido `typescript-eslint`,
+`eslint-plugin-react-hooks` y `eslint-plugin-react-refresh`, y el 029 el `vitest`. Lo que entró fue
+`react`/`react-dom` 19.2.8 con sus `@types`, y `node-web-audio-api` 2.2.0.
+
+### Una tarea puede cambiar de dueño sin que nadie negocie nada
+
+El paso de `playwright install --with-deps chromium` estaba escrito como **AC10 y T022 del 024**, de
+cuando el 024 era quien iba a traer el proyecto de navegador. El 029 adelantó esa infra y hoy los
+`*.browser.test.tsx` están en `main`, así que el 023 —el que crea el archivo de workflow— se lo
+encontró adentro de su propio alcance. **AC10 y T022 del 024 quedan cumplidos por acá.**
+
+Y cambió de categoría además de dueño: sin ese paso el workflow no es uno al que le falta una feature,
+es uno que **no arranca** — y con el job muerto no habría forma de verificar AC7, porque el rojo tiene
+que venir del error que se plantó y no de un binario que falta.
+
+### El corolario para el próximo spec que espere su turno
+
+Las dos veces el patrón es el mismo: **un spec que espera no envejece parejo**. Lo que envejece es la
+parte que afirma el estado del árbol —una versión, un archivo que no existe, un AC de otro spec—, y esa
+parte hay que releerla contra el `main` del día de implementarlo, no contra el del día de escribirlo.
+La parte que envejece bien es la que argumenta un *porqué*: la decisión de correr el script y no la
+lista de nodos sobrevivió intacta a los dos merges, y encima salió reforzada — el 029 le cambió `test`
+por `suite` y un workflow con la lista habría seguido en verde sin el gate de coverage.
