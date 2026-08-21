@@ -82,7 +82,7 @@ describe('Board', () => {
       expect(Math.round(grilla.getBoundingClientRect().width)).toBe(GRID_W * CELL_PX);
 
       // El que scrollea es el tablero, que es lo que sobra.
-      const scroller = container.querySelector('div.relative.overflow-x-auto')! as HTMLElement;
+      const scroller = container.querySelector('div.relative.overflow-x-auto')!;
       expect(scroller.scrollWidth).toBeGreaterThan(scroller.clientWidth);
       // Y la pagina no: la nota es lo que hay que poder leer, y para eso la celda no se
       // achica — se scrollea el tablero.

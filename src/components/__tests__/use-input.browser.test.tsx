@@ -37,8 +37,15 @@ const enElDocumento = <T extends HTMLElement>(el: T): T => {
 beforeEach(() => { basura.splice(0).forEach(el => el.remove()); });
 afterEach(() => { basura.splice(0).forEach(el => el.remove()); });
 
-/** Un `keydown` + `keyup` del mismo modificador: el gesto completo, que es el que actua. */
-async function tap_(target: EventTarget, key: string, init: KeyboardEventInit = {}) {
+/**
+ * Un `keydown` + `keyup` del mismo modificador: el gesto completo, que es el que actua.
+ *
+ * Es **sincronica** y no `async`: los dos `dispatchEvent` corren sus listeners en el acto y
+ * lo que se afirma despues son contadores de mocks, no estado de React. El `async` de antes
+ * no era gratis: el `await` del llamador metia un microtask entre el gesto y la asercion,
+ * que es justo el tipo de espera que hace pasar un test por la razon equivocada.
+ */
+function tap_(target: EventTarget, key: string, init: KeyboardEventInit = {}) {
   target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init }));
   target.dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true, cancelable: true, ...init }));
 }
@@ -48,11 +55,11 @@ describe('useAtajosDeTeclado', () => {
     const a = acciones();
     await renderHook(() => useAtajosDeTeclado(a, tap()));
 
-    await tap_(window, 'Shift');
+    tap_(window, 'Shift');
     expect(a.rotar).toHaveBeenCalledTimes(1);
     expect(a.reflejar).not.toHaveBeenCalled();
 
-    await tap_(window, 'Control');
+    tap_(window, 'Control');
     expect(a.reflejar).toHaveBeenCalledTimes(1);
     expect(a.transporte).not.toHaveBeenCalled();
   });
@@ -111,7 +118,7 @@ describe('useAtajosDeTeclado', () => {
   it('una tecla sin accion no llama a nadie', async () => {
     const a = acciones();
     await renderHook(() => useAtajosDeTeclado(a, tap()));
-    await tap_(window, 'q');
+    tap_(window, 'q');
     expect(a.rotar).not.toHaveBeenCalled();
     expect(a.reflejar).not.toHaveBeenCalled();
     expect(a.transporte).not.toHaveBeenCalled();
@@ -122,7 +129,7 @@ describe('useAtajosDeTeclado', () => {
     const { unmount } = await renderHook(() => useAtajosDeTeclado(a, tap()));
     await unmount();
 
-    await tap_(window, 'Shift');
+    tap_(window, 'Shift');
     expect(a.rotar).not.toHaveBeenCalled();
   });
 });

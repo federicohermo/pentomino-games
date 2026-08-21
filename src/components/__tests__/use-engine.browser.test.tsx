@@ -140,7 +140,7 @@ describe('useMotorSincronizado — los cuatro efectos', () => {
 });
 
 describe('el cableado del transporte', () => {
-  it('MOTOR expone las tres funciones del motor, sin envolverlas', async () => {
+  it('MOTOR expone las tres funciones del motor, sin envolverlas', () => {
     MOTOR.arrancar();
     expect(motor.startClock).toHaveBeenCalledTimes(1);
     MOTOR.frenar();

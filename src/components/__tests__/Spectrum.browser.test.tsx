@@ -114,7 +114,7 @@ describe('drawBars / drawIdle — lo que se dibuja', () => {
     return c;
   };
 
-  it('una barra en cero no pinta nada, y una minima igual se ve', async () => {
+  it('una barra en cero no pinta nada, y una minima igual se ve', () => {
     // `MIN_BAR` existe porque por debajo de eso no se ve que hay algo: una barra con
     // senal tiene que dejar tinta aunque su valor sea casi cero.
     const c = lienzo();
@@ -130,7 +130,7 @@ describe('drawBars / drawIdle — lo que se dibuja', () => {
     expect(conMinima).toBeLessThanOrEqual(Math.ceil(200 / 3) * MIN_BAR);
   });
 
-  it('el reposo pinta las 48 ranuras y el texto', async () => {
+  it('el reposo pinta las 48 ranuras y el texto', () => {
     const c = lienzo();
     const g = c.getContext('2d')!;
     const escrito = vi.spyOn(g, 'fillText');
@@ -141,13 +141,13 @@ describe('drawBars / drawIdle — lo que se dibuja', () => {
     escrito.mockRestore();
   });
 
-  it('las barras respetan el `GAP` entre ranuras', async () => {
+  it('las barras respetan el `GAP` entre ranuras', () => {
     const c = lienzo();
     const g = c.getContext('2d')!;
     const rects = vi.spyOn(g, 'fillRect');
 
     loop.drawBars(g, 200, 96, new Float32Array([1, 1]), '#000');
-    const [, , ancho] = rects.mock.calls[0] as [number, number, number, number];
+    const [, , ancho] = rects.mock.calls[0];
     expect(ancho).toBe(200 / 2 - GAP);
     rects.mockRestore();
   });
@@ -205,7 +205,7 @@ describe('iniciarEspectro — las guardas y el dpr', () => {
     }
   });
 
-  it('el cambio de densidad re-mide Y re-arma la media query', async () => {
+  it('el cambio de densidad re-mide Y re-arma la media query', () => {
     // El `ResizeObserver` no cubre el dpr: arrastrar la ventana a un monitor con otra
     // densidad cambia `devicePixelRatio` sin cambiar un pixel CSS, asi que el observer
     // no dispara y el canvas se queda con el backing store de la pantalla anterior. Y
@@ -225,7 +225,7 @@ describe('iniciarEspectro — las guardas y el dpr', () => {
         addEventListener: (_t: string, fn: () => void) => { entrada.listeners++; disparar = fn; },
         removeEventListener: () => { entrada.listeners--; },
       } as unknown as MediaQueryList;
-    }) as typeof window.matchMedia;
+    });
 
     let disparar: (() => void) | null = null;
     try {

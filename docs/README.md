@@ -47,14 +47,18 @@ pnpm dev      # Dev server de Vite
 pnpm build    # tsc -b && vite build
 pnpm lint     # ESLint (flat config v9)
 pnpm preview  # Sirve el build de dist/
-pnpm test     # Vitest — dominio puro + audio con OfflineAudioContext
+pnpm test     # Vitest — los dos proyectos, sin instrumentar
+pnpm suite    # test y después coverage, con umbral 100; es lo que corre verify
+pnpm verify   # lint ‖ typecheck ‖ suite ‖ mcp:test — el nodo de convergencia
 pnpm mcp:test # MCP server — typecheck + tests con node --test
 ```
 
-Los tests corren en `environment: 'node'` contra `node-web-audio-api`, **no en jsdom**: jsdom no
-implementa Web Audio. Todavía no hay tests de componentes — ver
-[troubleshooting](./guides/troubleshooting.md#offlineaudiocontext-is-not-defined-en-un-test) si hace
-falta agregarlos.
+Vitest corre en **dos proyectos y un solo comando** (spec 029): los `*.test.ts` en `environment: 'node'`
+contra `node-web-audio-api`, y los `*.browser.test.tsx` en un Chromium de verdad por Playwright. **En
+jsdom no corre ninguno**, y no es una pendiente: jsdom no implementa Web Audio ni da canvas 2D,
+`ResizeObserver` o `matchMedia`, así que cubrir `Spectrum.tsx` con él exigiría mockear justo el código
+que se quiere cubrir. Los seis componentes, `App.tsx` y los dos hooks tienen test — ver
+[la sección de tests](./architecture/directory-structure.md#tests).
 
 ---
 

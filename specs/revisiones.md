@@ -648,3 +648,69 @@ que se cumplía por otro camino.** Los anchos de las miniaturas se comparaban en
 celda, que la volvía a destapar sola. `startClock` se comprobaba con `clockRunning()`, que sigue
 diciendo que sí porque lo que queda roto es un timer huérfano. En los tres casos el arreglo fue
 afirmar la **causa** y no el síntoma.
+
+## 2026-08-20 — El spec 030 salió distinto en dos lugares, y los dos son la misma lección
+
+El spec proponía siete frentes y entraron siete, pero **dos cambiaron de forma al medirlos**. Vale
+anotar los dos juntos porque el error de partida fue el mismo: escribir la regla desde lo que la doc
+dice, en vez de desde lo que la doc **quiso decir**.
+
+### «Los módulos no declaran constantes» no se puede aplicar como está escrita
+
+El primer selector daba **21 hallazgos**. Ninguno era deuda:
+
+- **Ocho eran `let`**, no `const`. `let ctx: AudioContext | null = null` es estado mutable de módulo,
+  que es lo contrario de una constante. Faltaba el ancla `kind='const'`, y con ella bajaron a 9.
+- **Siete de los nueve restantes estaban en `components/`** —`BAR_COUNT`, `GAP`, `MIN_BAR` e `IDLE_TEXT`
+  en `Spectrum.tsx`; `BORDE_COLOR`, `VELO_CAJA` y `VELO_TAPA` en `Playhead.tsx`— y **tampoco** eran
+  deuda. Son privadas de su archivo, y sus docblocks no explican el *valor* sino el **mecanismo**: por
+  qué `box-shadow` y no `transform: scale` (con la medición del `scrollHeight` en el DOM), por qué las
+  clases de Tailwind van escritas enteras. Mudarlas a `constants/` habría mudado esa explicación lejos
+  del código que explica.
+
+  **Ese último argumento se cayó al mergear, y conviene dejarlo anotado en vez de taparlo.** El spec
+  029 sacó los dos bucles de los `.tsx` a `playhead-loop.ts` y `spectrum-loop.ts` —porque
+  `react-refresh/only-export-components` impedía exportarlos y por lo tanto cubrirlos—, eso dejó a las
+  siete en módulos de capa, y se mudaron a `components/constants/` **con los docblocks enteros**. O sea
+  que la explicación no se alejó de nada. Lo que sostiene el alcance de la regla es la otra mitad, la
+  medible: una constante privada de un solo archivo no se puede desincronizar. `components/` sigue
+  afuera por eso, y no por dónde queden mejor los comentarios.
+
+Lo que resolvió la duda fue releer el **motivo** escrito de la regla y no su enunciado: el daño medido
+fueron *cuatro pares de números que tenían que coincidir y nada sincronizaba*. Un valor privado de un
+solo archivo no puede desincronizarse con nada. Así que la regla se aplica donde el motivo aplica
+—`domain/` y `audio/`, donde una constante es parte del modelo— y las dos que quedaban fuera ahí
+(`ROTATIONS`, `PASOS_MAX`) se mudaron. Quedan 0.
+
+**La doc se corrigió, no la regla.** `CLAUDE.md` y `conventions.md` decían la versión ancha en
+presente, y era falsa desde antes de este spec.
+
+### `import-x/no-cycle` costaba el 60 % del lint y no compraba nada
+
+Entró en el plan por el comentario de `DOMAIN_INTERNO`, que dice que las hojas «no se importan entre sí,
+que es lo que garantiza que no haya ciclos». Parecía el candidato obvio a convertir esa garantía escrita
+en una verificada. Medido: **15 de los 25 segundos** del lint, y **cero** ciclos.
+
+Y al mirarlo de nuevo, la redundancia es total: las zonas prohíben por nombre cada arista de vuelta del
+DAG, así que un ciclo adentro de `domain/` no es improbable sino imposible. La regla habría pagado 15 s
+por confirmar un teorema que otra regla ya demuestra.
+
+### La lección común
+
+Las dos veces el atajo era el mismo: **tomar la regla escrita y buscarle un selector**. Las dos veces la
+salida fue mirar el número —21 hallazgos, 15 segundos— y recién ahí volver al *por qué* de la regla. El
+`research.md` de este repo se escribe midiendo; resulta que las reglas del linter también.
+
+### Y un dato para la próxima
+
+El linting con tipos llevó `lint` de ~2,5 s a **11,0 s**. La mitad cara es `mcp-server/`: **13,9 s** él
+solo contra **8,4 s** de `src/`, porque importa 31 símbolos del dominio y su programa de TypeScript es
+grande. Si algún día el tiempo molesta, eso es lo primero a soltar — y no `src/`, que es donde el tipo
+compra.
+
+**Lo que este spec midió como 4,0 → 11,8 s ya no es el número de `verify`**, y el motivo es el 029, que
+se mergeó en el medio: con `suite` puesto, `verify` mide **41,2 s en serie contra 23,7 s en paralelo** y
+el nodo más lento pasa a ser `suite` (19,4 s) y no `lint` (11,0 s). Los dos specs previeron ser el nodo
+que manda el reloj y los dos midieron sin el otro puesto. La lección se repite con otra cara: **un
+número medido sobre el nodo de convergencia caduca cuando otra rama le agrega trabajo**, así que vale
+anotar al lado qué había puesto cuando se midió.

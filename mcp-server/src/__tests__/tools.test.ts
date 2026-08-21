@@ -736,7 +736,7 @@ describe('find_symbol', () => {
     // decia 84 sobre 36 arriba de una lista de 78 sobre 26.
     assert.equal(r.archivos, Object.keys(outline).length);
     assert.equal(r.simbolos, Object.values(outline).reduce((n, xs) => n + xs.length, 0));
-    assert.ok(r.archivos as number > 0, 'el indice no puede salir vacio');
+    assert.ok(r.archivos > 0, 'el indice no puede salir vacio');
 
     // Y sin tests: ningun archivo del outline vive en `__tests__/`.
     assert.deepEqual(Object.keys(outline).filter(f => f.includes('__tests__')), []);

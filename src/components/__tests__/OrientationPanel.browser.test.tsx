@@ -92,7 +92,7 @@ describe('OrientationPanel', () => {
     // cambio sobrevivia sin esta linea.
     const { container } = await render(<OrientationPanel orientacion={orientacion()} />);
     for (const boton of container.querySelectorAll('button')) {
-      const caja = boton.querySelector('div.grid')! as HTMLElement;
+      const caja = boton.querySelector('div.grid')!;
       // 25 celdas dibujadas, llenas o no: es lo que hace que el tamano no dependa de
       // que celdas esten ocupadas.
       expect(caja.children.length).toBe(MINI_BOX * MINI_BOX);

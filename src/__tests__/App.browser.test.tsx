@@ -338,7 +338,7 @@ describe('App — la orientacion, por panel y por gesto', () => {
 
   it('la rueda sobre el tablero rota, y `Ctrl`+rueda no', async () => {
     const { container } = await render(<App />);
-    const tablero = container.querySelector('div.relative.overflow-x-auto')! as HTMLElement;
+    const tablero = container.querySelector('div.relative.overflow-x-auto')!;
     hover(celda(container, 4, 3));
     await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length));
     const antes = notaDelFantasma(container);
@@ -359,7 +359,7 @@ describe('App — la orientacion, por panel y por gesto', () => {
 
   it('el boton derecho refleja, salvo el `Ctrl`+click de macOS', async () => {
     const { container } = await render(<App />);
-    const tablero = container.querySelector('div.relative.overflow-x-auto')! as HTMLElement;
+    const tablero = container.querySelector('div.relative.overflow-x-auto')!;
     hover(celda(container, 4, 3));
     await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length));
     const antes = notaDelFantasma(container);
