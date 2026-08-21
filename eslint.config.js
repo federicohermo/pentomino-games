@@ -99,13 +99,32 @@ const ZONAS = [
  * overrides: el bloque de abajo que agrega la quinta regla tiene que repetir estas tres o
  * las apaga para los archivos que matchea.
  */
+/**
+ * Los cuatro nodos que nombran un modulo por su ruta. Se listan los cuatro y no solo
+ * `ImportDeclaration` porque las otras tres formas **existen hoy en el repo** —un
+ * `export ... from` en `components/types/engine.types.ts` y cuatro `import()` en los tests
+ * que reimportan con `vi.resetModules()`— y una regla que cubre una sola de ellas es
+ * exactamente la red que este spec vino a borrar: pasa en verde y se lee como completa.
+ *
+ * La medida que fijo la lista: `import-x/no-restricted-paths`, que resuelve rutas en vez de
+ * mirar strings, dispara sobre las tres formas sin que haya que enumerarlas. Este selector
+ * escrito a mano tiene que enumerarlas para empatarle.
+ *
+ * Un `export { x }` sin `from` tiene `source: null`, asi que el atributo no matchea y no
+ * dispara. Un `import(variable)` tampoco: sin `source.value` no hay string que juzgar.
+ */
+const NODOS_CON_RUTA = ['ImportDeclaration', 'ImportExpression', 'ExportNamedDeclaration', 'ExportAllDeclaration']
+
+/** El specifier local al que le falta la extension. */
+const SIN_EXTENSION = '[source.value=/^[.].*(?<![.]ts|[.]tsx|[.]css|[.]json)$/]'
+
 const REGLAS_DEL_REPO = [
   {
     // "Sin barrels, con extension explicita, sin alias." Omitir la extension no rompe la
     // app —Vite y el `moduleResolution: bundler` del tsconfig resuelven igual— asi que el
     // error seria invisible del lado del navegador y solo aparece al cargar `domain/` con
     // node crudo, que es justo lo que hace el MCP server del 006.
-    selector: 'ImportDeclaration[source.value=/^[.].*(?<![.]ts|[.]tsx|[.]css|[.]json)$/]',
+    selector: NODOS_CON_RUTA.map((nodo) => nodo + SIN_EXTENSION).join(', '),
     message: 'Todo import local lleva extension explicita: ./music.ts, no ./music.',
   },
   {
@@ -150,8 +169,29 @@ const REGLAS_DEL_REPO = [
  * —`let ctx: AudioContext | null = null` en `audio/engine.ts`— que no es una constante ni por
  * asomo. Medido: 21 hallazgos sin el ancla, 2 con el.
  */
+const INITS_FIJOS = ['Literal', 'ArrayExpression', 'TemplateLiteral']
+
+const DECLARADORES_FIJOS = [
+  ...INITS_FIJOS.map((tipo) => `VariableDeclarator[init.type='${tipo}']`),
+  // `-1` y `+5` no son un `Literal` sino un `UnaryExpression` con uno adentro. Se ancla el
+  // argumento para no enganchar un `!algo`, que no es un valor fijo sino una expresion.
+  "VariableDeclarator[init.type='UnaryExpression'][init.argument.type='Literal']",
+  // `5 as const` envuelve el valor en un `TSAsExpression`. Se repiten adentro los mismos
+  // tres tipos y no cualquiera, para que `{...} as const` siga afuera igual que `{...}`.
+  ...INITS_FIJOS.map((tipo) => `VariableDeclarator[init.type='TSAsExpression'][init.expression.type='${tipo}']`),
+]
+
 const REGLA_CONSTANTES = {
-  selector: "Program > VariableDeclaration[kind='const'] > VariableDeclarator[init.type='Literal'], Program > VariableDeclaration[kind='const'] > VariableDeclarator[init.type='ArrayExpression'], Program > VariableDeclaration[kind='const'] > VariableDeclarator[init.type='TemplateLiteral']",
+  // Las dos raices son la misma declaracion con y sin `export`, y no listarlas a las dos
+  // invertia la regla: `export const X = 5` cuelga de un `ExportNamedDeclaration` y no del
+  // `Program`, asi que anclado solo en `Program >` el selector veia la constante **privada**
+  // y dejaba pasar la **exportada**. Justo al reves de lo que el motivo describe: un valor
+  // que existe dos veces tiene que ser importable para poder desincronizarse. `ROTATIONS` y
+  // `PASOS_MAX` se dejaron cazar por privadas; el caso que hizo el daño medido, no.
+  selector: DECLARADORES_FIJOS.flatMap((declarador) => [
+    `Program > VariableDeclaration[kind='const'] > ${declarador}`,
+    `Program > ExportNamedDeclaration > VariableDeclaration[kind='const'] > ${declarador}`,
+  ]).join(', '),
   message: 'Los modulos no declaran constantes: el valor fijo va a <capa>/constants/.',
 }
 
@@ -225,7 +265,13 @@ export default tseslint.config([
     rules: {
       // La direccion de dependencia, por ruta. Reemplaza a los cuatro overrides de
       // `no-restricted-imports` que verificaban lo mismo contando `../`.
-      'import-x/no-restricted-paths': ['error', { zones: ZONAS }],
+      //
+      // `basePath` no es opcional aunque tenga default: el default es `process.cwd()`, o sea
+      // que las zonas se resuelven contra **desde donde se corrio eslint** y no contra la
+      // raiz del repo. Medido: el mismo archivo con la misma violacion da 1 error desde la
+      // raiz y **0 corriendo `eslint` desde `src/`**, sin avisar de nada. Es el modo de falla
+      // que este archivo persigue —fallar en verde—, y anclarlo cuesta una linea.
+      'import-x/no-restricted-paths': ['error', { basePath: import.meta.dirname, zones: ZONAS }],
 
       // `import-x/no-cycle` NO esta, y la ausencia es la decision. Se probó y se midió:
       // encuentra CERO ciclos y cuesta 15 de los 25 segundos del lint —el 60 %— porque
@@ -360,6 +406,30 @@ export default tseslint.config([
       // default de la regla las 24 fallaban por una diferencia de API, no por un problema.
       'vitest/valid-expect': ['error', { maxArgs: 2 }],
       'vitest/no-identical-title': 'error',
+    },
+  },
+
+  {
+    // El mismo "fallar en verde", para el otro runner. `mcp-server/` corre con `node --test`
+    // y `@vitest/eslint-plugin` no lo mira, asi que sus 85 tests quedaban afuera de la regla
+    // que `CLAUDE.md` escribe para todo el repo.
+    //
+    // Sin esto un `.skip` ahi fallaba igual, pero **por accidente**: lo cazaba
+    // `no-floating-promises`, porque `allowForKnownSafeCalls` nombra `test`/`describe`/`it`
+    // y no sus miembros. O sea que el mensaje hablaba de promesas sin esperar y no del
+    // motivo, y bastaba con un `void` para silenciarlo sin que nada dijera nada.
+    //
+    // Repite `REGLAS_DEL_REPO` porque `no-restricted-syntax` se REEMPLAZA entre overrides:
+    // es el mismo trap de flat config que el resto del archivo.
+    //
+    // El test sin una sola asercion no tiene equivalente barato con `node:test` —no hay un
+    // `expect` que contar— y queda afuera a proposito; `CLAUDE.md` lo dice asi.
+    files: ['mcp-server/**/__tests__/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', ...REGLAS_DEL_REPO, {
+        selector: 'CallExpression[callee.object.name=/^(test|it|describe|suite)$/][callee.property.name=/^(only|skip)$/]',
+        message: 'Nada de .only ni .skip: dejan pasar la suite en verde. Arreglar el test o borrarlo.',
+      }],
     },
   },
 ])

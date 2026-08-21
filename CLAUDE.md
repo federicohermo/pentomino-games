@@ -118,7 +118,10 @@ Estas son las reglas:
   (`./domain/transform.ts`) — omitirla **no rompe la app**, porque Vite resuelve igual, así que el
   error sería invisible del lado del navegador y solo aparecería al cargar `domain/` con node crudo.
   Desde el 030 **lo verifica el linter** (`no-restricted-syntax`), que es lo que permitió que la
-  dirección interna de `domain/` deje de listar las tres formas de escribir el mismo import.
+  dirección interna de `domain/` deje de listar las tres formas de escribir el mismo import. El
+  selector nombra las **cuatro** formas de referir un módulo —`import`, `import()`, `export … from` y
+  `export * from`—: cubrir solo la primera lo devolvía a ser una red, y las otras tres existen en el
+  repo.
 - **Los módulos no declaran constantes.** Un `.ts` de capa tiene funciones y nada más; los valores
   fijos van a `<capa>/constants/` y los tipos a `<capa>/types/`. El motivo es medible: antes había
   cuatro pares de números que tenían que coincidir y nada sincronizaba. Lo verifica el linter **en
@@ -137,8 +140,11 @@ Estas son las reglas:
   `eslint.config.js` —que se ve en el diff y se explica— y no como un comentario suelto.
 - **Sin estado global.** Ni Context, ni Redux, ni Zustand — y desde el 030 lo verifica el linter, por
   el paquete y por la llamada a `createContext`.
-- **Nada de `.only` ni `.skip` en un test.** `@vitest/eslint-plugin` los rechaza, más el test sin una
-  sola aserción. Es la misma familia de bug que el `--filter "{.}"` y el `$` del regex: fallar en verde.
+- **Nada de `.only` ni `.skip` en un test.** Es la misma familia de bug que el `--filter "{.}"` y el
+  `$` del regex: fallar en verde. En `src/` los rechaza `@vitest/eslint-plugin`, más el test sin una
+  sola aserción; en `mcp-server/` —que corre con `node --test`, donde ese plugin no llega— los rechaza
+  un selector de `no-restricted-syntax`. El test sin aserción ahí no tiene equivalente barato y queda
+  afuera.
 - **Los comentarios explican el porqué**, no el qué: una decisión, una restricción, un bug evitado.
 - **Los borrados van en su propio commit**, para que revertirlos sea trivial.
 

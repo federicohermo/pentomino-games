@@ -127,9 +127,12 @@ tenga un módulo del que sea el cableado.
 - **Extensión explícita en todo import local**: `./domain/transform.ts`, no `./domain/transform`.
   Reduce operaciones de resolución, y sobre todo **node crudo la exige** (`ERR_MODULE_NOT_FOUND`), que
   es lo que permite cargar `domain/` sin compilar. Ojo: omitirla **no rompe la app** —Vite resuelve
-  igual—, así que el error sería invisible del lado del navegador. De ahí que sea regla escrita, y
-  desde el spec 006 hay quien la ejerce: el MCP server carga `src/` con node crudo, así que
-  `pnpm mcp:test` falla al primer import sin extensión.
+  igual—, así que el error sería invisible del lado del navegador. **Desde el spec 030 la verifica el
+  linter** (`no-restricted-syntax`), sobre todo `src/` y `mcp-server/` y en las cuatro formas de
+  nombrar un módulo: `import`, `import()`, `export … from` y `export * from`. Antes del 030 el único
+  que la ejercía era el MCP server del 006, que carga `src/` con node crudo — `pnpm mcp:test` sigue
+  fallando al primer import sin extensión, pero ahora es la segunda red y no la única, y solo ve lo
+  que el server importa.
 - **Sin alias de paths** (`@/domain/…`). La profundidad máxima es uno, así que el beneficio es
   cosmético, y node no conoce los alias de Vite.
 - **Un componente por archivo**, y ningún export que no sea el componente en un `.tsx`. No es

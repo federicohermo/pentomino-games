@@ -179,7 +179,8 @@ Es un modo de falla asimétrico y está verificado: sacándole el `.ts` a un imp
 server muere con este error y `pnpm build` termina en verde.
 
 **Solución:** poner la extensión. La regla está en
-[conventions.md](./conventions.md), y `pnpm mcp:test` la ataja antes que nadie.
+[conventions.md](./conventions.md), y desde el spec 030 la ataja `pnpm lint` antes que nadie — sobre
+todo el repo, y no solo sobre lo que el server llega a importar.
 
 ### `ERR_UNKNOWN_FILE_EXTENSION: ".tsx"`
 

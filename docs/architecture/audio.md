@@ -37,7 +37,7 @@ los tests, y es la razón por la que el audio de este proyecto es verificable.
 
 Hasta el spec 005 los tres bloques del motor eran secciones de un mismo archivo y el invariante lo sostenía un
 comentario: nada estructural impedía que `scheduleVoice` llamara a `audio()` y el audio dejara de ser
-testeable. Ahora lo sostiene el grafo de imports, y el override del linter
+testeable. Ahora lo sostiene el grafo de imports, y la zona del linter
 ([conventions.md](../guides/conventions.md)) impide además que la capa mire al dominio o a la UI.
 
 Efecto lateral: se puede importar `scheduler.ts` **sin** arrastrar el módulo de los singletons a un

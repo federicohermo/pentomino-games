@@ -142,6 +142,8 @@ pnpm preview                # y probarlo a mano
 ```
 
 `pnpm mcp:test` no es opcional al tocar `src/domain/` o `src/audio/`: el server importa esos módulos con
-node crudo, así que es lo único que ataja un import sin extensión — que **no** rompe el build de la app.
+node crudo, y un import sin extensión **no** rompe el build de la app. Desde el spec 030 ese caso lo
+ataja antes `pnpm lint`, sobre el repo entero; `mcp:test` sigue siendo el que verifica que los módulos
+*carguen* de verdad con node.
 
 Los tests corren en Node contra `node-web-audio-api`, no en jsdom.
