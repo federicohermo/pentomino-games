@@ -143,7 +143,7 @@ que es ortogonal en semántica y no en texto: ver la sección 10 del research. N
       repo deliberadamente no usa») y hay que corregirla al mover el estado en T027
 - [ ] T027 Actualizar la fila del 028 en `specs/log.md` a `Implementado` — **queda abierta a propósito**:
       el estado lo mueve el merge
-- [ ] T028 PR contra `main`
+- [x] T028 PR contra `main` — [#28](https://github.com/federicohermo/pentomino-games/pull/28)
 
 ## Seguimiento (no bloquea)
 
