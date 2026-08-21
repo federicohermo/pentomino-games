@@ -1,4 +1,4 @@
-import type { CSSProperties, MouseEvent, RefObject } from 'react';
+import type { CSSProperties, FocusEvent, KeyboardEvent, MouseEvent, RefObject } from 'react';
 import { occupantAt, occupantCellIndex } from '../domain/board.ts';
 import { GRID_W, GRID_H } from '../domain/constants/board.constants.ts';
 import type { Cell } from '../domain/types/transform.types.ts';
@@ -6,15 +6,24 @@ import type { PieceKey } from '../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../domain/types/board.types.ts';
 import type { RegimenDeRotacion } from '../domain/types/music.types.ts';
 import { cellTextFor } from './cell-text.ts';
+import { cellNameFor } from './cell-name.ts';
+import type { CeldaOcupada } from './cell-name.ts';
 import type { CellText } from './types/cell-text.types.ts';
-import { CELL_PX } from './constants/layout.constants.ts';
+import { CELL_PX, ANILLO_FOCO_CLARO, ANILLO_FOCO_OSCURO } from './constants/layout.constants.ts';
 import { PIECE_COLOR } from './constants/palette.constants.ts';
 import Playhead from './Playhead.tsx';
 
 /**
  * Panel central: la grilla del tablero con el fantasma de previsualizacion.
  *
- * Presentacional: sin estado, sin efectos. El fantasma llega calculado
+ * Presentacional: sin estado, sin efectos — y desde el spec 026 con una sola linea
+ * imperativa, el `.focus()` con el que las flechas mueven el cursor. No la contradice:
+ * cambiar el `tabIndex` no mueve el foco del DOM, asi que sin esa llamada el `0` y el foco
+ * real se separan a la primera flecha. Es React pidiendole foco a un nodo que React
+ * renderiza, no estado escondido — quien decide DONDE esta el cursor sigue siendo el shell,
+ * y llega por `hover` como llegaba con el mouse.
+ *
+ * El fantasma llega calculado
  * —`previewCells` y `previewValid`— porque quien sabe si la jugada es valida es el
  * dominio, no la vista.
  *
@@ -120,6 +129,15 @@ interface Props {
   onCellClick: (x: number, y: number, altKey: boolean) => void;
   onCellEnter: (cell: Cell) => void;
   onMouseLeave: () => void;
+  /** El foco del DOM esta adentro del tablero. Es lo unico que `hover` no puede contestar
+      solo —el mouse tambien lo escribe— y es lo que decide si se pinta el anillo: sin el,
+      el anillo de foco aparecia bajo el cursor del mouse, que no tiene foco ninguno. */
+  focoEnTablero: boolean;
+  /** El foco entro a una celda, o se fue del tablero (`null`). Una sola prop para las dos
+      mitades porque son el mismo hecho contado dos veces, y del lado del shell las dos
+      lineas que la atienden son las mismas: `hover` pasa a valer lo que llegue —la celda
+      enfocada ES el cursor, y al salir se apaga— y `focoEnTablero`, si llego algo. */
+  onFoco: (celda: Cell | null) => void;
   /** La celda bajo el cursor esta ocupada por la pieza que esta en la mano, o sea que el
       click va a EDITARLA. Llega calculado por la misma pura que decide el click
       (`esLaPiezaEnLaMano`), y no derivado aca: dos copias de esa condicion serian dos
@@ -136,11 +154,93 @@ interface Props {
 
 export default function Board({
   placed, previewCells, previewValid, hover, selected, rotation, mirror, regimen,
-  onCellClick, onCellEnter, onMouseLeave, hoverEdita, onContextMenu, boardRef,
+  onCellClick, onCellEnter, onMouseLeave, focoEnTablero, onFoco, hoverEdita, onContextMenu,
+  boardRef,
 }: Props) {
   // Que celda del fantasma cae en (x,y), POR INDICE: es lo que permite pedirle su
   // texto al mapeo canonico. Se arma una vez por render y no una vez por celda.
   const ghostIndexAt = new Map(previewCells.map(([x, y], k) => [`${x},${y}`, k]));
+
+  // El ancla del roving tabindex: el tablero es UNA parada de tabulacion, asi que una sola
+  // celda lleva `tabIndex={0}` y las otras 59 `-1`. Es la celda del cursor, que es `hover`
+  // —el mismo estado que escriben el mouse y el foco—, y con el cursor apagado la (0,0),
+  // para que `Tab` siga teniendo por donde entrar. Sin esa segunda mitad el tablero
+  // quedaria fuera del orden de tabulacion hasta que alguien lo tocara con el mouse.
+  const [cursorX, cursorY] = hover ?? [0, 0];
+
+  // Las teclas de la celda enfocada. Van en el `onKeyDown` de la propia celda y no en el
+  // listener global de `use-input.ts` porque necesitan saber CUAL celda tiene el foco, que
+  // es exactamente lo que un listener de `window` no sabe. Lo unico que el hook global
+  // pone de su lado es no contestar la barra cuando el foco esta sobre una celda
+  // (`targetEsCelda`), asi que un solo golpe no edita Y alterna el transporte.
+  const alTeclear = (e: KeyboardEvent<HTMLDivElement>, x: number, y: number) => {
+    // `Enter` y `Espacio` llaman al MISMO `onCellClick` que el `onClick`, con los mismos
+    // tres argumentos: la regla de que hace cada gesto vive en `accionDeClick` y desde
+    // aca no se escribe una segunda vez. Por eso `Alt` sale gratis —mutear y colocar
+    // muteada son lo que esa pura ya contesta con `altKey`— y por eso el dia que `Alt`
+    // cambie de significado el teclado lo hereda sin que nadie se acuerde de tocarlo: es
+    // lo que hace que la tabla del spec no sea una promesa.
+    //
+    // `Alt`+`Espacio` en Windows lo intercepta el menu de ventana del SISTEMA y puede no
+    // llegar nunca a la pagina; `Alt`+`Enter` es la via garantizada y es la que hay que
+    // documentar. Las dos combinaciones quedan escritas —el navegador que si las entregue
+    // las va a ejecutar— y la comprobacion en una ventana real queda [M]. Mismo trato que
+    // el `Ctrl`+click de macOS que el spec 013 documento en vez de fingir que no existe.
+    //
+    // Sin `preventDefault` para la barra: su default —scrollear la pagina— ya lo frena
+    // `frenaElDefault` desde el listener global, que a proposito NO se veta con
+    // `targetEsCelda` justamente para cubrir este caso. Repetirlo aca seria la segunda
+    // copia de esa decision.
+    if (e.key === 'Enter' || e.key === ' ') { onCellClick(x, y, e.altKey); return; }
+
+    let destinoX = x; let destinoY = y;
+    switch (e.key) {
+      case 'ArrowLeft': destinoX = x - 1; break;
+      case 'ArrowRight': destinoX = x + 1; break;
+      case 'ArrowUp': destinoY = y - 1; break;
+      case 'ArrowDown': destinoY = y + 1; break;
+      // `Home` y `End` no tocan `destinoY`: van a la primera y a la ultima celda de SU
+      // fila, que es lo que el patron `grid` de ARIA reserva para el par sin modificador.
+      case 'Home': destinoX = 0; break;
+      case 'End': destinoX = GRID_W - 1; break;
+      default: return;
+    }
+    // Frena el default SIEMPRE, tambien en el borde donde el destino termina siendo la
+    // misma celda: sin esto la flecha scrollea la pagina Y el `overflow-x-auto` del
+    // tablero. Mismo trato que la rueda y por el mismo motivo.
+    e.preventDefault();
+    // Se ACOTA en vez de salir por un `if`: en el borde la flecha deja el foco donde
+    // estaba, que es lo que pide "sin salirse de la grilla", y de paso no agrega cuatro
+    // ramas que solo se pueden ejercer desde los cuatro bordes.
+    const dx = Math.min(GRID_W - 1, Math.max(0, destinoX));
+    const dy = Math.min(GRID_H - 1, Math.max(0, destinoY));
+    // Cambiar el `tabIndex` NO mueve el foco del DOM: sin este `.focus()` el `0` y el foco
+    // real se separan a la primera flecha. Es React pidiendole foco a un nodo que React
+    // renderiza —no el loop tocando lo ajeno—, y el nodo se alcanza desde el evento y no
+    // por un `ref` porque las celdas van con `key={i}` y SIN refs ni `data-*`, para que el
+    // bucle de `Playhead` no tenga handle. El rol es el selector porque es lo que la celda
+    // le promete al lector de pantalla: nadie lo saca en un refactor de estilos.
+    //
+    // El `!` porque el ancestro existe por construccion —este handler cuelga de un nodo
+    // que este mismo archivo renderiza adentro del `role="grid"`— y la alternativa, un
+    // `if` que devuelva temprano, seria una rama inalcanzable, o sea cobertura imposible.
+    //
+    // El `.focus()` es sincronico y el destino todavia tiene `tabIndex={-1}`, porque React
+    // re-renderiza despues del handler. No importa: `-1` es enfocable por script, solo no
+    // por `Tab`. El `onFocus` de la celda destino es el que corre el cursor, y con el
+    // cursor corrido el `0` lo sigue en el render siguiente.
+    const grilla = e.currentTarget.closest('[role="grid"]')!;
+    grilla.querySelectorAll<HTMLElement>('[role="gridcell"]')[dy * GRID_W + dx].focus();
+  };
+
+  // El foco se fue del tablero, o solo salto de una celda a otra. `relatedTarget` es quien
+  // lo recibe, y `contains` distingue los dos casos: sin esa pregunta cada flecha apagaria
+  // el cursor a mitad de camino, porque mover el foco es siempre un `blur` seguido de un
+  // `focus`. React registra este handler como `focusout`, que burbujea, asi que uno solo en
+  // el contenedor cubre las 60 celdas.
+  const alSalirElFoco = (e: FocusEvent<HTMLDivElement>) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) onFoco(null);
+  };
 
   // `md:col-span-8` desde el spec 014, cuando murio `PlacedList` y quedaron dos columnas
   // libres. El reparto —una para el tablero y otra para la paleta— esta MEDIDO en el DOM
@@ -217,6 +317,7 @@ export default function Board({
           aria-rowcount={GRID_H}
           aria-colcount={GRID_W}
           onMouseLeave={onMouseLeave}
+          onBlur={alSalirElFoco}
         >
           {Array.from({ length: GRID_H }, (_, fila) => (
           <div
@@ -236,9 +337,22 @@ export default function Board({
             // `occupantCellIndex` —`occupantAt` ya garantizo que la pieza la cubre,
             // asi que el indice nunca es -1— y la del fantasma la trae puesta, que
             // es para lo que `previewCells` llega ordenado.
+            //
+            // `ocupada` se arma en la MISMA rama y no despues, y eso es lo que deja al
+            // fantasma afuera del nombre accesible sin un `if` que alguien tenga que
+            // acordarse de escribir: `piece` y `muted` solo existen si hay `occ`, asi que
+            // la celda con fantasma llega a `cellNameFor` como `null`, igual que una
+            // libre. El argumento largo esta en el docblock de `CeldaOcupada`. De paso,
+            // armarlo aca adentro es lo que evita un `!` sobre `cell`: TypeScript ya sabe
+            // que en esta rama no es null.
             let cell: CellText | null = null;
-            if (occ) cell = cellTextFor(occ.piece, occ.rotation, occ.mirror, regimen)[occupantCellIndex(occ, x, y)];
-            else if (ghostIndex !== undefined) cell = cellTextFor(selected, rotation, mirror, regimen)[ghostIndex];
+            let ocupada: CeldaOcupada | null = null;
+            if (occ) {
+              cell = cellTextFor(occ.piece, occ.rotation, occ.mirror, regimen)[occupantCellIndex(occ, x, y)];
+              ocupada = { piece: occ.piece, muted: occ.muted, cell };
+            } else if (ghostIndex !== undefined) {
+              cell = cellTextFor(selected, rotation, mirror, regimen)[ghostIndex];
+            }
 
             // El color de pieza es IDENTIDAD y pierde contra cualquier ESTADO: el
             // choque, el fantasma y el hover se pintan igual que antes. Por eso el
@@ -276,27 +390,95 @@ export default function Board({
             else if (ghost) tone = previewValid ? 'bg-slate-300' : 'bg-rose-300';
             else tone = 'bg-white hover:bg-slate-100';
 
+            // El anillo de foco va en la caja de AFUERA —esta, la de `CELL_PX`— y no en la
+            // baldosa redondeada de adentro, porque a la baldosa no le queda un solo canal
+            // libre: el color de fondo es identidad de pieza, el blanco es muteada, el
+            // rosa es jugada invalida, el `slate-300` es el fantasma, el grosor de borde es
+            // la cabeza lectora y la opacidad mas el borde punteado son el velo de "no se
+            // estreno". La caja de afuera no pinta nada, asi que ahi entra el foco — y con
+            // eso se acabaron: el proximo estado va a tener que sacarle el canal a otro.
+            //
+            // Y lo PROHIBIDO es `transform: scale`, que es lo obvio para agrandar la celda
+            // enfocada: `scale` cuenta para el overflow SCROLLEABLE del contenedor, asi que
+            // le haria aparecer las dos barras de desplazamiento al `overflow-x-auto` de
+            // arriba. Esta medido en el repo, y no aca sino en el docblock de
+            // `components/constants/playhead.constants.ts`, que lo pago para la cabeza
+            // lectora: con la cabeza en (9,5) y `scale(1.10)` el `scrollHeight` pasaba de
+            // 378 a 381. `outline` y `box-shadow` son ink overflow — pintan sin agrandar.
+            //
+            // Va por estilo inline y no por clase porque los dos anchos salen de una
+            // constante, y Tailwind escanea el fuente: un `outline-[${N}px]` interpolado no
+            // se generaria. El reparto de las dos bandas esta en `layout.constants.ts`.
+            const caja: CSSProperties = { width: CELL_PX, height: CELL_PX };
+            if (focoEnTablero && x === cursorX && y === cursorY) {
+              caja.boxShadow = `inset 0 0 0 ${ANILLO_FOCO_OSCURO}px #0f172a`;
+              caja.outline = `${ANILLO_FOCO_CLARO}px solid #fff`;
+              caja.outlineOffset = `-${ANILLO_FOCO_OSCURO + ANILLO_FOCO_CLARO}px`;
+            }
+
             return (
               <div key={i}
                 role="gridcell"
+                /* Roving tabindex: el `0` viaja con el cursor y las otras 59 celdas quedan
+                   en `-1`, asi que el tablero es UNA parada de tabulacion y no sesenta.
+                   Sesenta convertirian la tarjeta en una trampa de salida: todo lo que
+                   venga detras del tablero quedaria a sesenta pulsaciones, y el
+                   `Shift`+`Tab` de vuelta costaria lo mismo. */
+                tabIndex={x === cursorX && y === cursorY ? 0 : -1}
                 onClick={(e) => onCellClick(x, y, e.altKey)}
-                onMouseEnter={() => onCellEnter([x, y])}
-                style={{ width: CELL_PX, height: CELL_PX }}
+                onKeyDown={(e) => alTeclear(e, x, y)}
+                /* El foco escribe el MISMO cursor que el mouse, y por eso el fantasma, la
+                   validez y `hoverEdita` funcionan con teclado sin una linea de dibujo
+                   nueva. Va en la celda y no en el contenedor porque el nombre del hecho es
+                   "el foco esta en ESTA celda". */
+                onFocus={() => onFoco([x, y])}
+                /* Con el tablero enfocado el mouse NO escribe el cursor: manda el foco
+                   (AC16). Es la misma regla que hace que sacar el mouse de la grilla no
+                   apague el fantasma, dicha del otro lado — un solo cursor, y mientras el
+                   teclado lo tiene el mouse queda inerte hasta que se sale con `Tab` o se
+                   clickea (el click enfoca la celda, asi que el cursor lo sigue igual).
+
+                   La alternativa era que el mouse ARRASTRARA el foco —`focus()` sobre la
+                   celda que entra— para que el anillo y el fantasma no se separaran nunca.
+                   Se escribio asi primero y se cayo MEDIDO: `mouseenter` no lo dispara solo
+                   mover el mouse, tambien lo dispara cualquier SCROLL, porque el navegador
+                   recalcula que hay debajo del puntero quieto. Con el foco adentro, cada
+                   `.focus()` de una flecha que scrollea el tablero un pixel devolvia el foco
+                   a la celda que quedaba bajo el mouse: en el test de las flechas el cursor
+                   saltaba de (5,2) a (4,0) sin que nadie tocara el mouse. Un salto de foco
+                   silencioso es exactamente lo que este repo persigue, y el anillo separado
+                   del fantasma no puede pasar por este camino porque el mouse ya no mueve
+                   ninguno de los dos. */
+                onMouseEnter={() => { if (!focoEnTablero) onCellEnter([x, y]); }}
+                style={caja}
+                aria-label={cellNameFor(x, y, ocupada)}
                 /* `hoverEdita` entra al cursor: sobre una celda propia la jugada de
                    COLOCAR es invalida —la pieza se choca consigo misma— pero el click no
                    coloca, borra. Sin esto el cursor diria "aca no entra" justo donde el
                    gesto es destructivo, que es lo contrario de lo que pasa. */
-                className={`p-0.5 ${previewValid || !hover || hoverEdita ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                /* El `rounded-lg` no pinta nada —esta caja no tiene fondo ni borde— y esta
+                   solo para el anillo: `outline` y `box-shadow` siguen el radio del
+                   elemento, asi que sin el, el anillo saldria cuadrado alrededor de una
+                   baldosa redondeada. Repite el `rounded-lg` de la baldosa a proposito: es
+                   la misma forma dicha dos veces sobre el mismo objeto. Con el foco afuera
+                   no cambia un pixel. */
+                className={`p-0.5 rounded-lg ${previewValid || !hover || hoverEdita ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                 /* El title dice las tres cosas de la celda, no solo su coordenada: la
                    nota entra en la baldosa pero el paso va abreviado a `#3`, y sobre
                    el fantasma las dos son lo que decide la jugada. Sale del MISMO
                    `cell` que se pinta, asi que no puede decir una nota y mostrar otra.
-                   NO es accesibilidad: la celda es un `div` con `onClick` y sin
-                   `role`, sin `tabIndex` y sin nombre accesible, y un `title` sobre un
-                   elemento generico que no recibe foco no lo anuncia ningun lector de
-                   pantalla — es un tooltip de mouse y nada mas. El hueco real (la
-                   celda no se alcanza con el teclado) esta en Deuda conocida de
-                   `specs/log.md`; darlo por cubierto con esto lo dejaba invisible. */
+                   Desde el spec 026 ES accesibilidad, y por eso dejo de ser lo unico: la
+                   celda es un `role="gridcell"` con `tabIndex` y con `aria-label`, o sea
+                   que recibe foco y tiene nombre. El `title` pasa a ser el ECO de ese
+                   nombre —el canal del mouse, mas corto porque el ojo ya ve el color y la
+                   forma— y el nombre completo, con la coordenada en prosa y el `de 4` del
+                   paso, es el que anuncia el lector de pantalla al entrar el foco.
+                   Los dos numeros del paso son el MISMO indice del dominio, sin renumerar,
+                   justamente para que el tooltip no diga `paso 1` sobre una celda que
+                   pinta `#0`. Hasta este spec este parrafo decia lo contrario y remitia a
+                   una deuda que ya no existe: el hueco del teclado estaba anotado en
+                   `specs/deuda.md` —no en `specs/log.md`, como decia— y lo cerro este
+                   mismo spec. */
                 title={cell ? `(${x},${y}) · ${cell.note} · paso ${cell.step}` : `(${x},${y})`}
               >
                 {/* La baldosa: el padding del contenedor hace la separacion y el

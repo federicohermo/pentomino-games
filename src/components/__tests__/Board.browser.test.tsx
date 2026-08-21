@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { page } from 'vitest/browser';
 import Board from '../Board.tsx';
-import { CELL_PX } from '../constants/layout.constants.ts';
+import { CELL_PX, ANILLO_FOCO_CLARO, ANILLO_FOCO_OSCURO } from '../constants/layout.constants.ts';
 import { GRID_W, GRID_H } from '../../domain/constants/board.constants.ts';
 import { SHAPES, ANCHOR_INDEX } from '../../domain/constants/pieces.constants.ts';
 import { REGIMEN } from '../../domain/constants/music.constants.ts';
@@ -47,6 +47,8 @@ const props = (over: Partial<Props> = {}): Props => ({
   onCellClick: vi.fn(),
   onCellEnter: vi.fn(),
   onMouseLeave: vi.fn(),
+  focoEnTablero: false,
+  onFoco: vi.fn(),
   hoverEdita: false,
   onContextMenu: vi.fn(),
   boardRef: { current: null },
@@ -236,5 +238,219 @@ describe('Board', () => {
     const boardRef: { current: HTMLDivElement | null } = { current: null };
     const { container } = await render(<Board {...props({ boardRef })} />);
     expect(boardRef.current).toBe(container.querySelector('div.relative.overflow-x-auto'));
+  });
+});
+
+/**
+ * El teclado (spec 026): el tablero es UNA parada de tabulacion, adentro se mueve con las
+ * flechas, y las cuatro acciones salen de la misma pura que el click.
+ *
+ * Necesita navegador de verdad y no jsdom por lo mismo que las mediciones de arriba: lo
+ * que se verifica es DONDE quedo el foco del DOM despues de una tecla, y que el anillo no
+ * agrande la region scrolleable. Las dos cosas son layout y foco reales.
+ */
+const tecla = (el: HTMLElement, key: string, init: KeyboardEventInit = {}) => {
+  const evento = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
+  el.dispatchEvent(evento);
+  return evento;
+};
+
+describe('Board — el teclado y el foco', () => {
+  it('es un `grid` de seis filas por diez celdas, con UNA sola parada de tabulacion', async () => {
+    // Filas de verdad y no `display: contents`: `role="grid"` exige `role="row"`, y la
+    // tecnica del envoltorio transparente tiene historial de SACAR el nodo del arbol de
+    // accesibilidad en varios navegadores — o sea fallar en silencio, justo en lo que este
+    // spec viene a arreglar.
+    const { container } = await render(<Board {...props()} />);
+    const grilla = container.querySelector('[role="grid"]')!;
+    const filas = [...grilla.querySelectorAll('[role="row"]')];
+    expect(filas.length).toBe(GRID_H);
+    for (const fila of filas) expect(fila.querySelectorAll('[role="gridcell"]').length).toBe(GRID_W);
+
+    // Sesenta paradas convertirian la tarjeta en una trampa de salida: lo que venga detras
+    // del tablero quedaria a sesenta pulsaciones, ida y vuelta.
+    expect(celdas(container).filter(c => c.tabIndex === 0).length).toBe(1);
+  });
+
+  it('el `0` arranca en la primera celda y viaja con el cursor', async () => {
+    // Con el cursor apagado el ancla es la (0,0), para que `Tab` siga teniendo por donde
+    // entrar; con cursor, el `0` esta donde esta el cursor.
+    const sinCursor = await render(<Board {...props()} />);
+    expect(enIndice(sinCursor.container, 0, 0).tabIndex).toBe(0);
+    await sinCursor.unmount();
+
+    const conCursor = await render(<Board {...props({ hover: [4, 2] as Cell })} />);
+    expect(enIndice(conCursor.container, 4, 2).tabIndex).toBe(0);
+    expect(enIndice(conCursor.container, 0, 0).tabIndex).toBe(-1);
+  });
+
+  it('las flechas mueven el foco una celda y frenan el default, sin salirse de la grilla', async () => {
+    const { container } = await render(<Board {...props({ hover: [0, 0] as Cell })} />);
+    const origen = enIndice(container, 0, 0);
+    origen.focus();
+
+    // Sin `preventDefault` la flecha scrollea la pagina Y el `overflow-x-auto` del tablero.
+    expect(tecla(origen, 'ArrowRight').defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(enIndice(container, 1, 0));
+    tecla(enIndice(container, 1, 0), 'ArrowDown');
+    expect(document.activeElement).toBe(enIndice(container, 1, 1));
+    tecla(enIndice(container, 1, 1), 'ArrowLeft');
+    expect(document.activeElement).toBe(enIndice(container, 0, 1));
+    tecla(enIndice(container, 0, 1), 'ArrowUp');
+    expect(document.activeElement).toBe(origen);
+
+    // En el borde la flecha no se sale: deja el foco donde estaba, y frena el default
+    // igual —el scroll que hay que evitar es el mismo.
+    expect(tecla(origen, 'ArrowUp').defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(origen);
+    tecla(origen, 'ArrowLeft');
+    expect(document.activeElement).toBe(origen);
+
+    const ultima = enIndice(container, GRID_W - 1, GRID_H - 1);
+    ultima.focus();
+    tecla(ultima, 'ArrowRight');
+    expect(document.activeElement).toBe(ultima);
+    tecla(ultima, 'ArrowDown');
+    expect(document.activeElement).toBe(ultima);
+  });
+
+  it('`Home` y `End` van a los extremos de SU fila, no del tablero', async () => {
+    const { container } = await render(<Board {...props()} />);
+    const media = enIndice(container, 5, 3);
+    media.focus();
+
+    tecla(media, 'End');
+    expect(document.activeElement).toBe(enIndice(container, GRID_W - 1, 3));
+    tecla(enIndice(container, GRID_W - 1, 3), 'Home');
+    expect(document.activeElement).toBe(enIndice(container, 0, 3));
+  });
+
+  it('una tecla que no es del tablero no frena nada ni mueve el foco', async () => {
+    // `Shift` y `Ctrl` siguen rotando y reflejando con una celda enfocada: el tablero se
+    // queda la barra, el `Enter` y las flechas, y deja pasar todo lo demas.
+    const { container } = await render(<Board {...props()} />);
+    const celda = enIndice(container, 2, 2);
+    celda.focus();
+    expect(tecla(celda, 'Shift').defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(celda);
+  });
+
+  it('`Enter` y `Espacio` hacen lo que el click, y con `Alt` lo que `Alt`+click', async () => {
+    // Las cuatro salen de `accionDeClick` porque las cuatro entran por el MISMO
+    // `onCellClick` que el `onClick`: la regla no se escribe una segunda vez.
+    const onCellClick = vi.fn();
+    const { container } = await render(<Board {...props({ onCellClick })} />);
+    const celda = enIndice(container, 3, 1);
+
+    tecla(celda, 'Enter');
+    expect(onCellClick).toHaveBeenLastCalledWith(3, 1, false);
+    tecla(celda, ' ');
+    expect(onCellClick).toHaveBeenLastCalledWith(3, 1, false);
+    tecla(celda, 'Enter', { altKey: true });
+    expect(onCellClick).toHaveBeenLastCalledWith(3, 1, true);
+    tecla(celda, ' ', { altKey: true });
+    expect(onCellClick).toHaveBeenLastCalledWith(3, 1, true);
+  });
+
+  it('el foco entra a una celda y sale del tablero, y saltar entre celdas NO es salir', async () => {
+    const onFoco = vi.fn();
+    const { container } = await render(<Board {...props({ onFoco })} />);
+    const celda = enIndice(container, 2, 4);
+    celda.focus();
+    await vi.waitFor(() => expect(onFoco).toHaveBeenLastCalledWith([2, 4]));
+
+    // Mover el foco es siempre un `blur` seguido de un `focus`: sin la pregunta por
+    // `relatedTarget`, cada flecha apagaria el cursor a mitad de camino.
+    onFoco.mockClear();
+    tecla(celda, 'ArrowRight');
+    await vi.waitFor(() => expect(onFoco).toHaveBeenLastCalledWith([3, 4]));
+    expect(onFoco).not.toHaveBeenCalledWith(null);
+
+    // Y salir del tablero si lo apaga, que es lo que hace hoy el `onMouseLeave`.
+    onFoco.mockClear();
+    enIndice(container, 3, 4).blur();
+    await vi.waitFor(() => expect(onFoco).toHaveBeenLastCalledWith(null));
+  });
+
+  it('con el tablero enfocado el mouse queda INERTE, y sin foco escribe el cursor', async () => {
+    // AC16 del otro lado: mientras el foco esta adentro, manda el foco. Sin foco el mouse
+    // escribe el cursor como siempre.
+    const onCellEnter = vi.fn();
+    const sinFoco = await render(<Board {...props({ onCellEnter })} />);
+    enIndice(sinFoco.container, 4, 2).dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    await vi.waitFor(() => expect(onCellEnter).toHaveBeenCalledWith([4, 2]));
+    await sinFoco.unmount();
+
+    // La version que ARRASTRABA el foco con el mouse se escribio y se cayo medida: el
+    // `mouseenter` no lo dispara solo mover el mouse, tambien lo dispara cualquier scroll
+    // —el navegador recalcula que hay bajo el puntero quieto—, asi que cada `.focus()` de
+    // una flecha que scrollea devolvia el foco a la celda de abajo del mouse. Se afirman
+    // las dos mitades: que el cursor no se mueve Y que el foco no se va a ninguna parte.
+    onCellEnter.mockClear();
+    const conFoco = await render(<Board {...props({ onCellEnter, focoEnTablero: true, hover: [0, 0] as Cell })} />);
+    const ancla = enIndice(conFoco.container, 0, 0);
+    ancla.focus();
+    enIndice(conFoco.container, 4, 2).dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    expect(onCellEnter).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(ancla);
+  });
+
+  it('el anillo es de TECLADO: se pinta con el foco adentro y no bajo el mouse', async () => {
+    // Dos propiedades y no una: un `outline` de CSS tiene un solo color, y abajo puede
+    // haber el `#FFFF00` de la `V` o el `#0000FF` de la `W`.
+    const conMouse = await render(<Board {...props({ hover: [4, 2] as Cell })} />);
+    expect(enIndice(conMouse.container, 4, 2).style.outline).toBe('');
+    expect(enIndice(conMouse.container, 4, 2).style.boxShadow).toBe('');
+    await conMouse.unmount();
+
+    const conFoco = await render(<Board {...props({ hover: [4, 2] as Cell, focoEnTablero: true })} />);
+    const enfocada = enIndice(conFoco.container, 4, 2);
+    expect(enfocada.style.outline).toContain(`${ANILLO_FOCO_CLARO}px`);
+    expect(enfocada.style.outlineOffset).toBe(`-${ANILLO_FOCO_OSCURO + ANILLO_FOCO_CLARO}px`);
+    // Normalizado por el navegador: el color va adelante y el `inset` atras.
+    expect(enfocada.style.boxShadow).toContain(`0px 0px 0px ${ANILLO_FOCO_OSCURO}px inset`);
+    // Una sola celda con anillo, como una sola con `tabIndex={0}`.
+    expect(celdas(conFoco.container).filter(c => c.style.outline !== '').length).toBe(1);
+  });
+
+  it('el anillo NO agranda la region scrolleable, que es lo que `scale` haria', async () => {
+    // La medicion que el repo ya pago para la cabeza lectora: `scale` cuenta para el
+    // overflow scrolleable y hace aparecer las dos barras. `outline` y `box-shadow` son
+    // ink overflow, y dibujados hacia adentro ni siquiera asoman de la caja.
+    const esquina = [GRID_W - 1, GRID_H - 1] as Cell;
+    const sinFoco = await render(<Board {...props({ hover: esquina })} />);
+    const antes = sinFoco.container.querySelector('div.relative.overflow-x-auto')!;
+    const medida = [antes.scrollWidth, antes.scrollHeight];
+    await sinFoco.unmount();
+
+    const conFoco = await render(<Board {...props({ hover: esquina, focoEnTablero: true })} />);
+    const despues = conFoco.container.querySelector('div.relative.overflow-x-auto')!;
+    expect([despues.scrollWidth, despues.scrollHeight]).toEqual(medida);
+  });
+
+  it('cada celda tiene nombre accesible, y el fantasma NO lo cambia', async () => {
+    // El `title` deja de ser el unico texto y pasa a ser el eco del nombre: lo que anuncia
+    // el lector de pantalla es el `aria-label`, con la coordenada en prosa y el total del
+    // paso, que es lo que el `title` no dice.
+    const pieza = colocar('F', 2, 2, true);
+    const [x, y] = pieza.cells[0];
+    const { container } = await render(
+      <Board {...props({ placed: [pieza], previewCells: [[7, 4] as Cell] })} />,
+    );
+    const nombre = enIndice(container, x, y).getAttribute('aria-label')!;
+    expect(nombre).toMatch(
+      new RegExp(`^fila ${y + 1}, columna ${x + 1}, pieza F muteada, nota .+, paso \\d de 4$`),
+    );
+    // Y el `title` es el ECO: la misma nota y el mismo paso, sin renumerar, en el canal del
+    // mouse. Si alguno de los dos derivara por su cuenta, esta comparacion se rompe.
+    const [, nota, paso] = enIndice(container, x, y).getAttribute('title')!.split(' · ');
+    expect(nombre).toContain(`nota ${nota},`);
+    expect(nombre).toContain(`${paso} de 4`);
+
+    // La celda del fantasma tiene nota y paso pintados, y su nombre dice "libre": el
+    // nombre no puede cambiar con el cursor, porque el foco no se movio.
+    expect(baldosa(enIndice(container, 7, 4)).textContent).not.toBe('');
+    expect(enIndice(container, 7, 4).getAttribute('aria-label')).toBe('fila 5, columna 8, libre');
   });
 });

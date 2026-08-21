@@ -1,5 +1,7 @@
+import { EDICION } from './constants/input.constants.ts';
 import type { PieceKey } from '../domain/types/pieces.types.ts';
 import type { CellText } from './types/cell-text.types.ts';
+import type { Edicion } from './types/input.types.ts';
 
 // El ULTIMO paso, no cuantos hay: los pasos van de 0 a 4 y el nombre dice ese rango tal
 // cual, sin renumerar. Es la regla que `Board.tsx` ya tiene escrita para el `#N` que
@@ -13,6 +15,13 @@ import type { CellText } from './types/cell-text.types.ts';
 // Vive como constante de modulo (permitido en `components/`, a diferencia de `domain/` y
 // `audio/`) para que `cellNameFor` no repita el literal sin decir por que existe.
 const ULTIMO_PASO = 4;
+
+// La coordenada dicha en voz, contada desde 1 y sin parentesis — el argumento completo
+// esta en el docblock de `cellNameFor`, abajo. Vive como funcion de modulo porque la usan
+// los DOS textos que salen de este archivo: el nombre de la celda y el anuncio de la
+// edicion. Escrita dos veces serian dos formas de que el lector de pantalla cuente las
+// filas distinto segun lo que este anunciando.
+const coordenada = (x: number, y: number) => `fila ${y + 1}, columna ${x + 1}`;
 
 /**
  * Lo que una celda OCUPADA le aporta a su nombre accesible: la pieza, si esta
@@ -110,9 +119,56 @@ export interface CeldaOcupada {
  * paso 4 es el ultimo o si faltan seis mas.
  */
 export function cellNameFor(x: number, y: number, occupied: CeldaOcupada | null): string {
-  const coordenada = `fila ${y + 1}, columna ${x + 1}`;
-  if (!occupied) return `${coordenada}, libre`;
+  if (!occupied) return `${coordenada(x, y)}, libre`;
   const muteo = occupied.muted ? ' muteada' : '';
-  return `${coordenada}, pieza ${occupied.piece}${muteo}, nota ${occupied.cell.note}, `
+  return `${coordenada(x, y)}, pieza ${occupied.piece}${muteo}, nota ${occupied.cell.note}, `
     + `paso ${occupied.cell.step} de ${ULTIMO_PASO}`;
+}
+
+/**
+ * Lo que anuncia la region `aria-live` del shell despues de una edicion del tablero
+ * (spec 026, AC10): colocar, quitar y mutear, las tres unicas cosas que cambian el
+ * tablero.
+ *
+ * ## Por que sale de aca y no de una cadena escrita en `App.tsx`
+ *
+ * Porque el anuncio y el nombre de la celda dicen la MISMA coordenada, y escrita en dos
+ * archivos son dos formas de que se desincronicen — una contando las filas desde 0 y la
+ * otra desde 1, o una diciendo `(3,2)` y la otra "fila 3, columna 4". Las dos salen de
+ * `coordenada`, arriba. Y por lo mismo que `cellNameFor` no vive adentro de `Board.tsx`:
+ * en un `.tsx` esto no se puede exportar, o sea que no se puede testear, y lo que un
+ * lector de pantalla va a decir es exactamente el tipo de decision que se rompe en
+ * silencio.
+ *
+ * ## `edicion` es la MISMA union que decide el gesto
+ *
+ * Es `Edicion`, la que devuelve `accionDeClick` — no un verbo suelto. Asi el anuncio no
+ * puede describir una edicion que el tablero no hace, y una quinta edicion futura da
+ * error de tipo aca en vez de quedarse muda. Las cuatro ramas de `EDICION` caen en tres
+ * frases: `colocar` y `colocarMuteada` comparten la suya porque lo que las separa —si la
+ * pieza suena— ya lo dice `muteada`.
+ *
+ * ## `muteada` es el estado en el que la pieza QUEDA
+ *
+ * No el que tenia. Del lado del shell sale de la misma variable que se guarda en
+ * `PlacedPiece.muted`, asi que el anuncio no puede prometer un muteo distinto del que el
+ * tablero acaba de aplicar. `quitar` no lo dice —la pieza ya no esta, y lo que hace falta
+ * saber es cual se fue y de donde—, pero igual lo recibe: pedirle al llamador que decida
+ * cuando el campo importa seria mover esta misma decision al shell, que es de donde este
+ * archivo la vino a sacar.
+ *
+ * ## "con sonido" y no "desmuteada"
+ *
+ * Es lo que se recupera, no la deshecha de una operacion: la palabra tiene que decir en
+ * que estado quedo la pieza, no que boton se apreto. Mismo criterio que "libre" arriba —
+ * el nombre del estado, no el del gesto.
+ */
+export function anuncioDeEdicion(
+  edicion: Edicion, piece: PieceKey, x: number, y: number, muteada: boolean,
+): string {
+  if (edicion === EDICION.quitar) return `pieza ${piece} quitada de ${coordenada(x, y)}`;
+  if (edicion === EDICION.mutear) {
+    return `pieza ${piece} ${muteada ? 'muteada' : 'con sonido'} en ${coordenada(x, y)}`;
+  }
+  return `pieza ${piece} colocada${muteada ? ' muteada' : ''} en ${coordenada(x, y)}`;
 }

@@ -114,3 +114,46 @@ export const MINI_CELL_PX = 8;
 /** Extremos del slider de tempo, en bpm. El valor inicial es DEFAULT_BPM del motor. */
 export const TEMPO_MIN = 60;
 export const TEMPO_MAX = 160;
+
+/**
+ * Los dos anchos del anillo de foco de la celda, en px — el spec 026.
+ *
+ * ## Por que son DOS y no uno
+ *
+ * Porque abajo de la celda enfocada puede haber cualquiera de los 12 colores, y los dos
+ * extremos de la lamina son `#FFFF00` (la `V`) y `#0000FF` (la `W`): un solo tono se
+ * pierde contra alguno de ellos. Van claro adentro y oscuro afuera, y como un `outline`
+ * de CSS tiene un unico color hacen falta DOS propiedades — es lo que DESIGN.md fija.
+ *
+ * ## Donde cae cada banda, que es lo que decide los numeros
+ *
+ * Una celda son dos cajas: la de `CELL_PX` y la baldosa redondeada de adentro, con 2 px
+ * de aire entre las dos (el `p-0.5` de `Board.tsx`). Las dos bandas se reparten ese aire
+ * y el borde de la baldosa, y las dos se dibujan HACIA ADENTRO de la caja de afuera:
+ *
+ * ```
+ *   0 → 2 px  banda OSCURA   sobre el aire, o sea sobre el blanco del panel
+ *   2 → 4 px  banda CLARA    sobre el borde negro de la baldosa y el arranque de su color
+ * ```
+ *
+ * De ahi que los dos valgan 2: el aire mide 2 px, y la banda clara tiene que pisar la
+ * baldosa para quedar sobre el color de la pieza, que es contra lo que se la eligio. Con
+ * ese reparto el anillo se ve SIEMPRE: sobre `#FFFF00` la clara desaparece pero la oscura
+ * esta sobre blanco, y sobre `#0000FF` pasa lo contrario.
+ *
+ * ## Por que hacia adentro y no hacia afuera, que es lo obvio
+ *
+ * Por el orden de pintado. Los `outline` se pintan al final del contexto de apilamiento
+ * —arriba de todo—, pero un `box-shadow` se pinta en la fase de fondo del elemento, y las
+ * baldosas de las 60 celdas son `relative`, o sea POSICIONADAS: se pintan despues. Un
+ * anillo hacia afuera dejaria la banda oscura tapada por las baldosas vecinas en los
+ * cuatro lados y la clara visible encima — o sea un anillo de un solo tono, que es
+ * justamente lo que estos dos numeros existen para evitar. Hacia adentro no hay
+ * competencia: la oscura cae en el aire, que no lo pinta nadie.
+ *
+ * Y de paso resuelve solo lo que AC7 manda medir: dibujado hacia adentro el anillo no
+ * asoma ni un pixel fuera de la caja, asi que no puede agrandar la region scrolleable ni
+ * quedar recortado por el `overflow-x-auto` en las celdas del borde.
+ */
+export const ANILLO_FOCO_OSCURO = 2;
+export const ANILLO_FOCO_CLARO = 2;
