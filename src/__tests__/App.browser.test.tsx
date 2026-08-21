@@ -9,6 +9,8 @@ import { arpeggioFor } from '../domain/music.ts';
 import { cellsAt } from '../domain/board.ts';
 import { rotateN, reflect } from '../domain/transform.ts';
 import type { PieceKey } from '../domain/types/pieces.types.ts';
+import type { ReactNode } from 'react';
+import type { PropsDeOrientacion } from '../components/types/panel.types.ts';
 
 /**
  * El shell, entero y en un navegador.
@@ -43,6 +45,54 @@ const motor = vi.hoisted(() => {
   };
 });
 vi.mock('../audio/engine.ts', () => motor);
+
+/**
+ * Cuantas veces se EJECUTA el panel de las doce miniaturas (AC6 y AC7 del spec 027).
+ *
+ * `hover` vive en `App.tsx`, asi que cada celda que el cursor cruza re-renderiza el arbol
+ * entero — y `OrientationPanel` son 337 elementos (1 grilla + 12 x (boton + grilla + 25
+ * celdas + span), con `MINI_BOX = 5`) de los que ninguno depende del hover. Antes del memo
+ * de este spec eran DIEZ ejecuciones al cruzar diez celdas, una por celda.
+ *
+ * Se instrumenta DESDE ACA y no metiendo un contador en el componente: un contador adentro
+ * seria codigo de produccion que existe para el test.
+ *
+ * ## Por que el contador va ADENTRO del `memo` y no envolviendolo
+ *
+ * `real.default` es un `memo` y `.type` es la funcion que tiene adentro; el mock cuenta ahi
+ * y vuelve a envolver en `memo`, o sea que reproduce la misma barrera que el componente
+ * real y mide lo que pasa detras de ella.
+ *
+ * La forma obvia —una funcion sin memoizar que renderiza `<Real {...props} />`— esta
+ * medida y MIENTE: da diez con el panel memoizado y diez sin memoizar, porque lo que cuenta
+ * es el envoltorio, que nunca esta detras de la barrera. Es exactamente el modo de falla
+ * que este repo persigue, un oraculo verde midiendo otra cosa.
+ *
+ * React expone `.type` en runtime pero sus tipos no —`memo(fn)` resuelve a
+ * `NamedExoticComponent`, que no lo declara—, asi que se estrecha con un chequeo de verdad
+ * y no con un `as`: el dia que alguien saque el `memo`, el mock no adivina, tira con el
+ * motivo puesto.
+ *
+ * El mock es de archivo y el contador sube tambien durante los otros tests: el que mide lo
+ * pone en cero antes de montar.
+ */
+const panel = vi.hoisted(() => ({ ejecuciones: 0 }));
+vi.mock('../components/OrientationPanel.tsx', async (importActual) => {
+  const real = await importActual<typeof import('../components/OrientationPanel.tsx')>();
+  const { memo } = await import('react');
+  const memoizado = (c: unknown): c is { type: (props: { orientacion: PropsDeOrientacion }) => ReactNode } =>
+    typeof c === 'object' && c !== null && 'type' in c && typeof c.type === 'function';
+  if (!memoizado(real.default)) {
+    throw new Error('OrientationPanel dejo de estar memoizado: la medicion del spec 027 pasaria a medir el envoltorio.');
+  }
+  const interior = real.default.type;
+  return {
+    default: memo((props: { orientacion: PropsDeOrientacion }) => {
+      panel.ejecuciones++;
+      return interior(props);
+    }),
+  };
+});
 
 const App = (await import('../App.tsx')).default;
 
@@ -408,5 +458,49 @@ describe('App — lo que llega al arbol de accesibilidad', () => {
     for (const boton of botones) {
       expect(boton.getAttribute('type'), boton.textContent ?? '').toBe('button');
     }
+  });
+});
+
+describe('App — lo que cuesta mover el cursor (spec 027)', () => {
+  /** Diez celdas interiores: dos filas de cinco, con el fantasma entero adentro del tablero. */
+  const RECORRIDO = [2, 3].flatMap(y => [1, 2, 3, 4, 5].map(x => [x, y] as const));
+
+  /** La huella del fantasma: que celdas del tablero tienen nota, como un mapa de bits. */
+  const huella = (c: HTMLElement) => celdas(c).map(e => (baldosa(e).textContent === '' ? '0' : '1')).join('');
+
+  it('cruzar diez celdas ya no ejecuta el panel de orientacion, y rotar si', async () => {
+    panel.ejecuciones = 0;
+    const { container } = await render(<App />);
+    // El render inicial se cuenta APARTE, y es lo que vuelve falsificable el cero de abajo:
+    // un panel que no se ejecutara nunca —o un mock roto— tambien daria cero.
+    expect(panel.ejecuciones).toBe(1);
+    panel.ejecuciones = 0;
+
+    // Se espera a que el fantasma se REPINTE antes de mover el cursor otra vez, y no es
+    // ceremonia: `mouseover` es un evento CONTINUO, asi que React 19 agenda su re-render en
+    // prioridad default y dos despachos seguidos se cobran como uno solo. Medido con un
+    // `setTimeout(0)` entre medio: daban 8 de 10, o sea el test contando menos trabajo del
+    // que paga un cursor de verdad, que cruza una celda por cuadro dibujado.
+    const huellas = new Set<string>();
+    let antes = huella(container);
+    for (const [x, y] of RECORRIDO) {
+      hover(celda(container, x, y));
+      await vi.waitFor(() => expect(huella(container)).not.toBe(antes));
+      antes = huella(container);
+      huellas.add(antes);
+    }
+
+    // Diez posiciones distintas del fantasma, o sea DIEZ re-renders del arbol: el shell
+    // trabajo las diez veces, que es la mitad del sistema que este numero mide.
+    expect(huellas.size).toBe(RECORRIDO.length);
+    expect(conNota(container)).toBe(SHAPES.F.length);
+    // Y el panel no se ejecuto una sola vez. Antes del `memo` eran diez, una por celda:
+    // 3.370 elementos reconciliados para llegar al mismo DOM.
+    expect(panel.ejecuciones).toBe(0);
+
+    // La memo no lo congelo: cuando la orientacion cambia DE VERDAD, se ejecuta. Sin esta
+    // mitad, el cero de arriba lo cumpliria igual un panel roto.
+    await page.getByRole('button', { name: /^90°$/ }).click();
+    await vi.waitFor(() => expect(panel.ejecuciones).toBe(1));
   });
 });

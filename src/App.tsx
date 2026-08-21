@@ -247,22 +247,55 @@ export default function App(){
   const previewCells = hover && !hoverEdita ? cellsAt(transformedShape, ANCHOR_INDEX[selected], hover[0], hover[1]) : [];
   const previewValid = hover && !hoverEdita ? isValid(previewCells, placed) : false;
 
+  // El porque de este `useMemo` —y el numero que lo justifica— esta abajo, al lado del
+  // `<PiecePalette>` que lo consume: es donde estaba escrita la decision contraria.
+  const orientacion = useMemo(()=> ({
+    selected, rotation, mirror, regimen, noteSet,
+    onSelect: setSelected,
+    onRotate: setRotation,
+    onMirror: ()=> setMirror(m=>!m),
+    onRegimen: setRegimen,
+  }), [selected, rotation, mirror, regimen, noteSet]);
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4">
       <div className="max-w-6xl mx-auto grid grid-cols-12 gap-4">
-        {/* Los dos objetos se arman INLINE y no en un `useMemo`: tienen identidad nueva
-            por render, y eso no cuesta nada porque `PiecePalette` no esta memoizado —
-            re-renderiza igual cuando el shell re-renderiza. Va escrito porque es lo
-            primero que alguien va a querer "arreglar" con un `useMemo` que no compra
-            nada y agrega dos arrays de dependencias que mantener. */}
+        {/* Hasta el spec 027 aca decia que los dos objetos se armaban INLINE porque
+            memoizarlos "no compra nada": `PiecePalette` no esta memoizado, asi que
+            re-renderiza igual. Era cierto y CIRCULAR —no memoizamos las props porque el
+            componente no esta memoizado— y encima nunca se habia medido: era el unico caso
+            de frecuencia del repo sin numero, en un proyecto donde los otros dos existen
+            porque alguien conto 4 a 10,6 cambios por segundo y 60 fps.
+
+            El numero, medido en `__tests__/App.browser.test.tsx`: `hover` vive en este
+            archivo, asi que cruzar diez celdas con el cursor re-renderizaba el arbol diez
+            veces y `OrientationPanel` se ejecutaba las DIEZ, a 337 elementos cada una
+            (1 grilla + 12 x (boton + grilla + 25 celdas + span), con `MINI_BOX = 5`). O sea
+            3.370 elementos reconciliados para llegar al MISMO DOM, porque ninguna prop del
+            panel depende del hover.
+
+            Y el que dio vuelta la decision fue el costo, medido con `Profiler` sobre el
+            commit entero de la app: mediana de 4,9 ms por celda cruzada contra 1,9 ms con la
+            barrera puesta. Son 3,0 ms —el 61 %— gastados en el subarbol que no puede haber
+            cambiado, a la frecuencia del MOUSE, que arrastrandose sobre el tablero es una
+            celda por cuadro dibujado. Es el mismo criterio con el que el spec 010 saco a
+            `Spectrum` y a `Playhead` de React; a este le alcanza con un `memo`.
+
+            El array de dependencias que el comentario viejo temia no es deuda a mano:
+            `react-hooks/exhaustive-deps` lo verifica en el lint, asi que un campo nuevo en
+            `PropsDeOrientacion` que se olvide de entrar da rojo y no un panel viejo en
+            pantalla.
+
+            Este numero mide SOLO la mitad del mouse. El spec 026 le agrega un segundo
+            escritor de `hover` con la misma frecuencia por pulsacion —la celda enfocada con
+            el teclado ES `hover`, no un estado paralelo—, y esa medicion la escribe el,
+            debajo de esta.
+
+            `transporte` se sigue armando inline, y ahora por el numero y no por el
+            argumento circular: nadie lo consume detras de una barrera, asi que memoizarlo no
+            cambiaria un solo render. */}
         <PiecePalette
-          orientacion={{
-            selected, rotation, mirror, regimen, noteSet,
-            onSelect: setSelected,
-            onRotate: setRotation,
-            onMirror: ()=> setMirror(m=>!m),
-            onRegimen: setRegimen,
-          }}
+          orientacion={orientacion}
           transporte={{
             tempo, playing, clicks,
             onTempo: setTempo,
