@@ -187,7 +187,7 @@ global de `window` en la misma página. Dos `[P]` del mismo bloque no pueden toc
       su test — **AC13**
 - [ ] T042 Actualizar la fila del 026 en `specs/log.md` a `Implementado` — **queda abierta a propósito**:
       el estado lo mueve el merge
-- [ ] T043 PR contra `main`
+- [x] T043 PR contra `main`
 
 ## Seguimiento (no bloquea)
 
