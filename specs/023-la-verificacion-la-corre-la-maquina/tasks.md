@@ -93,12 +93,14 @@ una persona y no bloquea el cierre.
       piso, no la igualdad: los otros cuatro specs del lote 023–028 agregan tests, así que si alguno
       mergea antes que éste el conteo sube y el AC se lee como **«no baja de 457 + 105, y el coverage
       sigue en 100»**. Este spec no toca `src/`, así que no puede moverlos él
-- [x] T031 **Los dos techos de `src/domain/__tests__/sequence.test.ts` pasan a 10 y 8** — la enmienda
-      de AC10, decidida con la primera corrida del workflow en la mano. Los dos presupuestos del 009 se
-      caen en el runner y sólo ahí: **8,426 ms** contra 5 y **6,324 ms** contra 4, en la pasada sin
-      instrumentar y determinista sobre dos corridas. El motivo entero, el precio —el margen local pasa
-      de 2,5× a **5×** y una regresión de 4× deja de fallar sola— y la alternativa que no se tomó
-      (`skipIf` también en CI) van escritos en el bloque del `skipIf` del propio test, no acá
+- [x] T031 **Los dos presupuestos del 009 se saltean en CI**, con la misma guarda que ya los saltea
+      bajo coverage — `src/domain/__tests__/sequence.test.ts`. **Los techos no se tocan**: siguen en 5 y
+      4. Es la enmienda de AC10, y salió de dos corridas del workflow, no de una: el primer intento
+      subió los techos a 10 y 8 y la corrida siguiente rompió el 10 igual, con **15,687 ms** contra los
+      **8,426 ms** de la anterior. Esa variación de **1,86×** sobre el mismo código es lo que prueba que
+      el runner no tiene un número, y con ella no hay techo que sirva sin volver inútil al test. La
+      tabla completa y el precio —la CI no verifica estos dos— van en el bloque del `skipIf` del propio
+      test y en el AC, no acá
 - [x] T029 Confirmar que el diff no toca `eslint.config.js` ni `vite.config.ts`, y que de `src/` toca
       **un solo archivo y dos líneas** (los techos del T031): `git diff --name-only main` — **AC10**,
       enmendado al implementarlo

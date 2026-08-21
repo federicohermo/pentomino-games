@@ -181,18 +181,28 @@ la medición al lado.
   Falsable con `git diff --name-only main`.
 
   **Este AC decía «ni un archivo de `src/`» y se enmendó al implementarlo, con la medición en la
-  mano.** El workflow puso `pnpm verify` en un runner limpio por primera vez y los dos presupuestos se
-  cayeron ahí y sólo ahí: AC10 del 009 dio **8,426 ms** contra un techo de 5 y AC8 **6,324 ms** contra
-  uno de 4, en la pasada sin instrumentar y **determinista** —dos corridas, mismo resultado—. No es una
-  regresión del código: es que `ubuntu-latest` es más lento que la máquina de desarrollo y `verify` le
-  pone cuatro nodos pesados encima. Los techos pasan a **10** y **8**.
+  mano.** El workflow puso `pnpm verify` en un runner limpio por primera vez y los dos presupuestos de
+  performance del 009 se cayeron ahí y sólo ahí. **Los techos no se tocan** —siguen en 5 ms y 4 ms— y
+  lo que se agrega es una guarda: los dos tests se saltean en CI, con el mismo mecanismo que ya los
+  saltea bajo coverage y por el mismo motivo, que es que el entorno no mide el producto.
 
-  El precio está escrito en el propio test y se repite acá porque es un AC que se ablandó: en la máquina
-  de desarrollo esos dos miden 2,0 ms y 1,31 ms, así que el margen pasa de 2,5× a **5×** y de 3× a
-  **6×**, y una regresión de 4× deja de fallar sola. Lo que queda de guardia es el `console.log` de cada
-  test, que hay que **mirar**. La alternativa que no se tomó —`skipIf` también en CI, la misma guarda
-  que la de coverage y por el mismo motivo— queda anotada en el test como la salida si el 1,19× que
-  queda contra el runner resulta insuficiente.
+  El número que lo decide, y que **falsificó el primer intento** de arreglarlo subiendo los techos a 10
+  y 8:
+
+  | | máquina de desarrollo | runner #1 | runner #2 |
+  |---|---|---|---|
+  | AC10 | 2,00 ms | 8,426 ms | **15,687 ms** |
+  | AC8 | 1,31 ms | 6,324 ms | 3,803 ms |
+
+  Mismo código y mismo workflow entre las dos corridas del runner, y cada celda es la mediana de 21
+  corridas que el test ya calcula: **1,86× de variación** en AC10. `ubuntu-latest` no es una máquina
+  lenta con un número propio, es una VM compartida sin número. Por eso no hay techo que sirva: cubrir el
+  pico de 15,7 ms pide ~30, y contra los 2,0 ms locales eso deja el presupuesto **15× por encima de lo
+  medido** — un test que no puede fallar.
+
+  El precio, dicho sin adornos porque es un AC que se ablandó: **la CI no verifica estos dos
+  presupuestos.** Los verifica `pnpm verify` local, que es donde 5 y 4 significan algo, y un rojo ahí
+  sigue siendo una regresión de verdad.
 
 ## Fuera de alcance
 
