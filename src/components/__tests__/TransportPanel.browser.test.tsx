@@ -70,7 +70,7 @@ describe('TransportPanel', () => {
 
     await slider.fill('128');
     expect(onTempo).toHaveBeenCalledWith(128);
-    // Lo que importa del `parseInt`: un `'128'` que llegue como string se propaga a
+    // Lo que importa del `Number`: un `'128'` que llegue como string se propaga a
     // `setBpm` y de ahi a la aritmetica del scheduler.
     expect(typeof onTempo.mock.calls[0][0]).toBe('number');
   });

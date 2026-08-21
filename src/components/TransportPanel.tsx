@@ -19,7 +19,7 @@ export default function TransportPanel({ transporte }: { transporte: PropsDeTran
     <div className="mt-4 border-t pt-3 space-y-2">
       <div className="flex items-center justify-between">
         <span className="font-medium">Tempo</span>
-        <input type="range" min={TEMPO_MIN} max={TEMPO_MAX} value={tempo} onChange={e=>onTempo(parseInt(e.target.value))} />
+        <input type="range" min={TEMPO_MIN} max={TEMPO_MAX} value={tempo} onChange={e=>onTempo(Number(e.target.value))} />
         {/* Con la unidad: "110" a secas no dice si son bpm o intervalos, y desde el
             spec 008 el instrumento maneja las dos unidades. `w-16` y no `w-10`
             porque " bpm" agrega ~24 px; lo absorbe el `range`, que es el unico
