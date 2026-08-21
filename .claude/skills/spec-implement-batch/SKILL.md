@@ -138,7 +138,25 @@ Esperá a que vuelvan todos antes del reporte.
 
 ---
 
-## Paso 4 — Reporte
+## Paso 4 — Destruir los worktrees
+
+```
+sh .claude/skills/spec-implement-batch/scripts/limpiar-worktrees.sh --todos
+```
+
+**Va antes del reporte, no después**, y no se hace a mano. Los carriles de este skill **corren la
+app** —el Paso 3 pide medirla en el DOM—, así que cada worktree queda con un `vite` y su `esbuild`
+vivos. En Windows un handle abierto hace fallar el borrado, y no solo el de git: por eso el script
+mata primero y desregistra después. Medido: con ese orden `git worktree remove` pasa de fallar a
+decir `ok`.
+
+Y mata **por ruta del worktree, nunca por nombre de proceso**. Es la diferencia entre limpiar el
+carril y matarle al usuario el `pnpm dev` del checkout principal, que en esta máquina existe.
+
+Si imprime `SIGUE AHI`, el handle es de afuera —el IDE con la carpeta abierta, o un navegador de
+Playwright que quedó vivo—. Decilo en el reporte: lo cierra el usuario, no vos.
+
+## Paso 5 — Reporte
 
 - Los carriles, su ancho, y **cuántas aristas del `log.md` resultaron falsas**.
 - **Qué encontró el Paso 2 y qué se decidió** — es el entregable propio de este skill.
