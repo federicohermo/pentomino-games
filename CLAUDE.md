@@ -181,8 +181,8 @@ Estas son las reglas:
   (el idiom de Vite sobre un `#root` que el propio `index.html` garantiza) y la de
   `domain/invariants.ts` (el `queue.shift()!` de un BFS, dentro de un `while` que ya garantiza la
   cola no vacía). **No** vale para los tests, donde el `!` sobre un `find` o un `querySelector` que
-  el propio test acaba de fijar es la forma de que el test **falle** si el nodo no está — hay 17 y
-  son deliberadas.
+  el propio test acaba de fijar es la forma de que el test **falle** si el nodo no está — hay 66 en
+  `src/**/__tests__/` y son deliberadas.
 - **Sin estado global.** Ni Context, ni Redux, ni Zustand — y desde el 030 lo verifica el linter, por
   el paquete y por la llamada a `createContext`.
 - **Nada de `.only` ni `.skip` en un test.** Es la misma familia de bug que el `--filter "{.}"` y el

@@ -359,6 +359,27 @@ algo. Es una restricción del navegador, no del código.
 `audio()` devuelve `null` si Web Audio no está disponible; la app queda usable pero muda, y cada
 llamador tiene que chequearlo.
 
+**Y desde el spec 027 un fallo PARCIAL vale igual que uno total.** `ctx` se asigna antes de crear el
+gain y el analizador, así que cualquier cosa que tire después de `new AudioContext()` salía por el
+`catch` devolviendo `null` pero dejaba el contexto en pie: la llamada siguiente entraba por
+`if (ctx) return ctx` y contestaba un contexto con `master` en `null`, con lo cual `startClock`
+arrancaba el timer, `clockRunning()` pasaba a `true` y el botón decía «Pausa» sin que sonara una
+nota. El `catch` ahora baja `ctx`, `master` y `analyser` **juntos**, así que un contexto vivo implica
+un grafo entero; el contexto a medio construir **no** se cierra —`close()` es una promesa y su
+rechazo vacío sería una función sin cubrir contra el umbral 100— y queda sin referencias.
+
+El `catch` además **latchea**: una marca de módulo hace que a partir del primer fallo `audio()`
+conteste `null` sin reintentar el constructor. Sin ella cada click volvía a intentarlo y volvía a
+avisar por consola —un click, un warning—; con ella el aviso es **uno** y la app queda muda hasta
+recargar la pestaña, aunque la causa fuera transitoria. El precio se acepta porque el reintento
+tampoco la desmuteaba, y porque un estado que se recupera solo es un estado que nadie puede
+reproducir.
+
+La consecuencia de diseño está del lado del reloj: `startClock()` chequea el **par** (`audio()` y el
+master) porque es la única función cuya respuesta la UI muestra, y `tick()` recibe los dos por
+parámetro en vez de leerlos del módulo — una garantía más fuerte que una guarda, y la salida que el
+repo pide para una rama que dejó de ser alcanzable.
+
 ## Los dos caminos de reproducción
 
 Hay **dos** funciones que producen sonido, y conviene saber cuál es cuál:

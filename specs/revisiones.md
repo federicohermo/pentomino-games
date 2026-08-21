@@ -786,6 +786,10 @@ una barrera.
 El spec afirmaba «hay dos aserciones no nulas en `src/`». Hay **tres** en código de producción: la
 tercera es el `queue.shift()!` del BFS de `domain/invariants.ts`, que la medición original no vio porque
 miró sólo los archivos que el spec ya iba a tocar. Se quedó —el `while` de arriba ya garantiza la cola
-no vacía— pero ahora con su motivo escrito, que es lo que la regla pide. Y las 17 de los tests quedan
-explícitamente afuera de la regla: ahí el `!` sobre un `find` que el propio test acaba de fijar es la
-forma de que el test **falle** si el nodo no está.
+no vacía— pero ahora con su motivo escrito, que es lo que la regla pide. Y las **66** de los tests
+—contadas sobre `src/**/__tests__/`— quedan explícitamente afuera de la regla: ahí el `!` sobre un
+`find` que el propio test acaba de fijar es la forma de que el test **falle** si el nodo no está.
+
+Que ese número saliera primero como «17» es la misma lección con otra cara: **un número escrito sin
+el comando que lo reproduce no es una medición**, es un recuerdo. Los tres de este spec —337
+elementos, 4,9 contra 1,9 ms, 55 operaciones por cuadro— llevan al lado de dónde salen.

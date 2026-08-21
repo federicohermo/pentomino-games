@@ -275,7 +275,7 @@ describe('iniciarEspectro — el reposo no redibuja de balde', () => {
       await cuadro();
 
       // Espiar operaciones REALES de canvas y no `drawIdle` en si: es lo que el
-      // hallazgo cuenta -54 operaciones por cuadro repetidas de balde-, y espiar
+      // hallazgo cuenta -55 operaciones por cuadro repetidas de balde-, y espiar
       // el modulo de produccion en vez del prototipo dejaria pasar un `drawIdle`
       // reescrito que igual golpeara el canvas por otro camino.
       const limpiado = vi.spyOn(CanvasRenderingContext2D.prototype, 'clearRect');

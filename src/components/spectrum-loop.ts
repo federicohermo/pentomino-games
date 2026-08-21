@@ -82,9 +82,9 @@ export function iniciarEspectro(canvas: HTMLCanvasElement | null): () => void {
   // evita comparar tuplas y deja el caso 'oculto' expresado como cadena vacia. Es lo
   // que baja de 60 escrituras por segundo a entre 4 y 11, y lo que hace que en pausa
   // el loop no toque el DOM ni una vez (AC7)". Ese loop ya tenia la guarda; este no
-  // la aplicaba: sin ella, `drawIdle` repetia 54 operaciones de canvas por cuadro
+  // la aplicaba: sin ella, `drawIdle` repetia 55 operaciones de canvas por cuadro
   // -un `clearRect`, 48 `fillRect`, cinco asignaciones de estilo y un `fillText`-
-  // para pintar la misma imagen, o sea 3.240 por segundo mientras no hay audio. Un
+  // para pintar la misma imagen, o sea 3.300 por segundo mientras no hay audio. Un
   // booleano de "ya dibuje el reposo" no alcanza: hace falta distinguir tambien la
   // transicion senal -> reposo (readSpectrum vuelve a null con el contexto
   // suspendido, no solo antes del primer click), y esa transicion es la que un

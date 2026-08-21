@@ -286,22 +286,6 @@ describe('AC19 — la cabeza recorre la pieza muteada, con el borde del click', 
 });
 
 /**
- * El unico camino por el que `construir` puede recibir un paso sin pieza, y el unico por
- * el que `porPieza` puede no tener una entrada que `ids` si tiene.
- *
- * Su comentario en el fuente dice «no puede pasar», y con el shell de hoy es cierto: el
- * `useMemo` deriva la secuencia de `placed` y el hook entrega las dos juntas en el mismo
- * efecto. Pero la guarda no es decorativa y su comportamiento esta ELEGIDO —«el silencio
- * es preferible a la mentira, porque una celda equivocada se lee como que el modelo esta
- * mal»—, asi que la eleccion se verifica en vez de darse por buena: se llama a `encolar`
- * con las dos cosas desfasadas, que es exactamente lo que un refactor del shell podria
- * producir sin avisar.
- *
- * Los tres caminos que abre son el mismo desfasaje visto desde tres lugares: el `continue`
- * de `construir`, y los dos `?? []` de `recomputarVelo` —uno del lado de lo pendiente y
- * otro del lado de lo activo, porque el velo se recalcula en los dos bordes—.
- */
-/**
  * El velo huerfano del spec 027, y su mitad que NO hay que arreglar.
  *
  * Este modulo avanza solo cuando `cycleGeneration()` sube, y ese contador lo mueve el
@@ -369,6 +353,22 @@ describe('AC1 y AC2 (spec 027) — el reinicio es una orden, no una consecuencia
   });
 });
 
+/**
+ * El unico camino por el que `construir` puede recibir un paso sin pieza, y el unico por
+ * el que `porPieza` puede no tener una entrada que `ids` si tiene.
+ *
+ * Su comentario en el fuente dice «no puede pasar», y con el shell de hoy es cierto: el
+ * `useMemo` deriva la secuencia de `placed` y el hook entrega las dos juntas en el mismo
+ * efecto. Pero la guarda no es decorativa y su comportamiento esta ELEGIDO —«el silencio
+ * es preferible a la mentira, porque una celda equivocada se lee como que el modelo esta
+ * mal»—, asi que la eleccion se verifica en vez de darse por buena: se llama a `encolar`
+ * con las dos cosas desfasadas, que es exactamente lo que un refactor del shell podria
+ * producir sin avisar.
+ *
+ * Los tres caminos que abre son el mismo desfasaje visto desde tres lugares: el `continue`
+ * de `construir`, y los dos `?? []` de `recomputarVelo` —uno del lado de lo pendiente y
+ * otro del lado de lo activo, porque el velo se recalcula en los dos bordes—.
+ */
 describe('un paso cuya pieza no esta en el tablero', () => {
   it('queda a oscuras en vez de dibujar una celda inventada, y no arrastra al resto', () => {
     // La secuencia conoce a las dos piezas; el tablero que se entrega, a una sola.

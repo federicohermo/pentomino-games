@@ -10,9 +10,10 @@ import App from './App.tsx';
 //
 // Con `jsx: "react-jsx"` el import default de React no hace falta.
 //
-// El `!` se queda, y es la unica asercion no nula de `src/`: es el idiom de la
-// plantilla de Vite sobre un `#root` que el propio `index.html` garantiza, o sea el
-// unico caso donde el dato que TypeScript no puede ver esta escrito dos archivos mas
+// El `!` se queda, y es una de las DOS que el spec 027 dejo en codigo de produccion —la
+// otra es el `queue.shift()!` del BFS de `domain/invariants.ts`, anotada igual—: es el
+// idiom de la plantilla de Vite sobre un `#root` que el propio `index.html` garantiza,
+// o sea el caso donde el dato que TypeScript no puede ver esta escrito dos archivos mas
 // alla y no en la cabeza de nadie. Va anotado porque sin esto la proxima lectura lo
 // cuenta como deuda otra vez — que es literalmente como llego a la lista del spec 027.
 createRoot(document.getElementById('root')!).render(

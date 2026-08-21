@@ -56,8 +56,9 @@ tocan.
 - [x] T014 El `resize` la invalida: redimensionar borra el canvas, así que hay que volver a pintarlo
 - [x] T015 Comentario que **cite** el de `Playhead` en vez de argumentar de cero: la regla ya estaba
       medida en el repo («baja de 60 escrituras por segundo a entre 4 y 11, y en pausa el loop no toca el
-      DOM ni una vez»), y este archivo no la aplicaba. Con el número de acá: 54 operaciones de canvas por
-      cuadro, 3.240 por segundo, para pintar la misma imagen
+      DOM ni una vez»), y este archivo no la aplicaba. Con el número de acá: **55** operaciones de canvas
+      por cuadro, **3.300** por segundo, para pintar la misma imagen. (Decía 54 y 3.240: la cuenta vieja
+      veía un solo `fillStyle` y hay dos — el re-conteo está en `research.md` §3 y en `log.md`)
 - [x] T016 `src/components/__tests__/Spectrum.browser.test.tsx`: en reposo no vuelve a dibujar después
       del primer cuadro, **y** tras un `resize` sí. Una sola mitad no dice nada, y son **tres**: la
       tercera —señal → reposo— está en `T037` — **AC5**
