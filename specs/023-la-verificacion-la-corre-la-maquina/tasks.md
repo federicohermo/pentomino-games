@@ -93,8 +93,15 @@ una persona y no bloquea el cierre.
       piso, no la igualdad: los otros cuatro specs del lote 023–028 agregan tests, así que si alguno
       mergea antes que éste el conteo sube y el AC se lee como **«no baja de 457 + 105, y el coverage
       sigue en 100»**. Este spec no toca `src/`, así que no puede moverlos él
-- [x] T029 Confirmar que el diff no toca `src/`, `eslint.config.js` ni `vite.config.ts`:
-      `git diff --name-only main` — **AC10**
+- [x] T031 **Los dos techos de `src/domain/__tests__/sequence.test.ts` pasan a 10 y 8** — la enmienda
+      de AC10, decidida con la primera corrida del workflow en la mano. Los dos presupuestos del 009 se
+      caen en el runner y sólo ahí: **8,426 ms** contra 5 y **6,324 ms** contra 4, en la pasada sin
+      instrumentar y determinista sobre dos corridas. El motivo entero, el precio —el margen local pasa
+      de 2,5× a **5×** y una regresión de 4× deja de fallar sola— y la alternativa que no se tomó
+      (`skipIf` también en CI) van escritos en el bloque del `skipIf` del propio test, no acá
+- [x] T029 Confirmar que el diff no toca `eslint.config.js` ni `vite.config.ts`, y que de `src/` toca
+      **un solo archivo y dos líneas** (los techos del T031): `git diff --name-only main` — **AC10**,
+      enmendado al implementarlo
 - [x] T020 [P] `CLAUDE.md`: la sección de Comandos dice que `verify` lo corre la CI sobre cada PR, con
       Chromium instalado por el workflow
 - [x] T021 [P] `docs/guides/quickstart.md`: mencionar el workflow donde ya se nombran los comandos, y

@@ -175,13 +175,30 @@ la medición al lado.
 - **AC9** — **AC13 del 029 queda cumplido**: la corrida de CI de un PR imprime la tabla de coverage, y
   un PR que baje del 100 en cualquiera de las cuatro métricas queda en rojo. Se verifica junto con AC7,
   borrando un test a propósito en la misma rama.
-- **AC10 (no regresión)** — El cambio no toca ni un archivo de `src/`, ni `eslint.config.js`, ni el
-  bloque `test` de `vite.config.ts`. Falsable con `git diff --name-only main`.
+- **AC10 (no regresión)** — El cambio no toca `eslint.config.js` ni el bloque `test` de
+  `vite.config.ts`, y de `src/` toca **un solo archivo y dos líneas**:
+  `src/domain/__tests__/sequence.test.ts`, los techos de los dos presupuestos de performance del 009.
+  Falsable con `git diff --name-only main`.
+
+  **Este AC decía «ni un archivo de `src/`» y se enmendó al implementarlo, con la medición en la
+  mano.** El workflow puso `pnpm verify` en un runner limpio por primera vez y los dos presupuestos se
+  cayeron ahí y sólo ahí: AC10 del 009 dio **8,426 ms** contra un techo de 5 y AC8 **6,324 ms** contra
+  uno de 4, en la pasada sin instrumentar y **determinista** —dos corridas, mismo resultado—. No es una
+  regresión del código: es que `ubuntu-latest` es más lento que la máquina de desarrollo y `verify` le
+  pone cuatro nodos pesados encima. Los techos pasan a **10** y **8**.
+
+  El precio está escrito en el propio test y se repite acá porque es un AC que se ablandó: en la máquina
+  de desarrollo esos dos miden 2,0 ms y 1,31 ms, así que el margen pasa de 2,5× a **5×** y de 3× a
+  **6×**, y una regresión de 4× deja de fallar sola. Lo que queda de guardia es el `console.log` de cada
+  test, que hay que **mirar**. La alternativa que no se tomó —`skipIf` también en CI, la misma guarda
+  que la de coverage y por el mismo motivo— queda anotada en el test como la salida si el 1,19× que
+  queda contra el runner resulta insuficiente.
 
 ## Fuera de alcance
 
 - **`eslint.config.js` entero** — es del 030, que ya mergeó.
-- **Cualquier archivo de `src/`.**
+- **Cualquier archivo de `src/`** — con la excepción medida de AC10: los dos techos de
+  `src/domain/__tests__/sequence.test.ts`, que la CI falsificó en su primera corrida.
 - **El bloque `test` de `vite.config.ts` y el umbral de coverage** — los puso el 029; este workflow los
   hereda sin tocarlos (AC3).
 - **Un job de deploy.** Netlify ya despliega.
