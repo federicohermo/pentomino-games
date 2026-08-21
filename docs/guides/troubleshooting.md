@@ -103,11 +103,14 @@ Suele ser un dev server anterior que quedó vivo, y sirve reusarlo.
 
 ### `OfflineAudioContext is not defined` en un test
 
-El entorno de tests es `node`, no `jsdom`, **a propósito**: jsdom no implementa Web Audio en absoluto.
-Los tests importan `OfflineAudioContext` de `node-web-audio-api`, no de globales del entorno.
+El entorno del proyecto `node` es `node`, no `jsdom`, **a propósito**: jsdom no implementa Web Audio en
+absoluto. Los tests importan `OfflineAudioContext` de `node-web-audio-api`, no de globales del entorno.
 
-Si hace falta un test de componentes React, va a necesitar `jsdom` y su propio bloque de config — no
-cambiar el `environment` global, que rompería los tests de audio.
+Si el test es de un componente, el archivo va en el **otro** proyecto: sufijo `*.browser.test.tsx`, que
+corre en un Chromium de verdad (spec 029). Ahí `AudioContext` y el DOM son los del navegador y no hay
+que importar nada. Lo que **no** hay que hacer es agregar `jsdom`: se descartó midiendo —no da canvas
+2D, `createLinearGradient`, `ResizeObserver` ni `matchMedia`— y cambiar el `environment` global
+rompería los tests de audio.
 
 ### Los tests no ven `describe` / `it` / `expect`
 

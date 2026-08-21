@@ -145,17 +145,20 @@ Escribir un spec en `specs/`, commitearlo a `main`, y recién ahí sacar la rama
 ## Verificación antes de un PR
 
 ```bash
-pnpm exec tsc -b --noEmit   # tipos
-pnpm lint                   # estilo
-pnpm test                   # Vitest
-pnpm mcp:test               # el MCP server, si se tocó src/ o el server
+pnpm verify                 # lint ‖ typecheck ‖ suite ‖ mcp:test — los cuatro, en paralelo
 pnpm build                  # build completo
 pnpm preview                # y probarlo a mano
 ```
+
+`pnpm verify` es el nodo de convergencia y reemplaza a correr los cuatro a mano: un nodo rojo devuelve
+exit 1. Medido con caché caliente, 41,2 s en serie contra 23,7 s en paralelo.
 
 `pnpm mcp:test` no es opcional al tocar `src/domain/` o `src/audio/`: el server importa esos módulos con
 node crudo, y un import sin extensión **no** rompe el build de la app. Desde el spec 030 ese caso lo
 ataja antes `pnpm lint`, sobre el repo entero; `mcp:test` sigue siendo el que verifica que los módulos
 *carguen* de verdad con node.
 
-Los tests corren en Node contra `node-web-audio-api`, no en jsdom.
+Los tests corren en **dos proyectos**: los `*.test.ts` en Node contra `node-web-audio-api`, y los
+`*.browser.test.tsx` en un Chromium de verdad por Playwright. En jsdom no corre ninguno. **Chromium no
+está en el lockfile**: un clone nuevo necesita `pnpm exec playwright install chromium` antes del primer
+`verify`.

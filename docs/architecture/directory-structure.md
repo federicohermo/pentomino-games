@@ -173,26 +173,45 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 
 ### Tests
 
-`pnpm test` corre Vitest en `environment: 'node'` contra `node-web-audio-api`, sobre la capa de audio y
-el dominio. El `include` (`src/**/*.test.{ts,tsx}`) toma los `__tests__/` sin configuración extra, y
-`test-context.ts` no matchea porque le falta el `.test.` antes de la extensión.
+`pnpm test` corre Vitest en **dos proyectos y un solo comando** (spec 029). El corte no es por capa sino
+por lo que el test necesita:
+
+- **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre `src/**/__tests__/*.test.ts`.
+  Son 16 archivos. El dominio es puro y el audio tiene una implementación nativa de Web Audio, así que
+  corren ahí sin adaptación.
+- **`browser`** — Chromium de verdad, por Playwright, sobre `src/**/__tests__/*.browser.test.tsx`. Son
+  10: los seis componentes, `App.tsx`, los dos hooks y `audio/engine.ts`. Renderizan con
+  `vitest-browser-react`, y el `setupFiles` (`browser-setup.ts`) importa la hoja de estilos **una** vez:
+  sin ella `z-10` está en el `className` y `getComputedStyle` devuelve `auto`, o sea que un test de
+  layout pasa o falla por el motivo equivocado y en silencio.
+
+El discriminante es el **sufijo** y no la carpeta: un test de `Board.tsx` que necesita navegador sigue
+siendo un test de `Board.tsx` y vive al lado. Los dos `include` arrancan en `__tests__/` y con un solo
+`*`, así que no matchean ni los helpers que no son tests —`test-context.ts` y `browser-setup.ts`, a los
+que les falta el `.test.` antes de la extensión— ni el `__screenshots__/` de los artefactos.
+
+**Chromium no está en el lockfile:** un clone nuevo necesita `pnpm exec playwright install chromium`
+antes del primer `pnpm verify`.
 
 Los **tests del MCP server corren aparte**, con `pnpm mcp:test`: viven en `mcp-server/src/__tests__/`
-y los corre `node --test`, no Vitest. Los `include` no se pisan — el de Vitest empieza en `src/`.
+y los corre `node --test` —con sus propios umbrales de coverage al 100, que son flags de node y no de
+Vitest—. Los `include` no se pisan: el de Vitest empieza en `src/`.
 
-**Sigue sin haber tests que rendericen un componente.** El `App.test.tsx` heredado de CRA se eliminó al
-montar el runner: buscaba el texto "learn react" de la plantilla, que la app nunca renderizó. Renderizar
-va a requerir `jsdom` en su propio bloque de config — sin cambiar el `environment` global, que rompería
-los de audio. Las `@testing-library/*` **ya no están en el árbol**: el spec 022 las borró junto con
-`@types/jest`, `postcss` y `autoprefixer`, porque ninguna tenía un consumidor y el caso que las esperaba
-—AC10 del spec 008, que el botón de transporte diga lo que el reloj hace y no lo que se le pidió— se
-cerró por la otra vía que el propio registro de deuda nombraba: extraer el handler a una pura
-(`engine-bridge.ts`) y pasarle el motor por parámetro. Cuando renderizar un componente haga falta de
-verdad, `jsdom` se agrega ahí, con su caso.
+**Renderizar un componente se resolvió sin `jsdom`, y descartarlo fue la decisión.** El `App.test.tsx`
+heredado de CRA se eliminó al montar el runner —buscaba el texto "learn react" de la plantilla, que la
+app nunca renderizó— y «no hay tests de UI» quedó abierto en `deuda.md` durante veintidós specs, con
+`jsdom` anotado como la salida prevista. El spec 024 la descartó midiendo y el 029 la implementó: jsdom
+no da canvas 2D, `createLinearGradient`, `ResizeObserver`, `matchMedia` ni un `getBoundingClientRect`
+con números, así que cubrir `Spectrum.tsx` con él exigiría mockear exactamente el código que se quiere
+cubrir, que es cobertura sin verificación. Las `@testing-library/*` **siguen sin estar en el árbol**: el
+spec 022 las borró junto con `@types/jest`, `postcss` y `autoprefixer`, porque ninguna tenía un
+consumidor y el caso que las esperaba —AC10 del spec 008, que el botón de transporte diga lo que el
+reloj hace y no lo que se le pidió— se cerró por la otra vía que el propio registro de deuda nombraba:
+extraer el handler a una pura (`engine-bridge.ts`) y pasarle el motor por parámetro.
 
-`components/__tests__/palette.test.ts` es el primer test de la carpeta y **no** cambia lo anterior: es de
-constantes, corre en `environment: 'node'` y no monta nada. La otra mitad de la respuesta es que la
-lógica no vive en los componentes — la derivación de `(x, y)` al nombre de nota que muestra `Board` está
+`components/__tests__/palette.test.ts` es de constantes, corre en el proyecto `node` y no monta nada —y
+es la mitad de la respuesta a por qué la carpeta aguantó tanto sin montar nada—. La otra mitad es que la
+lógica no vive en los componentes: la derivación de `(x, y)` al nombre de nota que muestra `Board` está
 en `domain/` (`occupantCellIndex` · `degreeByCellIndex` · `playOrderByCellIndex` · `notesForRotation` ·
 `midiName`), y el `.tsx` solo indexa el resultado.
 
