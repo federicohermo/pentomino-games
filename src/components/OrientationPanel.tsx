@@ -73,14 +73,16 @@ export default function OrientationPanel({ orientacion }: { orientacion: PropsDe
       {(Object.keys(SHAPES) as PieceKey[]).map(key=> {
         const celdas = miniCells(key, rotation, mirror);
         const ocupada = new Set(celdas.map(([x, y]) => `${x},${y}`));
-        // Una sola copia de "es la que esta en la mano": la leen el fondo del boton
-        // y el borde de la miniatura, y tienen que invertirse en el mismo momento.
+        // Una sola copia de "es la que esta en la mano": la leen el fondo del boton,
+        // el borde de la miniatura y el `aria-pressed`, y tienen que invertirse en el
+        // mismo momento.
         const activo = selected === key;
         return (
           <button
             key={key}
             onClick={()=> onSelect(key)}
             aria-label={`${key}, rotación ${rotation * 90}°${mirror ? ', reflejada' : ''}`}
+            aria-pressed={activo}
             className={`px-2 py-1 rounded-lg border text-sm flex flex-col items-center justify-center gap-1 ${activo? 'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}
           >
             {/* CINCO pistas fijas y no `min-content` ni `auto`: es lo que hace que el
