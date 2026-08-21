@@ -24,3 +24,9 @@ dist-ssr
 *.sw?
 .vitest-attachments/
 **/__screenshots__/
+
+# Worktrees de subagentes. Aca adentro vive un checkout completo con su propio
+# node_modules, asi que sin esta regla `git status` en main queda sucio mientras
+# corre cualquier tarea en paralelo, y el `git add -A` de un review ajeno se los
+# llevaria puestos.
+.claude/worktrees/
