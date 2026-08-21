@@ -166,6 +166,11 @@ function isConnected(cells: Cell[]): boolean {
   const queue: Cell[] = [cells[0]];
 
   while (queue.length > 0) {
+    // El `!` va con su motivo, que es la regla del repo desde el spec 027: la condicion
+    // del `while` de arriba ya garantiza la cola no vacia y TypeScript no puede
+    // relacionar `length` con lo que devuelve `shift()`. La otra salida —un `if (!c)
+    // continue`— seria una rama inalcanzable, o sea una linea sin cubrir contra el
+    // umbral 100.
     const [x, y] = queue.shift()!;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const k = `${x + dx},${y + dy}`;

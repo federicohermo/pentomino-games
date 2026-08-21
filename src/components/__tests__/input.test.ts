@@ -4,6 +4,7 @@ import {
   accionDeClick, esLaPiezaEnLaMano,
 } from '../input.ts';
 import { ACCION, EDICION } from '../constants/input.constants.ts';
+import { SHAPES } from '../../domain/constants/pieces.constants.ts';
 import type { EventoDeTecla } from '../types/input.types.ts';
 import type { PieceKey } from '../../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../../domain/types/board.types.ts';
@@ -17,7 +18,7 @@ import type { PlacedPiece } from '../../domain/types/board.types.ts';
 
 /** Un evento de tecla con todo apagado: cada test enciende solo lo que mide. */
 const tecla = (p: Partial<EventoDeTecla> & Pick<EventoDeTecla, 'key' | 'tipo'>): EventoDeTecla => ({
-  repeat: false, targetEsControl: false, tapLimpio: true, ...p,
+  repeat: false, targetEsControl: false, targetEsCelda: false, tapLimpio: true, ...p,
 });
 
 describe('AC1 — la rueda rota en los dos sentidos, con vuelta cíclica', () => {
@@ -101,6 +102,61 @@ describe('AC7 y AC8 — la barra espaciadora', () => {
   });
 });
 
+describe('AC5, AC6 y AC15 — el foco sobre una celda apaga la barra y NADA MÁS', () => {
+  /*
+   * LAS SEIS FILAS DE ESTA TABLA SON EL CRITERIO, Y JUNTAS. Por separado no dicen nada:
+   * lo que el spec 026 decide no es «la celda apaga la barra» sino «la celda apaga la
+   * barra y nada más». Escrita como tests sueltos, borrar el de `Shift` por redundante
+   * dejaría el archivo en verde mientras la app pierde los dos atajos del 013 — que es
+   * exactamente el bug de ensanchar `targetEsControl` en vez de agregar `targetEsCelda`:
+   * una línea más corta que apaga los tres atajos para arreglar uno.
+   *
+   * La asimetría entera, en una sola vista:
+   *
+   * | key                   | targetEsControl | targetEsCelda | esperado          |
+   * |-----------------------|-----------------|---------------|-------------------|
+   * | `' '` (keydown)       | false           | false         | ACCION.transporte |
+   * | `' '` (keydown)       | false           | TRUE          | null              |
+   * | `' '` (keydown)       | true            | false         | null              |
+   * | `'Shift'` (keyup)     | false           | TRUE          | ACCION.rotar      |
+   * | `'Control'` (keyup)   | false           | TRUE          | ACCION.reflejar   |
+   * | las doce letras       | false           | TRUE          | null, y no por la celda |
+   */
+  const tabla = [
+    ['la barra con el foco fuera del tablero alterna el transporte',
+      tecla({ key: ' ', tipo: 'keydown' }), ACCION.transporte],
+    ['AC5 — con una CELDA enfocada, la barra no alterna el transporte',
+      tecla({ key: ' ', tipo: 'keydown', targetEsCelda: true }), null],
+    ['AC5 — con un CONTROL enfocado tampoco, como antes del 026',
+      tecla({ key: ' ', tipo: 'keydown', targetEsControl: true }), null],
+    ['AC6 — con una celda enfocada, `Shift` SIGUE rotando',
+      tecla({ key: 'Shift', tipo: 'keyup', targetEsCelda: true }), ACCION.rotar],
+    ['AC6 — con una celda enfocada, `Ctrl` SIGUE reflejando',
+      tecla({ key: 'Control', tipo: 'keyup', targetEsCelda: true }), ACCION.reflejar],
+  ] as const;
+
+  it('la tabla de la asimetría, que es el AC entero', () => {
+    for (const [que, evento, esperado] of tabla) expect(accionDeTecla(evento), que).toBe(esperado);
+  });
+
+  it('AC15 — las doce letras siguen llegando al shell con una celda enfocada', () => {
+    // Hoy ninguna letra hace nada, así que las doce dan `null` en las dos columnas. Lo que
+    // el test afirma NO es el `null` —sería redundante con «las teclas que no son
+    // nuestras»— sino que `targetEsCelda` NO ES EL MOTIVO: la celda enfocada da el mismo
+    // resultado que el foco afuera. Es la promesa que el spec 018 va a heredar cuando las
+    // letras seleccionen pieza —`targetEsCelda` apaga la barra, el `Enter` y las flechas, y
+    // nada más—, y por eso se escribe comparando las dos columnas y no contra `null`: el
+    // día en que una letra haga algo, esta fila sigue diciendo la verdad sin tocarse.
+    for (const letra of Object.keys(SHAPES) as PieceKey[]) {
+      for (const key of [letra, letra.toLowerCase()]) {
+        const enElTablero = accionDeTecla(tecla({ key, tipo: 'keydown', targetEsCelda: true }));
+        const afuera = accionDeTecla(tecla({ key, tipo: 'keydown' }));
+        expect(enElTablero, key).toBe(afuera);
+      }
+    }
+  });
+});
+
 describe('AC7 — frenar el default es otra pregunta que producir una acción', () => {
   it('la barra repetida NO alterna el transporte pero SÍ frena el scroll', () => {
     // Es el caso que separa a las dos funciones, y el que las tenía fundidas dejaba
@@ -114,6 +170,17 @@ describe('AC7 — frenar el default es otra pregunta que producir una acción', 
 
   it('la barra del primer `keydown` frena el default', () => {
     expect(frenaElDefault(tecla({ key: ' ', tipo: 'keydown' }))).toBe(true);
+  });
+
+  it('con una CELDA enfocada la barra sigue frenando el default, aunque ya no haya acción', () => {
+    // La otra mitad de la asimetría del 026, y la que es fácil de perder al copiar la
+    // guarda de `targetEsControl`: la barra deja de alternar el transporte —la maneja el
+    // tablero— pero su default sigue siendo scrollear la página, y hay que frenarlo lo
+    // maneje quien lo maneje. Sin esta línea, el mismo golpe que coloca la pieza se lleva
+    // el tablero fuera de la pantalla.
+    const enLaCelda = tecla({ key: ' ', tipo: 'keydown', targetEsCelda: true });
+    expect(accionDeTecla(enLaCelda)).toBeNull();
+    expect(frenaElDefault(enLaCelda)).toBe(true);
   });
 
   it('con el foco sobre un control no frena nada', () => {

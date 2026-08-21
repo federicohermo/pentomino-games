@@ -147,4 +147,33 @@ describe('OrientationPanel', () => {
     await page.getByRole('button', { name: 'W, rotación 0°' }).click();
     expect(onSelect).toHaveBeenCalledWith('W');
   });
+
+  it('las doce declaran aria-pressed y exactamente una esta en true', async () => {
+    // El fondo del boton es "el canal de seleccionada" (comentario de arriba), y hasta
+    // ahora era el UNICO: sin `aria-pressed` esa informacion no llegaba al arbol de
+    // accesibilidad. Se cuentan los doce y no solo el seleccionado, porque una asercion
+    // que mire uno solo dejaria pasar el caso "se lo puse a uno solo".
+    const { container, unmount } = await render(
+      <OrientationPanel orientacion={orientacion({ selected: 'F' })} />,
+    );
+    const botones = [...container.querySelectorAll('button')];
+    expect(botones.length).toBe(PIEZAS.length);
+    for (const boton of botones) {
+      expect(boton.getAttribute('aria-pressed')).not.toBeNull();
+    }
+    const presionados = botones.filter(b => b.getAttribute('aria-pressed') === 'true');
+    expect(presionados.length).toBe(1);
+    await expect.element(page.getByRole('button', { name: /^F,/, pressed: true })).toBeVisible();
+    await unmount();
+
+    // Y que siga al estado: con otro `selected`, el `true` se mueve.
+    const { container: otro, unmount: unmountOtro } = await render(
+      <OrientationPanel orientacion={orientacion({ selected: 'W' })} />,
+    );
+    const botonesOtro = [...otro.querySelectorAll('button')];
+    const presionadosOtro = botonesOtro.filter(b => b.getAttribute('aria-pressed') === 'true');
+    expect(presionadosOtro.length).toBe(1);
+    await expect.element(page.getByRole('button', { name: /^W,/, pressed: true })).toBeVisible();
+    await unmountOtro();
+  });
 });

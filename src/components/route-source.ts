@@ -86,6 +86,45 @@ export function encolar(s: Sequence, placed: readonly PlacedPiece[]): void {
 }
 
 /**
+ * Devuelve la cola de dibujo a cero. La llama el Reset del shell —via
+ * `reiniciarRecorrido()` de `use-engine.ts`— y NADIE mas.
+ *
+ * Existe porque este modulo avanza solo cuando `cycleGeneration()` sube, y ese contador
+ * lo mueve `tick()`, o sea el reloj. Con el transporte parado `activa` y `estrenando`
+ * quedan congelados, pero `encolar` igual recomputa el velo leyendolos: el resultado era
+ * el velo de piezas que ya no estan dibujado sobre un tablero vacio, y se autocuraba
+ * recien al volver a apretar Play.
+ *
+ * La asimetria que arregla estaba escrita de un solo lado. `App.tsx` ya declara que
+ * «Reset frena el transporte ADEMAS de vaciar el tablero […] Reset es una orden
+ * explicita de volver a cero, no una edicion del tablero, asi que es el unico lugar
+ * donde saltearse D5 es lo correcto» — y ese parrafo hablaba solo del motor. Esta es la
+ * SEGUNDA cola, y le vale igual: las dos se reinician por el mismo camino o vuelve la
+ * asimetria.
+ *
+ * Por eso NO alcanza con que `encolar` limpie sola cuando la secuencia viene vacia: eso
+ * convertiria «el tablero quedo vacio» en «volve a cero», y son cosas distintas. Quitar
+ * la ultima pieza con el transporte corriendo tiene que seguir respetando D5 del 009 y
+ * dejar que el ciclo cierre; el reinicio es una ORDEN, no una consecuencia.
+ *
+ * `generacion` es lo unico que NO vuelve a su valor inicial: se sincroniza con el motor.
+ * `cycleGen` no se resetea nunca —su propio docblock dice que hacerlo «haria creer a la
+ * UI que hubo un swap que no hubo»— asi que ponerla en cero reintroduce esa mentira
+ * desde este lado, y ademas con la pendiente que `encolar` deja inmediatamente despues
+ * el proximo cuadro haria un swap FUERA del borde del ciclo.
+ */
+export function reiniciar(): void {
+  activa = RUTA_VACIA;
+  pendiente = null;
+  estrenando = [];
+  generacion = cycleGeneration();
+  // Por `recomputarVelo` y no por `veloActual = []` para que el velo tenga un solo lugar
+  // donde se calcula: con las tres de arriba ya en cero, sale vacio y con identidad
+  // nueva, que es la senal que el loop de dibujo mira para rearmar.
+  recomputarVelo();
+}
+
+/**
  * El recorrido que esta sonando ahora mismo, como tabla indexada por offset. La llama
  * el loop de dibujo, y el swap ocurre ACA: en el mismo cuadro en que el motor lo
  * reporta, no cuando React se entere.

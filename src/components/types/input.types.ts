@@ -11,13 +11,13 @@ export type Edicion = (typeof EDICION)[keyof typeof EDICION];
  *
  * No es el `KeyboardEvent` del DOM a propósito: los tests de `src/` corren en
  * `environment: 'node'` y no hay jsdom, así que una pura que reciba el evento no se
- * puede testear sin fabricar uno. Recibiendo campos, las cinco guardas quedan cubiertas
+ * puede testear sin fabricar uno. Recibiendo campos, las seis guardas quedan cubiertas
  * en `environment: 'node'` y lo único que queda sin test es el cableado.
  *
- * `targetEsControl` y `tapLimpio` los calcula el llamador porque salen de afuera del
- * evento: el primero mira el `e.target` contra `HTMLButtonElement`/`HTMLInputElement`
- * —tipos del DOM que la pura no puede ver— y el segundo es estado entre eventos, que
- * una pura por definición no tiene.
+ * Los dos `target*` y `tapLimpio` los calcula el llamador porque salen de afuera del
+ * evento: los primeros miran el `e.target` contra `HTMLButtonElement`/`HTMLInputElement`
+ * y contra el `role="gridcell"` más cercano —DOM que la pura no puede ver— y el último es
+ * estado entre eventos, que una pura por definición no tiene.
  */
 export interface EventoDeTecla {
   /** El `key` del DOM: `'Shift'`, `'Control'` o `' '` para la barra espaciadora. */
@@ -25,8 +25,30 @@ export interface EventoDeTecla {
   tipo: 'keydown' | 'keyup';
   /** El auto-repeat del sistema. Solo lo ejerce la barra, que es la única en `keydown`. */
   repeat: boolean;
-  /** El foco está sobre un `<button>` o un `<input>`: el navegador se queda el evento. */
+  /**
+   * El foco está sobre un `<button>` o un `<input>`: el navegador se queda **todo**.
+   *
+   * Todas las teclas, sin excepción: escribir en el slider de tempo no rota la pieza y la
+   * barra activa el control armado por la vía nativa, sin un `blur()` a mano.
+   */
   targetEsControl: boolean;
+  /**
+   * El foco está sobre una celda del tablero: el tablero se queda **la barra, el `Enter` y
+   * las flechas**, y nada más.
+   *
+   * Es una pregunta DISTINTA de `targetEsControl`, no una versión más ancha de la misma, y
+   * ahí está la decisión del spec 026: `targetEsControl` apaga todas las teclas porque el
+   * evento entero es del navegador; esta apaga las que el tablero enfocado maneja por su
+   * cuenta y **deja pasar el resto**. Con una celda enfocada, `Shift` tiene que seguir
+   * rotando y `Ctrl` reflejando — que es exactamente el gesto que el spec 013 fue a buscar,
+   * tocar sin ir al panel. Ensanchar `targetEsControl` para que también matcheara la celda
+   * arreglaba el doble disparo de la barra apagando los dos atajos por los que existe.
+   *
+   * De las tres teclas que nombra, esta pura sólo puede vetar la barra: el `Enter` y las
+   * flechas nunca fueron suyas y las maneja el `onKeyDown` de la celda, que es el único que
+   * sabe CUÁL celda tiene el foco.
+   */
+  targetEsCelda: boolean;
   /** Mientras el modificador estuvo abajo no llegó otra tecla ni la rueda (D10). */
   tapLimpio: boolean;
 }

@@ -34,17 +34,16 @@ esta lista y entra como fila en [log.md](./log.md).
   identidad visual y no un arreglo. Están en `LC_EXCEPCIONES` de `palette.constants.ts`, y
   `palette.test.ts` verifica que la excepción **siga haciendo falta**: si alguien retoca esos dos
   fondos, el test falla y obliga a sacarlas de la lista.
-- **El tablero no se puede tocar con el teclado.** Cada celda es un `div` con `onClick`, sin `role`,
-  sin `tabIndex` y sin nombre accesible, así que no recibe foco y ningún lector de pantalla la anuncia.
-  El `title` que el 007 le agregó —`(x,y) · D#5 · grado 3`— es un tooltip de mouse y **no** cubre esto:
-  sobre un elemento genérico que no recibe foco, `title` no se anuncia. Quedó anotado como si lo
-  cubriera, que es peor que no anotarlo — hacía ver el hueco como resuelto. Arreglarlo es decidir el
-  modelo de foco de una grilla de 60 celdas (¿una tab stop y flechas, o 60 tab stops?), y toca
-  `Board.tsx` entero, así que necesita spec propio.
-  **El spec 014 lo subió de prioridad y no lo cerró** (`T047`): hasta ahí era un hueco de *lectura*, y
-  desde el 014 la grilla tiene dos operaciones que solo existen ahí —el click quita la pieza y
-  `Alt`+click la mutea—, o sea que hay una operación **destructiva** que no se puede ejecutar de
-  ninguna otra forma. Tampoco hay deshacer.
+- **No hay deshacer.** Venía como la última oración del ítem del teclado —«tampoco hay deshacer»— y se
+  queda cuando ese ítem se va con el spec 026, porque el 026 lo hace **más** necesario y no menos.
+  Desde el spec 014 la única forma de quitar una pieza es clickearla en el tablero, y eso ya era una
+  operación destructiva sin vuelta atrás; el 026 le agrega la segunda vía —una tecla sobre la celda
+  enfocada— y con eso la vuelve alcanzable **sin querer**: hasta ahora había que apuntarle a la pieza,
+  y ahora alcanza con que el foco esté en el tablero. Cinco celdas se van y el tablero no tiene forma
+  de traerlas. «Reset» es el mismo agujero en grande, y también lo es el `submit` accidental que
+  `.claude/rules/ui.md` evita pidiendo `type="button"` en todo `<button>`: los tres pierden el tablero
+  entero y ninguno pregunta. Necesita spec propio — un historial de estados del tablero toca dónde vive
+  `placed`, o sea el shell.
 - **La colocación no se repliega sobre la costura.** El *recorrido* sí —`(0,0)` y `(9,5)` son
   adyacentes desde el spec 009— pero una pieza no se puede colocar cruzando ese borde: `isValid`
   rechaza toda celda fuera de la grilla. O sea que el tablero es un cilindro para el circuito y un

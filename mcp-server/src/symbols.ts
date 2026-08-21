@@ -237,10 +237,35 @@ export function parseModule(text: string, file: string): ModuleFacts {
   return { exports, imports };
 }
 
-/** Todos los `.ts`/`.tsx` bajo un directorio, en orden estable. */
+/**
+ * Todos los `.ts`/`.tsx` bajo un directorio, en orden estable.
+ *
+ * El comparador es aritmetico y no un `?:`, y las dos razones se midieron juntas
+ * cuando el spec 023 corrio `pnpm verify` en un runner de Linux por primera vez.
+ *
+ * Decia `a.name < b.name ? -1 : 1`, y eso tiene un defecto latente y uno visible.
+ * El latente: para dos nombres IGUALES devuelve 1, o sea afirma `a > b`. Es un
+ * comparador inconsistente; hoy no explota porque los nombres de un directorio son
+ * unicos, pero es una promesa que el tipo de `sort` no obliga a cumplir.
+ *
+ * El visible es el que lo delato, y es de la familia que este repo persigue —pasar
+ * en verde—: **que rama del `?:` se ejecuta depende del orden en que el sistema de
+ * archivos entrega las entradas**. NTFS las devuelve alfabeticas y ext4 en orden de
+ * hash, asi que V8 puede no tomar nunca uno de los dos lados. Medido: en Windows
+ * las 102 ramas de este archivo quedaban cubiertas y en el runner una no
+ * —`BRDA:243,72,0,0`, la de esta linea—, y `mcp:test` daba
+ * `99.64% branch coverage does not meet threshold of 100%`. O sea que el umbral 100
+ * que fijo el 029 pasaba por el sistema de archivos de quien lo corriera.
+ *
+ * `Number(x) - Number(y)` no tiene ramas, asi que no hay nada cuya cobertura pueda
+ * depender del entorno, y de paso el orden queda total: devuelve 0 para iguales. No
+ * se usa `localeCompare` porque depende del locale, que es cambiar una dependencia
+ * del entorno por otra.
+ */
 function walk(dir: string): string[] {
   const out: string[] = [];
-  for (const e of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : 1)) {
+  for (const e of readdirSync(dir, { withFileTypes: true })
+    .sort((a, b) => Number(a.name > b.name) - Number(a.name < b.name))) {
     const p = join(dir, e.name);
     if (e.isDirectory()) out.push(...walk(p));
     else if (/\.tsx?$/.test(e.name) && !e.name.endsWith('.d.ts')) out.push(p);

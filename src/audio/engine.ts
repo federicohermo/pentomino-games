@@ -27,15 +27,48 @@ let master: GainNode | null = null;
 let analyser: AnalyserNode | null = null;
 
 /**
+ * Si construir el grafo ya fallo. Es estado y no configuracion: nace en false y lo
+ * sube el `catch` de `audio()`. Por que latchea, en el docblock de abajo.
+ */
+let fallado = false;
+
+/**
  * El AudioContext vive a nivel de modulo: hay uno por pestana, no uno por
  * instancia del componente. Se crea perezosamente porque los navegadores exigen
  * un gesto del usuario para arrancar el audio.
  *
  * Devuelve null si el navegador no soporta Web Audio: la app queda usable pero
  * muda, y cada llamador tiene que chequearlo.
+ *
+ * ## Un fallo PARCIAL no puede dejar el contexto en pie
+ *
+ * `ctx` se asigna ANTES de crear el gain y el analizador, asi que cualquier cosa que
+ * tire despues de `new AudioContext()` sale por el `catch` devolviendo null pero deja
+ * el contexto asignado. Sin bajarlo, la llamada siguiente entra por `if (ctx) return
+ * ctx` y contesta un contexto con `master` en null. Desde ahi: `startClock` no salia
+ * por su guarda —`audio()` devolvio algo—, arrancaba el `setInterval`, `clockRunning()`
+ * pasaba a `true`, `alternarTransporte` le creia y el boton decia «Pausa»... mientras
+ * cada vuelta del reloj se plantaba antes de agendar y no sonaba una nota. Es
+ * exactamente la falla suave que esta capa obliga a chequear en todo llamador, entrando
+ * por la unica puerta que el llamador no puede ver: pregunta si el motor arranco, y el
+ * motor le contesta que si.
+ *
+ * Por eso el `catch` baja las tres referencias juntas. El contexto a medio construir
+ * NO se cierra: `close()` devuelve una promesa y obligaria a colgarle un rechazo vacio
+ * que no corre nunca —una funcion sin cubrir contra el umbral 100, y el repo no tiene
+ * con que silenciarla—. Queda vivo y sin referencias, igual que antes de este spec.
+ *
+ * ## La marca LATCHEA, y ese es el precio
+ *
+ * Sin ella cada llamada reintenta el constructor y vuelve a avisar por consola: un
+ * click, un warning. Con ella la app queda muda hasta recargar aunque la causa fuera
+ * transitoria. Se acepta por dos motivos: el reintento tampoco la desmutea —lo unico
+ * que agrega hoy es ese warning por click— y un estado que se recupera solo es un
+ * estado que nadie puede reproducir.
  */
 export function audio(): AudioContext | null {
   if (ctx) return ctx;
+  if (fallado) return null;
   try {
     ctx = new AudioContext();
     master = ctx.createGain();
@@ -51,6 +84,12 @@ export function audio(): AudioContext | null {
     master.connect(analyser);
     analyser.connect(ctx.destination);
   } catch (e) {
+    // Las tres juntas: un `ctx` vivo con `master` en null es el estado degradado que
+    // el docblock describe, y el unico que la UI no puede distinguir de uno sano.
+    ctx = null;
+    master = null;
+    analyser = null;
+    fallado = true;
     console.warn('Web Audio no disponible', e);
     return null;
   }
@@ -121,12 +160,31 @@ export function readSpectrum(): Uint8Array<ArrayBuffer> | null {
  */
 export function playNotes(notes: number[]): void {
   const c = audio();
+  // ## Por que la guarda se queda con las dos mitades
+  //
+  // La segunda ya no es alcanzable desde afuera: desde este spec el `catch` de
+  // `audio()` baja `ctx` y `master` juntos, asi que un contexto vivo implica un master
+  // vivo. Se queda igual porque es lo que impide que un fallo FUTURO —una linea nueva
+  // entre la asignacion de `ctx` y la del master, o un camino que todavia no existe—
+  // llegue a `scheduleVoice` con destino nulo, y porque el estrechamiento del `const`
+  // de abajo sale de ella.
+  //
+  // Va con este comentario y no sin el porque «rama inalcanzable» es justo lo que el
+  // repo pide borrar: esta es la excepcion argumentada. Y se la puede dejar escrita
+  // porque el coverage no la marca: el `return` SI se ejecuta —por la primera mitad,
+  // con Web Audio ausente— y la segunda se evalua en cada arpegio. En `tick()` no
+  // pasaba eso y por eso ahi la guarda se mudo; el argumento esta en su docblock.
   if (!c || !master) return;
+  // `bus` en vez de un `!` sobre `master`: el `forEach` de abajo es un closure y ahi
+  // TypeScript pierde el estrechamiento, porque `master` es un `let` de modulo y
+  // cualquier llamada intermedia podria reasignarlo. La const lo congela, y el repo
+  // prohibe la asercion no nula por el mismo motivo que el `any`.
+  const bus = master;
   const start = c.currentTime + PLAY_DELAY;
   const interval = intervalDuration(bpm);
   const dur = NOTE_INTERVALS * interval;
   const rel = RELEASE_INTERVALS * interval;
-  notes.forEach((m, i) => scheduleVoice(c, master!, midiToHz(m), start + i * interval, dur, rel));
+  notes.forEach((m, i) => scheduleVoice(c, bus, midiToHz(m), start + i * interval, dur, rel));
 }
 
 /** Dispara ya, reanudando el contexto. Debe llamarse desde un gesto del usuario. */
@@ -295,9 +353,27 @@ function outputLatency(c: AudioContext): number {
   return 0;
 }
 
-function tick(): void {
-  const c = audio();
-  if (!c || !master) return;
+/**
+ * El cableado a sonido de una ventana de lookahead.
+ *
+ * ## Recibe el destino en vez de leerlo del modulo, y eso NO es cosmetico
+ *
+ * Hasta el spec 027 empezaba con la misma guarda que `playNotes` —`const c = audio();
+ * if (!c || !master) return;`— y ese `return` era alcanzable: con el grafo a medio
+ * construir `audio()` contestaba un contexto sin master y el reloj arrancaba igual.
+ * Bajar `ctx` junto con `master` en el `catch` mato esa entrada, y con ella la unica
+ * forma de ejecutar el `return`: el timer solo existe despues de que `audio()` contesto,
+ * y desde entonces el par no se puede volver a partir.
+ *
+ * La guarda no se borro, se MUDO al unico lugar donde sigue siendo alcanzable —
+ * `startClock`, que corre con Web Audio ausente—, y aca la reemplaza la firma. Es mas
+ * fuerte que la guarda: no hay que acordarse de chequear, no compila sin el par. Y es
+ * la salida que el repo pide para una rama inalcanzable: se vuelve alcanzable o se va,
+ * nunca se silencia. Medido: dejarla escrita aca daba un statement y una branch
+ * descubiertos contra el umbral 100, en las dos formas —el `return` del `if` negado, y
+ * el `else` implicito del `if` en positivo—.
+ */
+function tick(c: AudioContext, bus: GainNode): void {
   // El bpm no cambia dentro de la vuelta, asi que la duracion y el release salen una
   // sola vez y todas las notas de esta ventana quedan medidas contra el mismo tempo.
   const interval = intervalDuration(bpm);
@@ -346,16 +422,23 @@ function tick(): void {
   // Separar los dos significados costaria un cuarto `HIT` y un discriminante en
   // `Click`, o sea dos tipos nuevos para distinguir dos maneras de callarse.
   for (const hit of w.hits) {
-    if (hit.kind === HIT.note) scheduleVoice(c, master, hit.hz, hit.at, dur, rel);
-    else if (hit.kind === HIT.cross) scheduleVoice(c, master, hit.hz, hit.at, grace, rel, GRACE_VELOCITY);
-    else if (clicksAudible) scheduleClick(c, master, hit.at);
+    if (hit.kind === HIT.note) scheduleVoice(c, bus, hit.hz, hit.at, dur, rel);
+    else if (hit.kind === HIT.cross) scheduleVoice(c, bus, hit.hz, hit.at, grace, rel, GRACE_VELOCITY);
+    else if (clicksAudible) scheduleClick(c, bus, hit.at);
   }
 }
 
 export function startClock(): void {
   if (timer !== null) return;
   const c = audio();
-  if (!c) return;
+  const bus = master;
+  // Las dos mitades, y la segunda es la que este spec trajo hasta aca: es la casa nueva
+  // de la guarda que `tick()` tenia adentro. Arrancar el reloj es lo que hace que
+  // `clockRunning()` conteste `true` y que el boton diga «Pausa», asi que es EL lugar
+  // donde no se puede mentir sobre si el motor esta entero. Hoy `audio()` ya no devuelve
+  // un contexto sin master —el `catch` los baja juntos—, pero el que arranca el reloj
+  // tiene que verificarlo igual: es la unica funcion cuya respuesta la UI muestra.
+  if (!c || !bus) return;
   if (c.state === 'suspended') void c.resume();
   clock.origin = c.currentTime + CLOCK_START_DELAY;
   // Estrictamente ANTES de origin: firstOnsetAfter devuelve el primer onset
@@ -364,7 +447,10 @@ export function startClock(): void {
   // el spec 009 son 7,5 s con 8 piezas, no un compas. Es la misma trampa que vuelve
   // a aparecer en el swap de collectWindow.
   clock.scheduledUntil = c.currentTime;
-  timer = window.setInterval(tick, TICK_MS);
+  // El par viaja en el closure y no se vuelve a leer del modulo en cada vuelta: ya
+  // quedo verificado en la guarda de arriba y no puede cambiar mientras el timer viva. Al
+  // pararlo, el closure se va con el.
+  timer = window.setInterval(() => tick(c, bus), TICK_MS);
 }
 
 export function stopClock(): void {

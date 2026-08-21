@@ -15,11 +15,12 @@ import PiecePalette from "./components/PiecePalette.tsx";
 import Board from "./components/Board.tsx";
 import Spectrum from "./components/Spectrum.tsx";
 import { alternarTransporte } from "./components/engine-bridge.ts";
-import { MOTOR, frenarTransporte, useMotorSincronizado } from "./components/use-engine.ts";
+import { MOTOR, frenarTransporte, reiniciarRecorrido, useMotorSincronizado } from "./components/use-engine.ts";
 import { useAtajosDeTeclado, useRuedaRota } from "./components/use-input.ts";
 import {
   rotacionPorRueda, reflejaElContextMenu, accionDeClick, esLaPiezaEnLaMano,
 } from "./components/input.ts";
+import { anuncioDeEdicion } from "./components/cell-name.ts";
 import { EDICION } from "./components/constants/input.constants.ts";
 
 /**
@@ -80,8 +81,30 @@ export default function App(){
   // placed pieces
   const [placed, setPlaced] = useState<PlacedPiece[]>([]);
 
-  // celda del tablero bajo el cursor, para el fantasma de previsualización
+  // Celda del tablero bajo el cursor, para el fantasma de previsualización. Desde el spec
+  // 026 tiene DOS escritores —el mouse y el foco del teclado— y sigue siendo UNO solo:
+  // la celda enfocada **es** `hover`. De ahí que el fantasma, el cursor `pointer`/
+  // `not-allowed` y `hoverEdita` funcionen con teclado sin una línea de dibujo nueva, y de
+  // ahí también que no aparezca un segundo «dónde está apuntando» que pueda
+  // desincronizarse del primero.
   const [hover, setHover] = useState<Cell | null>(null);
+
+  // Si el foco del DOM está adentro del tablero. Es lo único que `hover` no puede contestar
+  // solo —el mouse también lo escribe— y hacen falta las dos cosas que dependen de eso:
+  // pintar el anillo de foco (que no tiene que aparecer bajo el mouse, que no tiene foco
+  // ninguno) y la regla de desempate del `onMouseLeave`, abajo.
+  //
+  // Es estado nuevo y el spec pedía evitarlo, así que el número: cambia cuando el foco
+  // ENTRA o SALE del tablero, no por celda cruzada. Contra los 337 elementos por celda que
+  // midió el 027, son dos re-renders por visita — la razón por la que `hover` no puede ser
+  // un ref no vale para éste al revés: acá la baja frecuencia es la que lo hace barato.
+  const [focoEnTablero, setFocoEnTablero] = useState<boolean>(false);
+
+  // Lo último que cambió en el tablero, dicho para la región `aria-live` (AC10). Vive en el
+  // estado y no se escribe en el DOM a mano porque es el shell quien sabe qué edición
+  // ocurrió: la región es un nodo más del render, y React lo actualiza como a cualquier
+  // otro. El texto sale de `cell-name.ts` y no de una cadena armada acá.
+  const [anuncio, setAnuncio] = useState<string>('');
 
   const idRef = useRef(0);
 
@@ -143,6 +166,12 @@ export default function App(){
       if (accion === EDICION.quitar) setPlaced(arr => arr.filter(p => p.id !== ocupante.id));
       // Objeto nuevo y no `p.muted = !p.muted`: nunca mutar lo que ya se entregó a React.
       else setPlaced(arr => arr.map(p => p.id === ocupante.id ? { ...p, muted: !p.muted } : p));
+      // El anuncio dice el estado en el que la pieza QUEDA, y sale de la misma expresión
+      // que el `setPlaced` de arriba acaba de guardar: así el lector de pantalla no puede
+      // decir un muteo distinto del que el tablero aplicó. `quitar` lo recibe igual —lo
+      // que la frase dice ahí es cuál se fue y de dónde—; el argumento está en el docblock
+      // de `anuncioDeEdicion`.
+      setAnuncio(anuncioDeEdicion(accion, ocupante.piece, x, y, !ocupante.muted));
       return;
     }
 
@@ -157,6 +186,9 @@ export default function App(){
       piece: selected, rotation, mirror, cells, muted,
     };
     setPlaced(prev => [...prev, newPiece]);
+    // Después del `isValid`, no antes: una jugada que no entra no cambió el tablero, así
+    // que anunciarla sería contarle a quien no ve la pantalla algo que no pasó.
+    setAnuncio(anuncioDeEdicion(accion, selected, x, y, muted));
     // Con el transporte corriendo, disparar acá duplicaría el arpegio: con D5
     // (spec 009) la pieza nueva ni siquiera entra al recorrido que está sonando
     // —`setSequence` no interrumpe el ciclo en curso, así que hasta que cierre la
@@ -177,8 +209,16 @@ export default function App(){
   // a cero, no una edición del tablero, así que es el único lugar donde saltearse D5 es
   // lo correcto. Lo que queda es la latencia de pausar, que el motor ya documenta: los
   // 100 ms del lookahead más la cola del arpegio ya agendado.
+  //
+  // Y ese párrafo valía para UNA de las dos colas. La otra —la de dibujo, en
+  // `components/route-source.ts`— avanza sólo cuando el motor cierra un ciclo, o sea
+  // nunca con el reloj parado: sin reiniciarla, el velo de las piezas que ya no están
+  // se seguía dibujando sobre un tablero vacío hasta el próximo Play (spec 027). Las
+  // dos se reinician juntas o vuelve el bug, y las dos entran por `use-engine.ts`, que
+  // es el único módulo por el que este shell le habla al motor.
   function resetBoard(){
     frenarTransporte();
+    reiniciarRecorrido();
     setPlaying(false);
     setPlaced([]); // el efecto de reconciliación se encarga de vaciar la secuencia
   }
@@ -230,6 +270,28 @@ export default function App(){
     if (reflejaElContextMenu(e)) setMirror(m=>!m);
   }
 
+  // El foco entró a una celda del tablero, o se fue de él (`null`). Las dos mitades en una
+  // función porque son el mismo hecho, y las dos líneas dicen exactamente eso: la celda
+  // enfocada ES el cursor —al entrar lo escribe, al salir lo apaga (lo mismo que hace hoy
+  // `onMouseLeave` con el mouse)— y `focoEnTablero` es «¿llegó una celda?».
+  function alMoverElFoco(celda: Cell | null){
+    setFocoEnTablero(celda !== null);
+    setHover(celda);
+  }
+
+  // LA regla de desempate, escrita una sola vez y en un solo lugar: mientras el foco del
+  // DOM esté adentro del tablero, el foco manda sobre el mouse. Sin ella, sacar el mouse de
+  // la grilla apagaría el fantasma de la celda enfocada y el roving tabindex se quedaría
+  // sin ancla — o sea que «la celda enfocada es el hover» sería una promesa que el mouse
+  // rompe. Dos copias de esta condición serían dos formas de que el fantasma parpadee.
+  //
+  // La otra dirección la resuelve el propio evento y no una segunda regla: el `blur` sabe a
+  // quién le pasa el foco, así que `Board` ya distingue «salió del tablero» de «saltó a
+  // otra celda» antes de llamar a `alMoverElFoco(null)`.
+  function alSalirElMouse(){
+    if (!focoEnTablero) setHover(null);
+  }
+
   // Si la celda bajo el cursor está ocupada por la pieza que está en la mano, el click
   // no coloca: edita. La condición sale de la MISMA pura que decide el click, así que el
   // cursor no puede prometer una cosa y el gesto hacer otra.
@@ -247,22 +309,70 @@ export default function App(){
   const previewCells = hover && !hoverEdita ? cellsAt(transformedShape, ANCHOR_INDEX[selected], hover[0], hover[1]) : [];
   const previewValid = hover && !hoverEdita ? isValid(previewCells, placed) : false;
 
+  // El porque de este `useMemo` —y el numero que lo justifica— esta abajo, al lado del
+  // `<PiecePalette>` que lo consume: es donde estaba escrita la decision contraria.
+  const orientacion = useMemo(()=> ({
+    selected, rotation, mirror, regimen, noteSet,
+    onSelect: setSelected,
+    onRotate: setRotation,
+    onMirror: ()=> setMirror(m=>!m),
+    onRegimen: setRegimen,
+  }), [selected, rotation, mirror, regimen, noteSet]);
+
   return (
     <div className="min-h-screen bg-fondo text-slate-900 p-4">
       <div className="max-w-6xl mx-auto grid grid-cols-12 gap-4">
-        {/* Los dos objetos se arman INLINE y no en un `useMemo`: tienen identidad nueva
-            por render, y eso no cuesta nada porque `PiecePalette` no esta memoizado —
-            re-renderiza igual cuando el shell re-renderiza. Va escrito porque es lo
-            primero que alguien va a querer "arreglar" con un `useMemo` que no compra
-            nada y agrega dos arrays de dependencias que mantener. */}
+        {/* Hasta el spec 027 aca decia que los dos objetos se armaban INLINE porque
+            memoizarlos "no compra nada": `PiecePalette` no esta memoizado, asi que
+            re-renderiza igual. Era cierto y CIRCULAR —no memoizamos las props porque el
+            componente no esta memoizado— y encima nunca se habia medido: era el unico caso
+            de frecuencia del repo sin numero, en un proyecto donde los otros dos existen
+            porque alguien conto 4 a 10,6 cambios por segundo y 60 fps.
+
+            El numero, medido en `__tests__/App.browser.test.tsx`: `hover` vive en este
+            archivo, asi que cruzar diez celdas con el cursor re-renderizaba el arbol diez
+            veces y `OrientationPanel` se ejecutaba las DIEZ, a 337 elementos cada una
+            (1 grilla + 12 x (boton + grilla + 25 celdas + span), con `MINI_BOX = 5`). O sea
+            3.370 elementos reconciliados para llegar al MISMO DOM, porque ninguna prop del
+            panel depende del hover.
+
+            Y el que dio vuelta la decision fue el costo, medido con `Profiler` sobre el
+            commit entero de la app: mediana de 4,9 ms por celda cruzada contra 1,9 ms con la
+            barrera puesta. Son 3,0 ms —el 61 %— gastados en el subarbol que no puede haber
+            cambiado, a la frecuencia del MOUSE, que arrastrandose sobre el tablero es una
+            celda por cuadro dibujado. Es el mismo criterio con el que el spec 010 saco a
+            `Spectrum` y a `Playhead` de React; a este le alcanza con un `memo`.
+
+            El array de dependencias que el comentario viejo temia no es deuda a mano:
+            `react-hooks/exhaustive-deps` lo verifica en el lint, asi que un campo nuevo en
+            `PropsDeOrientacion` que se olvide de entrar da rojo y no un panel viejo en
+            pantalla.
+
+            Este numero mide SOLO la mitad del mouse. El spec 026 le agrega un segundo
+            escritor de `hover` con la misma frecuencia por pulsacion —la celda enfocada con
+            el teclado ES `hover`, no un estado paralelo—, y esa medicion la escribe el,
+            debajo de esta.
+
+            Y aca esta, escrita por el 026: el segundo escritor son las flechas, y cada
+            pulsacion mueve el foco, el foco escribe `hover` y `hover` re-renderiza este
+            arbol — los mismos 337 elementos de `OrientationPanel`, por el mismo motivo (ni
+            una sola prop del panel depende del cursor). O sea que la barrera de arriba
+            cubre las dos manos sin una linea nueva: el `useMemo` no mira de donde vino el
+            cambio de `hover`.
+
+            Lo que cambia es el ALCANCE de la frase, no el numero. Los 4,9 ms → 1,9 ms
+            siguen medidos sobre el mouse, que arrastrandose cruza una celda por cuadro
+            dibujado; el teclado escribe lo mismo pero a la cadencia de la mano, y con
+            auto-repeat a la del sistema. No se remidio —seria el mismo trabajo por
+            pulsacion contra un reloj distinto—, asi que lo que hay que leer arriba es
+            «por escritura de `hover`» y no «por celda cruzada con el mouse». Desde este
+            merge el numero describe el sistema entero y no la mitad.
+
+            `transporte` se sigue armando inline, y ahora por el numero y no por el
+            argumento circular: nadie lo consume detras de una barrera, asi que memoizarlo no
+            cambiaria un solo render. */}
         <PiecePalette
-          orientacion={{
-            selected, rotation, mirror, regimen, noteSet,
-            onSelect: setSelected,
-            onRotate: setRotation,
-            onMirror: ()=> setMirror(m=>!m),
-            onRegimen: setRegimen,
-          }}
+          orientacion={orientacion}
           transporte={{
             tempo, playing, clicks,
             onTempo: setTempo,
@@ -283,7 +393,9 @@ export default function App(){
           regimen={regimen}
           onCellClick={handleCellClick}
           onCellEnter={setHover}
-          onMouseLeave={()=> setHover(null)}
+          onMouseLeave={alSalirElMouse}
+          focoEnTablero={focoEnTablero}
+          onFoco={alMoverElFoco}
           hoverEdita={hoverEdita}
           onContextMenu={handleContextMenu}
           boardRef={boardRef}
@@ -296,6 +408,24 @@ export default function App(){
           <Spectrum />
         </div>
       </div>
+
+      {/* La primera región `aria-live` de `src/`: hasta el spec 026 no había ninguna.
+          Anuncia el resultado de las TRES ediciones —colocar, quitar y mutear— porque son
+          lo único que cambia el tablero y lo único que, sin ver la pantalla, no se puede
+          confirmar de otra forma: el tablero se edita EN el tablero desde el 014, y quitar
+          no tiene deshacer.
+
+          Y NADA más. Ni el recorrido, ni la cabeza lectora, ni el espectro: la cabeza pasa
+          de celda en celda entre 4 y 10,6 veces por segundo, y una región que hable a esa
+          frecuencia es hostil —el lector de pantalla nunca termina una frase, y tapa todo
+          lo demás—. Cómo contar el recorrido sin narrarlo está anotado como seguimiento
+          del spec 025.
+
+          `polite` y no `assertive`: la edición la pidió quien la escucha, así que puede
+          esperar a que el lector termine lo que está diciendo. El nodo existe desde el
+          primer render con el texto vacío, que es lo que hace que el primer anuncio se
+          escuche: una región recién insertada en el DOM no se anuncia. */}
+      <div aria-live="polite" className="sr-only">{anuncio}</div>
 
       {/* El footer explicaba el modelo y no mencionaba un solo gesto, que es lo que hacía
           invisibles a los atajos del spec 013. Ahora dice las dos cosas: qué cambia cada

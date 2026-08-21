@@ -126,7 +126,11 @@ esta escala no hace falta, y agregarlo sería la clase de complejidad que un pro
 | `placed` | `PlacedPiece[]` | Piezas en el tablero |
 | `hover` | `Cell \| null` | Celda bajo el cursor, para el fantasma |
 
-Derivados con `useMemo`: `transformedShape`, `secuencia` y `noteSet`. La llamada a
+Derivados con `useMemo`: `transformedShape`, `secuencia`, `noteSet` y —desde el spec 027— el objeto
+`orientacion`. Ese cuarto no es una derivación cara sino **la otra mitad del `memo()` de
+`OrientationPanel`**: sin él la prop tiene identidad nueva por render y la barrera no cierra nunca. El
+número que lo justifica —4,9 ms por celda cruzada contra 1,9 ms— está en `App.tsx`, al lado del
+`<PiecePalette>`. La llamada a
 `useMotorSincronizado` va **después** del `useMemo` de `secuencia` y no arriba con el resto del cableado:
 `secuencia` es un `const`, así que leerla antes sería leerla en su zona muerta temporal. Derivados
 sin memo (baratos, se recalculan por

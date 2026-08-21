@@ -26,13 +26,25 @@ La lista está en `package.json`. Lo que ese archivo no dice:
 es lo que hay que correr antes de un PR. Medido con caché caliente: 41,2 s en serie contra 23,7 s en
 paralelo, y un nodo rojo devuelve exit 1.
 
+**Y desde el spec 023 no depende de que alguien se acuerde:** `.github/workflows/verify.yml` lo corre
+sobre cada `pull_request` y cada push a `main`, con Chromium instalado por el propio workflow. El
+workflow corre el **script**, no la lista de nodos, y el porqué está comentado ahí: la forma exacta de
+`verify` ya costó dos trampas, y enumerarla en el YAML crearía un segundo lugar donde vive. La
+evidencia no es hipotética — el 029 le cambió `test` por `suite` y un workflow con la lista habría
+seguido en verde sin el gate de coverage.
+
 **`suite` son DOS pasadas de vitest, en secuencia y no en paralelo** (spec 029): primero `test` sin
 instrumentar y después `coverage`, con umbral **100** en las cuatro métricas. Los dos motivos están
 medidos y ninguno es preferencia:
 
 - **Instrumentar es medir el instrumento.** v8 inserta contadores en cada rama y los dos presupuestos
   de performance del 009 pasan de 1,8 ms a **11,3 ms** contra un techo de 5. Se saltean bajo coverage
-  con `skipIf`, y el presupuesto se verifica en la pasada limpia.
+  con `skipIf`, y el presupuesto se verifica en la pasada limpia — **la local**. Desde el 023 el mismo
+  `skipIf` los saltea también cuando `CI` está puesta, por el mismo motivo con otra cara: el runner de
+  Actions dio **8,4 ms y 15,7 ms** en dos corridas del mismo commit, o sea que no es una máquina lenta
+  con un número propio sino una VM sin número, y no hay techo que ahí signifique algo. El precio, que
+  el `skipIf` dice al lado: **estos dos presupuestos no los verifica la CI**, los verifica el `verify`
+  de tu máquina.
 - **Y en secuencia porque en paralelo el presupuesto también se cae, por otra razón.** Con cinco
   procesos pesados compitiendo por CPU la mediana sube igual y `verify` daba rojo sin que nada
   estuviera mal — el mismo modo de falla que el comentario de AC8 en `sequence.test.ts` ya
@@ -43,6 +55,13 @@ El umbral es 100 y no 95 porque un umbral más bajo es un presupuesto de deuda *
 sabe cuáles son las líneas que el margen permite, así que nadie las revisa. Y su corolario: **cero
 `/* v8 ignore */`**, por el mismo argumento que «cero `any`». Si una rama parece inalcanzable, se
 borra o se vuelve alcanzable — las cuatro que aparecieron están anotadas en el research del 029.
+
+Y el 023 encontró la quinta, que sólo se ve corriendo el gate en **otra** máquina: un comparador
+`a.name < b.name ? -1 : 1` dentro de `walk()` cubría sus dos ramas en Windows y una sola en el runner,
+porque **cuál lado se ejecuta depende del orden en que el filesystem entrega las entradas** —NTFS
+alfabético, ext4 por hash— y `mcp:test` daba `99.64%`. El umbral 100 pasaba por el sistema de archivos
+de quien lo corriera. La salida no fue un ignore sino borrar la rama: el comparador es aritmético
+(`Number(a > b) - Number(a < b)`), que además deja el orden total.
 
 **El nodo que más creció es `lint`**, y lo pagó el spec 030: el linting con tipos lo llevó de ~2,5 s a
 **11,0 s**. Se pagó con la medición al lado —`recommendedTypeChecked` sobre el repo entero da 100
@@ -85,13 +104,17 @@ capa sino por lo que el test necesita:
 
 El discriminante es el **sufijo** y no una carpeta: un test de `Board.tsx` que necesita navegador
 sigue siendo un test de `Board.tsx` y vive al lado. **Chromium no está en el lockfile**: un clone
-nuevo necesita `pnpm exec playwright install chromium` antes del primer `verify`.
+nuevo necesita `pnpm exec playwright install chromium` antes del primer `verify`. En CI eso no hace
+falta acordárselo: el workflow del 023 lo instala con `--with-deps`, que el runner de Ubuntu necesita
+para las librerías de sistema.
 
 Los del MCP server son de `node --test`, en su propio paquete, y desde el 029 corren con los
 `--test-coverage-*=100` de node.
 
-Node ≥ 20.19 o ≥ 22.12 — Vite 7 lo exige en `engines`. El MCP server pide **≥ 22.18** porque corre
-TypeScript sin compilar; es un piso de tooling y con Node 20 solo se pierde el server.
+Node ≥ 20.19 o ≥ 22.12 — lo exige Vite 7 y desde el spec 023 lo declara **nuestro propio**
+`engines`, no el de Vite: con Node 18 el gestor lo dice al instalar, en vez de que se entere el build.
+El MCP server pide **≥ 22.18** porque corre TypeScript sin compilar; es un piso de tooling, vive en el
+`engines` del server —que es quien lo necesita— y con Node 20 solo se pierde el server.
 
 ---
 
@@ -172,6 +195,17 @@ Estas son las reglas:
   contraparte lint es `noInlineConfig`: **no hay `eslint-disable`**, porque silenciar la regla es la
   otra forma de tapar el problema. Si hace falta una excepción real, va como override por archivo en
   `eslint.config.js` —que se ve en el diff y se explica— y no como un comentario suelto.
+- **La aserción no nula (`!`) es de la misma familia, y el spec 027 la nombró.** Un `!` es un `any`
+  chiquito: le dice al compilador que se calle sin darle un motivo. La regla es que **en código de
+  producción cada una viene con el comentario que dice por qué el compilador no puede verlo**, y que
+  antes de escribirla se pruebe el `const` — el `!` de `engine.ts` existía sólo porque TypeScript
+  pierde el estrechamiento al entrar al closure de un `forEach` cuando la variable es un `let` de
+  módulo, y salió gratis con una `const` local. Quedan **dos**, las dos anotadas: la de `main.tsx`
+  (el idiom de Vite sobre un `#root` que el propio `index.html` garantiza) y la de
+  `domain/invariants.ts` (el `queue.shift()!` de un BFS, dentro de un `while` que ya garantiza la
+  cola no vacía). **No** vale para los tests, donde el `!` sobre un `find` o un `querySelector` que
+  el propio test acaba de fijar es la forma de que el test **falle** si el nodo no está — hay 66 en
+  `src/**/__tests__/` y son deliberadas.
 - **Sin estado global.** Ni Context, ni Redux, ni Zustand — y desde el 030 lo verifica el linter, por
   el paquete y por la llamada a `createContext`.
 - **Nada de `.only` ni `.skip` en un test.** Es la misma familia de bug que el `--filter "{.}"` y el
