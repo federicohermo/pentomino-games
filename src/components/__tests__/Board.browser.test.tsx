@@ -53,9 +53,16 @@ const props = (over: Partial<Props> = {}): Props => ({
   ...over,
 });
 
-/** Las 60 celdas exteriores, en orden de indice: `i = y * GRID_W + x`. */
+/**
+ * Las 60 celdas exteriores, en orden de indice: `i = y * GRID_W + x`.
+ *
+ * Por ROL y no por estructura desde el spec 026: la grilla dejo de ser 60 hijos planos y
+ * paso a ser seis `role="row"` de diez, asi que `div.grid > div` devuelve las seis filas.
+ * El rol ademas sobrevive a que alguien vuelva a mover el `gridTemplateColumns` de nivel,
+ * que es exactamente el cambio que rompio este selector.
+ */
 const celdas = (container: HTMLElement) =>
-  [...container.querySelectorAll('div.grid > div')] as HTMLElement[];
+  [...container.querySelectorAll('[role="gridcell"]')] as HTMLElement[];
 
 const enIndice = (container: HTMLElement, x: number, y: number) => celdas(container)[y * GRID_W + x];
 /** La baldosa de adentro, que es la que lleva el tono y el color. */

@@ -193,13 +193,41 @@ export default function Board({
           no esta entre esos tres nombres, asi que el boton derecho si puede ir por prop. */}
       <div ref={boardRef} className="relative overflow-x-auto" onContextMenu={onContextMenu}>
         <Playhead />
+        {/* FILAS DE VERDAD y no `display: contents` sobre filas ficticias. `role="grid"`
+            exige `role="row"`, y hasta el spec 026 esto eran 60 hijos planos dentro de un
+            solo CSS grid. La tecnica de mantener el DOM plano y poner `display: contents`
+            en el envoltorio tiene historial de SACAR el nodo del arbol de accesibilidad en
+            varios navegadores — o sea que fallaria en silencio, solo en algunos, y
+            justamente en lo que este spec viene a arreglar. Seis filas reales de diez
+            celdas, sin `gap`, layout identico al pixel.
+
+            Por eso el `gridTemplateColumns` se MUDO del contenedor a la fila: las diez
+            columnas estaban donde los hijos eran las 60 celdas, y ahora los hijos son
+            seis. Dejarlo arriba pondria seis filas dentro de una grilla de diez columnas,
+            que es el pixel que AC11 prohibe. El contenedor sigue siendo grid con su
+            columna implicita —una fila por renglon, ancho de contenido— y conserva el
+            `w-max` del que depende el `overflow-x-auto`.
+
+            `Playhead` no se entera: se posiciona con `transform` en pixeles contra el
+            contenedor posicionado, no con colocacion de grid. */}
         <div
           className="grid w-max"
-          style={{ gridTemplateColumns: `repeat(${GRID_W}, ${CELL_PX}px)` }}
+          role="grid"
+          aria-label={`Tablero de ${GRID_W} por ${GRID_H}`}
+          aria-rowcount={GRID_H}
+          aria-colcount={GRID_W}
           onMouseLeave={onMouseLeave}
         >
-          {Array.from({ length: GRID_W * GRID_H }, (_, i) => {
-            const x = i % GRID_W; const y = Math.floor(i / GRID_W);
+          {Array.from({ length: GRID_H }, (_, fila) => (
+          <div
+            key={fila}
+            role="row"
+            className="grid"
+            style={{ gridTemplateColumns: `repeat(${GRID_W}, ${CELL_PX}px)` }}
+          >
+          {Array.from({ length: GRID_W }, (_, columna) => {
+            const i = fila * GRID_W + columna;
+            const x = columna; const y = fila;
             const occ = occupantAt(placed, x, y);
             const ghostIndex = ghostIndexAt.get(`${x},${y}`);
             const ghost = ghostIndex !== undefined;
@@ -250,6 +278,7 @@ export default function Board({
 
             return (
               <div key={i}
+                role="gridcell"
                 onClick={(e) => onCellClick(x, y, e.altKey)}
                 onMouseEnter={() => onCellEnter([x, y])}
                 style={{ width: CELL_PX, height: CELL_PX }}
@@ -301,6 +330,8 @@ export default function Board({
               </div>
             );
           })}
+          </div>
+          ))}
         </div>
       </div>
     </div>

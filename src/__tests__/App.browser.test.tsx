@@ -101,8 +101,13 @@ beforeEach(() => {
   for (const v of Object.values(motor)) if (typeof v === 'function' && 'mockClear' in v) v.mockClear();
 });
 
-/** Las 60 celdas del tablero, en orden de indice. */
-const celdas = (c: HTMLElement) => [...c.querySelectorAll('div.grid.w-max > div')] as HTMLElement[];
+/**
+ * Las 60 celdas del tablero, en orden de indice.
+ *
+ * Por ROL y no por estructura desde el spec 026: la grilla dejo de ser 60 hijos planos y
+ * paso a ser seis `role="row"` de diez, asi que `div.grid.w-max > div` devuelve seis.
+ */
+const celdas = (c: HTMLElement) => [...c.querySelectorAll('[role="gridcell"]')] as HTMLElement[];
 const celda = (c: HTMLElement, x: number, y: number) => celdas(c)[y * GRID_W + x];
 const baldosa = (el: HTMLElement) => el.firstElementChild as HTMLElement;
 
