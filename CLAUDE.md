@@ -39,7 +39,12 @@ medidos y ninguno es preferencia:
 
 - **Instrumentar es medir el instrumento.** v8 inserta contadores en cada rama y los dos presupuestos
   de performance del 009 pasan de 1,8 ms a **11,3 ms** contra un techo de 5. Se saltean bajo coverage
-  con `skipIf`, y el presupuesto se verifica en la pasada limpia.
+  con `skipIf`, y el presupuesto se verifica en la pasada limpia — **la local**. Desde el 023 el mismo
+  `skipIf` los saltea también cuando `CI` está puesta, por el mismo motivo con otra cara: el runner de
+  Actions dio **8,4 ms y 15,7 ms** en dos corridas del mismo commit, o sea que no es una máquina lenta
+  con un número propio sino una VM sin número, y no hay techo que ahí signifique algo. El precio, que
+  el `skipIf` dice al lado: **estos dos presupuestos no los verifica la CI**, los verifica el `verify`
+  de tu máquina.
 - **Y en secuencia porque en paralelo el presupuesto también se cae, por otra razón.** Con cinco
   procesos pesados compitiendo por CPU la mediana sube igual y `verify` daba rojo sin que nada
   estuviera mal — el mismo modo de falla que el comentario de AC8 en `sequence.test.ts` ya
@@ -50,6 +55,13 @@ El umbral es 100 y no 95 porque un umbral más bajo es un presupuesto de deuda *
 sabe cuáles son las líneas que el margen permite, así que nadie las revisa. Y su corolario: **cero
 `/* v8 ignore */`**, por el mismo argumento que «cero `any`». Si una rama parece inalcanzable, se
 borra o se vuelve alcanzable — las cuatro que aparecieron están anotadas en el research del 029.
+
+Y el 023 encontró la quinta, que sólo se ve corriendo el gate en **otra** máquina: un comparador
+`a.name < b.name ? -1 : 1` dentro de `walk()` cubría sus dos ramas en Windows y una sola en el runner,
+porque **cuál lado se ejecuta depende del orden en que el filesystem entrega las entradas** —NTFS
+alfabético, ext4 por hash— y `mcp:test` daba `99.64%`. El umbral 100 pasaba por el sistema de archivos
+de quien lo corriera. La salida no fue un ignore sino borrar la rama: el comparador es aritmético
+(`Number(a > b) - Number(a < b)`), que además deja el orden total.
 
 **El nodo que más creció es `lint`**, y lo pagó el spec 030: el linting con tipos lo llevó de ~2,5 s a
 **11,0 s**. Se pagó con la medición al lado —`recommendedTypeChecked` sobre el repo entero da 100

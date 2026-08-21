@@ -92,7 +92,8 @@ una persona y no bloquea el cierre.
       100 en las cuatro métricas — **AC5**. Los dos números están **medidos en `main` hoy** y son el
       piso, no la igualdad: los otros cuatro specs del lote 023–028 agregan tests, así que si alguno
       mergea antes que éste el conteo sube y el AC se lee como **«no baja de 457 + 105, y el coverage
-      sigue en 100»**. Este spec no toca `src/`, así que no puede moverlos él
+      sigue en 100»**. Este spec no agrega ni borra un test de `src/` —lo único que le toca es la guarda
+      del T031, que no cambia el conteo—, así que no puede moverlos él
 - [x] T031 **Los dos presupuestos del 009 se saltean en CI**, con la misma guarda que ya los saltea
       bajo coverage — `src/domain/__tests__/sequence.test.ts`. **Los techos no se tocan**: siguen en 5 y
       4. Es la enmienda de AC10, y salió de dos corridas del workflow, no de una: el primer intento
@@ -116,9 +117,10 @@ una persona y no bloquea el cierre.
       argumento: `22` resuelve a la última 22.x del día, así que el mismo commit puede dar verde hoy y
       rojo el mes que viene sin que nadie toque una línea. Un gate con runtime móvil es la misma familia
       de falla que este spec viene a cerrar. El `engines` del proyecto no se estrecha
-- [x] T029 Confirmar que el diff no toca `eslint.config.js` ni `vite.config.ts`, y que de `src/` toca
-      **un solo archivo y dos líneas** (los techos del T031): `git diff --name-only main` — **AC10**,
-      enmendado al implementarlo
+- [x] T029 Confirmar que el diff no toca `eslint.config.js` ni `vite.config.ts`, y que de código toca
+      **dos archivos y ninguno de producción de la app**: la guarda del T031 en
+      `src/domain/__tests__/sequence.test.ts` y el comparador del T032 en `mcp-server/src/symbols.ts`.
+      `git diff --name-only main` — **AC10**, enmendado al implementarlo
 - [x] T020 [P] `CLAUDE.md`: la sección de Comandos dice que `verify` lo corre la CI sobre cada PR, con
       Chromium instalado por el workflow
 - [x] T021 [P] `docs/guides/quickstart.md`: mencionar el workflow donde ya se nombran los comandos, y

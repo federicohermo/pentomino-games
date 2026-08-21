@@ -2,8 +2,10 @@
 
 > Sin ticket: este repo no tiene tablero de Jira. Ver `specs/README.md`.
 >
-> **No toca `src/` ni `eslint.config.js`.** `pnpm verify` deja de depender de que alguien se acuerde de
-> correrlo: entra a GitHub Actions sobre cada PR. Medido: hoy el único gate automático es Netlify, que
+> **No toca `eslint.config.js` ni un archivo de producción de la app.** De `src/` toca sólo lo que la
+> propia CI falsificó en su primera corrida: un test y el comparador de un `sort` del MCP server
+> (AC10). `pnpm verify` deja de depender de que alguien se acuerde de correrlo: entra a GitHub
+> Actions sobre cada PR. Medido: hoy el único gate automático es Netlify, que
 > corre `tsc -b` dentro de `build` — o sea que **los 562 tests del repo, el lint entero y el gate de
 > coverage no corren nunca solos**.
 >
@@ -17,7 +19,7 @@
 > `eslint-plugin-react-refresh`; el 029 subió `vitest` a 4.1.11 y lo dejó **pinneado exacto**— y los dos
 > le dejaron trabajo nuevo: el 029 le difiere su **AC13** y le mete Chromium adentro de `verify`.
 >
-> Ortogonal al lote 018–021: no abre un solo archivo de `src/`.
+> Ortogonal al lote 018–021: no abre un solo archivo de producción de la app.
 
 ## Problema
 
@@ -81,7 +83,9 @@ es justamente por qué ese piso existe—, así que es una `devDependency` decla
 
 ## Solución propuesta
 
-Tres cambios, ninguno en `src/` y ninguno en `eslint.config.js`.
+Tres cambios, ninguno en `eslint.config.js`. Ninguno de los tres abre `src/` tampoco — los dos
+archivos de `src/` que este spec terminó tocando no salieron de acá sino de la primera corrida del
+workflow, y están en AC10.
 
 1. **`.github/workflows/verify.yml`** — un job sobre `pull_request` y `push` a `main` que instala con
    el lockfile congelado, instala Chromium, y corre `pnpm verify`.
@@ -176,15 +180,27 @@ la medición al lado.
   un PR que baje del 100 en cualquiera de las cuatro métricas queda en rojo. Se verifica junto con AC7,
   borrando un test a propósito en la misma rama.
 - **AC10 (no regresión)** — El cambio no toca `eslint.config.js` ni el bloque `test` de
-  `vite.config.ts`, y de `src/` toca **un solo archivo y dos líneas**:
-  `src/domain/__tests__/sequence.test.ts`, los techos de los dos presupuestos de performance del 009.
-  Falsable con `git diff --name-only main`.
+  `vite.config.ts`, y de código toca **dos archivos, ninguno de producción de la app**:
+  `src/domain/__tests__/sequence.test.ts` —la guarda que saltea en CI los dos presupuestos de
+  performance del 009— y `mcp-server/src/symbols.ts` —el comparador del `sort` de `walk()`—. Los dos
+  los encontró la propia CI en su primera corrida, y ninguno de los dos se podía encontrar de otra
+  forma. Falsable con `git diff --name-only main`.
 
   **Este AC decía «ni un archivo de `src/`» y se enmendó al implementarlo, con la medición en la
   mano.** El workflow puso `pnpm verify` en un runner limpio por primera vez y los dos presupuestos de
   performance del 009 se cayeron ahí y sólo ahí. **Los techos no se tocan** —siguen en 5 ms y 4 ms— y
   lo que se agrega es una guarda: los dos tests se saltean en CI, con el mismo mecanismo que ya los
   saltea bajo coverage y por el mismo motivo, que es que el entorno no mide el producto.
+
+  **El segundo archivo es el hallazgo más caro que trajo esta rama, y no es de performance.** En el
+  runner, `mcp:test` daba `99.64% branch coverage does not meet threshold of 100%` y en Windows daba
+  100 en las cuatro: la rama sin cubrir era un lado del `a.name < b.name ? -1 : 1` con el que
+  `walk()` ordenaba las entradas del directorio, y cuál de los dos lados se ejecuta **depende del
+  orden en que el filesystem las entrega** —NTFS alfabético, ext4 por hash—. O sea que el umbral 100
+  que fijó el 029 pasaba por el sistema de archivos de quien lo corriera, y pasaba en verde porque
+  nadie lo había corrido fuera de una máquina. El comparador ahora es aritmético y sin ramas, así que
+  no queda nada cuya cobertura pueda depender del entorno; el porqué entero vive en el docblock de
+  `walk()`.
 
   El número que lo decide, y que **falsificó el primer intento** de arreglarlo subiendo los techos a 10
   y 8:
@@ -207,8 +223,9 @@ la medición al lado.
 ## Fuera de alcance
 
 - **`eslint.config.js` entero** — es del 030, que ya mergeó.
-- **Cualquier archivo de `src/`** — con la excepción medida de AC10: los dos techos de
-  `src/domain/__tests__/sequence.test.ts`, que la CI falsificó en su primera corrida.
+- **Cualquier archivo de `src/`** — con las dos excepciones medidas de AC10, las dos falsificadas por
+  la primera corrida de la CI: la guarda de `src/domain/__tests__/sequence.test.ts` y el comparador de
+  `walk()` en `mcp-server/src/symbols.ts`. Ningún archivo de producción de la app.
 - **El bloque `test` de `vite.config.ts` y el umbral de coverage** — los puso el 029; este workflow los
   hereda sin tocarlos (AC3).
 - **Un job de deploy.** Netlify ya despliega.

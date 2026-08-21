@@ -47,8 +47,10 @@ jobs:
       # Ese es el UNICO argumento del pin, y hay que decirlo porque se probo otro y salio
       # mal: se fijo la version sospechando que V8 contaba ramas distinto entre minors y que
       # eso explicaba el `99.64% branch coverage` de `symbols.ts` en `mcp:test`. Quedo
-      # falsificado — con 22.18.0 fijo el numero es identico—, asi que el pin NO arregla ese
-      # rojo y su causa sigue abierta. Se queda por reproducibilidad, no por ese sintoma.
+      # falsificado — con 22.18.0 fijo el numero es identico—, asi que el pin NO arreglo ese
+      # rojo. Lo arreglo despues el comparador del `sort` de `walk()`, que tenia una rama
+      # cuya cobertura dependia del orden del filesystem; el porque vive en su docblock.
+      # El pin se queda por reproducibilidad, y nunca fue por ese sintoma.
       #
       # El piso del proyecto sigue siendo el `engines` (^20.19.0 || >=22.12.0): esto no lo
       # estrecha, elige UNA version adentro de el. Subirla es un cambio deliberado, con

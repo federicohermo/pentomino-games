@@ -846,10 +846,11 @@ describe('AC10 — el tablero lleno', () => {
   // los dos con el margen de siempre.
   //
   // Un presupuesto de performance medido sobre un build instrumentado no mide el
-  // producto: mide el instrumento. Por eso `pnpm test` y `pnpm coverage` son nodos
-  // distintos de `verify`: el primero corre estos dos sobre un build limpio, el segundo
-  // mide cobertura. La env var la inyecta `vite.config.ts`, que es el unico lugar que ve
-  // con que flags arranco vitest.
+  // producto: mide el instrumento. Por eso `suite` son DOS pasadas y no una: `pnpm test`
+  // primero, que corre estos dos sobre un build limpio, y `pnpm coverage` despues, que
+  // mide cobertura. Encadenadas adentro del mismo nodo desde el 029 —no en paralelo, que
+  // volvia a romper el presupuesto por contencion de CPU—. La env var la inyecta
+  // `vite.config.ts`, que es el unico lugar que ve con que flags arranco vitest.
   //
   // ## Y tampoco corren en CI, desde el spec 023, por la MISMA razon
   //
@@ -865,7 +866,7 @@ describe('AC10 — el tablero lleno', () => {
   //
   // Mismo codigo y mismo workflow entre las dos corridas del runner: **1,86x de
   // variacion** en AC10 y 0,60x en AC8. No es lentitud constante que se compense
-  // subiendo el techo — se intentó, con 10 y 8, y la corrida siguiente rompio el 10
+  // subiendo el techo — se intento, con 10 y 8, y la corrida siguiente rompio el 10
   // igual.
   //
   // Por eso no hay techo que sirva. Para cubrir el pico de 15,7 ms haria falta ~30, y
