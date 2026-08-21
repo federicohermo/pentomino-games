@@ -101,6 +101,21 @@ una persona y no bloquea el cierre.
       el runner no tiene un número, y con ella no hay techo que sirva sin volver inútil al test. La
       tabla completa y el precio —la CI no verifica estos dos— van en el bloque del `skipIf` del propio
       test y en el AC, no acá
+- [x] T032 **`mcp-server/src/symbols.ts`: el comparador del `sort` de `walk()` deja de ser un `?:`.**
+      Lo encontró la CI y no se podía encontrar de otra forma: `mcp:test` daba
+      `99.64% branch coverage does not meet threshold of 100%` en el runner y **100 en las cuatro en
+      Windows**. La rama es `BRDA:243,72,0,0` — un lado del `a.name < b.name ? -1 : 1` que no se
+      ejecuta según el orden en que el filesystem entrega las entradas: NTFS las da alfabéticas y ext4
+      en orden de hash. O sea que **el umbral 100 que fijó el 029 dependía del sistema de archivos de
+      quien lo corriera**, y pasaba en verde porque nadie lo había corrido fuera de una máquina.
+      Debajo había un defecto latente: ese comparador devuelve 1 para dos nombres iguales, o sea afirma
+      `a > b`. Ahora es `Number(a.name > b.name) - Number(a.name < b.name)`: sin ramas, orden total, sin
+      depender del locale. El porqué entero va en el docblock de `walk()`
+- [x] T033 **El `node-version` del workflow pasa de `22` a `22.18.0`.** No arregla el T032 —se probó
+      primero con esa hipótesis y quedó falsificada, con el número idéntico— y se queda por el otro
+      argumento: `22` resuelve a la última 22.x del día, así que el mismo commit puede dar verde hoy y
+      rojo el mes que viene sin que nadie toque una línea. Un gate con runtime móvil es la misma familia
+      de falla que este spec viene a cerrar. El `engines` del proyecto no se estrecha
 - [x] T029 Confirmar que el diff no toca `eslint.config.js` ni `vite.config.ts`, y que de `src/` toca
       **un solo archivo y dos líneas** (los techos del T031): `git diff --name-only main` — **AC10**,
       enmendado al implementarlo
