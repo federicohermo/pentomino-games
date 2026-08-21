@@ -23,7 +23,11 @@ convierten en dos copias del mismo número y AC6 deja de ser verificable.
   `Board` por cada evento de resize, que es exactamente el re-render que la custom property existe
   para evitar. El número vive en `--cell` y en ningún otro lado.
 - Un `useLayoutEffect` que escucha `resize` y escribe `--cell` sobre el **contenedor raíz de
-  `App.tsx`** (un `ref` propio, no `boardRef`). **Sobre la raíz y no sobre el tablero**: la custom
+  `App.tsx`** (un `ref` propio, no `boardRef`). **El efecto no vive en el shell**: desde el 022
+  `App.tsx` no declara un solo `useEffect` y el caso de un listener global ya tiene patrón escrito
+  (`.claude/rules/ui.md:206-209`), así que va a un hook nuevo `components/use-cell-px.ts` que recibe el
+  `ref` — como `useRuedaRota` recibe `boardRef`. Y el valor se escribe **con unidad** (`'180px'`): sin
+  ella todos los `calc(var(--cell) * n)` quedan inválidos y la grilla colapsa sin un error. **Sobre la raíz y no sobre el tablero**: la custom
   property hereda hacia abajo, y los dos flotantes del paso 3 son `fixed` y viven fuera de `Board`, o
   sea que colgándola de `boardRef` (`Board.tsx:193`) el `calc(var(--cell) * n)` de sus cajas no
   resuelve. La raíz es el ancestro común de la grilla, la cabeza lectora y los dos paneles.
@@ -51,13 +55,15 @@ cast que existe sólo para saltear el tipado es de la misma familia.
 - **El `overflow-x-auto` se queda**, y su comentario también: sigue siendo lo que evita que la grilla
   empuje scroll horizontal a la página cuando gana el piso.
 
-`Playhead.tsx`: son **seis** sitios de `CELL_PX`, no cuatro. Las cuatro escrituras de `style` (`left`,
-`top`, `width`, `height`, `:172-175`) son las del **velo**; la cabeza usa además el `transform`
-(`:240`) y su propia caja en el JSX (`style={{ width: CELL_PX, height: CELL_PX }}`, `:270`). Los seis
-pasan a `calc(var(--cell) * n)`. Y hay **cuatro más** que no nombran a `CELL_PX` pero repiten a
-propósito el aire y el redondeo de la baldosa de `Board.tsx`, en dos pares: `VELO_CAJA` / `VELO_TAPA`
-(`:129-130`) del velo, y el `p-0.5` de la caja de la cabeza (`:269`) con el `rounded-lg` de su resalte
-(`:274`). Si allá pasan a `calc()` y acá no, ni el velo ni el anillo cubren la baldosa exacta.
+La cabeza: son **seis** sitios de `CELL_PX`, no cuatro, y desde el 029 **no están todos en
+`Playhead.tsx`** —el bucle se mudó a `playhead-loop.ts` para poder testearlo—. Las cuatro escrituras
+de `style` (`left`, `top`, `width`, `height`, `playhead-loop.ts:72-75`) son las del **velo**; la cabeza
+usa además el `transform` (`playhead-loop.ts:140`) y su propia caja en el JSX
+(`Playhead.tsx:100`). Los seis pasan a `calc(var(--cell) * n)`. Y hay **cuatro más** que no nombran a
+`CELL_PX` pero repiten a propósito el aire y el redondeo de la baldosa de `Board.tsx`, en dos pares:
+`VELO_CAJA` / `VELO_TAPA` (hoy `constants/playhead.constants.ts:83-84`) del velo, y el `p-0.5` de la
+caja de la cabeza (`Playhead.tsx:99`) con el `rounded-lg` de su resalte (`:104`). Los dos del velo son
+**clases de Tailwind**, así que no admiten interpolación: pasan a estilo inline escrito por `rearmar`. Si allá pasan a `calc()` y acá no, ni el velo ni el anillo cubren la baldosa exacta.
 Eso es todo el cambio del archivo, y es lo que hace que
 AC6 y AC7 no se peleen: la cabeza deja de leer un número de JS y pasa a leer el mismo valor que la
 grilla, resuelto por el navegador. El docblock tiene que decir por qué — es el punto entero del paso.
@@ -109,22 +115,32 @@ Tres bloques largos de documentación quedan mintiendo si no se tocan:
    alto de toda la fila, así que inflarla no agranda el tablero». **Con el layout nuevo no hay fila**:
    el argumento entero desaparece y hay que reemplazarlo por el que corresponda al dock.
 
-Y tres archivos que lo afirman en presente: `DESIGN.md` (la tabla de `:79-81` con `CELL_PX` 73, el
-tablero de 730 × 438 y el `md:col-span-8`, más las medidas de la baldosa en `:99-102` y `:112`),
-`.claude/rules/ui.md:66-68` (los `col-span` en la tarjeta de cada componente, y `CELL_PX` derivado de
-la tarjeta real) y `docs/guides/conventions.md:247-248` (las celdas dimensionadas con
+Y tres archivos que lo afirman en presente, con las líneas de HOY: `DESIGN.md` (`:79-83`, `:99-102`,
+`:110-114` **y `:237-242`**, que es del 026 y repite el «2 px de aire» al derivar el anillo de foco),
+`.claude/rules/ui.md` (`:103-105` los `col-span` en la tarjeta de cada componente, y `:178-185` las
+«dos cajas… con 2 px de aire») y `docs/guides/conventions.md:345-346` (las celdas dimensionadas con
 `style={{ width: CELL_PX, … }}`).
 
-**`docs/architecture/overview.md` sí entra, aunque no por el layout**: no menciona `col-span` ni
-`max-w-6xl`, pero afirma en presente «los seis efectos» (`:23`) y la tabla de estado de `App.tsx`
-(`:101-109`), y este spec agrega un `useLayoutEffect` y dos `useState`. Lo mismo con la línea de
-`CLAUDE.md` que describe `App.tsx` como «el shell: estado, derivados, handlers, los seis efectos y la
-composición». Los dos son de los archivos que este repo mantiene al día, así que la corrección es
-obligatoria y no opcional. Ver §9 del research.
+**Y un cuarto bloque que este plan tenía al revés.** Decía que `overview.md` y `CLAUDE.md` afirman «los
+seis efectos» y que este spec los lleva a siete. Medido contra el `main` de hoy: el 022 se llevó los
+seis, `App.tsx` tiene **cero** y los tres lugares de `overview.md` (`:22`, `:74`, `:180`) más
+`CLAUDE.md:136-138` dicen justamente eso. Con el efecto de este spec en `components/use-cell-px.ts`,
+las cuatro afirmaciones **siguen siendo ciertas**: la corrección es verificarlas y agregar el tercer
+hook a la enumeración, no cambiarles el número. Lo que sí cambia es la tabla de estado de `App.tsx`,
+que suma los dos `useState` del plegado. Ver §9 del research.
 
 ## Verificación
 
-`pnpm verify`, más el test de la pura de la fórmula con la tabla de viewports.
+`pnpm verify`, más el test de la pura de la fórmula con la tabla de viewports, más el del **cableado**
+del hook con `renderHook` en el proyecto `browser`: desde el 029 el umbral es 100 en las cuatro
+métricas y no hay `/* v8 ignore */`, así que un hook nuevo sin test no mergea.
+
+**Y hay tests que ya existen y este spec rompe**, que es lo que no estaba en este plan: tres archivos
+afirman la geometría en píxeles contra `CELL_PX` —`Board.browser.test.tsx:74-99`,
+`Playhead.browser.test.tsx:86-95` y `:176-178`, `App.browser.test.tsx:139` («monta las tres tarjetas y
+el pie»)—. Los dos primeros además montan su componente **solo**, sin el contenedor raíz que cuelga
+`--cell`, así que tienen que escribir la custom property ellos mismos — que de paso es la forma de que
+verifiquen la herencia. Sin esos tres, `pnpm verify` sale en rojo antes de llegar a los `[M]`.
 
 Lo que sólo se ve en el navegador va como `[M]`, y hay uno que es **el** criterio del spec: redimensionar
 la ventana **con el transporte corriendo** y confirmar que la cabeza lectora sigue clavada en su celda.

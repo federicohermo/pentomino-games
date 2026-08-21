@@ -5,18 +5,48 @@ una persona y no bloquea el cierre.
 
 ## Paso 1 — Se van los seis botones
 
-- [ ] T001 `PiecePalette.tsx`: borrar los cuatro botones de grados (`0° 90° 180° 270°`) — **AC1**
-- [ ] T002 `PiecePalette.tsx`: borrar la fila de `Reflexión ON/OFF` — **AC1**
+- [ ] T001 `PiecePalette.tsx`: borrar los cuatro botones de grados (`0° 90° 180° 270°`). Verificado
+      contra el árbol de hoy: siguen ahí y no se los llevó el 022 — son el `.map` de
+      `PiecePalette.tsx:82-84`, adentro del `<div role="group" aria-labelledby="rotacion-etiqueta">`
+      que el 025 les puso. Se van los cuatro botones, el `role="group"` **y** el
+      `<span id="rotacion-etiqueta">Rotación</span>` que lo nombra: dejar el span vivo deja una
+      etiqueta sin control, y borrarlo sin mirar T003 deja el `id` que T003 necesita reutilizar —
+      **AC1**
+- [ ] T002 `PiecePalette.tsx`: borrar la fila de `Reflexión ON/OFF` (hoy `:97-100`), entera: el
+      `<span id="reflexion-etiqueta">` y el botón con su `aria-labelledby` y su `aria-pressed={mirror}`.
+      El `aria-pressed` que el 025 le puso se va **con** el control que lo justificaba, no queda
+      huérfano — y el estado de la reflexión sigue anunciándose: lo dice el `aria-label` de los doce
+      botones (`OrientationPanel.tsx:103`) y, desde T007, la línea visible — **AC1**
 - [ ] T003 `PiecePalette.tsx`: el régimen sube a fila propia con la etiqueta `Rotación`, y desaparece
-      el `<div>` que envolvía las dos líneas — **AC3**
+      el `<div>` que envolvía las dos líneas. **Tres cosas que el 025 agregó y hay que decidir a
+      propósito**, porque la fila de hoy (`:87-95`) no es la de cuando se escribió este spec:
+      - el `<span id="regimen-etiqueta" className="text-xs text-slate-600">cambia</span>` pasa a decir
+        `Rotación` con el `font-medium` de las otras filas, o sea que el **nombre accesible del
+        grupo** cambia de `cambia` a `Rotación`. El `role="group" aria-labelledby` se queda: es lo que
+        hace que los dos botones se lean como un conjunto, y `.claude/rules/ui.md` lo exige
+      - la palabra `cambia` desaparece de la pantalla, y era la que hacía que la fila se leyera como
+        oración (AC10 del 017). Sin ella `Rotación | escala orden` se puede leer como si la rotación
+        tuviera dos valores. Si el texto no alcanza, el lugar donde decirlo entero es el `title` del
+        grupo — lo que **no** vale es dejar la fila diciendo menos de lo que decía
+      - los dos `aria-pressed={regimen===r}` de los botones **se quedan**: la fila cambia de etiqueta,
+        no de naturaleza — **AC3**
 - [ ] T004 Comentario en la fila de régimen: por qué asciende (la frase que completaba se quedó sin
       sujeto) y por qué **no** se borra (el precedente del `T070` del 011, agravado: el régimen no
-      tiene ningún gesto directo)
+      tiene ningún gesto directo). Se reescribe **en su lugar** el bloque de `PiecePalette.tsx:60-70`,
+      cuya primera frase —«La fila de Rotación son DOS líneas y no dos filas»— T003 vuelve falsa de
+      punta a punta. **Y el bloque de al lado, `:71-77`, también**: es del 025, no existía cuando se
+      escribió este spec, y dice «los dos grupos de abajo» / «los cuatro de rotación y los dos de
+      régimen» — con T001 queda **un** grupo de **dos** botones. Su argumento (por qué `role="group"` y
+      no `radiogroup`) sigue valiendo y no se borra: se le corrige la cuenta
 - [ ] T005 `PiecePalette.tsx` + `panel.types.ts` + `App.tsx`: sacar `onRotate` y `onMirror`. Desde el
       spec 022 dejaron de ser props sueltas de `PiecePalette`: hoy son dos campos de
       `PropsDeOrientacion` (`panel.types.ts`), así que esto es borrar los dos campos del tipo, la
-      desestructuración en `PiecePalette.tsx` y las dos entradas del literal `orientacion={{…}}` que
-      arma `App.tsx` — ya no es tocar la firma del componente. **`rotation` y `mirror` se quedan** —
+      desestructuración en `PiecePalette.tsx` y las dos entradas del **`useMemo` de
+      `App.tsx:314-319`** — con el 027 el objeto ya no se arma inline en el JSX, así que se edita ahí;
+      sus deps (`[selected, rotation, mirror, regimen, noteSet]`) **no cambian**. Y los dos setters
+      sobreviven —`rotarConTecla` (`:249`), `alRotar` (`:256`), `reflejarConTecla` (`:250`) y el
+      `onContextMenu` (`:270`)—, o sea que el borrado no deja una variable sin uso — ya no es tocar la
+      firma del componente. **`rotation` y `mirror` se quedan** —
       las usan la miniatura del 016 (hoy en `OrientationPanel.tsx`) y la línea nueva de T007 —
       **AC12**
 
@@ -39,6 +69,10 @@ una persona y no bloquea el cierre.
       - `TransportPanel.tsx`, el del botón de play («lo activo en Rotacion y Reflexion» y «el
         "apagado" de esos dos»): con el 022 este comentario ya no vive en `PiecePalette.tsx`
 
+      Y hay un **quinto**, que el spec no tenía porque nombra al botón que T014 renombra:
+      - `PiecePalette.tsx:131`, en el docblock de la línea de notas: «movía todo lo que tiene debajo
+        —Tempo, transporte, Reset— 20 px hacia abajo». `Reset` deja de ser el nombre visible
+
       El idioma visual sobrevive en el régimen; lo que se va son los nombres que citan
 
 > T001–T005 comparten `PiecePalette.tsx` —T005 además toca `panel.types.ts` y `App.tsx`—, así que
@@ -48,13 +82,28 @@ una persona y no bloquea el cierre.
 
 ## Paso 2 — La orientación se lee en texto
 
-- [ ] T006 Pura nueva `textoDeOrientacion(rotation, mirror)` en un **módulo propio** de `components/`,
-      hermano de `piece-mini.ts` (**no** inline en el `.tsx`:
+- [ ] T006 Pura nueva `textoDeOrientacion(rotation, mirror)` en `src/components/orientation-text.ts`,
+      hermana de `piece-mini.ts` (**no** inline en el `.tsx`:
       `react-refresh/only-export-components` la dejaría sin poder exportarse y por lo tanto sin poder
       testearse; y **no** en `cell-text.ts`, que contesta qué dice una celda del tablero y cuyo tipo
-      cruza a `Board.tsx`). `rotation` sigue siendo `number` sin acotar, como en todo el repo — el
-      union type es la deuda abierta de `deuda.md` y no se salda acá, pero esta pura es su próxima casa
-- [ ] T007 `PiecePalette.tsx`: la línea, junto al `<b>{selected}</b> → tónica …` — **AC4**
+      cruza a `Board.tsx`). `rotation` sigue siendo `number` sin acotar acá, pero **el 020 le pone
+      techo en el mismo lote**: su `T003` crea el union `Rotacion` en
+      `components/types/orientation.types.ts`, así que **esta pura no es «la próxima casa» del tipo** y
+      no hay que escribir que lo sea — un comentario que afirme que el union todavía no existe queda
+      falsificado un spec después. La deuda de `deuda.md` la reconta y la achica el `T031` del 020.
+      **Nombre de archivo en inglés**, y no es cosmética: los 57 archivos de `src/` están en inglés y
+      los siete que el 022 estrenó en castellano **se revirtieron** (`specs/revisiones.md`, 2026-08-20)
+      —`motor.ts` volvió a `engine-bridge.ts`, `use-entrada.ts` a `use-input.ts`—, con **este lote como
+      destinatario explícito** de la decisión: se renombró ahora, midiendo, porque «renombrar antes de
+      implementarlos cuesta un `sed` y después cuesta lo mismo más todo el código que se escriba
+      encima». La regla que quedó **no es simétrica**: archivo en inglés siempre, identificador en
+      castellano permitido **sólo dentro de `components/`** (hay 21 exportados así), así que la pura sí
+      se llama `textoDeOrientacion` y el archivo no. En el mismo lote el 020 nombra
+      `orientation.types.ts` y el 021 `cell-px.ts`. Va al proyecto
+      **`node`** de Vitest —es un `.ts` puro— y el umbral de coverage es 100, así que nace con T009
+- [ ] T007 `PiecePalette.tsx`: la línea, junto al `<b>{selected}</b> → tónica …` — hoy el `<p>` de
+      `:127`, adentro del bloque `pt-2 text-sm text-slate-600` de `:126`, arriba de `Notas actuales`
+      (`:144`; el `PiecePalette.tsx:254` que el spec citaba es de antes del 022) — **AC4**
 - [ ] T031 `OrientationPanel.tsx`: el `aria-label` de los doce botones (el que arma
       `` `${key}, rotación ${rotation * 90}°…` ``) consume la pura de T006 en vez de armar el texto
       inline. Con el spec 022 esta línea se mudó de `PiecePalette.tsx` a `OrientationPanel.tsx`, así
@@ -64,7 +113,8 @@ una persona y no bloquea el cierre.
 - [ ] T008 Medir el peor caso de largo (`270° · reflejada`) y reservarle el alto, como ya hace
       `min-h-[2lh]` en `Notas actuales`. Sin esto la línea envuelve al cambiar de pieza y mueve todo
       lo de abajo, que es el bug que esa reserva existe para evitar
-- [ ] T009 Test de `textoDeOrientacion` en `components/__tests__/`: las ocho combinaciones de
+- [ ] T009 Test de `textoDeOrientacion` en `components/__tests__/orientation-text.test.ts` —el nombre
+      sale del módulo de T006, en inglés—: las ocho combinaciones de
       rotación × reflexión
 - [ ] T010 Test, **en el mismo archivo que T009**: para `I T U V W X`, dos orientaciones que dan la
       misma `miniCells` dan textos **distintos** — **AC5**. Es el criterio que justifica todo el paso
@@ -88,14 +138,31 @@ una persona y no bloquea el cierre.
       el boton de los clicks… en un spec el problema se achica solo») y el comentario del propio
       row que citaba el reordenamiento de DOM (AC18 del 022) — con clicks afuera, el argumento de «no
       se puede mover sin reordenar el DOM» deja de aplicar a esa fila y la cuenta de filas del título
-      («Por que este archivo se queda con cuatro filas») baja — **AC6**
-- [ ] T012 SVG del metrónomo **inline**, `1em` + `currentColor` + `aria-hidden="true"`; `aria-label` y
-      `title` en el **botón**, con la etiqueta entera (más larga que la que cabía en la fila) —
-      **AC7**
+      («Por que este archivo se queda con cuatro filas») baja.
+      **Y dos cosas más que el 025 y el 022 pusieron ahí después de que este spec se escribiera:**
+      - el botón de hoy (`PiecePalette.tsx:124`) lleva `aria-pressed={clicks}` y
+        `aria-labelledby="recorrido-etiqueta"`. El **`aria-pressed` viaja** —sin él el estado del
+        metrónomo queda en el color y en nada más, y `.claude/rules/ui.md` lo declara regla nombrando a
+        este spec por número—; el `aria-labelledby` **no puede**, porque el `<span
+        id="recorrido-etiqueta">` muere con la fila, así que pasa a `aria-label` (T012)
+      - el docblock de `TransportPanel.tsx:10-14` dice que es «el unico subarbol CONTIGUO de los dos
+        paneles (el boton de los clicks cae entre dos bloques de orientacion)»: eso es exactamente lo
+        que esta tarea deshace, así que ese párrafo se corrige en el mismo commit — **AC6**, **AC7**
+- [ ] T012 SVG del metrónomo **inline**, `1em` + `currentColor` + `aria-hidden="true"`; `aria-label`,
+      `title` **y `aria-pressed`** en el **botón**, con la etiqueta entera (más larga que la que cabía
+      en la fila). Los tres atributos del botón no son tres decisiones: `.claude/rules/ui.md` fija
+      «todo control solo-icono lleva `aria-label`» y «todo control que alterna lleva `aria-pressed`, y
+      su nombre es lo que alterna, no el valor» — o sea que el nombre dice **qué se apaga** y nunca
+      `ON`/`OFF`. El `aria-pressed` llega desde T011, no se inventa acá — **AC7**
 - [ ] T013 Comentario: por qué SVG y no glifo (Unicode no tiene metrónomo; ⏱ es cronómetro, 🎵 es lo
       que hace el ▶ de al lado) y por qué **sin archivo propio**
 - [ ] T014 `Reset` pasa a `↺` con `aria-label` y `title`; sigue vaciando el tablero **y** frenando el
-      transporte — **AC8**
+      transporte. El botón de hoy (`TransportPanel.tsx:74`) **no tiene ninguno de los dos**: su nombre
+      accesible es el texto visible `Reset`, así que cambiarlo a un glifo sin agregarlos lo deja mudo.
+      No lleva `aria-pressed`: no alterna nada. Y arrastra dos comentarios del mismo archivo: `:52-55`
+      mide la fila «junto a Reset (62 px + 8 de gap)» con un Reset de 62 px que deja de existir, y
+      `:60-65` explica el par de colores «al lado tiene a Reset en `bg-slate-200`», que con T011 pasa a
+      ser un trío — es el mismo párrafo del que sale el argumento de AC6 — **AC8**
 - [ ] T015 Separar `↺` del par ▶/metrónomo: es el único destructivo de los tres y no tiene deshacer
 
 ## Paso 4 — Rehacer la medición de `CELL_PX`
@@ -119,18 +186,25 @@ una persona y no bloquea el cierre.
       esa misma línea** —no una fila nueva—, o sea ~10 px más de los ~30, y que ahí el margen queda en
       décimas: la próxima fila que salga del panel sí achica el tablero
 - [ ] T033 `layout.constants.ts`: el párrafo de abajo de la tabla —«agrandar el tablero hoy pide más
-      ANCHO … el alto ya sobra»— y el bullet del **techo útil**, que cita `730,7 × 464` y «por alto
-      77,3» sobre una paleta de 496 px que deja de existir. Sin esto el docblock se contradice consigo
-      mismo en el mismo comentario
+      ANCHO … el alto ya sobra» (`:25-27`)— y el bullet del **techo útil** (`:44-53`), que cita
+      `730,7 × 464` y «por alto 77,3» sobre una paleta de 496 px que deja de existir. Sin esto el
+      docblock se contradice consigo mismo en el mismo comentario.
+      **Y hay un quinto lugar, fuera de este archivo, que el spec no tenía**: `Board.tsx:262-266`
+      repite la misma cadena en presente —«la paleta paso de 461,6 a 496 px de caja, el interior del
+      tablero a 730,7 × 464»— y cierra con «pasado ese punto lo que la paleta crezca ya no agranda el
+      tablero, le deja aire muerto», que es exactamente el aire que este spec se come. Se corrige con
+      el número de T022, corto: el 021 también se lo lleva
 - [ ] T034 `layout.constants.ts`: verificar que el docblock de `MINI_CELL_PX`, que cita el mismo
       umbral de «~470 px de caja», sigue siendo cierto. Si lo es, no se toca
 - [ ] T018 Verificar que el **piso de 60** queda intacto: depende de la fuente y este spec no toca el
       `text-[19px]` de `Board.tsx`
-- [ ] T019 `App.tsx`: **leer** el footer y confirmar que no hay nada que sacar — hoy no menciona ningún
-      botón, nombra `Rotación` y `Reflexión` como transformaciones del modelo (el `<footer>` con la
-      frase «Rotación cambia la fórmula de escala o el arranque del arpegio…»; el spec 022 corrió de
-      línea el archivo entero, así que no vale citarlo por número). La primera oración **no se toca**
-      — **AC10**
+- [ ] T019 `App.tsx`: **leer** el footer y confirmar que no hay nada que sacar. Lo falsable es la
+      **primera oración** —«Rotación cambia la fórmula de escala o el arranque del arpegio, según el
+      régimen; Reflexión invierte el orden (retrógrado)»— y la pregunta es si nombra un **control** o
+      una **transformación del modelo**. Nombra la transformación, así que no se toca. El resto del
+      `<footer>` no es asunto de este spec: el 022 lo corrió de línea entero (hoy `:433-439`) y el
+      **018 lo reescribe** sumándole un cuarto `<span>` de gesto, o sea que se busca por texto y la
+      cuenta de gestos que confirma AC10 es la que el 018 deje, no «los cuatro del 013» — **AC10**
 - [ ] T020 Verificar que `PiecePalette` sigue sin estado y sin efectos. Desde el spec 022 dos de sus
       filas viven en componentes propios (`OrientationPanel.tsx`, `TransportPanel.tsx`);
       confirmar que tampoco ganaron estado ni efectos al recibir el botón que este paso les mueve
@@ -141,10 +215,11 @@ una persona y no bloquea el cierre.
 Agregado por el review. No son specs viejos —esos no se reescriben— sino las tres páginas que el repo
 sí mantiene al día, y las tres lo afirman **en presente**. **AC14**.
 
-- [ ] T036 [P] `docs/guides/quickstart.md:58-59`: el mecanismo por el que «los atajos se descubren
+- [ ] T036 [P] `docs/guides/quickstart.md:73-75` (hoy): el mecanismo por el que «los atajos se descubren
       solos» era ver iluminarse `180°` en la paleta. Ese botón muere; el lector nuevo es la línea de
-      AC4, y la frase tiene que decir eso. La cita del spec decía `:58-59` y es `:59-61`. La tabla de
-      gestos de `:65-70` sigue siendo correcta. **Y en el mismo archivo, `:80-81`**: «con el foco sobre
+      AC4, y la frase tiene que decir eso. La cita del spec decía `:58-59`, el review anterior la corrigió a `:59-61`, y contra el árbol de hoy es
+      `:73-75`. La tabla de
+      gestos —hoy `:77-84`— sigue siendo correcta. **Y en el mismo archivo, hoy `:94-95`**: «con el foco sobre
       `Reset`, activa `Reset`» nombra al botón por su etiqueta visible, que pasa a ser `↺`. La frase
       sobre el foco no cambia; el nombre sí.
       **Si el 018 ya está mergeado, todos esos números se corrieron**: agrega una fila a la tabla (las
@@ -152,18 +227,52 @@ sí mantiene al día, y las tres lo afirman **en presente**. **AC14**.
       por colocar», porque la letra es una cuarta vía de entrada. Buscar por texto y no por número de
       línea. La tabla en sí sigue siendo correcta; lo que cambia es dónde empieza y cuántas filas tiene
       — **AC8**, **AC14**
-- [ ] T037 [P] `docs/architecture/audio.md:247`: «el toggle «Recorrido en el vacío» de la paleta» pasa
+- [ ] T037 [P] `docs/architecture/audio.md:247` (verificado contra el árbol de hoy): «el toggle «Recorrido en el vacío» de la paleta» pasa
       a ser el icono de metrónomo de la fila de transporte. La etiqueta sobrevive en `title` y
       `aria-label`, y eso es lo que hay que escribir
-- [ ] T038 [P] `DESIGN.md:250-251`: «el panel lo enciende con «Recorrido en el vacío»», con la
+- [ ] T038 [P] `DESIGN.md:297` (el `:250-251` del spec era del `main` de 2026-08-20): «el panel lo enciende con «Recorrido en el vacío»», con la
       etiqueta a la vista. Mismo cambio que T037, y acá además importa que el nombre de cara al
       usuario **no** cambia: cambia dónde se lee
+
+## Paso 6 — Los tests de navegador que este spec rompe
+
+Agregado por el review, y no es higiene: los tres `*.browser.test.tsx` de la tarjeta afirman hoy, por
+**rol y nombre**, exactamente los botones que los pasos 1 y 3 borran o renombran. Sin estas tres tareas
+T021 no puede dar verde, y el umbral de coverage es 100. **AC16**.
+
+- [ ] T041 `__tests__/PiecePalette.browser.test.tsx`: reescribirlo contra la tarjeta que queda. Hoy
+      afirma lo que este spec borra —los cuatro grados (`:93-98`), «Reflexion y Recorrido son ON/OFF»
+      (`:116-142`), el `aria-pressed` de Reflexión (`:144-177`) y el de Recorrido (`:179-203`), los dos
+      `role="group"` llamados `Rotación` y `cambia` (`:205-231`) y el orden `Reflexión → Recorrido →
+      Notas actuales` (`:243-244`)—. Lo borrado se verifica **al revés**, con un `queryByRole` anclado
+      que da vacío: es la única forma falsable de AC1. El grupo que sobrevive pasa a llamarse
+      `Rotación` (T003), y se suma la línea de T007 —por texto, nunca por `className` — **AC1**,
+      **AC3**, **AC4**, **AC16**
+- [ ] T042 `__tests__/TransportPanel.browser.test.tsx`: `:85-92` busca el botón por el nombre visible
+      `Reset`, que con T014 pasa a ser el `aria-label`. Y el archivo **gana** el metrónomo: nombre
+      accesible anclado, `aria-pressed` en los dos estados y que el click llame a `onToggleClicks` — es
+      la aserción de Recorrido que T041 saca de `PiecePalette`, llegando a su archivo nuevo en vez de
+      desaparecer. Por rol y nombre, nunca por `className` (`.claude/rules/ui.md`) — **AC6**, **AC7**,
+      **AC8**, **AC16**
+- [ ] T043 `__tests__/OrientationPanel.browser.test.tsx`: **no se toca, y eso es la verificación**.
+      `:53`, `:56`, `:147`, `:166` y `:176` afirman los nombres `F, rotación 90°, reflejada` y
+      `Z, rotación 180°`, que es justo lo que AC13 prohibe degradar al hacer que T031 consuma la pura.
+      Si después de T031 hubo que editar este archivo, el `aria-label` perdió el sustantivo «rotación»
+      o ganó el separador que el lector deletrea, o sea que AC13 se saldó agrandando la deuda de
+      accesibilidad — **AC13**, **AC16**
 
 ## Verificación
 
 - [ ] T021 `pnpm verify` en verde — **AC15**
 - [ ] T022 [M] Navegador: medir `CELL_PX` en el DOM y confirmar que sigue en **73** — **AC9**. Es la
-      única forma de verificarlo de verdad
+      única forma de verificarlo de verdad. **Se toma antes de mergear este spec, no al final del
+      lote**, y es el único `[M]` de acá que **sí** bloquea su PR: el 020 le agrega el botón `0°` a la
+      fila que esto acaba de medir —su `T039` repite la medición— y el 021 **borra la tarjeta de la
+      que sale el número** (su `T012` y su `T016`). Como 018→019→020→021 es una sola cadena, es un
+      solo carril de `/spec-implement-batch`: diferir este `[M]` al cierre deja el navegador sin
+      tarjeta ni `max-w-6xl` que medir, y con eso AC9 se vuelve infalsificable — junto con la salida
+      que el 020 se reserva en su AC15 («si da otra cosa, el `0°` baja a una fila propia»), que
+      después del 021 no tiene fila adonde bajar
 - [ ] T023 [M] Navegador: rotar una `X` cuatro veces y confirmar que la línea de texto es lo único que
       cambia — **AC4**, **AC5**
 - [ ] T024 [M] Navegador: rueda, `Shift`, botón derecho y `Ctrl` siguen rotando y reflejando — **AC2**

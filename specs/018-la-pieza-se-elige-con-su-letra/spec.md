@@ -18,7 +18,7 @@ tablero de 60 celdas, esa ida y vuelta es el gesto más repetido del instrumento
 Y las doce piezas **ya se llaman por su letra** en todos lados: `PieceKey` **es** la letra
 (`domain/types/pieces.types.ts`), `describe_piece` las nombra así, `DESIGN.md` mapea `F → tónica C`, y
 desde el spec 016 cada botón de la paleta lleva su letra escrita abajo. El único lugar donde la letra
-**no** aparece es el `title` de la celda —`(x,y) · D#5 · paso 3`, `Board.tsx:270`—, que dice la nota y
+**no** aparece es el `title` de la celda —`(x,y) · D#5 · paso 3`, `Board.tsx:500`—, que dice la nota y
 el paso. El nombre existe y está a la vista; lo que no existe es la tecla.
 
 ## Solución Propuesta
@@ -47,6 +47,10 @@ Son las mismas que el spec 013 ya paga, y ninguna es opcional:
 | El foco está sobre un `<button>` o un `<input>` | Arrastrar el slider de tempo con las flechas y tipear cualquier letra cambiaría la pieza |
 | `Ctrl`, `Meta` o `Alt` están abajo | `Ctrl`+`F` (buscar), `Ctrl`+`P` (imprimir) y `Ctrl`+`V` seleccionarían pieza además de hacer lo suyo |
 | El evento se procesa en `keydown` y **sin `preventDefault`** | Una letra suelta no tiene default que frenar; frenarlo sería quitarle al navegador un evento que no es nuestro |
+
+Y hay una cuarta pregunta que en 2026-08-20 no existía: desde el spec 026 el tablero es una parada de
+tabulación y `EventoDeTecla` lleva un quinto campo, `targetEsCelda`. La letra **no** se veta con él —ver
+AC13—, y ese es el punto: `targetEsCelda` apaga la barra y sólo la barra.
 
 La tercera es la que más se parece a un detalle y no lo es: `frenaElDefault` existe justamente porque
 «hay acción» y «hay que frenar el default» son dos preguntas distintas (D4 del 013), y esta tecla es el
@@ -77,7 +81,21 @@ primer caso donde la respuesta a la primera es sí y a la segunda es no.
   transporte con `Ctrl`, `Alt` o `Meta` abajo: la guarda de modificadores es **de la rama de las
   letras** y no un `return` al tope de `accionDeTecla`, que se la aplicaría también a la barra y a los
   dos modificadores sin que ningún AC lo pida.
-- **AC12** — `pnpm verify` en verde (lint ‖ typecheck ‖ test ‖ mcp:test). Es el gate mecánico que el 013 (AC12) y el 017 (AC12) ya fijaron como criterio propio y no solo como tarea.
+- **AC12** — `pnpm verify` en verde (lint ‖ typecheck ‖ **suite** ‖ mcp:test, que es la forma que tiene
+  hoy desde el spec 029: `suite` son las dos pasadas de vitest y la segunda trae el umbral **100** en
+  las cuatro métricas). Es el gate mecánico que el 013 (AC12) y el 017 (AC12) ya fijaron como criterio
+  propio y no solo como tarea.
+- **AC13** — Con una **celda del tablero enfocada** (spec 026) la letra **igual selecciona**. El campo
+  `targetEsCelda` no entra en la rama de las letras, y no es una omisión: `Board.tsx:194-206` maneja
+  `Enter`, la barra, las flechas y `Home`/`End`, y su `switch` cierra con `default: return`, así que una
+  letra no la maneja nadie más y no hay doble disparo que evitar. Es la misma decisión que el 026 tomó
+  para `Shift` y `Ctrl` —que con una celda enfocada siguen rotando y reflejando—, y vetar la letra ahí
+  apagaría el atajo justo donde más sirve: con la mano puesta en el tablero.
+- **AC14** — No-regresión del cableado: los tests de navegador que ya cubren esta superficie
+  —`src/components/__tests__/use-input.browser.test.tsx` y `src/__tests__/App.browser.test.tsx`— siguen
+  en verde, y las ramas nuevas de `use-input.ts` y de `App.tsx` llegan **con su test**. No es opcional:
+  el umbral es 100 en las cuatro métricas, así que una rama nueva sin test no mergea. En particular, el
+  callback nuevo de `App.tsx` es una función más en el conteo de `functions`.
 
 ## Límites de Alcance
 
@@ -86,7 +104,10 @@ primer caso donde la respuesta a la primera es sí y a la segunda es no.
 - **No agrega teclas para rotar a un ángulo concreto** (`1`/`2`/`3`/`4` → 0°/90°/180°/270°). Es
   tentador y es otro spec: hoy la rotación es global y el 020 la vuelve por pieza, así que decidir esa
   tabla antes del 020 sería decidirla dos veces.
-- **No arregla la accesibilidad del tablero.** Las celdas siguen sin recibir foco (deuda conocida).
-  Este spec agrega una entrada de teclado al **panel**, no al tablero.
+- **No arregla la accesibilidad del tablero, porque ya la arregló el 026.** Cuando este spec se escribió
+  las celdas no recibían foco y acá decía que seguían sin recibirlo; hoy el tablero es una parada de
+  tabulación con `role="grid"`, cursor de teclado y su propio `onKeyDown`. Lo que sigue valiendo es el
+  límite: este spec agrega una entrada de teclado al **panel** y no le toca una línea al tablero. Su
+  único punto de contacto es `targetEsCelda`, y es para **no** usarlo (AC13).
 - **No cambia el aspecto de la paleta.** Que la letra ya esté escrita en cada botón desde el 016 es
   lo que hace que este atajo no necesite cartel; aprovecharlo es todo lo que se hace.

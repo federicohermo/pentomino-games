@@ -103,12 +103,6 @@ propio botón, y es el de al lado.
   independientes en vez de doce iguales.
 - **AC13** — La decisión de cada gesto sigue viviendo en puras testeadas en `environment: 'node'`.
 - **AC14** — No hay estado global: la memoria vive en `App.tsx` y baja por props.
-- **AC16** — `Orientacion.rotation` es un union acotado (`Rotacion`, derivado del const-object
-  `ROTACION`), **no** un `number`. Es falsable de dos formas y las dos son mecánicas: asignarle un `5`
-  a una ranura del `Record` **no compila**, y `pnpm lint` no reporta ningún `enum` (`erasableSyntaxOnly`
-  lo rechaza y la deuda lo dejó excluido por escrito). No cierra la deuda de la rotación sin acotar
-  —`domain/` sigue tomando `number` y ese tramo cruza el borde de paquete— pero **sí** cierra la vía:
-  con la fuente acotada, `domain/` no puede recibir un valor fuera de `0..3` desde acá.
 - **AC15** — `CELL_PX` sigue midiendo **73** en el DOM, y la medición se toma **con el botón `0°` ya
   puesto**. Es el AC de no-regresión sobre la superficie que este spec comparte con el 019: el 019
   deja el colchón de alto de la tarjeta del tablero en ~30 px —bajó de 50 al borrar tres filas y
@@ -116,6 +110,12 @@ propio botón, y es el de al lado.
   o sea que gasta parte de lo poco que queda. `73` sobrevive por cálculo (el que manda sigue siendo
   el **ancho**, 73,1) pero es la primera vez que el número no tiene margen, así que se mide y no se
   afirma. Si la medición da otra cosa, el `0°` baja a una fila propia antes que `CELL_PX` cambie.
+- **AC16** — `Orientacion.rotation` es un union acotado (`Rotacion`, derivado del const-object
+  `ROTACION`), **no** un `number`. Es falsable de dos formas y las dos son mecánicas: asignarle un `5`
+  a una ranura del `Record` **no compila**, y `pnpm lint` no reporta ningún `enum` (`erasableSyntaxOnly`
+  lo rechaza y la deuda lo dejó excluido por escrito). No cierra la deuda de la rotación sin acotar
+  —`domain/` sigue tomando `number` y ese tramo cruza el borde de paquete— pero **sí** cierra la vía:
+  con la fuente acotada, `domain/` no puede recibir un valor fuera de `0..3` desde acá.
 
 ## Límites de Alcance
 

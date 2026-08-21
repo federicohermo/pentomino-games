@@ -1,6 +1,7 @@
 # Research — Spec 019
 
-Medido en el DOM sobre `main` con los specs 013–017 mergeados, en Chrome, viewport **1536 × 639** CSS
+Medido en el DOM el **2026-08-20**, sobre un `main` con los specs 013–017 y 022 mergeados, en Chrome,
+viewport **1536 × 639** CSS
 (`max-w-6xl` saturado, o sea el reparto `md:col-span-4` / `md:col-span-8`).
 
 ## 1. Las cinco filas del panel, medidas
@@ -36,6 +37,15 @@ CELL_PX resultante: 73          ← el mismo de hoy
 La explicación es que las dos tarjetas están en la misma fila del grid y se estiran a la más alta, que
 es la paleta. El contenido real del tablero mide `6 × 73 + 32 = 470`, así que antes de este spec la
 tarjeta tenía **50 px de aire muerto** abajo de la grilla. Este spec se los come exactos.
+
+**Y esta medición es del 2026-08-20, o sea de un `main` que ya no existe.** Entraron después el **025**
+(atributos de accesibilidad sobre nodos que ya existían: ni un nodo visible nuevo), el **026** (el
+tablero pasa a `role="grid"` con filas de verdad y el `gridTemplateColumns` se muda del contenedor a la
+fila, `Board.tsx:296-327`) y el **027** (`memo` sobre `OrientationPanel`). Ninguno de los tres declara
+cambio visual —el 022 ya lo exigía explícito en su AC18— así que el −50 **debería** seguir en pie; pero
+el 026 tocó por dentro la caja que estos números miden. Quien firma AC9 no lo firma con este párrafo
+sino con **T022**, la única medición tomada sobre el árbol de hoy: si T022 da otra cosa, manda T022 y
+esta sección se remide. Y el piso del 021 sale de T022, no de acá.
 
 ### Contra qué base vale este −50, y hasta cuándo
 
@@ -168,9 +178,12 @@ vacío» era todo lo que quedaba de esa aclaración. El `title` la puede decir e
 
 | Archivo | Qué cambia |
 |---|---|
-| `src/components/PiecePalette.tsx` | Todo el cuerpo del cambio |
+| `src/components/PiecePalette.tsx` | El grueso del cambio: las tres filas que se van y la línea de AC4 |
+| `src/components/OrientationPanel.tsx` | El `aria-label` de los doce botones consume la pura (T031) — con el 022 ya no vive en `PiecePalette.tsx` |
+| `src/components/TransportPanel.tsx` | Recibe el metrónomo y el `↺`, y su docblock deja de ser cierto (T011, T014) |
+| `src/components/types/panel.types.ts` | Mueren `onRotate` y `onMirror` de `PropsDeOrientacion`, y el docblock de `regimen` (T005, T035) |
 | `src/components/<módulo nuevo>.ts` | La pura de AC4, hermana de `piece-mini.ts` |
-| `src/components/__tests__/…` | Sus tests (T009, T010) |
+| `src/components/__tests__/…` | La pura (T009, T010) **y los tres `*.browser.test.tsx` que hoy afirman lo que este spec borra** (T041–T043) |
 | `src/components/constants/layout.constants.ts` | El docblock de `CELL_PX`: la medición del §2 |
 | `src/App.tsx` | Las props que dejan de pasarse |
 
@@ -182,14 +195,25 @@ y las cuatro afirman **en presente**:
 
 | Archivo | Qué afirma hoy |
 |---|---|
-| `docs/guides/quickstart.md:59-61` | Que los atajos «se descubren solos —se rota con la rueda y se ve iluminarse `180°` en la paleta—». Es justo el botón que muere, y el reemplazo es la línea de AC4 |
-| `docs/guides/quickstart.md:80-81` | Que «con el foco sobre `Reset`, activa `Reset`». Nombra al botón por su **etiqueta visible**, que pasa a ser `↺`. La frase sobre el foco sigue siendo correcta; el nombre no |
+| `docs/guides/quickstart.md:73-75` | Que los atajos «se descubren solos —se rota con la rueda y se ve iluminarse `180°` en la paleta—». Es justo el botón que muere, y el reemplazo es la línea de AC4 |
+| `docs/guides/quickstart.md:94-95` | Que «con el foco sobre `Reset`, activa `Reset`». Nombra al botón por su **etiqueta visible**, que pasa a ser `↺`. La frase sobre el foco sigue siendo correcta; el nombre no |
 | `docs/architecture/audio.md:247` | «el toggle «Recorrido en el vacío» de la paleta», que pasa a ser un icono en el transporte |
-| `DESIGN.md:250-251` | «el panel lo enciende con «Recorrido en el vacío»», con la etiqueta a la vista |
+| `DESIGN.md:297` | «el panel lo enciende con «Recorrido en el vacío»», con la etiqueta a la vista |
 
-`App.tsx:447-451` —el footer— **no** entra por AC10: hoy no menciona ningún botón. Y
-`docs/architecture/overview.md:155` tampoco, aunque nombre a «Reset»: lo hace **en pasado**, contando un
-bug viejo, y al lado de «Quitar», que ya no existe desde el 014.
+Los números de esta tabla son los del árbol de **hoy**, no los del `main` de 2026-08-20 (`:59-61`,
+`:80-81`, `:250-251`), que ya estaban corridos; el 018 vuelve a correr los dos de `quickstart.md`, así
+que las cuatro se buscan por **texto**.
+
+El footer (hoy `App.tsx:433-439`) **no** entra por AC10: hoy no menciona ningún botón. Y
+`docs/architecture/overview.md:185` tampoco, aunque nombre a «Reset»: lo hace **en pasado**, contando un
+bug viejo, y al lado de «Quitar», que ya no existe desde el 014. Lo mismo `docs/architecture/audio.md`
+`:535-539` y `components/route-source.ts:89-99`, que nombran al «Reset del shell» como **operación** y no
+como etiqueta de botón: la operación no cambia.
+
+**Lo que sí entra y esta tabla no tenía es `Board.tsx:262-266`**, que repite en presente la misma cadena
+que el docblock de `CELL_PX` —«la paleta paso de 461,6 a 496 px de caja, el interior del tablero a
+730,7 × 464»— y cierra con «pasado ese punto lo que la paleta crezca ya no agranda el tablero, le deja
+aire muerto». Ese aire muerto es exactamente el que este spec se come. Lo cubre T033.
 
 ## 8. Las props que pueden morir
 
@@ -200,7 +224,20 @@ bug viejo, y al lado de «Quitar», que ya no existe desde el 014.
   (`miniCells(key, rotation, mirror)`, spec 016) y la línea de texto nueva de AC4.
 
 `App.tsx` conserva los `useState` de las dos: los usan `transformedShape`, `noteSet`, el fantasma, el
-`Board` y el efecto de teclado.
+`Board` y los atajos de teclado —que desde el 022 no son un efecto del shell sino `use-input.ts`—. Los
+dos **setters** también sobreviven a AC12: `rotarConTecla` (`App.tsx:249`), `alRotar` (`:256`),
+`reflejarConTecla` (`:250`) y el `onContextMenu` (`:270`), así que borrar las dos props no deja una
+variable sin uso.
+
+Y hay una tercera cosa que viaja y que este párrafo no nombraba: los **atributos que el 025 le puso a
+estos mismos botones**. `aria-pressed` está hoy en los cuatro de grados, el de Reflexión, los dos de
+régimen y el de Recorrido. Los tres primeros grupos se borran con su botón —y eso es trabajo del 025
+que se va con el control que lo justificaba, no una regresión—, pero el de **Recorrido se muda** y
+tiene que llegar al metrónomo. Su `aria-labelledby="recorrido-etiqueta"`, en cambio, **no** puede
+viajar: el `<span>` que referencia muere con la fila, así que pasa a `aria-label`. Y el `role="group"
+aria-labelledby="regimen-etiqueta"` del régimen sobrevive con su fila, pero su nombre accesible cambia
+de `cambia` a `Rotación` cuando T003 la asciende — que es una de las cosas que
+`PiecePalette.browser.test.tsx:216-217` afirma hoy.
 
 ## 9. Riesgos
 

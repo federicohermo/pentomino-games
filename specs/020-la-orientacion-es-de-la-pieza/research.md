@@ -3,6 +3,14 @@
 Medido ejecutando `domain/transform.ts` y `domain/music.ts` reales con node, y leyendo `App.tsx` sobre
 `main` con los specs 013–017 mergeados.
 
+> **Re-anclado en el review.** Lo medido sobre el dominio (§1, §3, §6) no envejeció: son funciones
+> puras que ningún spec de por medio tocó. Lo que sí envejeció es todo lo que afirma la **forma de
+> `App.tsx`**: desde que esto se escribió entraron el **022** (los seis efectos se van del shell;
+> `PiecePalette` se parte en `OrientationPanel` + `TransportPanel`), el **026** y el **027** (el
+> objeto `orientacion` pasa a ser un `useMemo` y `OrientationPanel` queda envuelto en `memo`).
+> `App.tsx` pasó de 312 a **442** líneas: los números de línea de §2 y §8 estaban todos podridos y
+> las secciones marcadas abajo se reescribieron contra el árbol de hoy.
+
 ## 1. El tamaño del problema, medido
 
 ```
@@ -31,28 +39,48 @@ const [rotation, setRotation] = useState<number>(0); // 0..3
 const [mirror, setMirror] = useState<boolean>(false);
 ```
 
-Y **ocho** consumidores, todos derivados de esos dos:
+Y no son ocho consumidores sino **diez**. La cuenta de ocho es de antes del 022 y del 027, y las
+líneas que citaba no existen más. Re-derivado sobre `App.tsx` de hoy —**por símbolo**, que es como
+hay que citarlas de acá en adelante, porque el 018 y el 019 escriben este archivo antes que este
+spec y cualquier número se corre otra vez:
 
-| Consumidor | Qué hace con ellos |
+| Consumidor (por símbolo) | Qué hace con ellos |
 |---|---|
-| `transformedShape` (`useMemo`, `App.tsx:101`) | `rotateN` + `reflect` para el fantasma y la colocación |
-| `noteSet` (`useMemo`, `App.tsx:124`) | `arpeggioFor(selected, rotation, mirror, regimen)` |
-| `handleCellClick` (`App.tsx:153`) | los guarda en el `PlacedPiece` nuevo |
-| `PiecePalette` (props, `App.tsx:401`) | las doce miniaturas (`miniCells(key, rotation, mirror)`) |
-| `Board` (props, `App.tsx:424`) | el `title` y el texto del fantasma |
-| efecto de teclado (`App.tsx:306`) | `setRotation((rotation + 1) % 4)` y `setMirror(!mirror)` |
-| efecto de la rueda (`App.tsx:361`) | `setRotation(r => rotacionPorRueda(r, e.deltaY))` |
-| `handleContextMenu` (`App.tsx:374`) | `setMirror(m=>!m)` — es la mitad «botón derecho» de **AC2** |
+| los dos `useState` | `rotation` (`0..3`) y `mirror` |
+| `transformedShape` (`useMemo`) | `rotateN` + `reflect` para el fantasma y la colocación |
+| `noteSet` (`useMemo`) | `arpeggioFor(selected, rotation, mirror, regimen)` |
+| `handleCellClick` | los guarda en el `PlacedPiece` nuevo |
+| `rotarConTecla` (`useCallback`) | `setRotation((rotation + 1) % 4)` |
+| `reflejarConTecla` (`useCallback`) | `setMirror(!mirror)` |
+| `alRotar` (`useCallback`, **deps vacías**) | `setRotation(r => rotacionPorRueda(r, deltaY))` |
+| `handleContextMenu` | `setMirror(m=>!m)` — es la mitad «botón derecho» de **AC2** |
+| `orientacion` (**`useMemo`**, spec 027) | los baja a `PiecePalette` junto con `onRotate`/`onMirror` |
+| `<Board rotation mirror>` | el `title` y el texto del fantasma |
 
-**El octavo es el que se escapa leyendo.** `handleContextMenu` no está en ningún `useMemo` ni en
+Tres diferencias con la cuenta vieja, y las tres cambian trabajo:
+
+1. **«El efecto de teclado» ya no existe en este archivo.** El 022 lo mudó a `useAtajosDeTeclado`
+   (`components/use-input.ts`) y lo que queda del lado del shell son **dos** `useCallback`
+   —`rotarConTecla` y `reflejarConTecla`—, que es lo que T009 reescribe. Lo mismo con «el efecto de
+   la rueda»: quedó `useRuedaRota`, y del lado del shell sólo `alRotar`.
+2. **`orientacion` es un `useMemo` y no un literal inline** desde el 027, con `rotation` y `mirror`
+   en su array de dependencias y `OrientationPanel` envuelto en `memo` del otro lado. Es la mitad
+   del spec que la cuenta vieja no podía ver, y es donde entra el campo nuevo del botón `0°`.
+3. **Y hay una undécima superficie que no es de producción**: los fixtures de `PropsDeOrientacion`
+   en `OrientationPanel.browser.test.tsx` y `PiecePalette.browser.test.tsx`, que arman
+   `rotation: 0, mirror: false` a mano. El typecheck de T004 los enumera igual, pero no había tarea
+   que los arreglara: la agrega T044.
+
+**El que se escapa leyendo sigue siendo `handleContextMenu`.** No está en ningún `useMemo` ni en
 ningún efecto: es una función suelta del cuerpo del componente, y es la única vía del gesto que AC2
 nombra primero. La técnica del paso 2 —borrar los dos `useState` y dejar que el typecheck enumere—
 lo atrapa igual, y por eso no es un bloqueante; pero enumerarlo acá es lo que evita que la tarea que
 lo arregla quede sin escribir. No necesita nada nuevo: al ser una función del cuerpo, lee `selected`
 sin pasar por dependencias.
 
-Los ocho pasan a leer `orientaciones[selected]`. **Ninguno cambia de forma**, lo que cambia es de
-dónde sale el par — que es lo que hace este spec barato pese a tocar ocho lugares.
+Los diez pasan a leer `orientaciones[selected]` (o `orientaciones` entera, en el caso del `useMemo`
+de `orientacion`). **Ninguno cambia de forma**, lo que cambia es de dónde sale el par — que es lo
+que hace este spec barato pese a tocar diez lugares.
 
 ## 3. `PlacedPiece` ya resuelve la mitad difícil
 
@@ -76,26 +104,45 @@ Vale para las dos vías de selección —el `onSelect` de la paleta y la tecla d
 
 ## 4. Los dos efectos de entrada, y el que cambia de forma
 
-**El teclado** (`useEffect` con `[rotation, mirror, togglePlay]`) ya declara sus dependencias reales.
-Pasa a `[orientaciones, selected, togglePlay]` o —mejor— a setters funcionales, que lo dejan en
-`[selected, togglePlay]`.
+> **Reescrita en el review.** Los dos efectos se fueron de `App.tsx` con el 022 y viven en
+> `components/use-input.ts`. Y con ellos apareció **AC16 del 022**, que da vuelta la conclusión que
+> esta sección tenía: la salida ya no es agregar `selected` a las dependencias.
 
-**La rueda** es el caso interesante. Hoy se suscribe **una sola vez** y su comentario lo dice explícito:
+**El teclado** — `useAtajosDeTeclado` declara `[rotar, reflejar, transporte, tapLimpio]`, o sea las
+identidades de los tres callbacks del shell. El hook **no se toca**: lo que este spec reescribe son
+`rotarConTecla` y `reflejarConTecla`, los dos `useCallback` que se los arman (T009). Con setter
+funcional sobre la ranura de `selected`, sus dependencias quedan en `[selected]`.
 
-> Con el setter funcional este efecto no depende de `rotation` y se suscribe una sola vez […]: acá no
-> hay ningún valor que el handler tenga que leer.
+**La rueda** es el caso interesante, y ahora por un motivo más fuerte. `useRuedaRota` se suscribe
+**una sola vez por montaje** y su docblock lo dice explícito:
 
-Con memoria por pieza **sí hay**: el handler necesita saber *cuál* pieza está en la mano para escribir
-en la ranura correcta. Dos salidas:
+> Este efecto se suscribe UNA SOLA VEZ por montaje […]: acá no hay ningún valor que el handler tenga
+> que leer. Del lado del shell eso obliga a que `alRotar` vaya envuelto en un `useCallback` de
+> dependencias vacías […]; si algún día `alRotar` gana una dependencia, este listener pasa a
+> re-suscribirse con ella y la cardinalidad que **AC16 del 022** protege se rompe.
 
-- **Agregar `selected` a las dependencias.** El efecto se re-suscribe al cambiar de pieza: doce valores
-  posibles, dos `addEventListener` sobre un nodo. No es un costo.
-- Un `selectedRef`. Suscribe una sola vez y **esconde de dónde sale el valor**, que es exactamente lo
-  que `App.tsx` ya rechazó por escrito para el efecto del teclado: «la alternativa es un ref con el
-  estado para suscribir una sola vez, que es la optimización que este repo no necesita».
+Con memoria por pieza **sí hay** un valor que leer: el handler necesita saber *cuál* pieza está en la
+mano. Y las dos salidas que esta sección listaba ya no son dos:
 
-Se agrega `selected`. Y el comentario del efecto de la rueda hay que **reescribirlo**, no dejarlo:
-va a estar afirmando lo contrario de lo que hace el código.
+- **Agregar `selected` a las dependencias de `alRotar`** era la elegida. **Deja de estar disponible**:
+  rompe AC16 del 022, que es una AC de un spec ya mergeado y no una preferencia. El argumento que la
+  sostenía —«dos `addEventListener`, no es un costo»— sigue siendo cierto y ya no alcanza, porque lo
+  que hay del otro lado ahora es un criterio escrito.
+- **Un `selectedRef`.** Es la que queda. Y el reparo que esta sección le ponía —«esconde de dónde sale
+  el valor»— hay que releerlo con lo que el 022 dejó: el `ref` va **nombrado y comentado** al lado de
+  `alRotar`, así que de dónde sale `selected` se lee en el archivo; lo único que no hace es disparar
+  una re-suscripción. La frase que se citaba en contra («la alternativa es un ref con el estado […],
+  la optimización que este repo no necesita») es del docblock del efecto **del teclado**, que
+  justamente sí se re-suscribe y puede darse el lujo.
+
+Se usa el `ref`. Y el comentario de `alRotar` hay que **reescribirlo**, no dejarlo: hoy dice que su
+cuerpo «usa el setter funcional y no lee `rotation`», y va a estar afirmando lo contrario de lo que
+hace el código (T010, T011).
+
+**Lo que NO es una salida**, y conviene dejarlo escrito porque parece una: resolver la ranura adentro
+del setter funcional. `setOrientaciones(o => …)` recibe el `Record` anterior y nada más — no hay
+ninguna forma de que sepa cuál es la pieza en la mano sin cerrar sobre `selected` o sin leer el
+`ref`.
 
 ## 5. Dónde va el tipo `Orientacion`
 
@@ -112,6 +159,12 @@ del modelo. El modelo ya tiene su representación y es `PlacedPiece`.
 El valor inicial (`{ rotation: 0, mirror: false }`) va a `components/constants/`, porque los módulos de
 este repo no declaran constantes.
 
+**Y los dos archivos se llaman en inglés**: `types/orientation.types.ts` y
+`constants/orientation.constants.ts`. Los 57 archivos de `src/` están en inglés y los siete que el
+022 estrenó en castellano se revirtieron (`specs/revisiones.md`, 2026-08-20). La regla no es
+simétrica: **archivo en inglés siempre; identificador en castellano sólo dentro de `components/`**,
+donde hay 21 exportados así. O sea que el tipo se llama `Orientacion` y el archivo no.
+
 ## 6. La paleta con doce orientaciones independientes
 
 `miniCells(key, rotation, mirror)` ya recibe la orientación por parámetro (spec 016), así que la
@@ -124,7 +177,8 @@ Y la caja fija de 5×5 del 016 pasa a ser **más** necesaria, no menos. Su docbl
 > La `I` pasa de 5×1 a 1×5 al rotar: con cajas ajustadas, los doce botones reflowearían en cada
 > rotación.
 
-El mismo argumento está en `DESIGN.md:149` —el bullet «La caja es fija, de 5×5 celdas»— y el número 5 se declara en
+El mismo argumento está en **`DESIGN.md:165`** —el bullet «La caja es fija, de 5×5 celdas»; esta
+sección decía `:149` y el archivo mide hoy 313 líneas— y el número 5 se declara en
 `src/components/constants/layout.constants.ts` (`MINI_BOX`), que son los tres lugares donde el
 comentario de este spec tiene que quedar coherente.
 
@@ -158,21 +212,34 @@ sea ~10 px de los ~30 que quedaban. Por cálculo el alto pasa a ~74,7 y el ancho
 73,1, así que `CELL_PX = 73` no se mueve. **Pero es cálculo, no medición**, y con ~20 px de colchón el
 número dejó de tener margen: AC15 lo manda a medir en el DOM y T039 lo hace.
 
-Nota para quien lea el 019: su tabla de riesgos anota «el 020 devuelve el margen al agregar una
-línea». Con el `0°` inline eso no pasa — el 019 ya se había cobrado esos ~20 px con su propia línea
+Nota para quien lea el 019: su tabla de riesgos **ya dice lo mismo que esta sección** —«el 020 no
+devuelve el margen: su botón `0°` va *junto a* la línea de AC4 y no en una fila nueva, así que gasta
+~10 px más (lo mide su AC15)»— y no hay nada que corregirle. Este párrafo decía lo contrario, que el
+019 anotaba «el 020 devuelve el margen», y mandaba a buscar una discrepancia que no existe: el riesgo
+de dejarlo era que alguien «arreglara» la fila del 019, que está bien. Lo que esta sección agrega es
+el número: el 019 ya se había cobrado esos ~20 px con su propia línea
 de AC4, y este spec **gasta**, no devuelve. El número que vale es el de acá.
 
 ## 8. Archivos afectados
 
+Re-derivada en el review contra el árbol de hoy: la versión anterior era de antes del 022 y le
+faltaban cinco archivos.
+
 | Archivo | Qué cambia |
 |---|---|
-| `src/components/types/` | `Orientacion` y el tipo de la memoria |
-| `src/components/constants/` | La orientación inicial |
-| `src/App.tsx` | Los dos `useState` → un `Record`; los ocho consumidores; los dos efectos; el handler del botón `0°` |
-| `src/components/PiecePalette.tsx` | Las doce miniaturas leen doce pares; el botón `0°` y su prop; la línea del 019; salen las props `rotation` y `mirror` |
+| `src/components/types/orientation.types.ts` | **nuevo** — `Orientacion`, `Rotacion` y el tipo de la memoria |
+| `src/components/constants/orientation.constants.ts` | **nuevo** — `ROTACION`, la orientación inicial y la memoria inicial |
+| `src/App.tsx` | Los dos `useState` → un `Record`; los diez consumidores de §2; los dos `useCallback` del teclado; `alRotar` + su `ref`; el `useMemo` de `orientacion`; el handler del botón `0°` |
+| `src/components/types/panel.types.ts` | `PropsDeOrientacion` pierde `rotation`/`mirror` y gana `orientaciones` + el handler del `0°` (T008, T038) |
+| `src/components/OrientationPanel.tsx` | Las doce miniaturas leen doce pares (`miniCells`, `aria-label`) — se mudaron acá con el 022 |
+| `src/components/PiecePalette.tsx` | El botón `0°`; la línea de orientación del 019 lee `orientaciones[selected]` |
+| `src/components/input.ts` | `rotacionPorRueda` pasa a `Rotacion` en los dos extremos (T041) |
 | `src/components/constants/layout.constants.ts` | El docblock de `MINI_BOX` (T018). **Superficie compartida con el 019**, que reescribe en el mismo archivo el docblock de `CELL_PX` y verifica el de `MINI_CELL_PX`: son bloques distintos, pero el orden importa y el 019 va primero |
-| `docs/architecture/overview.md` | El diagrama (`:24`) y la tabla de estado (`:104`–`:105`) declaran `rotation` `0..3` y `mirror` `boolean` como dos escalares del shell. Este spec los reemplaza por un `Record` |
-| `DESIGN.md` | `:142` afirma que el botón se dibuja «en la orientación que está seleccionada ahora mismo» — singular y global. Pasa a ser la **suya** |
+| `src/components/__tests__/OrientationPanel.browser.test.tsx` | Fixture de `PropsDeOrientacion`; AC3/AC4/AC12 mecánicos (T044, T045) |
+| `src/components/__tests__/PiecePalette.browser.test.tsx` | Fixture de `PropsDeOrientacion` (T044) |
+| `src/components/__tests__/` (proyecto `node`) | Test de `ORIENTACIONES_INICIALES` derivada de `SHAPES` (T046) |
+| `docs/architecture/overview.md` | El diagrama (`:24`) y la tabla de estado (**`:122`–`:123`**, no `:104`–`:105`) declaran `rotation` `0..3` y `mirror` `boolean` como dos escalares del shell. Este spec los reemplaza por un `Record` |
+| `DESIGN.md` | **`:158`–`:159`** (no `:142`) afirma que el botón se dibuja «en la orientación que está seleccionada ahora mismo» — singular y global. Pasa a ser la **suya** |
 
 `domain/`, `audio/` y `mcp-server/` no se tocan.
 
@@ -187,7 +254,8 @@ así que dejarlos afirmando en presente algo que este spec falsifica es la deuda
 |---|---|---|
 | Un consumidor de los ocho se queda leyendo el par viejo | **Alto si se hace a mano** | Borrar los dos `useState` **primero**: el typecheck marca los ocho. Es la misma técnica que el 017 usó al sacarle el default al parámetro del régimen |
 | Doce orientaciones independientes vuelven la paleta ruidosa | Medio | Es información honesta y a pedido; la alternativa (mostrar las once en canónica) haría que el botón prometa una forma que al apretarlo no entrega |
-| El efecto de la rueda re-suscribe al cambiar de pieza | Bajo | Doce valores posibles, dos `addEventListener`. Se elige eso antes que un ref que esconda de dónde sale `selected` |
+| ~~El efecto de la rueda re-suscribe al cambiar de pieza~~ | **Ya no es una opción** | AC16 del 022 protege la suscripción única de `useRuedaRota`, así que `alRotar` **no puede** ganar una dependencia. La salida es un `selectedRef` nombrado y comentado (§4, T010, T011) |
+| El fixture de `PropsDeOrientacion` de los dos tests de navegador deja de compilar | Cierto, no riesgo | Es la mitad del typecheck en rojo de T004 que cae en `__tests__/`. T044 lo arregla; sin esa tarea, T020 no puede dar verde |
 | Estado invisible que sobrevive a `↺` | **Real, y aceptado** | Es la decisión de D3: `↺` conserva alcance único y la orientación tiene su propio botón. Queda escrito en el spec, no tapado |
 | El comentario del efecto de la rueda queda mintiendo | Medio | Tarea explícita de reescribirlo. Un comentario que afirma lo contrario del código es peor que ninguno |
 

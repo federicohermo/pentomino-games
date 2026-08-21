@@ -4,12 +4,18 @@ Medido en el DOM sobre `main` con los specs 013–017 mergeados, y leyendo los c
 
 ## 1. El hallazgo que decide la arquitectura: `CELL_PX` no lo lee sólo React
 
-`grep` sobre `src/` da **dos** consumidores, y el segundo es el que complica todo:
+`find_symbol CELL_PX` da **tres** consumidores —eran dos cuando se escribió este research; el spec 029
+sacó el bucle de la cabeza a su propio `.ts` para poder testearlo— y los dos últimos son los que
+complican todo:
 
 | Consumidor | Cómo lo usa |
 |---|---|
-| `Board.tsx` | `gridTemplateColumns` y `style={{ width: CELL_PX, height: CELL_PX }}` — dentro del render |
-| `Playhead.tsx` | `nodo.style.left = entrada.cell[0] * CELL_PX` — **fuera de React, en un `requestAnimationFrame`** |
+| `Board.tsx` | el `gridTemplateColumns` de la **fila** (`:327`, lo mudó el 026 al meter `role="row"`) y `const caja = { width: CELL_PX, height: CELL_PX }` (`:412`) — dentro del render |
+| `Playhead.tsx` | `style={{ width: CELL_PX, height: CELL_PX }}` (`:100`) — la caja propia de la cabeza, dentro del render |
+| `playhead-loop.ts` | las cuatro escrituras del velo (`:72-75`) y el `transform` de la cabeza (`:140`) — **fuera de React, en un `requestAnimationFrame`** |
+
+Y un cuarto que no importa `CELL_PX` pero depende de él: `constants/layout.constants.ts:158-159`, los
+dos anchos del **anillo de foco** que agregó el 026, derivados del aire de 2 px de la baldosa. Ver §12.
 
 **No son cuatro sitios, son seis, y los seis hay que convertirlos.** Las cuatro escrituras de
 `style` de arriba (`Playhead.tsx:172-175`) son las del **velo**, no las de la cabeza; la cabeza usa
@@ -65,13 +71,26 @@ que no existe es la copia en estado—.
 de pintar— o con un fallback en cada uso (`var(--cell, 73px)`). Se recomienda `useLayoutEffect`: deja
 un solo lugar donde vive el piso.
 
+**Y el efecto NO va en `App.tsx`.** Este research lo daba por sentado y hoy es una regla escrita: desde
+el 022 el shell **no declara un solo `useEffect`** (`.claude/rules/ui.md:15-16`, `CLAUDE.md:136-138`,
+`docs/architecture/overview.md:22`, `:74`, `:180`), y el caso exacto de un listener global ya tiene su
+patrón en el mismo archivo de reglas (`:206-209`): «el listener global vive en un hook de
+`components/`, en un efecto propio», con el `ref` creado en el shell. El precedente literal es
+`useRuedaRota` de `use-input.ts` recibiendo `boardRef`. Va entonces a `components/use-cell-px.ts`, al
+lado de la pura `cell-px.ts`. Beneficio que no es cosmético: un hook de `components/` se monta con
+`renderHook` en el proyecto `browser`, así que el cableado tiene test — y desde el 029 eso no es
+opcional, el umbral es 100 en las cuatro métricas y no hay `/* v8 ignore */`.
+
 **Cómo se setea sin cast**: `style={{ '--cell': …}}` no typechequea contra `React.CSSProperties`, y el
 arreglo habitual es un `as`. Se hace con un efecto sobre un `ref`
-(`ref.current.style.setProperty('--cell', …)`), que está tipado y no pide cast.
+(`ref.current.style.setProperty('--cell', …)`), que está tipado y no pide cast. **Y el valor va con
+unidad** (`'180px'`, no `'180'`): un `--cell` sin unidad deja inválidos a todos los
+`calc(var(--cell) * n)` y la grilla colapsa a una columna sin un solo error en consola — el mismo modo
+de falla que el `useLayoutEffect` de acá arriba viene a cerrar, por otra puerta.
 
 **Sobre qué nodo, y NO sobre `boardRef`.** Una custom property **hereda hacia abajo del árbol**, y
 `boardRef` cuelga del `div className="relative overflow-x-auto"` de adentro de `Board`
-(`Board.tsx:193`). Los dos flotantes del §4 son `position: fixed` y viven en `App.tsx` **fuera** de
+(hoy `Board.tsx:294`; el 026 reescribió el archivo entero y lo corrió 101 líneas). Los dos flotantes del §4 son `position: fixed` y viven en `App.tsx` **fuera** de
 `Board`: no son descendientes de ese nodo, así que ahí `var(--cell)` no resuelve a nada y los
 `calc(var(--cell) * n)` que el §4 exige para las dos cajas caen a inválido. `--cell` va sobre el
 **contenedor raíz de `App.tsx`** —el mismo que el paso 3 deja a `100dvh`—, que es el ancestro común
@@ -223,10 +242,21 @@ AC1 se salva, pero AC5 hoy solo nombra el caso horizontal y hay que decir el otr
 
 ## 6. Lo que ya está resuelto y no hay que inventar
 
-- **El espectro ya observa su contenedor.** `Spectrum.tsx` monta un `ResizeObserver` sobre
-  `canvas.parentElement` y recalcula el backing store con el `devicePixelRatio`, con un comentario que
-  explica por qué no observa el canvas. Mudarlo a una franja flotante y plegarlo entran por esa puerta
-  sin tocar una línea — AC11 sale casi gratis.
+- **El espectro ya observa su contenedor.** Desde el 029 el `ResizeObserver` no está en
+  `Spectrum.tsx` —que quedó en 30 líneas— sino en `spectrum-loop.ts:118-119`, sobre
+  `canvas.parentElement`, y recalcula el backing store con el `devicePixelRatio`. Mudarlo a una franja
+  flotante y plegarlo entran por esa puerta sin tocar una línea — AC11 sale casi gratis, **con una
+  condición que no estaba escrita**: plegar tiene que **ocultar** y no desmontar. Un `ResizeObserver`
+  se dispara cuando su nodo cambia de tamaño, no cuando desaparece; si el `<canvas>` se desmonta, lo
+  que corre es la limpieza del loop y al desplegar arranca uno nuevo. T072.
+- **Y hay una barrera de memoización medida que el layout no puede partir.** El 027 memoizó el objeto
+  `orientacion` (`App.tsx:313-320`) contra el `memo` de `OrientationPanel`
+  (`OrientationPanel.tsx:31`): son **una sola** barrera —sin el `useMemo` la prop tiene identidad nueva
+  por render y la memo no cierra nunca— y vale 4,9 ms → 1,9 ms por escritura de `hover`, fijada por
+  `src/__tests__/App.browser.test.tsx:481`. Este spec mueve **dónde se pinta** `PiecePalette`, no quién
+  consume qué, así que la barrera sobrevive; lo que la rompería es partir el subárbol de la paleta o
+  rearmar el objeto adentro del dock. `transporte` sigue inline, también por medición: nadie lo consume
+  detrás de una barrera.
 - **Los gestos ya cuelgan del nodo correcto.** El `wheel` no pasivo y el `contextmenu` enganchan en el
   `div` que envuelve la grilla, elegido a propósito porque «cubre exactamente el área del tablero».
   Ese div sobrevive; lo que cambia es su tarjeta.
@@ -255,7 +285,10 @@ Además de las dos fuentes, hay tres números en px fijos que a 180 px de celda 
 | `bottom-0.5 right-1.5` | la posición del `#N` | queda pegado al borde |
 | `pb-2` (8 px) | el alto que la baldosa le **reserva** al `#N` | la nota flota alta y la reserva no guarda proporción |
 
-Los cuatro pasan a `calc(var(--cell) * …)` con la proporción que tienen hoy sobre 73. No es cosmética
+| `ANILLO_FOCO_OSCURO` / `_CLARO` (2 px + 2 px) | las dos bandas del anillo de foco del 026 | las dos caen adentro del aire de 4,93 px y la clara desaparece contra el blanco |
+
+Los cinco pasan a `calc(var(--cell) * …)` con la proporción que tienen hoy sobre 73. La última fila la
+agregó la revisión: el 026 entró a `main` después de escribirse este research. Ver §12. No es cosmética
 opcional: el comentario de `Board.tsx` dice que la baldosa «se lee como una ficha y no como un
 casillero», y eso depende de esas medidas.
 
@@ -271,29 +304,41 @@ celda que no sea 73. Proporción: `8 / 73 = 0,1096`.
 |---|---|
 | `src/App.tsx` | El layout entero; el estado de `CELL_PX` y de los dos plegados; el efecto de resize |
 | `src/components/Board.tsx` | La tarjeta muere; la grilla y la celda pasan a `var(--cell)`; tres docblocks |
-| `src/components/Playhead.tsx` | Las cuatro escrituras de `style` pasan a `calc(var(--cell) * n)` |
+| `src/components/Playhead.tsx` | **Un** sitio de `CELL_PX` (`:100`, la caja de la cabeza) y el par `p-0.5`/`rounded-lg` de `:99`/`:104` |
+| `src/components/playhead-loop.ts` | Los **cinco** sitios restantes (`:72-75` el velo, `:140` el `transform`) y el comentario de `:136-138` |
+| `src/components/constants/playhead.constants.ts` | `VELO_CAJA` y `VELO_TAPA` (`:83-84`): el aire y el radio del velo salen de la clase al estilo inline |
 | `src/components/PiecePalette.tsx` | De tarjeta en columna a dock flotante plegable |
 | `src/components/Spectrum.tsx` | Contenedor nuevo; el `ResizeObserver` no cambia |
-| `src/components/constants/layout.constants.ts` | `CELL_PX` → piso + proporciones; docblock reescrito |
-| `DESIGN.md` | Afirma en presente `CELL_PX` = 73, «Tablero **730 × 438 px**» y «Tarjeta del tablero **`md:col-span-8`**» (líneas 79-81), y la baldosa con sus medidas fijas (99-102, 112). Es la tabla que más queda mintiendo |
-| `.claude/rules/ui.md` | Afirma en presente que «los `col-span` no viven en `App.tsx` sino en la tarjeta de cada componente» y que `CELL_PX` «sale de `min(interior/10, interior/6)` sobre la tarjeta real» (líneas 66-68). Sin tarjetas, las dos reglas quedan sin referente |
-| `docs/guides/conventions.md` | Líneas 247-248: las celdas «se dimensionan con `style={{ width: CELL_PX, … }}`». Pasan a `var(--cell)` |
-| `docs/architecture/overview.md` | «los seis efectos» (`:23`) y la tabla de estado (`:101-109`) — ver abajo |
-| `CLAUDE.md` | «los seis efectos» en la descripción de `App.tsx` — ver abajo |
+| `src/components/constants/layout.constants.ts` | `CELL_PX` → piso + proporciones; docblock reescrito (`:1-68`) **y** los dos anchos del anillo de foco (`:118-159`) |
+| `src/components/__tests__/Board.browser.test.tsx` | `:74-80` y `:83-99` afirman la geometría en px contra `CELL_PX` |
+| `src/components/__tests__/Playhead.browser.test.tsx` | `:86-95` y `:176-178` comparan `style.transform` / `style.left` contra cadenas exactas de `CELL_PX` |
+| `src/__tests__/App.browser.test.tsx` | `:139`, «monta las **tres tarjetas** y el pie con los gestos» |
+| `DESIGN.md` | `:79-83` (la tabla: `CELL_PX` 73, «Tablero **730 × 438 px**», «Tarjeta del tablero **`md:col-span-8`**», «Aire **2 px**», «Borde **1 px**»), `:99-102` (la baldosa), `:110-114` (debajo de `md`) y **`:237-242`**, que es del 026 y repite el «2 px de aire» al derivar el anillo. Es el archivo que más queda mintiendo |
+| `.claude/rules/ui.md` | **Tres** regiones: `:103-105` (los `col-span` en la tarjeta de cada componente y `CELL_PX` derivado de la tarjeta real), `:178-185` (del 026: «dos cajas… con 2 px de aire») y `:15-16` (el shell sin un solo `useEffect`, que **sigue siendo cierto** y sólo suma el tercer hook) |
+| `docs/guides/conventions.md` | **`:345-346`** (no `:247-248`): las celdas «se dimensionan con `style={{ width: CELL_PX, … }}`». Pasan a `var(--cell)` |
+| `docs/architecture/overview.md` | Los **tres** «sin efectos» (`:22`, `:74`, `:180`) y la tabla de estado (sección que arranca en `:114`) — ver abajo |
+| `CLAUDE.md` | `:136-138`, la descripción de `App.tsx` — ver abajo |
 
 `docs/architecture/overview.md` **no** describe el layout de tarjetas —se verificó, no tiene ninguna
 afirmación de `col-span`, `max-w-6xl` ni `CELL_PX`—. Pero ése era el test equivocado, y el archivo
 entra igual **por el otro lado**: afirma en presente el inventario del shell, y este spec lo cambia.
 
+**Y el conteo de efectos cambió de signo desde que se escribió esto.** Aquel párrafo decía «`App.tsx`
+tiene hoy seis `useEffect` (`:98`, `:99`, `:216`, `:247`, `:286`, `:340`), pasan a siete». Medido de
+nuevo: **`App.tsx` tiene hoy CERO**, y ni siquiera importa `useEffect` (`:1`). El 022 los mudó a
+`use-engine.ts` y `use-input.ts`, y con el efecto de este spec yendo a `use-cell-px.ts` por la misma
+regla, las afirmaciones de los tres archivos **no cambian de valor de verdad**: la tarea pasa de
+reescribirlas a verificarlas y sumar el tercer hook a la enumeración.
+
 | Dónde | Qué afirma hoy | Qué le hace el 021 |
 |---|---|---|
-| `docs/architecture/overview.md:23` | «estado · derivados · handlers · **los seis efectos**» | agrega el `useLayoutEffect` del resize: pasan a siete |
-| `docs/architecture/overview.md:101-109` | la tabla de estado de `App.tsx` | agrega los dos `useState<boolean>` del plegado |
-| `CLAUDE.md` | «el shell: estado, derivados, handlers, **los seis efectos** y la composición» | lo mismo: siete |
+| `docs/architecture/overview.md:22`, `:74`, `:180` | «el shell, sin un solo efecto» · «cero `useEffect`» · «no declara un solo `useEffect`» | **nada**: el efecto vive en `components/use-cell-px.ts`. Se agrega el hook a la enumeración de `:71-73` y `:179-180` |
+| `docs/architecture/overview.md`, sección «2. Componente — estado y render» (`:114`) | la tabla de estado de `App.tsx` | agrega los dos `useState<boolean>` del plegado |
+| `CLAUDE.md:136-138` | «Desde el spec 022 **sin un solo `useEffect`**» | **nada**, más el tercer hook |
 
-Medido: `App.tsx` tiene hoy seis `useEffect` (`:98`, `:99`, `:216`, `:247`, `:286`, `:340`). La tabla
-de `overview.md` ya venía corta —lista siete estados contra los nueve que hay— y eso es deuda previa
-que este spec no arrastra; lo que sí es de este spec son las dos filas nuevas y el conteo de efectos.
+La tabla de `overview.md` ya venía corta —el 025 y el 026 le agregaron `focoEnTablero` y `anuncio` sin
+listarlos— y eso es deuda previa que este spec no arrastra; lo que sí es de este spec son las dos filas
+del plegado.
 
 ## 10. Riesgos
 
@@ -308,7 +353,42 @@ que este spec no arrastra; lo que sí es de este spec son las dos filas nuevas y
 | El debounce del resize agrega latencia | Bajo | No se hace debounce; se escribe por qué |
 | Perder el aire de la tarjeta hace el tablero áspero | Medio | Los **cuatro** números del §8 escalan, con AC18 y T056 que los miden en el DOM en vez de mirarlos a ojo |
 | `--cell` colgada del nodo equivocado | **Alto, y es silencioso** | Va sobre la raíz de `App.tsx` y no sobre `boardRef`: los dos flotantes son `fixed` y viven fuera de `Board`, así que colgada del tablero sus `calc()` no resuelven y las cajas caen a su tamaño de contenido — se ve como «los paneles quedaron raros», no como un error. §1 y T054 |
+| El anillo de foco del 026 deja de verse al techo | **Alto, y silencioso** | Sexto número fijo, derivado del aire de 2 px que este spec vuelve proporcional. A celda 180 las dos bandas caen en el aire blanco y la clara desaparece sobre `#FFFF00`. §12, AC21, T065, T071 |
+| El cursor de teclado del 026 queda debajo de un panel `fixed` | **Alto** | Un `fixed` no participa del scroller, así que `.focus()` no lo destapa. Es el punto 1 de los Límites de Alcance, medido por T070 |
+| Los tests que ya existen afirman la geometría en px | **Alto, y rompe `verify`** | Tres archivos de test comparan contra `CELL_PX`. T067, T068, T069 |
+| La franja de Señal no entra en su celda de alto | Medio | 132 px de contenido en 73 de caja al piso. AC22, T066 |
 | El dock no entra a `CELL_PX = 73` | Medio | 146 × 292 px para doce miniaturas y los controles. Scroll interno propio (T046) y AC19, que lo verifica en el piso y no a 1920 |
+
+## 12. Lo que trajo el 026, que ya está en `main`
+
+El `log.md` decía «026 conviene antes que el 021: los dos reescriben `Board.tsx`, y lo que agrega el
+026 es ortogonal a la medida y sobrevive». Está mergeado, y **casi** sobrevive: tres cosas de las
+cuatro son ortogonales de verdad, y la cuarta no.
+
+- **Filas de verdad (`role="row"`).** El `gridTemplateColumns` se mudó del contenedor a la fila
+  (`Board.tsx:327`), así que la declaración se escribe una vez y se evalúa seis. No cambia la
+  conversión, cambia dónde se escribe. Ortogonal.
+- **`tabIndex` roving y `.focus()` imperativo.** El índice plano
+  (`querySelectorAll('[role="gridcell"]')[dy * GRID_W + dx]`, `:233`) sigue valiendo con filas y con
+  cualquier tamaño de celda: no toca píxeles. Ortogonal. Lo que **no** es ortogonal es su consecuencia
+  de accesibilidad: el foco puede ir a parar debajo de un panel `fixed` y nada lo destapa. Ver los
+  Límites de Alcance y T070.
+- **El `closest('[role="grid"]')`.** Sobrevive: el layout no cambia la anidación.
+- **El anillo de foco. Éste NO sobrevive.** `ANILLO_FOCO_OSCURO` y `ANILLO_FOCO_CLARO` valen 2 px cada
+  uno y su docblock (`layout.constants.ts:118-157`) los **deriva del aire de 2 px de la baldosa**, con
+  el reparto escrito en píxeles: `0 → 2 px` la banda oscura sobre el aire, `2 → 4 px` la clara sobre
+  el borde negro y el arranque del color. Este spec vuelve el aire proporcional, así que a celda 180
+  mide **4,93 px** y las dos bandas caen enteras adentro del aire blanco: la clara desaparece contra
+  el panel y queda un anillo de un solo tono — que es exactamente lo que esos dos números existen para
+  evitar sobre los dos extremos de la lámina. Es un **sexto** número fijo de la baldosa, y hay que
+  convertirlo con el resto (`2/73 = 0,0274`, incluido el `outlineOffset` negativo de `Board.tsx:416`,
+  que es la suma de los dos). AC21, T065 y T071.
+
+Y una cosa que el 029 trajo y también manda: **lo que se agregue viene con su test**. Tres archivos de
+test ya existentes afirman la geometría en píxeles contra `CELL_PX` —`Board.browser.test.tsx:74-99`,
+`Playhead.browser.test.tsx:86-95` y `:176-178`, `App.browser.test.tsx:139`— y este spec los rompe a
+los tres. Con el umbral en 100 y sin `/* v8 ignore */`, eso no es una nota al pie: es `pnpm verify` en
+rojo. T067, T068 y T069.
 
 ## 11. Orden dentro del lote
 

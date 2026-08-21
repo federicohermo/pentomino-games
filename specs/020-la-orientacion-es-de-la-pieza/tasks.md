@@ -5,11 +5,20 @@ una persona y no bloquea el cierre.
 
 ## Paso 1 — El tipo y el valor inicial
 
-- [ ] T001 [P] `src/components/types/orientacion.types.ts`: `Orientacion`
+- [ ] T001 [P] `src/components/types/orientation.types.ts`: `Orientacion`
       (`{ rotation, mirror }`) y el tipo de la memoria (`Record<PieceKey, Orientacion>`). Docblock con
       por qué **no** va en `domain/types/`: la memoria es estado del shell, y el modelo ya tiene su
-      representación en `PlacedPiece`
-- [ ] T002 [P] `src/components/constants/orientacion.constants.ts`: la orientación inicial y la
+      representación en `PlacedPiece`.
+      **El nombre del archivo va en inglés y no en castellano**, y no es cosmética: los archivos de
+      `src/` están **todos** en inglés y los siete que el 022 estrenó en castellano se revirtieron
+      (`specs/revisiones.md`, 2026-08-20; sobre el commit base había 57 archivos y cero en
+      castellano). La regla que quedó **no es simétrica**: nombre de archivo en inglés siempre,
+      identificador en castellano permitido **sólo dentro de `components/`** —hay 21 exportados
+      así—, así que el tipo `Orientacion` sí se llama en castellano y el archivo no. El caso peor
+      medido fue `motor.ts`, donde la misma cosa quedó nombrada de dos formas en dos idiomas, que
+      es peor que cualquiera de las dos por separado. El 021 crea `cell-px.ts` en el mismo lote y
+      con el mismo criterio
+- [ ] T002 [P] `src/components/constants/orientation.constants.ts`: la orientación inicial y la
       memoria inicial **derivada de `SHAPES`**, no escrita a mano con las doce letras. El estrechado
       es el que el repo ya usa —`Object.keys(SHAPES) as PieceKey[]`—, no uno nuevo. Los dos testigos
       se buscan **por símbolo, no por línea**: el `.map` de los doce botones, que con el spec 022 se
@@ -17,7 +26,7 @@ una persona y no bloquea el cierre.
       tarea daba por estable en el archivo viejo, y la razón por la que ya no vale citarlo por línea
       tampoco cambió: es un archivo chico y cualquier spec que lo toque corre las líneas de abajo—, y
       `PIECES` en `src/domain/invariants.ts`, que ningún spec de por medio toca — **AC6**
-- [ ] T003 `orientacion.constants.ts` + `orientacion.types.ts`: **acotar `rotation`**. Const-object
+- [ ] T003 `orientation.constants.ts` + `orientation.types.ts`: **acotar `rotation`**. Const-object
       `ROTACION` en `constants/` y union derivado `Rotacion` en `types/` —la forma que `specs/deuda.md`
       ya dejó decidida, **nunca un `enum`** (`erasableSyntaxOnly` lo rechaza)—, y `Orientacion.rotation`
       pasa de `number` a `Rotacion`. Escribe los archivos de T001 y T002, así que **no lleva `[P]`**.
@@ -34,8 +43,11 @@ una persona y no bloquea el cierre.
       es seguro — **AC16**
 - [ ] T042 `components/__tests__/input.test.ts`: el test de `rotacionPorRueda` cubre el caso negativo
       (`deltaY < 0` desde `0`), que es el que el `+ 4` existe para atrapar y el que la red del 017
-      tardó **dos intentos** en cerrar. Si ya está, verificarlo y no duplicarlo — **AC16**
-- [ ] T043 Comentario **en `orientacion.types.ts`, junto a `Rotacion`**: qué queda y qué no. Esto
+      tardó **dos intentos** en cerrar. **Verificado hoy: ya está** —`components/__tests__/input.test.ts`,
+      «da la vuelta en los dos bordes», con `expect(rotacionPorRueda(0, -120)).toBe(3)`—, así que
+      esta tarea **no agrega un test**: verifica que sigue ahí y que sigue compilando después de
+      T041, o sea que el test pasa a escribirse contra `Rotacion` y no contra `number` — **AC16**
+- [ ] T043 Comentario **en `orientation.types.ts`, junto a `Rotacion`**: qué queda y qué no. Esto
       **no cierra** la deuda de `specs/deuda.md`, la **achica**: `domain/` sigue tomando `number` y ese
       es el tramo que cruza el borde. Lo que sí cierra es el camino: la rotación entra al modelo
       **desde** `Orientacion`, así que con la fuente acotada `domain/` ya no puede recibir un valor
@@ -57,8 +69,18 @@ una persona y no bloquea el cierre.
 - [ ] T008 `App.tsx` + `src/components/types/panel.types.ts`: el campo `rotation`/`mirror` de
       `PropsDeOrientacion` —hoy el par de la seleccionada, que el spec 022 dejó ahí al partir
       `PiecePalette` en dos objetos— pasa a ser `orientaciones` **entera** (las doce miniaturas de
-      `OrientationPanel.tsx` necesitan las doce), y el literal inline que arma `orientacion` en
-      `App.tsx` baja el `Record` en vez de `rotation`/`mirror` sueltos. Con `selected` +
+      `OrientationPanel.tsx` necesitan las doce), y el **`useMemo`** que arma `orientacion` en
+      `App.tsx` baja el `Record` en vez de `rotation`/`mirror` sueltos. **No es un literal inline:
+      el spec 027 lo memoizó** —por símbolo `orientacion`, hoy `App.tsx:314`— y envolvió
+      `OrientationPanel` en `memo` (`OrientationPanel.tsx:31`), y las dos mitades son una sola
+      barrera medida (4,9 ms → 1,9 ms por escritura de `hover`). Dos consecuencias que esta tarea
+      tiene que ejecutar: el array de dependencias pierde `rotation` y `mirror` y gana
+      `orientaciones` —lo verifica `react-hooks/exhaustive-deps` en el lint, que es la red que el
+      propio comentario de `App.tsx` declara para el campo nuevo—, y la barrera **no se degrada**,
+      porque el `Record` cambia de identidad exactamente cuando cambia una orientación y no cuando
+      se mueve el cursor. El test que la mide existe y tiene que seguir en verde:
+      `src/__tests__/App.browser.test.tsx`, «cruzar diez celdas ya no ejecuta el panel de
+      orientacion, y rotar si». Con `selected` +
       `orientaciones` los lectores que hoy toman su par de esas dos props sueltas —las miniaturas y
       el `aria-label` en `OrientationPanel.tsx`, la fila de Rotación/Reflexión y la línea del 019
       en `PiecePalette.tsx`— pasan a derivarlo con `orientaciones[selected]` (o `orientaciones[key]`
@@ -76,8 +98,12 @@ una persona y no bloquea el cierre.
       `useRuedaRota` (`components/use-input.ts`) registre el listener de `wheel` una sola vez por
       montaje—, y agregarle una dependencia rompe esa cardinalidad (**AC16 del 022**). La salida es
       leer `selected` sin declararlo como dependencia: por ejemplo con un `ref` que lo siga
-      (`selectedRef.current`), o resolviendo la ranura adentro del setter funcional sin cerrar sobre
-      el `selected` del scope externo. `alRotar` se queda con deps vacías — **AC1**
+      (`selectedRef.current`). **La segunda alternativa que esta tarea listaba —«resolver la ranura
+      adentro del setter funcional»— no existe**: el setter funcional de `setOrientaciones` recibe
+      el `Record` anterior y nada más, así que no hay forma de que sepa cuál es la pieza en la mano
+      sin cerrar sobre `selected` o sin leerlo de un `ref`. Queda el `ref` —o mover `selected`
+      adentro del mismo `useState` que la memoria, que es un rediseño de estado y no está en el
+      alcance de este spec—. `alRotar` se queda con deps vacías — **AC1**
 - [ ] T011 `App.tsx`: **reescribir el comentario del `useCallback` de `alRotar`.** Hoy dice que su
       cuerpo «usa el setter funcional y no lee `rotation`», y con este spec sí necesita saber qué
       ranura del `Record` rotar. La salida que T010 documenta —leer `selected` por un `ref` y no por
@@ -103,8 +129,11 @@ una persona y no bloquea el cierre.
       una sola ranura con `ORIENTACION_INICIAL`, setter funcional y objeto nuevo— y el campo nuevo
       de `PropsDeOrientacion` que lo baja. Desde el spec 022 `PiecePalette` ya no recibe dieciséis
       props sueltas sino el objeto `orientacion` entero, así que esto no es agregar una prop a la
-      firma de `PiecePalette`: es un campo más en `PropsDeOrientacion` y una línea más en el literal
-      inline de `App.tsx`. Sin esta tarea **AC7 no tiene implementación**: `PiecePalette` es
+      firma de `PiecePalette`: es un campo más en `PropsDeOrientacion` y una línea más en el
+      **`useMemo`** de `orientacion` de `App.tsx` —desde el 027 **no es un literal inline**, va
+      memoizado, y el handler entra como los otros cuatro: la flecha se escribe adentro del
+      `useMemo` (igual que el `onMirror: ()=> setMirror(m=>!m)` de hoy), así que no suma una
+      dependencia nueva porque `selected` ya está en el array. Sin esta tarea **AC7 no tiene implementación**: `PiecePalette` es
       presentacional (`.claude/rules/ui.md`) y no puede escribir estado, y el 019 justamente le saca
       del mismo objeto las otras dos props de gesto (`onRotate`, `onMirror`), así que no queda
       ninguna que se le pueda reusar — **AC7**
@@ -121,10 +150,19 @@ una persona y no bloquea el cierre.
       callback nuevo del shell hace falta agregarle a la interfaz `Acciones` para sostenerla. Si se
       cae, la letra pasa a arrancar el transporte y **ninguna prueba de este spec ni del 018 lo
       detecta** —los tests del 018 son de la pura `input.ts`, que acá no se toca y sigue en verde—.
-      Es el mismo mecanismo por el que `handleContextMenu` hubo que cazarlo a mano (T033). Si el 018
-      todavía no está mergeado, la tarea se cierra con «no existía» — **018 AC1**
+      Es el mismo mecanismo por el que `handleContextMenu` hubo que cazarlo a mano (T033).
+      **El 018 va antes que este spec en el lote, así que la rama existe y la tarea ya no tiene
+      salida por «no existía»**: hay que abrir `use-input.ts`, ver la rama `ACCION.seleccionar`
+      adentro de `despachar` —hoy, sin el 018, la cadena es `rotar` → `reflejar` → `else
+      transporte()`, con el `else` en `use-input.ts:101` y la interfaz `Acciones` en `:36`–`:40`—,
+      confirmar que sigue como `else if` **antes** de ese `else`, y confirmar que `Acciones` no
+      necesita un callback nuevo del shell — **018 AC1**
 
-> T004–T012, T033, T034 y T038 escriben `src/App.tsx` (T008 y T038 además `src/components/types/panel.types.ts`), así que ninguna lleva `[P]`. T040 pasó a verificar `components/use-input.ts`, que este spec no escribe.
+> T004–T012, T033, T034 y T038 escriben `src/App.tsx` (T008 y T038 además
+> `src/components/types/panel.types.ts`), así que ninguna lleva `[P]`. Y las dos que tocan
+> `panel.types.ts` escriben además el **mismo `useMemo`** de `orientacion` en `App.tsx` —el que el
+> 027 memoizó—, o sea que tampoco son paralelizables entre sí por ese lado. T040 pasó a verificar
+> `components/use-input.ts`, que este spec no escribe.
 
 ## Paso 3 — La paleta muestra doce orientaciones
 
@@ -156,15 +194,17 @@ una persona y no bloquea el cierre.
 - [ ] T018 Comentario en el docblock de `MINI_BOX`
       (`src/components/constants/layout.constants.ts`): la caja fija del 016 pasa a ser **más**
       necesaria, porque ahora las doce formas cambian independientemente. El argumento está duplicado
-      en `src/components/piece-mini.ts:19` (docblock, sección «Por qué la caja es fija») y en
-      `DESIGN.md:149` (bullet «La caja es fija, de 5×5 celdas») — los tres tienen que quedar diciendo
-      lo mismo
+      en `src/components/piece-mini.ts:19` (docblock, sección «Por qué la caja es fija» —verificado
+      hoy: la frase de la `I` de 5×1 a 1×5 sigue en `:19`) y en **`DESIGN.md:165`** (bullet «La caja
+      es fija, de 5×5 celdas»; la tarea decía `:149` y el archivo mide hoy 313 líneas) — los tres
+      tienen que quedar diciendo lo mismo
 
 ## Paso 4 — `↺` no toca las orientaciones
 
 - [ ] T019 `App.tsx`: `resetBoard` **no cambia lo que hace**. Con el spec 022 puesto su cuerpo ya
-      cambió —llama a `frenarTransporte()` (`components/use-engine.ts`) en vez de `stopClock()`, y
-      se corrió de línea— pero eso es cableado y no comportamiento: sigue frenando el reloj,
+      cambió —llama a `frenarTransporte()` **y a `reiniciarRecorrido()`** (los dos de
+      `components/use-engine.ts`; el segundo lo agregó el **027**, por el velo huérfano) en vez de
+      `stopClock()`, y se corrió de línea— pero eso es cableado y no comportamiento: sigue frenando el reloj,
       vaciando `placed` y sin tocar ninguna orientación, que es lo que a este spec le importa. Se le
       agrega el comentario de por qué no toca `ORIENTACIONES_INICIALES` pese a que existe justo al
       lado. Con el costo escrito: se renuncia al invariante «después de `↺` la app queda como recién
@@ -172,6 +212,36 @@ una persona y no bloquea el cierre.
 
 ## Verificación
 
+Las tres primeras son **nuevas** y no aflojan nada: este spec no tenía una sola tarea de test, y
+desde el spec 029 `pnpm verify` corre `suite` con **coverage 100 en las cuatro métricas** y **cero
+`/* v8 ignore */`**, así que sin ellas T020 no puede dar verde. Además hay tests que este spec
+**rompe por construcción** —los fixtures de `PropsDeOrientacion` construyen `rotation`/`mirror`— y
+que el typecheck de T004 sí enumera, pero que ninguna tarea estaba mandando a arreglar.
+
+- [ ] T044 `src/components/__tests__/OrientationPanel.browser.test.tsx` y
+      `src/components/__tests__/PiecePalette.browser.test.tsx`: los dos tienen un helper
+      `orientacion(over)` que arma un `PropsDeOrientacion` con `rotation: 0, mirror: false`
+      (`OrientationPanel.browser.test.tsx:26`–`:29`, `PiecePalette.browser.test.tsx:20`–`:23`).
+      Con T008 esos dos campos ya no existen y los **once** usos de `rotation`/`mirror` del primero
+      y los **ocho** del segundo dejan de compilar. Pasan a armar `orientaciones` entera, derivada
+      de `ORIENTACIONES_INICIALES` con la ranura que el test quiera pisar. Es la mitad del typecheck
+      en rojo de T004 que cae en `__tests__/` y que la lista de consumidores del research no incluía
+- [ ] T045 `src/components/__tests__/OrientationPanel.browser.test.tsx`: **AC3, AC4 y AC12 dejan de
+      ser sólo `[M]`.** Los tres tienen contraparte mecánica y dos de ellas ya existen a medias en
+      este archivo: «el nombre accesible dice la orientacion ACTUAL, no la canonica» (`:49`) y
+      «rotar NO mueve un pixel de la grilla, que es para lo que la caja es fija» (`:59`, que hoy
+      barre `rotation × mirror` con **un** par para las doce). Se extienden a doce pares distintos:
+      renderizar con las doce en orientaciones distintas y verificar que cada `aria-label` dice la
+      **suya** (AC4), que cambiar una sola ranura deja las otras once con el mismo `aria-label` y
+      las mismas celdas pintadas (AC3), y que los anchos y altos de los doce botones no se mueven
+      (AC12). T021, T023 y T024 se quedan como están y pasan a ser confirmación a ojo, no la única
+      prueba — **AC3**, **AC4**, **AC12**
+- [ ] T046 `src/components/__tests__/` (proyecto `node`, sin sufijo `.browser`): un test de
+      `orientation.constants.ts` que verifique que `ORIENTACIONES_INICIALES` tiene **las doce
+      ranuras de `SHAPES`** y todas en `{ rotation: 0, mirror: false }`. Es la contraparte mecánica
+      de **AC6** —que hoy sólo tiene T027 `[M]`— y además es lo que atrapa que la derivación desde
+      `SHAPES` de T002 se rompa: escrita a mano no la atraparía nada, derivada la atrapa esto. Va en
+      el proyecto `node` porque el módulo es puro y no toca DOM — **AC6**
 - [ ] T020 `pnpm verify` en verde
 - [ ] T021 [M] Navegador: rotar con la rueda y confirmar que **las once miniaturas no seleccionadas no
       se mueven** — **AC3**. Es el criterio que da nombre al spec
@@ -201,8 +271,9 @@ este spec falsifica es la deuda que `d936597` y `eb154a0` ya tuvieron que pagar 
 - [ ] T036 [P] `docs/architecture/overview.md`: el diagrama del shell (`:24`) y la tabla de estado
       (`:122`–`:123`) dejan de listar `rotation` `0..3` y `mirror` `boolean` como dos escalares
       sueltos y pasan a la memoria por pieza
-- [ ] T037 [P] `DESIGN.md:142`: el botón de la paleta ya no se dibuja «en la orientación que está
-      seleccionada ahora mismo» sino en **la suya**. Es el párrafo del 016, y el resto de esa sección
+- [ ] T037 [P] **`DESIGN.md:158`–`:159`** (la tarea decía `:142`; el archivo mide hoy 313 líneas y
+      la frase está partida en dos renglones): el botón de la paleta ya no se dibuja «en la
+      orientación que está seleccionada ahora mismo» sino en **la suya**. Es el párrafo del 016, y el resto de esa sección
       —caja fija, borde, «la miniatura no dice notas»— **no cambia**
 
 ## PR
@@ -218,7 +289,13 @@ este spec falsifica es la deuda que `d936597` y `eb154a0` ya tuvieron que pagar 
       de comportamiento. Anotar en `specs/deuda.md`.
       Y en la **misma pasada**, poner al día la entrada de la rotación sin acotar, que dice «comparada
       contra `0|1|2|3` en **cuatro** lugares» desde el 005 y ya iba por seis —el 013 declaró el quinto
-      (`T033`) y el 016 el sexto (`T039`)—. Este spec la **achica y no la cierra**: `Rotacion` acota la
+      (`T033`) y el 016 el sexto (`T039`)—, **más un séptimo que estrena el 019 en este mismo lote**:
+      su `T006` crea `textoDeOrientacion(rotation, mirror)` con `rotation: number`. La pasada hace
+      entonces **dos** cosas y no una: contar el séptimo, y verificar que el 019 no haya dejado en esa
+      pura un comentario diciendo que el union «todavía no existe» —era su texto original y se corrigió
+      con este spec a la vista—, porque el hogar del tipo termina siendo
+      `components/types/orientation.types.ts` (T003) y no ese módulo. Este spec la **achica y no la
+      cierra**: `Rotacion` acota la
       fuente en `components/` (T003, T041), así que lo que queda es el tramo de `domain/` —`rotateN`,
       `arpeggioFor`, `PlacedPiece.rotation`—, que es el que cruza el borde hacia `mcp-server/` y sigue
       necesitando spec propio. Escribir eso, con el alcance nuevo y no con la cuenta vieja

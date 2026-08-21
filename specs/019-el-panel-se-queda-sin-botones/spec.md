@@ -70,10 +70,10 @@ La `X` es el testigo: rotarla cuatro veces da cuatro arpegios distintos (`A4 B4 
 `E5 F#5 G#5 B5 C#6` a 270°) y **cero** cambio visible. Hoy eso lo tapaban los botones de grados.
 
 Sin ellos la miniatura del 016 mentiría en 6 de las 12 piezas, pero **no queda como único lector** y
-conviene no agrandar el hueco: `Notas actuales` (`PiecePalette.tsx:254`) ya distingue las ocho
+conviene no agrandar el hueco: `Notas actuales` (`PiecePalette.tsx:144`) ya distingue las ocho
 orientaciones de cada pieza —verificado contra el dominio para la `X`, reflexión incluida: sale en
-orden inverso— y el `aria-label` de cada botón (`PiecePalette.tsx:115`) ya dice la orientación para un
-lector de pantalla. Lo que falta es un lector **directo y visible**: deducir la rotación leyendo cinco
+orden inverso— y el `aria-label` de cada botón (hoy `OrientationPanel.tsx:103`, mudado ahí por el spec
+022) ya dice la orientación para un lector de pantalla. Lo que falta es un lector **directo y visible**: deducir la rotación leyendo cinco
 nombres de nota es exactamente la derivación que un panel existe para ahorrar.
 
 Entonces: una línea de texto, `180° · reflejada`, junto al `F → tónica C` que ya está ahí. No devuelve
@@ -110,10 +110,18 @@ tacho promete *borrar* algo elegido, que es una operación con alcance y no la q
 - **AC6** — El botón de recorrido está en la fila de transporte, es solo-icono, y su estado se lee por
   color. **Y apagado se distingue de `↺`**: el plan le da `bg-slate-100` y a `↺` `bg-slate-200`, que es
   exactamente el par que el 008 rechazó por indistinguible cuando quedaron pegados
-  (`PiecePalette.tsx:285-287`, sobre ▶/Reset). El gap de T015 no alcanza como respuesta: el AC se firma
+  (hoy `TransportPanel.tsx:60-65`, sobre ▶/Reset; el 022 se llevó ese comentario). El gap de T015 no
+  alcanza como respuesta: el AC se firma
   mirando los dos botones apagados uno al lado del otro, no leyendo el diff.
-- **AC7** — El metrónomo tiene `aria-label` y `title`; el SVG lleva `aria-hidden`, porque el nombre
-  accesible lo da el botón.
+- **AC7** — El metrónomo tiene `aria-label`, `title` y **`aria-pressed`**; el SVG lleva `aria-hidden`,
+  porque el nombre accesible lo da el botón. El `aria-pressed` **no lo agrega este spec: ya está** —
+  el botón lo tiene hoy (`PiecePalette.tsx:124`, puesto por el 025) y tiene que **viajar** con él.
+  `.claude/rules/ui.md` lo declara regla —«todo control que alterna lleva `aria-pressed`, y su nombre
+  es lo que alterna, no el valor»— y nombra a **este spec por número** como el caso que la regla
+  existe para cubrir. Sin él, «su estado se lee por color» (AC6) pasa a ser color como **único**
+  canal, que es el defecto que `revisiones.md` ya cazó en el 016. Y el `aria-labelledby` de hoy **no
+  sobrevive**: el `<span id="recorrido-etiqueta">` que referencia se borra con la fila, así que la
+  etiqueta pasa a `aria-label` —que es lo que la misma regla manda cuando no hay texto visible.
 - **AC8** — Reset dice `↺`, con `aria-label` y `title`, y sigue haciendo las dos cosas que hacía:
   vaciar el tablero y frenar el transporte.
 - **AC9** — `CELL_PX` sigue siendo **73**, y la medición que se escribe en el docblock se toma **con el
@@ -122,27 +130,47 @@ tacho promete *borrar* algo elegido, que es una operación con alcance y no la q
   el **ancho**. Quién manda lo dice la medición de T022, no este spec — y hasta tenerla el docblock no
   afirma un ganador.
 - **AC10** — El footer sigue diciendo los cuatro gestos del 013. **Hoy no menciona ningún botón**
-  (`App.tsx:447-451`): nombra `Rotación` y `Reflexión` como transformaciones del modelo, no como
-  controles, así que no hay nada que sacar y esa primera oración **no se toca**.
+  (hoy `App.tsx:433-439`; el 018 le suma un cuarto `<span>` de gesto y lo vuelve a correr, así que la
+  cita vale por su **texto** y no por el número): nombra `Rotación` y `Reflexión` como transformaciones
+  del modelo, no como controles, así que no hay nada que sacar y esa primera oración **no se toca**.
 - **AC11** — `PiecePalette` sigue siendo presentacional: sin estado y sin efectos.
-- **AC12** — Las props `onRotate` y `onMirror` desaparecen de `PiecePalette`. No las usa nadie más:
-  `App.tsx:409-410` las pasa inline, y los gestos del 013 llaman a `setRotation`/`setMirror` directo.
+- **AC12** — Las props `onRotate` y `onMirror` desaparecen de `PiecePalette`. Desde el 022 son dos
+  campos de `PropsDeOrientacion`, y el literal **no** es inline en el JSX sino el `useMemo` de
+  `App.tsx:314-319` (`onRotate: setRotation`, `onMirror: ()=> setMirror(m=>!m)`). No los usa nadie más,
+  y **los dos setters sobreviven** —`rotarConTecla` (`App.tsx:249`), `alRotar` (`:256`),
+  `reflejarConTecla` (`:250`) y el `onContextMenu` (`:270`)—, así que borrarlos no deja una variable sin
+  uso. Las deps del `useMemo` tampoco cambian: `rotation` y `mirror` se quedan.
 - **AC13** — La derivación de la orientación se escribe **una sola vez**: el `aria-label` de los doce
-  botones —que hoy la arma inline en `PiecePalette.tsx:115`— consume la misma pura de AC4. Dos copias
+  botones —que hoy la arma inline en `OrientationPanel.tsx:103`— consume la misma pura de AC4. Dos copias
   del mismo texto en el mismo archivo es justo lo que la convención de constantes existe para evitar.
   **El `aria-label` no se degrada para conseguirlo**: hoy dice `X, rotación 180°, reflejada` y tiene que
   seguir diciendo la palabra «rotación». Bajarlo al formato visible (`X, 180° · reflejada`) le saca el
   sustantivo y le mete un separador que el lector de pantalla deletrea — o sea, saldaría AC13 agrandando
   la deuda de accesibilidad. Una sola derivación, dos formatos compuestos por el `.tsx`.
 - **AC14** — Las tres páginas que describen **en presente** lo que este spec cambia quedan al día, en
-  **cuatro** lugares: `docs/guides/quickstart.md` dos veces —`:59-61`, donde el mecanismo de
-  descubrimiento de los atajos era «ver iluminarse `180°` en la paleta», y `:80-81`, que nombra a
-  **`Reset`** por su etiqueta visible («con el foco sobre `Reset`, activa `Reset`»)—, más
-  `docs/architecture/audio.md` y `DESIGN.md` (los dos llaman al botón de recorrido «el toggle de la
-  paleta», con su etiqueta a la vista).
-- **AC15** — `pnpm verify` en verde (lint ‖ typecheck ‖ test ‖ mcp:test). Es el gate mecánico que el 014
+  **cuatro** lugares, **remedidos contra el árbol de hoy**: `docs/guides/quickstart.md` dos veces
+  —`:73-75`, donde el mecanismo de descubrimiento de los atajos era «ver iluminarse `180°` en la
+  paleta», y `:94-95`, que nombra a **`Reset`** por su etiqueta visible («con el foco sobre `Reset`,
+  activa `Reset`»)—, más `docs/architecture/audio.md:247` y `DESIGN.md:297` (los dos llaman al botón de
+  recorrido «el toggle de la paleta», con su etiqueta a la vista). Los `:59-61`, `:80-81` y `:250-251`
+  que este AC citaba eran del `main` de 2026-08-20; el 018 vuelve a correr los de `quickstart.md`, así
+  que las cuatro se buscan por **texto**.
+- **AC15** — `pnpm verify` en verde (lint ‖ typecheck ‖ **`suite`** ‖ mcp:test:
+  el 029 cambió el tercer nodo de `test` a `suite`, o sea dos pasadas de vitest y coverage 100 en las
+  cuatro métricas). Es el gate mecánico que el 014
   (AC13), el 016 (AC12), el 017 (AC12) y el 018 (AC12) ya fijaron como criterio propio y no sólo como
   tarea. `check_invariants` no entra: este spec no toca `domain/`.
+- **AC16** — Los tres `*.browser.test.tsx` de la tarjeta quedan verdes **habiendo cambiado**, no por
+  casualidad. Hoy afirman justo lo que este spec borra: `PiecePalette.browser.test.tsx` los cuatro
+  botones de grados (`:93-98`), «Reflexion y Recorrido son ON/OFF» (`:116-142`), el `aria-pressed` de
+  Reflexión (`:144-177`) y el de Recorrido (`:179-203`), los dos `role="group"` llamados `Rotación` y
+  `cambia` (`:216-217`) y el orden `Reflexión → Recorrido → Notas actuales` (`:243-244`);
+  `TransportPanel.browser.test.tsx` busca el botón por el nombre `Reset` (`:90`). O sea que AC15 **no
+  se puede firmar sin reescribirlos**, y lo que se muda tiene que reaparecer como aserción por **rol y
+  nombre** en el archivo de destino (`.claude/rules/ui.md`: nunca por `className`). Es además la
+  contraparte falsable de AC1: que los seis botones «no existen más en el DOM» se verifica con un
+  `queryByRole` anclado que da vacío, no leyendo el diff.
+
 
 ## Límites de Alcance
 

@@ -7,6 +7,15 @@
 >
 > **Va último del lote 018–021** porque rebasa sobre los otros tres y es el único que toca los cuatro
 > componentes a la vez.
+>
+> **Revisado el 2026-08-21 contra el `main` de hoy.** El spec se escribió el 2026-08-20 y desde
+> entonces entraron a `main` el **025** (`aria-pressed`, región `aria-live`), el **026** (el tablero se
+> toca con el teclado: `role="grid"`, filas de verdad, `tabIndex` roving, anillo de foco), el **027**
+> (`Playhead`/`Spectrum`), el **029** (coverage 100 en las cuatro métricas + proyecto `browser` de
+> Vitest) y el **030** (el linter verifica las reglas de `CLAUDE.md`). Los cinco mueven este spec:
+> `Board.tsx` pasó de ~300 a **539** líneas y `App.tsx` a **442**, el bucle de la cabeza se mudó a
+> `playhead-loop.ts`, apareció un **sexto** número fijo en la baldosa (el anillo de foco, AC21) y todo
+> lo que se agregue **viene con su test o no mergea**.
 
 ## Problema
 
@@ -138,7 +147,8 @@ Arriba se descartó por medición: una barra superior tapa el borde de arriba en
   hoy el único lugar donde los cuatro gestos del 013 están escritos, y borrarla los vuelve invisibles
   otra vez — el problema que su propio comentario dice haber resuelto.
 - **AC17** — La cabeza lectora y su velo se dibujan sobre la baldosa exacta a cualquier `CELL_PX`: los
-  **seis** sitios de `CELL_PX` de `Playhead.tsx` derivan de `--cell`, y los **cuatro** lugares de
+  **seis** sitios de `CELL_PX` —que desde el 029 viven en **tres** archivos y no en uno:
+  `playhead-loop.ts`, `Playhead.tsx` y `constants/playhead.constants.ts`— derivan de `--cell`, y los **cuatro** lugares de
   geometría de baldosa del mismo archivo —`VELO_CAJA`/`VELO_TAPA` del velo, y el `p-0.5` de la caja de
   la cabeza con el `rounded-lg` de su resalte— siguen coincidiendo con los de `Board.tsx`. Diez
   conversiones en total, no seis: los cuatro últimos no nombran a `CELL_PX` y por eso se pasan por alto.
@@ -160,23 +170,48 @@ Arriba se descartó por medición: una barra superior tapa el borde de arriba en
   está junto al `border` de `Board.tsx`, y **al techo** (celda 180) el filete sigue separando las
   baldosas en vez de desaparecer. La segunda mitad es la que puede dar que no, y si da que no la
   decisión se revierte a `calc()` con piso de 1 px.
+- **AC21** — **El anillo de foco del spec 026 escala con la celda.** Es el **sexto** número fijo de la
+  baldosa —dos, en rigor: `ANILLO_FOCO_OSCURO` y `ANILLO_FOCO_CLARO`, 2 px cada uno— y no estaba en
+  este spec porque el 026 entró a `main` después de escribirlo. Los dos salen del aire de 2 px que
+  AC18 vuelve proporcional, y su docblock lo dice al derivarlos: la banda oscura cae **sobre el aire**
+  y la clara **sobre el borde de la baldosa y el arranque de su color**. Falsable en el peor caso, que
+  es el techo: a celda 180 el aire mide 4,93 px, así que con los dos anillos en 2 px las dos bandas
+  caen adentro del aire blanco y la clara desaparece — sobre `#FFFF00` (la `V`) y sobre `#0000FF` (la
+  `W`), que son los dos extremos contra los que el 026 los eligió, el anillo tiene que seguir
+  viéndose. Y el anillo dibujado hacia adentro sigue sin agrandar la región scrolleable.
+- **AC22** — **La franja de Señal cabe en su caja al piso.** A `CELL_PX = 73` la franja de `3 × 1`
+  celdas mide 219 × 73 px, y su contenido de hoy —el encabezado más el `h-24` (96 px) del contenedor
+  del canvas— mide 132. O el alto del canvas deriva de `--cell`, o la caja deja de ser de una celda de
+  alto y hay que rehacer la cuenta del §4 que garantiza que no tape `(9,5)`. AC19 mide el dock; esto
+  mide la franja, que es el otro flotante.
+- **AC23** — **El shell sigue sin declarar un solo `useEffect`.** El efecto que mide el viewport y
+  escribe `--cell` vive en `components/use-cell-px.ts`, como los del 022, y `App.tsx` sólo crea el
+  `ref` y compone el hook. Falsable por grep sobre `src/App.tsx` y por el linter. Es lo que hace que
+  `.claude/rules/ui.md`, `CLAUDE.md` y `docs/architecture/overview.md` no tengan que cambiar de
+  afirmación en tres lugares cada uno.
 
 ## Límites de Alcance
 
 - **No cambia el audio.** Ni una nota, ni un tiempo, ni el timbre.
 - **No toca `domain/` ni `audio/`.** `GRID_W` y `GRID_H` siguen siendo 10 y 6. **No cruza el borde de
   paquete.**
-- **No arregla la accesibilidad del tablero.** Las celdas siguen sin recibir foco: es deuda conocida y
-  necesita su propio spec. Este spec **la agranda**, y hay que decir **en qué** —el toggle en sí no,
-  porque T022 lo hace un `<button>` con `aria-expanded`—:
-  1. **Once celdas dejan de ser alcanzables sin plegar un panel.** Hoy las 60 se ven todas; con los
-     flotantes abiertos, llegar a `(8,1)`…`(9,4)` y `(0,5)`…`(2,5)` exige un gesto previo. Para el
-     mouse es un click; para un teclado que todavía no alcanza ninguna celda, es una celda tapada más.
+- **No arregla la accesibilidad del tablero.** Es deuda conocida y necesita su propio spec. Este spec
+  **la agranda**, y hay que decir **en qué** —el toggle en sí no, porque T022 lo hace un `<button>`
+  con `aria-expanded`—. **Reescrito con el 026 en `main`**: la premisa vieja de este bloque era que
+  «las celdas siguen sin recibir foco», y desde el 026 eso es falso —la celda es un `role="gridcell"`
+  con `tabIndex` roving, `aria-label` y anillo de foco, dentro de un `role="grid"` con flechas—.
+  1. **Once celdas dejan de ser alcanzables sin plegar un panel**, y para el teclado el daño es
+     **peor** que para el mouse. Con los flotantes abiertos, llegar a `(8,1)`…`(9,4)` y `(0,5)`…`(2,5)`
+     exige un gesto previo; el mouse al menos ve el panel que tapa. El teclado no: el `.focus()` de
+     `Board.tsx` mueve el foco a una celda que un `fixed` está tapando, y como un `fixed` no participa
+     del scroller del tablero **nada la destapa**. El cursor queda invisible debajo del panel.
   2. **El orden de tabulación deja de seguir al orden visual.** Dos paneles `position: fixed` se
      pintan donde el `fixed` los pone y se tabulan donde el DOM los tiene, y eso no lo arregla el
-     `aria-controls`.
-  3. **La operación destructiva sigue siendo sólo de mouse.** El click que quita una pieza no tiene
-     equivalente de teclado ni deshacer, y ahora además puede quedar debajo de un panel.
+     `aria-controls`. Pesa más desde el 026, cuando el tablero pasó a ser una parada de tabulación
+     de verdad.
+  3. **La operación destructiva puede quedar debajo de un panel.** Ya no es «sólo de mouse» —el 026
+     le dio `Enter` y barra—, pero sigue sin deshacer, `specs/deuda.md` ya registra que el 026 lo
+     agravó al volverla alcanzable con una tecla, y este spec le suma que el gesto puede caer tapado.
 - **No agrega pantalla completa del navegador** (`requestFullscreen`). El tablero llena el viewport, que
   es otra cosa.
 - **No cambia qué muestra una celda.** La nota, el `#N` y los colores son los del 007 y el 012.

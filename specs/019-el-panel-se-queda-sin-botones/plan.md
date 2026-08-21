@@ -51,7 +51,7 @@ todo lo de abajo al cambiar de pieza. La línea nueva tiene largo variable (`0°
 reflejada`) y el mismo problema; se le mide el peor caso y se le reserva.
 
 Y la pura tiene **dos** consumidores, no uno: el `aria-label` de los doce botones ya arma ese mismo
-texto inline (`PiecePalette.tsx:115`, `rotación ${rotation * 90}°${mirror ? ', reflejada' : ''}`). Si
+texto inline (hoy `OrientationPanel.tsx:103`, mudado ahí por el 022, `rotación ${rotation * 90}°${mirror ? ', reflejada' : ''}`). Si
 no lo consume, el archivo queda con dos copias de la misma derivación en dos formatos, que es la clase
 de par que el repo mandó a `constants/` justamente porque nada los sincroniza. AC13.
 
@@ -73,9 +73,21 @@ compone; lo que AC13 prohíbe es que `rotation * 90` y el sufijo de reflexión e
 - El SVG del metrónomo va inline, `width="1em" height="1em"`, `fill="currentColor"`,
   `aria-hidden="true"` — el nombre accesible lo da el botón, y sin `aria-hidden` un lector de pantalla
   lo anunciaría dos veces.
-- `Reset` pasa a `↺`, con `aria-label="Vaciar el tablero y frenar"` y el mismo texto en `title`. Sigue
-  siendo `bg-slate-200`, que es el «secundario» que el 008 eligió a propósito para no competir con el
-  transporte.
+- `Reset` pasa a `↺`, con `aria-label="Vaciar el tablero y frenar"` y el mismo texto en `title`. Hoy
+  **no tiene ninguno de los dos** (`TransportPanel.tsx:74`): su nombre accesible es el texto visible
+  `Reset`, así que cambiarlo a un glifo sin agregarlos lo deja **mudo** — el caso exacto que
+  `.claude/rules/ui.md` cierra con «todo control solo-icono lleva `aria-label`: el glifo no es un
+  nombre». Sigue siendo `bg-slate-200`, que es el «secundario» que el 008 eligió a propósito para no
+  competir con el transporte.
+- **Los atributos del 025 viajan con el botón que se muda.** El de recorrido tiene hoy
+  `aria-pressed={clicks}` y `aria-labelledby="recorrido-etiqueta"` (`PiecePalette.tsx:124`): el primero
+  **tiene que llegar** al metrónomo —sin él el estado queda en el color y en nada más, que es el
+  defecto que `revisiones.md` ya cazó en el 016—, el segundo no puede, porque el `<span>` que
+  referencia muere con la fila, y se convierte en `aria-label`.
+- **El docblock de `TransportPanel.tsx` deja de ser cierto en dos lugares**: `:10-14` dice que es «el
+  unico subarbol CONTIGUO de los dos paneles (el boton de los clicks cae entre dos bloques de
+  orientacion)», que es justo lo que este paso deshace; y `:52-55` mide la fila «junto a Reset (62 px +
+  8 de gap)», con un Reset que pasa a ser un glifo y una fila que gana un tercer botón.
 - `↺` se separa del par `▶`/metrónomo: es el único destructivo de los tres y no tiene deshacer.
 
 ## Paso 4 — Rehacer la medición de `CELL_PX`
@@ -100,8 +112,8 @@ que siga siendo cierto, y si lo es no se toca.
 El **piso de 60** no se toca: depende de la fuente, no del layout, y este spec no toca el
 `text-[19px]` de `Board.tsx`.
 
-`App.tsx`: el footer **se lee y probablemente no se toca**. Hoy (`App.tsx:447-451`) no menciona ningún
-botón: nombra `Rotación` y `Reflexión` como transformaciones del modelo, y después los cuatro gestos.
+`App.tsx`: el footer **se lee y probablemente no se toca**. Hoy (`App.tsx:433-439`, y con el 018 puesto
+un `<span>` de gesto más y todo corrido de línea) no menciona ningún botón: nombra `Rotación` y `Reflexión` como transformaciones del modelo, y después los cuatro gestos.
 Lo único que hay que hacer es confirmarlo; borrar esa primera oración sería sacar la explicación del
 modelo por confundirla con la etiqueta de un control (AC10).
 
@@ -109,6 +121,19 @@ Y hay **tres páginas de documentación** que sí quedan falsas y entran al alca
 —donde el mecanismo de descubrimiento de los atajos es «ver iluminarse `180°` en la paleta», que es
 justo el botón que muere—, `audio.md` y `DESIGN.md` —los dos llaman al botón de recorrido «el toggle
 de la paleta»—. Ver `research.md` §7.
+
+## Paso 5 — Los tests de navegador que este spec rompe
+
+No es higiene: los tres `*.browser.test.tsx` de la tarjeta afirman hoy, **por rol y por nombre**,
+exactamente los seis botones que el paso 1 y el paso 3 borran o renombran, así que `pnpm verify` (AC15)
+no puede dar verde sin tocarlos. Y la dirección importa: lo que se **borra** se verifica al revés —un
+`queryByRole` anclado que da vacío, que es la única forma falsable de AC1— y lo que se **muda**
+reaparece como aserción en el archivo de destino, no desaparece.
+
+`OrientationPanel.browser.test.tsx` es el caso inverso, y por eso vale: T031 le cambia el **insumo** al
+`aria-label` sin cambiar el texto, así que ese archivo tiene que seguir verde **sin editarlo**. Si hubo
+que editarlo, el `aria-label` se degradó y AC13 se saldó agrandando la deuda de accesibilidad, que es
+justo lo que el paso 2 prohibe.
 
 ## Verificación
 
