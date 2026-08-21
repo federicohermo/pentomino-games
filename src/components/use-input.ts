@@ -48,6 +48,12 @@ interface Acciones {
  * es la optimización que este repo no necesita: son dos `addEventListener` sobre
  * `window`, no un costo, y el ref escondería de dónde sale cada valor.
  *
+ * Las teclas del tablero enfocado —las flechas, `Home`/`End` y el `Enter`— NO pasan por
+ * acá: las maneja el `onKeyDown` de la propia celda, porque necesitan saber CUÁL celda
+ * tiene el foco y este listener de `window` no lo sabe. Lo único que el spec 026 le pide a
+ * este hook es que se corra: `targetEsCelda` le devuelve la barra al tablero sin tocar
+ * `Shift` ni `Ctrl`, que con una celda enfocada siguen rotando y reflejando.
+ *
  * Los tres campos van a las dependencias por SEPARADO y el objeto `acciones` NO entra
  * crudo: un literal `{ rotar, reflejar, transporte }` armado en el shell tiene identidad
  * nueva en cada render, así que con el objeto en el array el efecto se re-suscribiría por
@@ -62,10 +68,21 @@ export function useAtajosDeTeclado(acciones: Acciones, tapLimpio: RefObject<bool
     const esControl = (t: EventTarget | null) =>
       t instanceof HTMLButtonElement || t instanceof HTMLInputElement;
 
+    // Y la celda del tablero por el MISMO motivo: `closest` es del DOM. Se pregunta por el
+    // `role="gridcell"` y no por una clase ni por un `data-*` porque el rol es lo que la
+    // celda le promete al lector de pantalla, así que es el atributo que nadie va a sacar
+    // en un refactor de estilos. El `closest` y no una comparación directa: el foco puede
+    // caer sobre un nodo que la celda tenga adentro, y desde ahí la barra sigue siendo del
+    // tablero. El `instanceof Element` no es defensivo: los eventos de `window` llegan con
+    // `e.target === window`, que no tiene `closest`.
+    const esCelda = (t: EventTarget | null) =>
+      t instanceof Element && t.closest('[role="gridcell"]') !== null;
+
     const despachar = (e: KeyboardEvent, tipo: 'keydown' | 'keyup') => {
       const evento = {
         key: e.key, tipo, repeat: e.repeat,
         targetEsControl: esControl(e.target),
+        targetEsCelda: esCelda(e.target),
         tapLimpio: tapLimpio.current,
       };
       // El `preventDefault` va por su PROPIA pregunta y no por «hay acción»: la barra
