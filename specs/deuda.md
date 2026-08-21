@@ -10,15 +10,18 @@ esta lista y entra como fila en [log.md](./log.md).
 
 - **`public/manifest.json` tiene los valores por defecto de CRA** (`"name": "Create React App
   Sample"`).
-- **No hay tests de UI**, así que los componentes de `components/` se verifican a ojo. El spec 007
-  la deja **abierta pero no más grande**: la derivación de la que depende lo que se ve —de `(x, y)` al
-  nombre de nota— no vive en `Board.tsx` sino en `domain/board.ts` (`occupantCellIndex`, AC14), así que
-  el componente sigue siendo un encadenado de puras testeadas en `environment: 'node'`. Su
-  `components/__tests__/palette.test.ts` es el primer test de la carpeta, pero es de constantes: no
-  renderiza nada y **no** desbloquea ni requiere jsdom. El spec 022 sumó `engine-bridge.test.ts` por la misma
-  vía: es de puras, corre en `node` y no monta nada. Los componentes pasaron de cuatro a seis
-  —`PiecePalette` se partió en tres— y **se siguen verificando a ojo**: el hueco es el mismo, sólo que
-  reparte su superficie en más archivos.
+- **~~No hay tests de UI~~ — CERRADO por el spec 029.** Los seis componentes, el shell y los dos
+  hooks del 022 pasaron de cero a **100 % en las cuatro métricas**, en un Chromium de verdad por
+  Playwright. El ítem había sobrevivido veintidós specs por un motivo bueno —la única infra evaluada
+  era testing-library sobre jsdom, y jsdom no sirve acá: `Spectrum.tsx` necesita canvas 2D,
+  `ResizeObserver`, `matchMedia` y `getBoundingClientRect`, y `audio/engine.ts` necesita
+  `new AudioContext()` y `window.setInterval`—. Lo que faltaba no era voluntad sino el browser mode
+  de Vitest.
+  **Lo que el 029 deja escrito y no se cierra con él:** las mediciones que ahora revalida un test son
+  las que estaban en los docblocks —el `z-10`, la caja fija de las miniaturas, los dos renglones
+  reservados, el ancho de la grilla, el listener no pasivo—; lo que **no** hay es una verificación de
+  que la app se vea BIEN, que es otra cosa y otro spec (snapshots visuales, explícitamente fuera de
+  alcance).
 - **`L` (`#29ABE2`) e `Y` (`#FF7BAC`) no llegan al piso de contraste con ningún color de texto**: Lc
   55,8 y 56,9 contra un piso de 60. Les falta contraste al `bg`, no al `fg`, así que ninguna elección
   de texto las arregla y subirlas exige mover el color de la lámina — o sea, es una decisión de

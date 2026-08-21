@@ -22,9 +22,27 @@ pregunta es si vuelve al instrumento más expresivo, no más difícil.
 
 La lista está en `package.json`. Lo que ese archivo no dice:
 
-**`pnpm verify` es el nodo de convergencia** — corre `lint ‖ typecheck ‖ test ‖ mcp:test` en paralelo y
-es lo que hay que correr antes de un PR. Medido con caché caliente: 8,8 s en serie contra 4,0 s en
+**`pnpm verify` es el nodo de convergencia** — corre `lint ‖ typecheck ‖ suite ‖ mcp:test` en paralelo y
+es lo que hay que correr antes de un PR. Medido con caché caliente: 37,5 s en serie contra 25,5 s en
 paralelo, y un nodo rojo devuelve exit 1.
+
+**`suite` son DOS pasadas de vitest, en secuencia y no en paralelo** (spec 029): primero `test` sin
+instrumentar y después `coverage`, con umbral **100** en las cuatro métricas. Los dos motivos están
+medidos y ninguno es preferencia:
+
+- **Instrumentar es medir el instrumento.** v8 inserta contadores en cada rama y los dos presupuestos
+  de performance del 009 pasan de 1,8 ms a **11,3 ms** contra un techo de 5. Se saltean bajo coverage
+  con `skipIf`, y el presupuesto se verifica en la pasada limpia.
+- **Y en secuencia porque en paralelo el presupuesto también se cae, por otra razón.** Con cinco
+  procesos pesados compitiendo por CPU la mediana sube igual y `verify` daba rojo sin que nada
+  estuviera mal — el mismo modo de falla que el comentario de AC8 en `sequence.test.ts` ya
+  documentaba cuando subió su techo de 2 a 4. Encadenarlas deja **cuatro** nodos concurrentes, o sea
+  la misma contención que había antes del 029, y el presupuesto vuelve a medir lo que dice medir.
+
+El umbral es 100 y no 95 porque un umbral más bajo es un presupuesto de deuda **sin dueño**: nadie
+sabe cuáles son las líneas que el margen permite, así que nadie las revisa. Y su corolario: **cero
+`/* v8 ignore */`**, por el mismo argumento que «cero `any`». Si una rama parece inalcanzable, se
+borra o se vuelve alcanzable — las cuatro que aparecieron están anotadas en el research del 029.
 
 Su forma exacta —`pnpm --filter "{.}" run --parallel "/^(…)$/"`— tiene dos cosas que **no** son
 cosméticas, y las dos se descubrieron fallando en verde:
@@ -46,9 +64,23 @@ preferir. La config de pnpm vive en `pnpm-workspace.yaml`, no en el `package.jso
 dependencia transitiva que con npm andaba, acá falla — es a propósito, y es la red que atrapa los
 imports fantasma antes de que lleguen a producción.
 
-Los tests de `src/` corren con Vitest en `environment: 'node'` contra `node-web-audio-api`, **no en
-jsdom**: jsdom no implementa Web Audio, y el dominio es puro así que corre ahí sin adaptación. Los del
-MCP server son de `node --test`, en su propio paquete.
+Los tests de `src/` son **dos proyectos de Vitest y un solo comando** (spec 029). El corte no es por
+capa sino por lo que el test necesita:
+
+- **`node`** — `environment: 'node'` contra `node-web-audio-api`. El dominio es puro y el audio tiene
+  una implementación nativa de Web Audio, así que corre ahí sin adaptación.
+- **`browser`** — Chromium de verdad, por Playwright, para los archivos `*.browser.test.tsx`. Entra
+  porque jsdom no puede: `Spectrum.tsx` necesita canvas 2D, `createLinearGradient`, `ResizeObserver`,
+  `matchMedia` y un `getBoundingClientRect` con números, y `audio/engine.ts` necesita
+  `new AudioContext()` y `window.setInterval`. Cubrirlos con jsdom exigiría mockear exactamente el
+  código que se quiere cubrir, que es cobertura sin verificación.
+
+El discriminante es el **sufijo** y no una carpeta: un test de `Board.tsx` que necesita navegador
+sigue siendo un test de `Board.tsx` y vive al lado. **Chromium no está en el lockfile**: un clone
+nuevo necesita `pnpm exec playwright install chromium` antes del primer `verify`.
+
+Los del MCP server son de `node --test`, en su propio paquete, y desde el 029 corren con los
+`--test-coverage-*=100` de node.
 
 Node ≥ 20.19 o ≥ 22.12 — Vite 7 lo exige en `engines`. El MCP server pide **≥ 22.18** porque corre
 TypeScript sin compilar; es un piso de tooling y con Node 20 solo se pierde el server.

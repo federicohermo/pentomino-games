@@ -101,6 +101,9 @@ src/
     │                             #   diciendo lo mismo antes de colocar
     ├── Spectrum.tsx              # canvas del espectro: rAF + HiDPI, sin props
     ├── Playhead.tsx              # cabeza lectora: rAF + estilo imperativo, sin props (spec 010)
+    ├── playhead-loop.ts          # el bucle de la cabeza y del velo, fuera del .tsx para poder
+    │                             #   exportarlo y testearlo (spec 029). Sin cambio de conducta
+    ├── spectrum-loop.ts          # ídem el del espectro: drawBars, drawIdle e iniciarEspectro
     ├── route-source.ts           # singleton fuera de React (no un componente): espeja active/
     │                             #   pending del motor con la Sequence del dominio, con celdas
     ├── cell-text.ts              # qué dice cada celda: su nota (por grado) y su #N (por paso).
@@ -120,7 +123,10 @@ src/
     │   ├── layout.constants.ts   # CELL_PX · MINI_BOX · MINI_CELL_PX · TEMPO_MIN · TEMPO_MAX
     │   ├── palette.constants.ts  # los 12 colores y su color de texto (ver DESIGN.md)
     │   ├── route.constants.ts    # MARCA: los estados de una celda bajo la cabeza lectora
-    │   └── input.constants.ts    # ACCION y EDICION: lo que puede pedir un gesto
+    │   ├── input.constants.ts    # ACCION y EDICION: lo que puede pedir un gesto
+    │   ├── playhead.constants.ts # los tres grosores de borde, su tabla por MarcaKind y las
+    │   │                         #   clases del velo (spec 029, al salir del .tsx)
+    │   └── spectrum.constants.ts # BAR_COUNT · GAP · MIN_BAR · IDLE_TEXT
     ├── types/
     │   ├── cell-text.types.ts    # CellText: lo que una celda muestra
     │   ├── route.types.ts        # Marca · CeldaPorEstrenar

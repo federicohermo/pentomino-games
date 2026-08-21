@@ -200,3 +200,48 @@ lo que se cargó. Excluirlo por nombre (D3) hace explícito lo que hoy pasa por 
 | **Chromium fuera del lockfile.** `pnpm install` no lo trae; un clone nuevo corre `verify` y falla con un error de playwright | Es del 024 y del 023 (que lo instala en CI). Acá sólo se hereda. Vale que el `quickstart.md` lo diga |
 | **Depende de dos specs sin implementar.** Si el 024 cambia de forma, la mitad de las tareas de acá cambian de destino | Las tareas del proyecto de navegador están agrupadas y marcadas en `tasks.md`; las que no dependen del 024 son la mayoría del trabajo de configuración y todo el `mcp-server` |
 | **`route-source.ts` 148-181 pueden ser ramas defensivas inalcanzables** | D4 manda: si lo son, se borran o se vuelven alcanzables, y queda anotado acá cuál fue |
+
+## 9. Pase de mutacion — que pasa cuando el codigo se rompe a proposito
+
+El coverage dice que la linea se ejecuto, no que el test la verifique. Antes de dar los
+tests por buenos se corrieron **18 mutaciones** sobre el codigo de produccion, cada una
+seguida del test que deberia atraparla. El resultado de la PRIMERA corrida fue el
+argumento mas fuerte a favor de hacerlo: **cuatro tests seguian en verde con el
+comportamiento roto**.
+
+| Mutacion | 1ra corrida | Despues |
+|---|---|---|
+| `{ passive: false }` → `{ passive: true }` en la rueda | SOBREVIVE* | muere |
+| La caja de la miniatura pasa a `min-content` | **SOBREVIVE** | muere |
+| Rearmar el velo vuelve a tapar lo ya estrenado | **SOBREVIVE** | muere |
+| `startClock` deja de ser idempotente | **SOBREVIVE** | muere |
+| `ids` sale de `porPieza` en vez de `s.steps` | SOBREVIVE | **equivalente** |
+| Las otras 13 | mueren | mueren |
+
+**\*El primero era un falso positivo, y la leccion es del metodo:** la cadena
+`{ passive: false }` aparece **primero en un comentario** tres lineas mas arriba, asi
+que la mutacion editaba el comentario y no el codigo. Aplicada sobre la linea real, el
+test moria. O sea que un pase de mutacion tambien hay que verificarlo: un mutante que
+"sobrevive" puede ser un mutante que nunca nacio.
+
+Los tres reales y como se cerraron:
+
+- **La caja de la miniatura.** El test comparaba anchos ENTRE rotaciones, y con
+  `min-content` las cinco pistas colapsan a cero **todas por igual**, asi que la
+  comparacion seguia dando verde. Se agrego la afirmacion del TAMANO absoluto:
+  `5 × MINI_CELL_PX`.
+- **El velo rearmado.** El test dejaba la cabeza parada sobre la celda, asi que el bucle
+  de estreno la volvia a destapar en el mismo cuadro y tapaba el bug. Se corre la cabeza
+  antes de rearmar.
+- **`startClock` idempotente.** El test miraba `clockRunning()`, que sigue diciendo que
+  si: lo que queda roto es un segundo timer huerfano. Se cuentan los `setInterval`.
+
+El sobreviviente que queda es **equivalente**: `ids` sale de `s.steps` para que un paso
+sin pieza igual aparezca en la lista —que es lo que hace alcanzables los dos `?? []` de
+`recomputarVelo`— pero sacarlo de `porPieza` produce exactamente el mismo velo y las
+mismas marcas. Cambia el interior sin cambiar nada observable, asi que no hay test que
+pueda matarlo sin afirmar sobre estructura interna.
+
+El script vive fuera del repo (es una herramienta de una corrida, no infraestructura):
+aplica cada mutacion con un reemplazo textual, corre el test dirigido y revierte con
+`git checkout --`.
