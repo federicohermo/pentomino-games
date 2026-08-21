@@ -143,16 +143,22 @@ casillas abiertas como próxima tarea.
 - **018 → 019 → 020 → 021 sale de un pedido de seis features cortado en cuatro specs.** El corte no es
   por tamaño: **2, 3 y 4 del pedido son una sola decisión** —qué queda en el panel y con qué idioma— y
   por eso van juntos en el 019. Los otros tres son independientes entre sí.
-- **018 es un carril suelto, pero no es ortogonal al 020: converge con él en `App.tsx`.** Uno decide
+- **018 es un carril suelto, pero no es ortogonal al 020: converge con él en `src/components/input.ts`
+  y su test.** Uno decide
   *qué pieza* está en la mano; el otro, *en qué orientación*, y en el **modelo** eso sí es ortogonal
   —con la memoria por pieza del 020, seleccionar por letra restaura la orientación recordada **sin una
   línea de handler**: los consumidores leen `orientaciones[selected]` y el cambio de `selected` alcanza—.
-  En el **archivo** no lo es: los dos escriben la misma cadena de `if`/`else` del efecto de teclado, y
-  la rama `ACCION.seleccionar` que agrega el 018 **no lee `rotation` ni `mirror`**, así que el typecheck
-  con el que el 020 enumera sus consumidores no la marca — es el mismo mecanismo por el que el 020 tuvo
-  que cazar `handleContextMenu` a mano. Por eso el **018 cierra antes que el 020**, y el 020 lleva la
-  tarea de verificar que la rama sobrevivió (`020/tasks.md` T040), que se cierra con «no existía» si el
-  018 todavía no llegó.
+  En el **archivo** ya casi no lo es, y el 022 es quien lo cambió. Este párrafo decía «los dos escriben
+  la misma cadena de `if`/`else` del efecto de teclado» **en `App.tsx`**, y esa cadena dejó de vivir ahí:
+  vive en `despachar`, adentro de `useAtajosDeTeclado` (`src/components/use-input.ts`), donde los tres
+  callbacks del shell son opacos y el archivo **no menciona `rotation` ni `mirror`**. O sea que el 020 ya
+  no reescribe esa cadena y el riesgo quedó **estructuralmente cerrado por el 022** (`020/tasks.md` T040,
+  que hoy sólo verifica). Lo que queda del cruce es de **merge y no de diseño**: los dos escriben
+  `components/input.ts` y `components/__tests__/input.test.ts` —el 018 agrega `piezaDeTecla` y ensancha
+  el factory `tecla`, el 020 acota `rotacionPorRueda` a `Rotacion`—, y hasta este review no lo declaraba
+  ninguno de los dos. Por eso el **018 cierra antes que el 020**, y el 020 lleva la
+  tarea de verificar que la rama `ACCION.seleccionar` sobrevivió (`020/tasks.md` T040) — que con el 018
+  adelante **ya no tiene salida por «no existía»**: la rama existe y hay que abrir el archivo.
 - **019 va antes que 020, y es lo que evita escribir el lector dos veces.** El 019 borra los botones de
   grados y tiene que compensarlo con una línea de texto que diga la orientación, porque la miniatura no
   puede: **29 de 96 orientaciones suenan distinto sin verse distinto**, en 6 de 12 piezas (`I T U V W
@@ -171,7 +177,13 @@ casillas abiertas como próxima tarea.
   botón `0°` va *junto a* esa línea y no en una fila nueva, o sea que **gasta** ~10 px más. Es la
   tercera vez que este número cambia de mano y la primera en que el margen es de décimas: la próxima
   fila que salga del panel sí achica el tablero. **El número final no lo fija esta entrada sino la
-  medición de T022 del 019** en el navegador — y de ahí lo toma el piso del 021.
+  medición de T022 del 019** en el navegador, remedida por el `T039` del 020 con el botón `0°` puesto.
+  **El piso del 021 NO sale de ahí**, y este párrafo decía que sí: su `CELL_PX_MIN = 73` es una
+  medición *tipográfica* —la celda donde la nota vale los 19 px que el repo midió como legibles
+  (`021/research.md` §3 y §11)— y no el reparto de columnas que persigue esta entrada. Que los dos den
+  73 es **coincidencia aritmética**: si esta cadena hubiera dado 72, el piso del 021 seguiría siendo 73.
+  Encadenarlos tenía un costo concreto — mover las proporciones `19/73` y `13/73` rompe el AC4 del 021,
+  que pide que a la celda del piso la nota renderice a 19 px exactos.
 - **021 va último porque borra el layout sobre el que trabajan los otros tres.** Toca los cuatro
   componentes, mata el `max-w-6xl grid-cols-12`, y reescribe docblocks que el 019 acaba de tocar. Al
   revés, el 019 mediría un colchón de alto que el 021 hace desaparecer.
@@ -202,10 +214,14 @@ casillas abiertas como próxima tarea.
   firmas. Es también el riesgo más alto del 022 —si alguien lo mete adentro del hook del teclado,
   `Ctrl`+rueda vuelve a reflejar la pieza al soltar— y **ningún test automático lo atrapa**: por eso
   tiene AC propio (AC15) y verificación en el navegador.
-- **El 022 le deja tres tareas para recontar al 021.** Sus `T059`, `T060` y `T049` actualizan «los seis
-  efectos» a «siete» en cuatro archivos; con el 022 puesto el número base ya no es seis. Lo arregla el
-  `T018` del 022, con el precedente de siempre: el 015 cerró el `T070` del 011 y el 021 cierra el `T033`
-  del 016.
+- **El 022 le dejó tres tareas para recontar al 021, y ya están recontadas.** Sus `T059`, `T060` y
+  `T049` actualizaban «los seis efectos» a «siete» en cuatro archivos; con el 022 puesto el número base
+  dejó de ser seis. Lo arregló el `T018` del 022, con el precedente de siempre: el 015 cerró el `T070`
+  del 011 y el 021 cierra el `T033` del 016. **Este párrafo describía el texto viejo de esas tres
+  tareas**: hoy dicen lo contrario —que no queda ningún «seis» que pasar a «siete»— y el review del
+  lote las volvió a mover, esta vez de *reescribir* a *verificar*, porque el efecto de `--cell` del 021
+  ya no va al shell sino a `components/use-cell-px.ts` y las tres afirmaciones de `overview.md`
+  (`:22`, `:74`, `:180`) siguen siendo ciertas tal como están.
 - **El 022 no difiere nada, y eso fue una decisión explícita.** Su primera versión dejaba tres de sus
   seis frentes para después del 020 y del 021 —el teclado, la rueda y la paleta— anotados en `deuda.md`
   con su dueño al lado. Se amplió a los seis con el costo a la vista, y por eso `deuda.md` **pierde tres
@@ -276,6 +292,14 @@ casillas abiertas como próxima tarea.
 - **026 conviene antes que el 021.** Los dos reescriben `Board.tsx`: el 026 le pone filas de verdad
   —`role="grid"` las exige— y el 021 mueve `CELL_PX` a una custom property. Lo que agrega el 026 es
   ortogonal a la medida y sobrevive, pero al revés habría que reescribirlo sobre un layout nuevo.
+  **Con el 026 ya en `main`, «sobrevive» se pudo verificar en vez de suponer, y sobrevive en tres de
+  las cuatro cosas que agrega:** las filas de verdad sólo mudan el `gridTemplateColumns` del
+  contenedor a la fila, el `tabIndex` roving es un índice plano que no toca píxeles, y el
+  `closest('[role="grid"]')` no depende del layout. **La cuarta no**: el anillo de foco
+  (`ANILLO_FOCO_OSCURO`/`ANILLO_FOCO_CLARO`) está **derivado del aire de 2 px de la baldosa**, que el
+  021 vuelve proporcional — a celda 180 ese aire mide 4,93 px y la banda clara desaparece, que es el
+  modo de falla que esos dos números existen para evitar. Es trabajo nuevo del 021 (su `T065`), y es
+  el **sexto** número fijo de la baldosa: su spec contaba cinco.
 - **025 pierde dos de sus seis frentes con el 019, y está medido.** El 019 borra los cuatro botones de
   grados y el ON/OFF de Reflexión. No se difiere por eso —son un defecto de accesibilidad hoy y el
   trabajo perdido son dos atributos— y lo que **no** se pierde es la regla en `.claude/rules/ui.md`, que

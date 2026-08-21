@@ -44,6 +44,11 @@ esta lista y entra como fila en [log.md](./log.md).
   `.claude/rules/ui.md` evita pidiendo `type="button"` en todo `<button>`: los tres pierden el tablero
   entero y ninguno pregunta. Necesita spec propio — un historial de estados del tablero toca dónde vive
   `placed`, o sea el shell.
+  **El 021 le suma una cara nueva, y es de alcanzabilidad y no de reversión**: con dos paneles `fixed`
+  encima del tablero, el gesto destructivo puede quedar **debajo de uno de ellos**. Un `fixed` no
+  participa del scroller del tablero, así que el `.focus()` que mueve el cursor de teclado puede
+  llevarlo a una celda que nada destapa — el 026 hizo la operación alcanzable sin querer, y el 021 la
+  puede volver invisible en el mismo movimiento.
 - **La colocación no se repliega sobre la costura.** El *recorrido* sí —`(0,0)` y `(9,5)` son
   adyacentes desde el spec 009— pero una pieza no se puede colocar cruzando ese borde: `isValid`
   rechaza toda celda fuera de la grilla. O sea que el tablero es un cilindro para el circuito y un
