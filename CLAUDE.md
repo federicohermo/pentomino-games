@@ -138,6 +138,13 @@ coherencia que mira el lote entero y caza las contradicciones entre specs—; `/
 por cadena de dependencias— y corre cada carril en su worktree. En ese orden: un cruce detectado como
 texto cuesta un párrafo y detectado en dos carriles cuesta un rebase.
 
+El tercero cierra la vuelta del otro lado: `/pr-review-batch` revisa los **PR abiertos** de GitHub
+—un agente por PR en su worktree—, arregla, corre `pnpm verify` y pushea. Es de acá y no genérico
+porque las cuatro cosas que un review de PR necesita son propias del repo: los PR salen de
+`mcp__github__` y no de `gh`, que no está en el PATH; los criterios de aceptación salen de
+`specs/NNN-*/spec.md` y no de un ticket; el cierre es `pnpm verify` y no `npm run verify`; y **las
+ramas se apilan**, así que el diff va contra el `base.ref` del PR y nunca contra `main`.
+
 Estas son las reglas:
 
 - **La dirección de dependencia la verifica el linter**, no la revisión. Desde el spec 030 se prohíbe
