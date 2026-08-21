@@ -122,6 +122,15 @@ mapeo está en
 Es la regla **D7** del spec 007, y decide sola los cuatro componentes: *el color va donde ya se
 comunicaba identidad de pieza, y nunca sobre el canal de estado.*
 
+**Y tiene una mitad no visual, que el spec 025 escribió: si el color es el único canal que dice el
+estado, el árbol de accesibilidad no lo dice.** No es una regla nueva, es la misma leída desde el canal
+donde no hay color — y estaba entera sin cubrir: medido sobre `src/`, **cero** `aria-pressed`, **cero**
+`aria-checked` y **cero** `role=` en los 22 botones y el `input` de la app. Un fondo oscuro que
+significa «seleccionada» le llega al ojo y no le llega a nadie más. Las tres cláusulas —nombre accesible
+en todo control solo-icono, `aria-pressed` en todo lo que alterna y con el nombre siendo lo que alterna,
+y la etiqueta tomada del texto visible en vez de duplicada— viven en
+[`.claude/rules/ui.md`](./.claude/rules/ui.md).
+
 | Dónde | Qué hace el color | Por qué |
 |---|---|---|
 | `Board` | celda ocupada = color de pieza | identidad debajo, estado encima |

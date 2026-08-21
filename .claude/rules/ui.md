@@ -103,6 +103,43 @@ distinta y ahí no tiene que pasar nada.
   número **medido**, no elegido: sale de `min(interior / 10, interior / 6)` sobre la tarjeta real, así
   que mover un `col-span` obliga a remedirlo en el DOM.
 
+## El árbol de accesibilidad dice lo que el color pinta
+
+`DESIGN.md` titula «El color comunica identidad, nunca estado» y `palette.constants.ts` mide contraste
+con APCA contra un piso de Lc 60 — un rigor que casi ningún proyecto tiene. Lo que no se cubría es el
+canal donde no hay color. El spec 025 lo midió sobre `src/`: **cero** `aria-pressed`, **cero**
+`aria-checked` y **cero** `role=` en los 22 botones y el `input` de la app.
+
+Las tres cláusulas, y las tres ya existían en el repo como comentarios sueltos antes de ser regla:
+
+- **Todo control solo-icono lleva `aria-label`: el glifo no es un nombre.** El precedente es el botón de
+  transporte de `TransportPanel.tsx`, que al quedarse sin su texto se quedó sin nombre accesible y lo
+  dice en su propio comentario —«`aria-label` porque al sacar el texto el botón se queda sin nombre
+  accesible: el glifo no lo es»—. La regla es lo que hace que el próximo nazca con nombre: el 019 muda
+  «Recorrido en el vacío» a la fila de transporte como un SVG solo-icono, que es exactamente este caso.
+- **Todo control que alterna lleva `aria-pressed`, y su nombre es lo que alterna, no el valor.** Un
+  botón que se llama `OFF` tiene el nombre equivocado: lo que hace falta saber es **qué** se apaga. Y un
+  grupo de selección única donde la selección es sólo un fondo oscuro no llega al árbol de ninguna forma
+  — va como `role="group"` con `aria-labelledby`, sobre un nodo que **ya exista**, y `aria-pressed` en
+  cada botón. **No** como `radiogroup`: eso obliga a un modelo de foco —una sola parada de tabulación y
+  flechas para moverse dentro— y ese modelo lo fija el spec 026 para el tablero. Tomarlo de refilón para
+  cuatro botones sería decidirlo dos veces y probablemente distinto.
+- **La etiqueta se toma del texto visible con `aria-labelledby`, no se duplica en un `aria-label`.** El
+  precedente es el `aria-label` de las doce miniaturas del spec 016 —«para que el lector de pantalla
+  diga lo que el ojo ve»—, que es la forma correcta justamente porque ahí **no hay** texto visible que
+  referenciar: una forma dibujada con `div`s no tiene nombre. Cuando el texto sí está en pantalla,
+  duplicarlo es la misma cadena escrita dos veces, y la copia que se olvida de actualizar es la que
+  nadie ve.
+
+Y **`type="button"` en todo `<button>`**, sin excepción. Hoy no hay un solo `<form>` en el árbol, así
+que no hay bug; pero el default de un `<button>` dentro de un formulario es `submit`, y en esta app eso
+es recargar la página perdiendo el tablero entero, **sin deshacer** (`specs/deuda.md`).
+
+Lo que verifica todo esto es un test de navegador que consulta por **rol y nombre**, nunca por
+`className`: preguntarle al árbol de accesibilidad es la diferencia entre verificar accesibilidad y
+verificar que se escribió un atributo. Ojo con `getByRole`, que empareja el nombre por **subcadena** —
+los nombres van anclados con regex—.
+
 ## Los listeners de entrada
 
 El spec 013 fue el primero que agregó uno —hasta ahí el único `addEventListener` de `src/` era un
