@@ -40,9 +40,20 @@ jobs:
       # Va ANTES de setup-node porque `cache: pnpm` necesita el binario ya instalado.
       - uses: pnpm/action-setup@v4
 
+      # Version EXACTA y no `22` a secas, que resuelve a la ultima 22.x del dia y convierte
+      # al runtime del gate en un blanco movil: el mismo commit puede dar verde hoy y rojo
+      # el mes que viene sin que nadie toque una linea. Medido y no teorico: con `22` el
+      # nodo `mcp:test` daba `99.64% branch coverage does not meet threshold of 100%` en
+      # `symbols.ts` mientras la misma corrida en 22.18.0 da 100 en las cuatro — V8 cuenta
+      # ramas distinto entre minors, asi que el numero que el 029 fijo en 100 depende del
+      # runtime que lo mide.
+      #
+      # El piso del proyecto sigue siendo el `engines` (^20.19.0 || >=22.12.0): esto no lo
+      # estrecha, elige UNA version adentro de el para que el gate sea reproducible. Subirla
+      # es un cambio deliberado, con `pnpm verify` corrido en la version nueva antes.
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 22.18.0
           cache: pnpm
 
       # Congelado: una deriva entre `package.json` y `pnpm-lock.yaml` rompe la CI en vez de
