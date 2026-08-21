@@ -714,3 +714,26 @@ el nodo más lento pasa a ser `suite` (19,4 s) y no `lint` (11,0 s). Los dos spe
 que manda el reloj y los dos midieron sin el otro puesto. La lección se repite con otra cara: **un
 número medido sobre el nodo de convergencia caduca cuando otra rama le agrega trabajo**, así que vale
 anotar al lado qué había puesto cuando se midió.
+
+- **2026-08-21 — El spec 028 midió una config de ESLint que cambió de signo antes de mergearse.** La
+  sección 4 de su `research.md` contrastó, afirmación por afirmación, el bloque «Expanding the ESLint
+  configuration» que trae el `README.md` heredado de la plantilla de Vite contra el `eslint.config.js`
+  real del repo: cinco recomendaciones —`tseslint.configs.recommendedTypeChecked`,
+  `strictTypeChecked`, `stylisticTypeChecked`, un `parserOptions.project` armado a mano, y los plugins
+  `eslint-plugin-react-x` y `eslint-plugin-react-dom`— y las cinco mal. Cuando se midió, el repo
+  extendía `tseslint.configs.recommended`: el README recomendaba una config que el repo había
+  **rechazado** deliberadamente.
+
+  **Cinco días después el spec 030 adoptó `recommendedTypeChecked`** (`eslint.config.js:255`) y
+  reemplazó el `parserOptions.project` a mano por `projectService: true`. El daño cambió de signo sin
+  que nadie tocara el README: lo que antes proponía algo rechazado, hoy propone como pendiente algo ya
+  hecho. No es sólo el argumento de por qué el README nuevo del 028 **enlaza en vez de describir** el
+  tooling —es su prueba empírica—: describir la config de ESLint se pudre por los dos lados, y acá
+  bastaron cinco días para que se pudriera por el segundo.
+
+  Y una nota sobre el propio `tasks.md`, porque es la misma lección otra vez: su T038 pide corregir la
+  fila del 028 en `log.md`, que arrastraba la frase «recomiendan una config de ESLint que este repo
+  deliberadamente no usa». **Ya estaba corregida al implementar**: la frase entró con `edbd515` y salió
+  con `47980bc`, el review del lote 023-028, que es exactamente el mecanismo que existe para eso. Una
+  tarea escrita contra un archivo vivo puede llegar hecha, así que se verifica antes de tocarlo — grep
+  primero, edición después.
