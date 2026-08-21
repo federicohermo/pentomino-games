@@ -1,5 +1,6 @@
 import { readSpectrum } from '../audio/engine.ts';
 import { binsToBars } from '../audio/spectrum.ts';
+import { BAR_COUNT, GAP, MIN_BAR, IDLE_TEXT } from './constants/spectrum.constants.ts';
 
 /**
  * El dibujo del espectro: todo lo que `Spectrum.tsx` hacia adentro de su `useEffect`.
@@ -15,15 +16,6 @@ import { binsToBars } from '../audio/spectrum.ts';
  * nadie. Lo unico que cruza la frontera es la lectura del motor, que el loop hace por
  * su cuenta.
  */
-
-/** Barras dibujadas. Menos que los 128 bins: agrupadas se leen sin ruido visual. */
-export const BAR_COUNT = 48;
-/** Separacion entre barras, en px CSS. */
-export const GAP = 2;
-/** Altura minima de una barra con senal: por debajo de esto no se ve que hay algo. */
-export const MIN_BAR = 2;
-
-export const IDLE_TEXT = 'En reposo — el audio arranca con el primer click';
 
 export function drawBars(
   g: CanvasRenderingContext2D,

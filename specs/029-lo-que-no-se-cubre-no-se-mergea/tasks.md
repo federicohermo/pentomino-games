@@ -15,7 +15,7 @@ persona y no bloquea el cierre.
 - [x] T002 Escribir el bloque `test.coverage` en `vite.config.ts`: `provider: 'v8'`, `include: ['src/**/*.{ts,tsx}']`, `reporter: ['text']`, `reportOnFailure: true`. **Sin `thresholds` todavía** (plan, §Orden)
 - [x] T003 Escribir `coverage.exclude` con los tres archivos de `src/` que fija D3, cada uno con su comentario al lado — AC11
 - [x] T004 Agregar el script `coverage` a `package.json`, que fije la env var que T010 consume
-- [x] T005 Subir `verify` a cinco nodos: `"/^(lint|typecheck|test|coverage|mcp:test)$/"`. Verificar que los cinco corren de verdad —el modo de falla del filtro `{.}` ya está documentado en `CLAUDE.md`— contando los nodos en la salida
+- [x] T005 ~~Subir `verify` a cinco nodos: `"/^(lint|typecheck|test|coverage|mcp:test)$/"`~~ → **quedaron cuatro**: `"/^(lint|typecheck|suite|mcp:test)$/"`, con `suite = test && coverage` encadenadas. Cinco procesos pesados en paralelo tiraban abajo los presupuestos del 009 en la pasada limpia por contención de CPU; el desvío está medido y argumentado en `revisiones.md` §3. Verificado contando los nodos en la salida —el modo de falla del filtro `{.}` ya está documentado en `CLAUDE.md`—
 - [x] T006 Confirmar que `pnpm coverage` imprime la tabla y devuelve **0** (todavía sin gate)
 
 ## Fase 2 — Lo que se cierra sin navegador
@@ -81,13 +81,13 @@ persona y no bloquea el cierre.
 - [x] T054 `CLAUDE.md`: `verify` pasa a cinco nodos, con la medición nueva de serie contra paralelo y el segundo motivo del ancla `$` — AC12
 - [x] T055 `docs/guides/quickstart.md`: el paso de `playwright install chromium` antes del primer `verify`
 - [x] T056 `specs/deuda.md`: volver a mirar el ítem de tests de UI que el 024 dejó reescrito — con el 100 % la mitad abierta cambia de forma otra vez
-- [ ] T057 `specs/log.md`: mover el 029 a `Implementado` y anotar la dependencia con el 023 y el 024
+- [x] T057 `specs/log.md`: mover el 029 a `Implementado` y anotar la dependencia con el 023 y el 024
 - [x] T058 `specs/revisiones.md`: anotar qué salió distinto de lo previsto
 - [ ] T059 [M] Abrir la app y confirmar que suena igual — el spec no toca comportamiento salvo si T017 obliga a borrar una rama muerta
 
 ## Verificación y PR
 
-- [x] T060 `pnpm verify` en verde con los cinco nodos
+- [x] T060 `pnpm verify` en verde con sus cuatro nodos (ver T005)
 - [ ] T061 Commit, push y PR contra `origin`
 - [ ] T062 [M] Code review del PR
 

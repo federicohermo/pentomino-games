@@ -1,7 +1,7 @@
 import { playheadOffset } from '../audio/engine.ts';
 import { rutaActiva, velo } from './route-source.ts';
 import { CELL_PX } from './constants/layout.constants.ts';
-import { MARCA } from './constants/route.constants.ts';
+import { BORDE_COLOR, BORDE_POR_KIND, VELO_CAJA, VELO_TAPA } from './constants/playhead.constants.ts';
 import type { CeldaPorEstrenar } from './types/route.types.ts';
 
 /**
@@ -25,74 +25,12 @@ import type { CeldaPorEstrenar } from './types/route.types.ts';
 const SIN_CABEZA = (): void => {};
 
 /**
- * El resaltado: la celda que suena ENGROSA su borde, hacia adentro y hacia afuera.
- * Nada mas — sin relleno, sin cambio de color y sin `scale`.
- *
- * ## Por que el borde y no un relleno
- *
- * En un secuenciador de fondo oscuro el estandar es ENCENDER el step activo, porque la
- * metafora es un LED. Este tablero es tema claro —panel blanco, celdas vacias blancas—
- * y ahi subir luminancia hace desaparecer la celda: el amarillo de `V` se va a blanco.
- * Un relleno oscuro funciona (medido: al 30 % el peor caso de las 12 piezas, la `W`,
- * da un delta de L* de 8,8 sobre un umbral de ~3) pero tapa la nota que la celda
- * muestra desde el spec 007, que es lo que hay que poder leer. El borde marca el limite
- * sin pisar el contenido.
- *
- * ## Por que engorda para los DOS lados
- *
- * Hacia adentro solo no alcanza: las 60 celdas ya tienen `border-slate-900`, ocupadas o
- * no, asi que engrosarlo es un cambio de grado contra un campo lleno de bordes negros.
- * El anillo exterior es lo que agrega el salto de tamano — la celda se lee mas grande
- * sin que crezca su caja.
- *
- * ## Y por que NO se usa `transform: scale`, que es lo obvio
- *
- * Porque `scale` cuenta para el overflow SCROLLEABLE del contenedor: medido en el DOM
- * con `CELL_PX` en 63 —grilla de 630 x 378— con la cabeza en (9,5) y `scale(1.10)`, el
- * `scrollHeight` del `overflow-x-auto` de `Board` pasaba de 378 a 381 y aparecian las
- * barras de desplazamiento —las dos, porque Tailwind fija solo `overflow-x` y entonces
- * el eje Y computa a `auto`—. El spec 014 movio la celda a 71 y esos dos numeros no se
- * remidieron; lo que no depende del tamano es el MECANISMO, que es lo que decide:
- * `scale` agranda la region scrolleable y `box-shadow` es ink overflow, o sea que pinta
- * afuera de la caja sin agrandarla.
- *
- * Gris pizarra y no un color: el color es IDENTIDAD —que pieza es— y el estado nunca se
- * comunica con hue. Es la misma regla por la que el fantasma es gris y no verde.
+ * El `box-shadow` de un grosor: el anillo de adentro siempre, el de afuera solo si el
+ * escalon lo pide. Los tres grosores y su tabla viven en `playhead.constants.ts`; esto
+ * es la funcion que los convierte en CSS.
  */
-export const BORDE_COLOR = '#0f172a';
-
-/** Grosor hacia adentro y hacia afuera, en px. */
-export const NOTA = { dentro: 3, fuera: 2 };
-
-/**
- * El cruce (spec 011, D8): la cabeza pasa sobre una celda OCUPADA que no es su turno
- * pero que igual suena una floritura (`Click.note`) — ni la nota propia de una pieza
- * ni el click mudo de siempre, asi que su borde va en el escalon intermedio entre los
- * otros dos. Los tres numeros —3/2, 2/1, 2/0— estan fijados en DESIGN.md.
- */
-const CRUCE = { dentro: 2, fuera: 1 };
-
-/**
- * Nota fuerte, cruce intermedio, click tenue (D7 del spec 010 mas D8 del 011): si dos
- * de los tres se vieran igual, el recorrido mentiria sobre cual de las tres cosas paso.
- * El click engorda solo hacia adentro y la mitad — se lee como un roce.
- */
-const CLICK = { dentro: 2, fuera: 0 };
-
 export const borde = ({ dentro, fuera }: { dentro: number; fuera: number }): string =>
   `inset 0 0 0 ${dentro}px ${BORDE_COLOR}` + (fuera > 0 ? `, 0 0 0 ${fuera}px ${BORDE_COLOR}` : '');
-
-/** Que escalon de borde le toca a cada `MarcaKind` — la tabla de D8 hecha funcion. */
-const BORDE_POR_KIND = { [MARCA.nota]: NOTA, [MARCA.cruce]: CRUCE, [MARCA.click]: CLICK } as const;
-
-/**
- * Las clases del velo van como literales enteros y no armadas por concatenacion:
- * Tailwind escanea el fuente, asi que solo genera lo que aparece escrito completo.
- * Repiten el `p-[2px]` y el `rounded-lg` de la baldosa de `Board.tsx` a proposito — es
- * la misma caja, y poner los numeros a mano seria un segundo lugar donde mantenerlos.
- */
-const VELO_CAJA = 'absolute p-[2px]';
-const VELO_TAPA = 'w-full h-full rounded-lg border-2 border-dashed border-slate-900/50 bg-white/60';
 
 /** Que celda de que pieza. Por pieza y no solo por celda: ver `CeldaPorEstrenar`. */
 const claveDe = (e: CeldaPorEstrenar): string => `${e.id}:${e.cell[0]},${e.cell[1]}`;
@@ -110,7 +48,7 @@ export function iniciarCabeza(
   el: HTMLElement | null,
   resalte: HTMLElement | null,
 ): () => void {
-if (!capa || !el || !resalte) return SIN_CABEZA;
+  if (!capa || !el || !resalte) return SIN_CABEZA;
 
   // Clave de lo ULTIMO escrito, no la marca en si: comparar strings evita comparar
   // tuplas y deja el caso "oculto" expresado como cadena vacia. Es lo que baja de 60

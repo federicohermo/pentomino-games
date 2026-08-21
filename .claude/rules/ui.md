@@ -17,9 +17,16 @@ paths:
 y los dos de entrada en `components/use-input.ts`. **Ninguna función pura y ningún literal de
 dominio** — y eso ya no significa «se va a `domain/`»: un `.tsx` no puede exportar nada además del
 componente (`react-refresh/only-export-components`), así que lo que vive acá no se puede testear, pero
-el destino puede ser tanto `domain/` como un `.ts` de `components/`. Hoy hay **seis** módulos de
-`components/` con tests —`input.ts`, `cell-text.ts`, `piece-mini.ts`, `route-source.ts`, `engine-bridge.ts` y
-`palette.constants.ts`—, todos en el `environment: 'node'` del repo y ninguno con DOM.
+el destino puede ser tanto `domain/` como un `.ts` de `components/`. Es lo que el spec 029 aplicó a los
+dos últimos lugares donde quedaba lógica encerrada: los bucles de `Playhead.tsx` y `Spectrum.tsx`
+salieron a `playhead-loop.ts` y `spectrum-loop.ts` sin cambiar una línea de comportamiento.
+
+Desde ese spec `components/` tiene **dos clases de test y las dos corren con `pnpm test`**: los `.ts`
+puros en el proyecto `node` —`input.ts`, `cell-text.ts`, `piece-mini.ts`, `route-source.ts`,
+`engine-bridge.ts`, `palette.constants.ts` y los dos `-loop.ts`— y los `*.browser.test.tsx` en un
+Chromium de verdad, que es donde se verifican los seis componentes, `App.tsx` y los dos hooks. El
+discriminante es el **sufijo**, no la carpeta. Y el umbral es 100 en las cuatro métricas: lo que se
+agregue acá viene con su test o no mergea.
 
 Los componentes son presentacionales, uno por archivo: reciben datos y callbacks por props, sin estado
 ni efectos propios. La excepción ya no es una sola: `Spectrum.tsx` y `Playhead.tsx` (spec 010) no reciben
@@ -120,10 +127,13 @@ El spec 013 fue el primero que agregó uno —hasta ahí el único `addEventList
   deja al otro sin forma de escribirlo, y ahí vuelve el bug de `Ctrl`+rueda del spec 013 sin que falle
   un solo test.
 - **La DECISIÓN del gesto se extrae como pura a `components/`**, recibiendo los campos del evento que
-  importan y no el evento. El repo corre en `environment: 'node'` sin jsdom: una pura que reciba un
-  `KeyboardEvent` no se puede testear, y en un `.tsx` ni siquiera se puede exportar. El precedente son
-  `input.ts`, `cell-text.ts`, `route-source.ts` y `engine-bridge.ts`. Lo que queda en el hook es cableado, y es
-  lo que las tareas `[M]` verifican en el navegador.
+  importan y no el evento. En un `.tsx` no se puede ni exportar, y como pura corre en el proyecto
+  `node` —sin navegador, sin fabricar un `KeyboardEvent`— que es donde la decisión se verifica barata y
+  exhaustiva. El precedente son `input.ts`, `cell-text.ts`, `route-source.ts` y `engine-bridge.ts`.
+  Lo que queda en el hook es cableado, y desde el spec 029 **eso también tiene test**: el proyecto de
+  navegador monta el hook con `renderHook` y dispara eventos de verdad. Que el cableado sea verificable
+  no derogó la regla —una pura sigue siendo más barata de agotar que un evento sintético—, sacó su
+  excusa.
 - **`wheel` no puede ir por prop de JSX si hace falta `preventDefault`.** React registra sus listeners
   en el contenedor raíz y a `touchstart`, `touchmove` y `wheel` los registra **pasivos** (react-dom
   19.1.1), donde `preventDefault()` es un no-op que el navegador solo avisa por consola. Va por

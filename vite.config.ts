@@ -102,7 +102,7 @@ export default defineConfig({
     // v8 instrumenta insertando contadores en cada rama, y los tests combinatorios del
     // dominio —los que recorren las 96 orientaciones o resuelven tableros de 12 piezas—
     // son justo los que mas ramas ejecutan. Medido sobre los presupuestos del 009: 11,3
-    // ms contra 1,8 sin instrumentar, o sea entre 2x y 4x. Con los CINCO nodos de
+    // ms contra 1,8 sin instrumentar, o sea entre 2x y 4x. Con los cuatro nodos de
     // `verify` compitiendo por CPU al mismo tiempo, eso lleva a alguno de esos tests por
     // encima de los 5 s del default y lo pone en rojo **sin que nada este mal**.
     //

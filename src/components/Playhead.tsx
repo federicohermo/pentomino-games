@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { CELL_PX } from './constants/layout.constants.ts';
-import { iniciarCabeza, NOTA, borde } from './playhead-loop.ts';
+import { NOTA } from './constants/playhead.constants.ts';
+import { iniciarCabeza, borde } from './playhead-loop.ts';
 
 /**
  * La capa que se dibuja ENCIMA de la grilla al ritmo del audio: la cabeza lectora y el

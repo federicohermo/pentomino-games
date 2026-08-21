@@ -20,6 +20,7 @@ vi.mock('../../audio/engine.ts', () => ({ readSpectrum: () => motor.bins }));
 
 const Spectrum = (await import('../Spectrum.tsx')).default;
 const loop = await import('../spectrum-loop.ts');
+const { GAP, MIN_BAR, IDLE_TEXT } = await import('../constants/spectrum.constants.ts');
 
 /** Dos cuadros: el loop lee, dibuja y vuelve a agendar en el mismo `draw`. */
 const cuadro = () =>
@@ -78,7 +79,7 @@ describe('Spectrum — el montaje', () => {
 
       await cuadro();
       expect(pintados(canvas)).toBeGreaterThan(0);
-      expect(escribio).toHaveBeenCalledWith(loop.IDLE_TEXT, expect.any(Number), expect.any(Number));
+      expect(escribio).toHaveBeenCalledWith(IDLE_TEXT, expect.any(Number), expect.any(Number));
 
       // 128 bins al maximo: con senal deja de escribir y pasa a dibujar barras.
       escribio.mockClear();
@@ -126,7 +127,7 @@ describe('drawBars / drawIdle — lo que se dibuja', () => {
     const conMinima = pintados(c);
     expect(conMinima).toBeGreaterThan(0);
     // Y no mas alta que `MIN_BAR` px de alto por barra: el minimo es un piso, no un salto.
-    expect(conMinima).toBeLessThanOrEqual(Math.ceil(200 / 3) * loop.MIN_BAR);
+    expect(conMinima).toBeLessThanOrEqual(Math.ceil(200 / 3) * MIN_BAR);
   });
 
   it('el reposo pinta las 48 ranuras y el texto', async () => {
@@ -135,7 +136,7 @@ describe('drawBars / drawIdle — lo que se dibuja', () => {
     const escrito = vi.spyOn(g, 'fillText');
 
     loop.drawIdle(g, 200, 96);
-    expect(escrito).toHaveBeenCalledWith(loop.IDLE_TEXT, 100, 48);
+    expect(escrito).toHaveBeenCalledWith(IDLE_TEXT, 100, 48);
     expect(pintados(c)).toBeGreaterThan(0);
     escrito.mockRestore();
   });
@@ -147,7 +148,7 @@ describe('drawBars / drawIdle — lo que se dibuja', () => {
 
     loop.drawBars(g, 200, 96, new Float32Array([1, 1]), '#000');
     const [, , ancho] = rects.mock.calls[0] as [number, number, number, number];
-    expect(ancho).toBe(200 / 2 - loop.GAP);
+    expect(ancho).toBe(200 / 2 - GAP);
     rects.mockRestore();
   });
 });

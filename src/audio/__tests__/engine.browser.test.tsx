@@ -350,15 +350,34 @@ describe('playheadOffset()', () => {
     // maquina.
     //
     // `vi.waitFor` no sirve: su intervalo por defecto es mas ancho que la ventana entera.
+    // ## Perder la ventana REINTENTA, no da rojo
+    //
+    // `setTimeout(0)` lo clampea Chromium a 4 ms a partir del quinto anidamiento, asi
+    // que la ventana de ~25 ms da unas seis muestras: con los cuatro nodos de `verify`
+    // compitiendo por CPU, una sola pausa se la come entera y el test daria rojo sin que
+    // nada este mal. Es el mismo modo de falla que este spec le saco a los presupuestos
+    // del 009, y la misma razon: un rojo espurio en el nodo de convergencia entrena a
+    // leer el rojo como ruido.
+    //
+    // El reintento NO afloja lo que se afirma. `startClock` fija
+    // `clock.origin = currentTime + CLOCK_START_DELAY` y recien despues arma el timer,
+    // asi que al volver —con la secuencia YA activa del intento anterior— las cuatro
+    // guardas de `playheadOffset` estan en el mismo estado que en la ventana original y
+    // el null sale por `now < clock.origin`, que es exactamente la que se quiere ver. Lo
+    // que el reintento saca del medio es la carrera contra el primer tick, no la
+    // condicion.
     let visto = false;
-    let llego = false;
-    const hasta = performance.now() + 400;
-    while (performance.now() < hasta && !visto && !llego) {
-      if (e.sequenceInfo().length > 0) {
-        if (e.playheadOffset() === null) visto = true;
-        else llego = true;   // `origin` ya paso: se perdio la ventana
+    for (let intento = 0; !visto && intento < 5; intento++) {
+      if (intento > 0) { e.stopClock(); e.startClock(); }
+      let llego = false;
+      const hasta = performance.now() + 400;
+      while (performance.now() < hasta && !visto && !llego) {
+        if (e.sequenceInfo().length > 0) {
+          if (e.playheadOffset() === null) visto = true;
+          else llego = true;   // `origin` ya paso: se perdio la ventana
+        }
+        await esperar(0);
       }
-      await esperar(0);
     }
     expect(visto, 'la ventana entre el swap y `origin` tiene que observarse al menos una vez').toBe(true);
 

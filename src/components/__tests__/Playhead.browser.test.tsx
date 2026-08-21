@@ -33,7 +33,8 @@ vi.mock('../../audio/engine.ts', () => ({
 }));
 
 const Playhead = (await import('../Playhead.tsx')).default;
-const { iniciarCabeza, borde, NOTA } = await import('../playhead-loop.ts');
+const { iniciarCabeza, borde } = await import('../playhead-loop.ts');
+const { NOTA } = await import('../constants/playhead.constants.ts');
 
 /** Dos cuadros: el bucle lee, dibuja y vuelve a agendar en el mismo `draw`. */
 const cuadro = () =>
