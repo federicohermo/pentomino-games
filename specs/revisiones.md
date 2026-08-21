@@ -714,3 +714,78 @@ el nodo más lento pasa a ser `suite` (19,4 s) y no `lint` (11,0 s). Los dos spe
 que manda el reloj y los dos midieron sin el otro puesto. La lección se repite con otra cara: **un
 número medido sobre el nodo de convergencia caduca cuando otra rama le agrega trabajo**, así que vale
 anotar al lado qué había puesto cuando se midió.
+
+## 2026-08-21 — El spec 027: un test verde fijando el estado roto, y tres números que cambiaron el plan
+
+Cinco hallazgos que no rompían un test, ni un tipo, ni el lint. Tres salieron como estaban escritos; los
+otros dos salieron distinto, y los dos por medir.
+
+### El test estaba verde **fijando** el estado degradado como correcto
+
+`engine.browser.test.tsx` afirmaba `expect(e.clockRunning()).toBe(true)` con el grafo de audio a medio
+construir, y su comentario llamaba a ese estado «alcanzable de verdad». Tenía razón en que era
+alcanzable — y por eso mismo el test era la evidencia más fuerte de que el hallazgo existía: alguien lo
+reprodujo. Lo que hacía era **congelar el bug como oráculo**: el botón diciendo «Pausa» sin sonido
+quedaba protegido por una aserción.
+
+Es de la familia del pase de mutación que el 029 dejó anotado —un test verde sobre código roto— con una
+vuelta más: acá el test no era débil, era **preciso sobre lo incorrecto**. Cubrir una rama y verificarla
+siguen sin ser lo mismo, y esta vez la diferencia estaba escrita en el propio comentario del test, en
+presente y sin que a nadie le llamara la atención. La salida fue reescribirlo, no borrarlo: misma clase
+`SinGain`, oráculo dado vuelta, y el comentario diciendo ahora **por qué dejó de ser alcanzable**.
+
+### La guarda que no se puede dejar escrita, y el umbral 100 decidiéndolo
+
+`tasks.md` pedía dejar `if (!c || !master)` en `tick()` con un comentario que explicara por qué su
+segunda mitad ya no era alcanzable. **No se puede**, y está medido: con el `catch` bajando `ctx` y
+`master` juntos, ese `return` se queda sin ningún camino de ejecución —el timer sólo existe después de
+que `audio()` contestó— y da **99,13 de statements y 98,27 de branches**. Escrita en positivo
+(`if (c && bus) despachar(c, bus)`) los statements vuelven a 100 pero las branches siguen en 98,27,
+porque v8 emite el `else` implícito.
+
+Con cero `/* v8 ignore */` la única salida era la que el propio `CLAUDE.md` ya nombra: **volverla
+alcanzable o sacarla**. Se mudó al único lugar donde sigue siendo alcanzable —`startClock`, cuyo
+`return` lo ejecuta el test de «sin Web Audio»— y `tick` pasó a recibir el par ya estrechado. La
+garantía quedó **más fuerte que la guarda**: no hay que acordarse de chequear, no compila sin el par.
+
+La lección es sobre el umbral y no sobre el audio: **el 100 no es sólo un piso de tests, es una presión
+de diseño**. Una rama que ningún test puede ejecutar es una rama que el tipo debería estar impidiendo, y
+el umbral es lo que obliga a preguntarlo.
+
+### La paleta: el número dio vuelta una decisión escrita
+
+`App.tsx` argumentaba **no** memoizar, y el argumento era cierto y circular: «no cuesta nada porque
+`PiecePalette` no está memoizado». El spec se prohibió a sí mismo poner `memo()` antes de medir, y el AC
+no era «poner memo» sino **que existiera el número**.
+
+Medido: cruzar diez celdas ejecuta `OrientationPanel` **diez veces**, a 337 elementos cada una. Con
+`Profiler`, n=60: **mediana 4,9 ms** por celda cruzada, contra **1,9 ms** con la barrera puesta. Son
+**3,0 ms —el 61 %—** gastados en el subárbol que no puede haber cambiado, a la frecuencia del mouse. Y
+la objeción que el comentario viejo levantaba —«dos arrays de dependencias que mantener»— **no
+aplicaba**: `react-hooks/exhaustive-deps` verifica el array en el lint, así que el olvido da rojo y no
+un panel viejo en pantalla.
+
+Es la tercera frecuencia del sistema y la última que faltaba: el repo tenía 4 a 10,6 cambios por segundo
+(la cabeza) y 60 fps (el espectro), las dos resueltas sacando el trabajo de React. A ésta le alcanzó con
+una barrera.
+
+### Dos trampas del test de esa medición, las dos midiendo lo que no era
+
+- **Diez `mouseover` seguidos no dan diez renders.** Es un evento *continuo*: React 19 lo agenda en
+  prioridad default y dos despachos en el mismo tick se cobran como uno. Con un `setTimeout(0)` entre
+  medio daba **8 de 10** — el test diciendo un número más lindo que el que paga un cursor real. El
+  oráculo pasó a ser el **DOM** (esperar a que el fantasma se repinte) y no el contador: preguntarle al
+  contador si el contador subió no falsea nada.
+- **El contador tiene que ir adentro del `memo`, no envolviéndolo.** La forma obvia —una función sin
+  memoizar que renderiza `<Real {...props} />`— se midió y **miente**: da 10 con el panel memoizado *y*
+  sin memoizar, porque cuenta el envoltorio, que nunca está detrás de la barrera. Con esa versión el
+  test hubiera pasado en verde midiendo otra cosa.
+
+### Y un `!` que la lista no tenía
+
+El spec afirmaba «hay dos aserciones no nulas en `src/`». Hay **tres** en código de producción: la
+tercera es el `queue.shift()!` del BFS de `domain/invariants.ts`, que la medición original no vio porque
+miró sólo los archivos que el spec ya iba a tocar. Se quedó —el `while` de arriba ya garantiza la cola
+no vacía— pero ahora con su motivo escrito, que es lo que la regla pide. Y las 17 de los tests quedan
+explícitamente afuera de la regla: ahí el `!` sobre un `find` que el propio test acaba de fijar es la
+forma de que el test **falle** si el nodo no está.

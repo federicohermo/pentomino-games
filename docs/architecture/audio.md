@@ -509,6 +509,19 @@ sea la pendiente. Sin esto, durante la espera de hasta 7,5 s que el swap de cicl
 recorrería el circuito nuevo mientras suena el viejo. El swap está atado a `cycleGeneration()`, que es el
 único observador del instante exacto.
 
+**Y tiene una puerta de reinicio, `reiniciar()`, que el spec 027 le agregó.** El módulo avanza sólo
+cuando `cycleGeneration()` sube, y ese contador lo mueve `tick()`, o sea el reloj. Con el transporte
+parado el par queda congelado y `encolar` igual recomputa el velo leyéndolo: tras un `Reset` quedaba
+dibujado el velo de piezas que ya no están, sobre un tablero vacío, hasta el próximo Play. La llama el
+`Reset` del shell a través de `reiniciarRecorrido()` de `components/use-engine.ts` —el mismo módulo por
+el que sale `frenarTransporte()`—, porque las dos colas se reinician por el mismo camino o vuelve la
+asimetría que **era** el bug: el párrafo de `App.tsx` que dice que «Reset es una orden explícita de
+volver a cero, no una edición del tablero» estaba escrito sólo para el motor.
+
+`generacion` es lo único que **no** vuelve a su valor inicial: se sincroniza con `cycleGeneration()`.
+Ponerla en cero reintroduciría desde este lado exactamente la mentira que `cycleGen` evita al no
+resetearse nunca, y además haría un swap fuera del borde del ciclo en el cuadro siguiente.
+
 **Este spec no calcula ningún recorrido: lo lee.** Entre el par de celdas más lejano del tablero hay 792
 caminos mínimos, o sea 792 formas de que el dibujo discrepe del sonido si la UI eligiera el suyo — el
 mismo argumento que ya separó al 009 del 010 (ver la nota de revisión correspondiente en

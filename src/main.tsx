@@ -9,6 +9,12 @@ import App from './App.tsx';
 // sin export de componente no es frontera de Fast Refresh.
 //
 // Con `jsx: "react-jsx"` el import default de React no hace falta.
+//
+// El `!` se queda, y es la unica asercion no nula de `src/`: es el idiom de la
+// plantilla de Vite sobre un `#root` que el propio `index.html` garantiza, o sea el
+// unico caso donde el dato que TypeScript no puede ver esta escrito dos archivos mas
+// alla y no en la cabeza de nadie. Va anotado porque sin esto la proxima lectura lo
+// cuenta como deuda otra vez — que es literalmente como llego a la lista del spec 027.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
