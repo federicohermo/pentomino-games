@@ -32,7 +32,7 @@ export default function TransportPanel({ transporte }: { transporte: PropsDeTran
           min={TEMPO_MIN}
           max={TEMPO_MAX}
           value={tempo}
-          onChange={e=>onTempo(parseInt(e.target.value))}
+          onChange={e=>onTempo(Number(e.target.value))}
           aria-labelledby="tempo-etiqueta"
           aria-valuetext={`${tempo} bpm`}
         />

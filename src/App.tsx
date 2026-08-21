@@ -320,7 +320,7 @@ export default function App(){
   }), [selected, rotation, mirror, regimen, noteSet]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 p-4">
+    <div className="min-h-screen bg-fondo text-slate-900 p-4">
       <div className="max-w-6xl mx-auto grid grid-cols-12 gap-4">
         {/* Hasta el spec 027 aca decia que los dos objetos se armaban INLINE porque
             memoizarlos "no compra nada": `PiecePalette` no esta memoizado, asi que

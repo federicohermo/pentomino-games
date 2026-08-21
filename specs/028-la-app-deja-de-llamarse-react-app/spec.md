@@ -146,7 +146,12 @@ implementó, este spec lo deja como está — dos specs escribiendo el mismo atr
   reales.
 - **AC2a** *(mecánico)* — `public/logo192.png` y `public/logo512.png` no existen. Los archivos de
   ícono que quedan tienen los tamaños que el manifest declara, ninguno es byte-idéntico al que estaba
-  antes, y `git grep -n "logo192\|logo512"` sobre el árbol —incluido `docs/`— no devuelve nada.
+  antes, y `git grep -n "logo192\|logo512"` sobre el árbol —incluido `docs/` y los registros de
+  `specs/`— no devuelve nada. **Lo único que el grep no alcanza son las carpetas `specs/NNN-*/`**: ahí
+  los nombres viejos son el registro histórico —este mismo AC los escribe, y el research del 025
+  también— y borrarlos sería falsificar el spec en vez de cerrarlo. Lo que el AC persigue es que no
+  quede una referencia **viva**, y por eso la fila nueva de `directory-structure.md` y el ítem cerrado
+  de `deuda.md` cuentan la historia sin escribir los nombres.
 - **AC2b** `[M]` — Los iconos se leen como esta app y no como una plantilla. Se comparan contra el
   lenguaje que `DESIGN.md` ya fija y `Board.tsx:293` implementa: baldosa `rounded-lg` con borde
   `slate-900`, uno de los doce colores de `palette.constants.ts` sobre fondo `#f8fafc`. **Ni `L` ni

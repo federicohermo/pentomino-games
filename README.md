@@ -1,69 +1,39 @@
-# React + TypeScript + Vite
+# Pentomino Games
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Un prototipo de **instrumento musical**, no un juego con reglas de resolución. El usuario coloca
+pentominós en un tablero de 10×6 y cada pieza dispara un arpegio de cinco notas —salvo que esté
+muteada, que la deja ocupando su lugar y su tiempo sin sonar—. El tablero es un **recorrido**, no un
+compás: un circuito cerrado visita las piezas, y el orden y los silencios salen de la geometría. No
+hay puntaje ni condición de victoria: una feature se evalúa por si vuelve al instrumento más
+expresivo, no más difícil.
 
-Currently, two official plugins are available:
+Vite 7 · React 19 · TypeScript 5.8 · Tailwind CSS 4 · Web Audio (sin librería de audio).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Correrlo
 
-## Expanding the ESLint configuration
+Node ≥ 20.19 o ≥ 22.12 (Vite 7). El gestor es **pnpm** y está fijado en `packageManager`: usar npm
+deja un `package-lock.json` que el deploy puede llegar a preferir.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```sh
+pnpm install
+pnpm exec playwright install chromium   # una sola vez por clone
+pnpm dev
+pnpm verify                             # el gate antes de un PR
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Chromium no está en el lockfile y el proyecto `browser` de Vitest lo necesita: sin esa segunda línea
+el primer `verify` de un clone recién sacado falla. `verify` corre `lint ‖ typecheck ‖ suite ‖
+mcp:test`, y `suite` incluye coverage con umbral 100 en las cuatro métricas. El resto de los scripts
+está en `package.json`. Ojo: `mcp:test` pide Node ≥ 22.18, porque corre TypeScript sin compilar.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## A dónde ir
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+| Para | Archivo |
+|---|---|
+| La doc técnica entera: arquitectura, guías, infra | [docs/README.md](./docs/README.md) |
+| El lenguaje visual: los 12 colores y su tónica | [DESIGN.md](./DESIGN.md) |
+| Trabajar en el repo: comandos, capas, reglas | [CLAUDE.md](./CLAUDE.md) |
+| La convención de los specs | [specs/README.md](./specs/README.md) |
+
+Cada uno de esos archivos es la única fuente de lo suyo. Este README enlaza y no repite, para no ser
+un lugar más donde la información pueda quedar vieja.

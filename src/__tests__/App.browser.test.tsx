@@ -761,3 +761,28 @@ describe('App — el tablero se toca con el teclado (spec 026)', () => {
     await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length * 2));
   });
 });
+
+describe('App — el fondo, un solo valor (spec 028)', () => {
+  // Hasta este spec NINGUN test miraba el fondo, asi que AC6 y AC9 se firmaban a ojo: el
+  // color vivia dos veces —el hex a mano en el `body` y la clase de Tailwind que resuelve
+  // al mismo hex en el `div` raiz— y nada ataba las dos copias. Un grep del hex tampoco lo
+  // delataba, porque la segunda copia estaba escrita como nombre de clase y no como color.
+  // El hex no se escribe aca por eso mismo: su unica aparicion en `src/` es el token.
+  it('el div raiz pinta lo mismo que el body, y ninguno de los dos es transparente', async () => {
+    const { container } = await render(<App />);
+    const raiz = container.querySelector('div.min-h-screen')!;
+    const delDiv = getComputedStyle(raiz).backgroundColor;
+    const delBody = getComputedStyle(document.body).backgroundColor;
+
+    // La asercion es que COINCIDAN, no que valgan una cadena fija: comparar cada uno
+    // contra `rgb(248, 250, 252)` deja que manana alguien cambie uno y no el otro, que es
+    // exactamente la duplicacion que el token vino a borrar.
+    expect(delDiv).toBe(delBody);
+
+    // Y que ninguno sea transparente, porque si el token desapareciera de los dos lados
+    // los dos computarian `rgba(0, 0, 0, 0)` y la igualdad de arriba se cumpliria vacia.
+    // Ese es el modo de falla que hay que cerrar: verde sin fondo.
+    expect(delDiv).not.toBe('rgba(0, 0, 0, 0)');
+    expect(delBody).not.toBe('rgba(0, 0, 0, 0)');
+  });
+});
