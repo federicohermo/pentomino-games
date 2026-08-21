@@ -45,12 +45,16 @@ La pregunta que `deuda.md` deja abierta se contesta así, y no es preferencia:
 | | 60 paradas | **1 parada + flechas** |
 |---|---|---|
 | `Tab` para cruzar el tablero | 60 pulsaciones | 1 |
-| `Tab` para llegar al transporte desde la paleta | 60 en el medio | 1 |
+| `Tab` para salir del tablero hacia lo que sigue | 60 pulsaciones | 1 |
 | Patrón ARIA | Ninguno lo recomienda | Es el patrón `grid` |
 | Coherente con el gesto que ya existe | No | Sí — el mouse también se mueve *dentro* del tablero |
 
-Sesenta paradas convierten la tarjeta del tablero en una trampa: cualquiera que quiera llegar al botón
-de Play desde la paleta pasa por sesenta.
+Sesenta paradas convierten la tarjeta del tablero en una trampa de salida. **No** en el camino al
+transporte: `TransportPanel` se compone adentro de `PiecePalette` (`PiecePalette.tsx:139`) y la paleta va
+antes que el tablero en el DOM (`App.tsx:258` y `:275`), así que a Play se llega sin pasar por ninguna
+celda. La trampa es la de después: con sesenta paradas, todo lo que venga detrás del tablero —hoy la
+tarjeta de Señal, mañana lo que el 019 o el 021 pongan ahí— queda a sesenta pulsaciones, y volver atrás
+con `Shift`+`Tab` cuesta lo mismo.
 
 ### D2 — El cursor de teclado ES el `hover`
 
@@ -75,17 +79,24 @@ canales de la baldosa están **todos tomados**, y cada uno con su medición:
 | Grosor de borde (`box-shadow` interior y exterior) | Cabeza lectora: nota / cruce / click (010, 011) |
 | Opacidad + borde punteado | Velo de «no se estrenó» (010) |
 
-La caja de afuera **no pinta nada**. Ahí va el foco, con un `outline` de dos tonos —claro por dentro,
+La caja de afuera **no pinta nada**. Ahí va el foco, con un anillo de dos tonos —claro por dentro,
 oscuro por fuera— que es la forma estándar de un anillo que tiene que verse sobre cualquier fondo, y acá
 hacen falta los dos porque abajo puede haber blanco o `#0000FF`.
+
+Y **son dos propiedades, no una**: un `outline` de CSS tiene un solo color. El tono claro va por
+`outline` y el oscuro por `box-shadow` con spread, los dos sobre esta caja de afuera.
 
 Es el mismo movimiento con el que el 014 eligió la ausencia de color para el muteo: **se toma el canal
 que quedaba libre, y se escribe que se acabaron**.
 
-`outline` y no `box-shadow` por una razón medida que el repo ya conoce: `Playhead.tsx` documenta que
-`transform: scale` agranda la región scrolleable del contenedor y hace aparecer barras. `outline` es ink
-overflow igual que `box-shadow` —pinta afuera sin agrandar la caja— y además no compite con el
-`box-shadow` que la baldosa de adentro ya usa.
+Lo que **no** puede usarse es `transform: scale`, por una razón medida que el repo ya conoce:
+`components/constants/playhead.constants.ts:40-48` documenta que `scale` agranda la región scrolleable
+del contenedor y hace aparecer las dos barras. `outline` y `box-shadow` son los dos ink overflow —pintan
+afuera sin agrandar la caja—, que es por lo que la cabeza lectora eligió el segundo.
+
+Y el `box-shadow` del anillo no compite con nada: el de la cabeza lectora lo escribe el loop sobre un
+nodo **propio** (`playhead-loop.ts:141`), y lo único que la baldosa de adentro lleva es un `shadow-sm`
+—otro elemento—. Ninguna caja termina con dos `box-shadow` peleándose.
 
 ### D4 — La barra espaciadora se resuelve con una pregunta nueva, no ensanchando la vieja
 
@@ -113,6 +124,11 @@ son dos preguntas y van en dos puras». Acá aparece la tercera.
 | `Home` / `End` | — | Primera / última celda de la fila |
 | `Enter` o `Espacio` | Click | Coloca, o quita si es la pieza en la mano |
 | `Alt`+`Enter` / `Alt`+`Espacio` | `Alt`+click | Mutea, o coloca muteada |
+
+`Alt`+`Espacio` va **condicionado a una medición**: en Windows es el menú de ventana del sistema, y este
+repo se desarrolla en Windows (`input.ts:27-28`). Si el `keydown` no llega a la página, la fila se
+recorta a `Alt`+`Enter` y se escribe por qué — que es la misma regla con la que el 013 dejó el
+`Ctrl`+click de macOS documentado en vez de fingir que no existe.
 
 **No se inventa ni un gesto.** La decisión de qué hace cada uno ya vive en `accionDeClick`, que es pura
 y está testeada: el teclado la llama con los mismos argumentos. Si algún día cambia qué hace `Alt`, el
@@ -162,8 +178,17 @@ lo mínimo para que una operación irreversible no sea silenciosa.
 - **AC10** — Colocar, quitar y mutear anuncian el resultado por una región `aria-live="polite"`.
 - **AC11** — **Cero cambio visual con el foco afuera**: mismas medidas, mismo `CELL_PX`, misma grilla de
   10 × 6. Las filas nuevas no mueven un píxel.
-- **AC12** — Tests de navegador (024) para AC1, AC2, AC4, AC5 y AC6. AC7 es `[M]`.
-- **AC13** — `pnpm verify` verde.
+- **AC12** — Tests de navegador para AC1, AC2, AC4, AC5, AC6 y AC14 — el proyecto de navegador ya está
+  en `main` desde el 029. AC7 y AC16 son `[M]`.
+- **AC13** — `pnpm verify` verde, con el umbral de coverage en **100** que dejó el 029: todo lo que este
+  spec agrega viene con su test.
+- **AC14** — `Home` y `End` llevan a la primera y a la última celda de **su fila**, sin salirse de ella.
+- **AC15** — Con una celda enfocada, las **doce letras siguen llegando al shell**: `targetEsCelda` apaga
+  la barra, el `Enter` y las flechas, y nada más. Es lo que deja que el 018 entre después sin tocar esta
+  guarda.
+- **AC16** — Mientras el foco del DOM está adentro del tablero, **el foco manda sobre el mouse**: sacar
+  el mouse de la grilla no apaga el fantasma de la celda enfocada. Un solo `hover` y una sola regla de
+  desempate escrita.
 
 ## Fuera de alcance
 
@@ -175,5 +200,9 @@ lo mínimo para que una operación irreversible no sea silenciosa.
   toca ninguna letra.
 - **Los controles del panel.** Son el 025.
 - **`radiogroup` en rotación y régimen.** El 025 lo dejó esperando este spec, y ahora tiene con qué ser
-  consistente: queda en su Seguimiento, no acá.
+  consistente: queda en su Seguimiento (su `T025`), no acá. El 025 además va **primero** en
+  `.claude/rules/ui.md` y en `DESIGN.md`, así que lo de acá se escribe debajo de lo suyo.
+- **Medir la frecuencia del re-render.** Es el **027**, que va primero y mide sólo el mouse. Este spec le
+  agrega a `hover` un segundo escritor con la misma frecuencia, así que deja esa medición a la mitad —
+  declarado de los dos lados y no arreglado acá.
 - **Arrastrar piezas.** No existe hoy con mouse tampoco.

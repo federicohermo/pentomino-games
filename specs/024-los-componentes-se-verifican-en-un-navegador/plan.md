@@ -1,10 +1,20 @@
 # Plan 024 — Los componentes se verifican en un navegador
 
+> **De los cuatro pasos, tres y medio ya están ejecutados en el árbol, y los ejecutó el
+> [029](../029-lo-que-no-se-cubre-no-se-mergea/spec.md).** Lo que sobrevive de este plan es medio paso
+> 4: el `playwright install` de la CI (que le corresponde al 023, porque el workflow no existe) y la
+> corrida `[M]` en modo no-headless. El detalle tarea por tarea está en `tasks.md`; el estado de cada
+> AC, en `spec.md`. El texto de abajo se conserva como registro de la decisión.
+
 Cuatro pasos. El primero es infra, el segundo la trampa, el tercero los tests y el cuarto el registro.
 
 **Precondición: el 023 mergeado.** Dos cosas dependen de él — `vitest` en 4.1.11 (porque
 `@vitest/browser-playwright` se publica pinneado a la versión exacta) y el workflow al que este spec le
 agrega un paso.
+
+> **La precondición se partió en dos y sólo queda la mitad.** El `vitest` en 4.1.11 lo subió el 029,
+> no el 023. El workflow sigue sin existir, así que lo único que todavía espera al 023 es el paso de
+> CI.
 
 ## Paso 1 — La infra, y verla correr antes de escribir un test
 
@@ -18,7 +28,11 @@ Lo que el proyecto de navegador **repite y no hereda** —`plugins: [react(), ta
 comentario: está medido que sin eso el JSX no compila, y es justo el tipo de línea que alguien borraría
 por parecer duplicada.
 
-**Verificación:** `pnpm test` reporta los dos proyectos, y los 322 de node siguen en 322.
+> **Falsificado.** Con `extends: true` sí los hereda, y el árbol quedó así. Ver la corrección a D3 en
+> `spec.md`.
+
+**Verificación:** `pnpm test` reporta los dos proyectos, y los 322 de node siguen en 322. **Hecho, con
+otro número:** el árbol tiene 562 tests y ninguno de los viejos se tocó.
 
 ## Paso 2 — El setup del navegador, que es la trampa de este spec
 

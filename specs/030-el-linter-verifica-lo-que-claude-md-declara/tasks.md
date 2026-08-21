@@ -100,9 +100,13 @@ una persona y no bloquea el cierre.
 ## PR
 
 - [x] T034 Rama `feature/030-el-linter-verifica-lo-que-claude-md-declara`
-- [ ] T035 Actualizar la fila del 030 en `specs/log.md` a `Implementado`
-      — **queda abierta a propósito**: en este repo el estado del spec en `log.md` lo mueve el
-      **merge**, no la rama, así que la fila se toca al mergear y no acá
+- [x] T035 Actualizar la fila del 030 en `specs/log.md` a `Implementado` — hecho. Quedaba abierta a
+      propósito porque el estado lo mueve el **merge** y no la rama, pero el merge ya ocurrió (PR #25,
+      `37abf53`) y la fila siguió diciendo `Propuesto`. **Ese hueco es el punto ciego de la regla**: la
+      casilla vive en la rama que se está cerrando, así que en el momento en que corresponde marcarla
+      ya nadie la está mirando. Lo mismo le pasó al 022 (su `T035` sigue abierta con el spec
+      `Implementado` desde hace ocho specs), así que no es un olvido sino la forma. La detectó el
+      review del lote 023–028, verificando contra qué base estaba escrito
 - [x] T036 Anotar en `specs/revisiones.md` qué se aprendió
 
 ## Seguimiento (no bloquea)

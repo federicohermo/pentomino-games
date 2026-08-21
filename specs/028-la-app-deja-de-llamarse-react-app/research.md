@@ -2,6 +2,17 @@
 
 Medido sobre `main` en `052aedf`.
 
+> **Revalidado sobre `main` en `37abf53`** (con el 029 y el 030 ya mergeados). De los ocho arrastres, los
+> ocho siguen exactamente como se midieron: `git diff --stat 052aedf HEAD` sobre el radio de este spec
+> cambia **dos** archivos, y ninguno es uno de los ocho. Los dos son:
+>
+> - **`eslint.config.js`** — el 030 lo reescribió entero y **adoptó `recommendedTypeChecked`**, que es
+>   justo lo que el §4 de acá usaba como argumento. Ese párrafo está corregido más abajo: el README
+>   sigue estando mal, por el motivo inverso.
+> - **`docs/architecture/directory-structure.md`** — el 029 lo puso al día en la sección de tests
+>   (`fb910df`), y su tabla de `public/` sigue afirmando en presente dos cosas que este spec falsifica
+>   (líneas 238-239). Es AC12 y T032.
+
 ## 1. Censo de arrastres
 
 `deuda.md` registra **uno**. Son **ocho**.
@@ -98,11 +109,34 @@ Y hay un problema peor que el vacío. El bloque «Expanding the ESLint configura
 ...tseslint.configs.recommendedTypeChecked,
 // Alternatively, use this for stricter rules
 ...tseslint.configs.strictTypeChecked,
+// Optionally, add this for stylistic rules
+...tseslint.configs.stylisticTypeChecked,
 ```
 
-Este repo **no** las usa: su `eslint.config.js` extiende `tseslint.configs.recommended` y encima le
-agrega seis bloques propios con la dirección de dependencias, que es su decisión central. Alguien que
-siga el README estaría deshaciendo trabajo hecho a propósito.
+más `parserOptions.project: ['./tsconfig.node.json', './tsconfig.app.json']` y, en el segundo bloque,
+`eslint-plugin-react-x` y `eslint-plugin-react-dom`.
+
+**Acá hay una corrección al párrafo original de este research, y es la más importante de todo el
+archivo.** Cuando esto se midió (`052aedf`), `eslint.config.js` extendía `tseslint.configs.recommended`
+y la conclusión era «el README recomienda una config que este repo deliberadamente no usa». **El spec
+030 se mergeó cinco días después y adoptó `recommendedTypeChecked`** —`eslint.config.js:255`, con el
+costo medido en el comentario de arriba— así que esa frase ya no es cierta.
+
+Lo que **sigue** siendo cierto, y por eso el AC no se cae sino que se afila:
+
+| Lo que el README propone | Qué hace el repo hoy |
+|---|---|
+| `...tseslint.configs.recommendedTypeChecked` | **Ya lo usa** (030). El README lo propone como pendiente |
+| `...tseslint.configs.strictTypeChecked` | No lo usa |
+| `...tseslint.configs.stylisticTypeChecked` | No lo usa |
+| `parserOptions.project: [dos tsconfig a mano]` | `projectService: true`, con el porqué escrito en `eslint.config.js:243-246` |
+| `eslint-plugin-react-x` / `eslint-plugin-react-dom` | No están instalados |
+
+O sea: **cinco afirmaciones sobre la config de este repo y las cinco están mal**, sólo que dos de ellas
+cambiaron de signo entre que se escribió el spec y hoy. Y ahí está la lección real, que vale más que el
+diagnóstico: un README que describe el tooling se pudre por los dos lados. Por eso el README nuevo **no
+describe la config de ESLint en absoluto** — enlaza a `eslint.config.js`, que está comentado y no puede
+quedar viejo respecto de sí mismo.
 
 Contra eso, `docs/README.md` ya existe y arranca bien:
 
@@ -138,7 +172,16 @@ sincronizaba»— sólo que cruzando el borde CSS/TSX, donde ningún linter del 
 
 Tailwind 4 tiene la salida natural: una custom property en el `@theme` o en `:root` de `index.css`, que
 el `body` usa directamente y `App.tsx` consume por clase arbitraria o por estilo. La forma se decide al
-implementar; la condición es que `git grep` del color devuelva **una** línea.
+implementar; la condición es que `git grep` del color, **acotado a `src/`**, devuelva **una** línea.
+
+**Y el acotamiento no es cosmético.** Con el manifest y la `<meta name="theme-color">` arreglados
+(pasos 2 y 4), el literal `#f8fafc` queda escrito en **cuatro** líneas del repo, no en una: el token,
+los dos campos del `manifest.json` y el `<meta>`. Las tres de afuera de `src/` son inevitables — el
+navegador parsea el manifest y el `<meta>` sin CSS a la vista, así que ninguna puede leer una custom
+property. O sea que el enunciado original del AC («una vez en todo el repo») **lo falsifica este mismo
+spec**. La fuente única vive en `src/`; las tres copias son el contrato de la plataforma, y en vez de
+anotarlas con un comentario las ata un test (AC13, T039) — que es lo consistente con el argumento de
+esta sección: si nada las sincroniza, se desincronizan.
 
 ## 6. El `parseInt`
 
@@ -183,6 +226,9 @@ nuevos.
 | `src/styles/index.css` + `src/App.tsx` | El color, una vez |
 | `src/components/TransportPanel.tsx` | Una línea |
 | `specs/deuda.md` | Pierde el ítem del manifest |
+| `docs/architecture/directory-structure.md` | Líneas 238-239: dicen en presente que los tres iconos están «Vivos» y que el manifest tiene los defaults de CRA. Las dos caen con este spec |
+| `specs/revisiones.md` | La entrada del 028, con la lección del README que se pudrió por los dos lados |
+| `src/__tests__/App.browser.test.tsx` | El test del fondo unificado (AC11) |
 
 **Cero cambios en `domain/`, `audio/` y en la lógica de `components/`.**
 
@@ -198,6 +244,26 @@ nuevos.
 
 ## 10. Dependencias
 
-**Ninguna.** Es el único de los seis specs de este lote que es ortogonal a todos los demás y a
-018–021: no toca un componente, no toca una regla, no toca el tooling. Se puede implementar en cualquier
-momento, incluso primero.
+**Ninguna en semántica; cuatro archivos en texto, y conviene decirlo así.**
+
+No toca un componente por su lógica, no toca una regla del linter y no toca el tooling: nada de lo que
+este spec cambia altera lo que otro spec del lote decide. En ese sentido es ortogonal y se puede
+implementar en cualquier momento, incluso primero.
+
+Pero **comparte archivo** con cuatro de ellos, y eso son conflictos de merge, no de diseño:
+
+| Archivo | Con quién | Qué toca el 028 ahí |
+|---|---|---|
+| `src/App.tsx` | 024, 026, 027 | **Una línea**: el `className` del `div` raíz (`App.tsx:251`) |
+| `src/components/TransportPanel.tsx` | 025 | **Una línea**: el `parseInt` (`TransportPanel.tsx:22`) |
+| `src/styles/index.css` | 024 | El `body` y el token nuevo |
+| `index.html` | 025 | Tres líneas, y **no** el `lang`, que es del 025 (D5) |
+| `DESIGN.md` | 025, 026 | **Nada.** El 028 lo lee y no lo edita |
+| `CLAUDE.md` | 023, 024, 027 | **Nada.** T014 lo **enlaza** desde el README; no lo edita |
+
+Las dos últimas filas están para cerrar la pregunta: la matriz del lote las marca como compartidas y
+para el 028 no lo son.
+
+Consecuencia práctica: si el 028 va **primero**, los otros rebasan una línea cada uno. Si va último,
+rebasa él. Cualquiera de las dos sirve; lo que no sirve es implementarlo en un carril paralelo al del
+024/025 sin saber que estas cuatro líneas se cruzan.

@@ -236,7 +236,7 @@ gris y no verde.
 ### Los escalones de grosor
 
 El grosor es el único canal, así que las clases de evento se distinguen **por cantidad de borde** y por
-nada más. Los valores viven en `Playhead.tsx`:
+nada más. Los valores viven en `src/components/constants/playhead.constants.ts`:
 
 | Qué suena | Hacia adentro | Hacia afuera | Se lee como |
 |---|---|---|---|

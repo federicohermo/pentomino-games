@@ -3,6 +3,20 @@
 Todo lo de acá se corrió de verdad sobre `main` en `052aedf`, con la infra instalada, un config
 temporal y tests de prueba que después se borraron. Los números y los errores son transcripciones.
 
+> **Es un registro de medición con fecha y no se reescribe** — pero `main` se movió, así que las tres
+> cosas que el árbol ya contesta van acá arriba para que nadie las vuelva a medir:
+>
+> - **§1 y §3 — «16 archivos, 322 tests»**: hoy son 16 `.ts` de node más 8 `.browser.test.tsx`, y 562
+>   tests. El config de §3 está puesto, con dos diferencias a favor: `extends: true` en los dos
+>   proyectos y `launchOptions.args: ['--autoplay-policy=no-user-gesture-required']` en el provider,
+>   que es lo que destrabó los tests de audio que §6 dejaba como puerta sin cruzar.
+> - **§5.1 — `plugins` no se hereda**: falsificado por el `research.md` §4 del 029. Con `extends: true`
+>   se hereda, y también se hereda el bloque `coverage`. §5.2, §5.3 y §5.4 siguen en pie.
+> - **§9 — «archivos que toca»**: los nombres quedaron distintos. `vitest.setup.browser.ts` es
+>   `src/components/__tests__/browser-setup.ts`, y los tests son PascalCase igual al componente
+>   (`Board.browser.test.tsx`, …), no kebab-case. **Manda el árbol.** De esa tabla lo único sin hacer
+>   es `.github/workflows/verify.yml`, que no existe.
+
 ## 1. Lo que hay hoy
 
 `vite.config.ts` tiene un solo bloque `test`:

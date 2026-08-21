@@ -3,9 +3,9 @@
 > Sin ticket: este repo no tiene tablero de Jira. Ver `specs/README.md`.
 >
 > **No cambia una nota, ni un tiempo, ni una regla.** Cierra el ítem de `manifest.json` de `deuda.md`, y
-> lo cierra más grande de lo que estaba registrado: **no es un archivo, son siete** — el manifest, tres
-> imágenes, tres metas del `index.html` — más uno que el registro no tenía anotado y es el más visible
-> de todos: **`README.md` son 69 líneas de la plantilla de Vite que no nombran el proyecto ni una vez.**
+> lo cierra más grande de lo que estaba registrado: **no es un archivo, son ocho** — el manifest, tres
+> imágenes, tres metas del `index.html`, y uno que el registro no tenía anotado y es el más visible de
+> todos: **`README.md` son 69 líneas de la plantilla de Vite que no nombran el proyecto ni una vez.**
 >
 > Instalar la app hoy pone en el escritorio un ícono de React llamado «React App», y abrir el repo en
 > GitHub muestra «This template provides a minimal setup to get React working in Vite with HMR».
@@ -68,8 +68,16 @@ Es el archivo más leído de cualquier repo y es el único documento del proyect
 proyecto. Y no es que falte la documentación: `docs/README.md` existe, está bien y arranca con
 «Documentación Técnica — Pentomino Games». Lo que falta es la puerta.
 
-Peor: el README de la plantilla **recomienda una configuración de ESLint que este repo deliberadamente
-no usa**. Alguien que lo siga estaría deshaciendo decisiones tomadas.
+Peor: el bloque «Expanding the ESLint configuration» **describe mal la config de este repo**, y el modo
+en que la describe mal cambió después de escribirse este spec. Cuando el 028 se redactó, el repo
+extendía `tseslint.configs.recommended` y el README recomendaba pasar a `recommendedTypeChecked`: era
+una recomendación que el repo había rechazado. **El spec 030 la adoptó** (`eslint.config.js:255`), así
+que hoy el daño es el inverso y sigue siendo daño: el README propone como pendiente algo que ya está
+hecho, junto a tres cosas que el repo **sí** descartó a propósito —`strictTypeChecked`,
+`stylisticTypeChecked`, y el `parserOptions.project: [...]` a mano, que el 030 reemplazó por
+`projectService: true` con el motivo escrito ahí mismo— más dos plugins que no están instalados
+(`eslint-plugin-react-x`, `eslint-plugin-react-dom`). Alguien que siga ese bloque hoy deshace trabajo
+del 030.
 
 ### 4. Dos duplicaciones sueltas
 
@@ -136,18 +144,58 @@ implementó, este spec lo deja como está — dos specs escribiendo el mismo atr
 
 - **AC1** — `public/manifest.json` nombra a este proyecto, con su `theme_color` y `background_color`
   reales.
-- **AC2** — Los tres iconos son propios. `logo192.png` y `logo512.png` dejan de existir con ese nombre.
+- **AC2a** *(mecánico)* — `public/logo192.png` y `public/logo512.png` no existen. Los archivos de
+  ícono que quedan tienen los tamaños que el manifest declara, ninguno es byte-idéntico al que estaba
+  antes, y `git grep -n "logo192\|logo512"` sobre el árbol —incluido `docs/`— no devuelve nada.
+- **AC2b** `[M]` — Los iconos se leen como esta app y no como una plantilla. Se comparan contra el
+  lenguaje que `DESIGN.md` ya fija y `Board.tsx:293` implementa: baldosa `rounded-lg` con borde
+  `slate-900`, uno de los doce colores de `palette.constants.ts` sobre fondo `#f8fafc`. **Ni `L` ni
+  `Y`**: son las dos excepciones de `LC_EXCEPCIONES` (`palette.constants.ts:70`), no llegan al piso de
+  contraste y un ícono es justo donde eso se ve.
 - **AC3** — `index.html` tiene una `description` que dice qué es —un instrumento, no un juego—, un
-  `theme-color` que coincide con el fondo, y un `apple-touch-icon` propio.
+  `theme-color` que coincide con el fondo, y un `apple-touch-icon` propio. Y **las cuatro** referencias
+  a assets resuelven: `index.html:5` (`<link rel="icon">`) es la que la lista original no enumeraba, y
+  si el favicon cambia de nombre en el paso 1 esa línea apunta a un 404 que ningún test del repo ve.
 - **AC4** — `README.md` habla de este proyecto, en menos de 40 líneas, y **enlaza** a `docs/`,
   `DESIGN.md`, `CLAUDE.md` y `specs/` en vez de repetirlos.
-- **AC5** — `README.md` no contiene una sola línea de la plantilla de Vite. En particular, no
-  recomienda la config de ESLint que este repo no usa.
-- **AC6** — El color de fondo está escrito **una** vez en todo el repo.
+- **AC5** — `README.md` no contiene una sola línea de la plantilla de Vite. Mecánico: `grep -c` de
+  `tseslint\|recommendedTypeChecked\|strictTypeChecked\|eslint-plugin-react-x\|plugin-react-swc\|This template`
+  sobre `README.md` da **0**. El README nuevo **no describe** la config de ESLint: eso vive en
+  `eslint.config.js`, comentado, y repetirlo sería el cuarto lugar donde puede quedar viejo — que es
+  exactamente cómo llegamos acá.
+- **AC6** — El color de fondo tiene **una sola fuente, y vive en `src/`**. El enunciado original
+  («escrito una vez en todo el repo») **lo falsifica el propio spec**: después de implementarlo el
+  literal `#f8fafc` aparece en **cuatro** líneas, no en una — el token de `src/styles/index.css`, los
+  dos campos del `manifest.json` (T007) y el `<meta name="theme-color">` de `index.html` (T010).
+  **Las tres de afuera de `src/` no se pueden evitar**: el navegador parsea el manifest y el `<meta>`
+  sin CSS a la vista, así que ninguna puede consumir una custom property. Copiar ahí no es la deuda:
+  es el contrato de la plataforma.
+  Entonces el AC son tres cosas: **(a)** `git grep -i "f8fafc\|bg-slate-50" -- src` devuelve
+  **exactamente una** línea, la del token; **(b)** `src/App.tsx` ya no dice `bg-slate-50` en el `div`
+  raíz; **(c)** las tres copias de afuera están **verificadas** y no sólo anotadas — AC13.
+  *(La medición del research era del antes, y por eso engañaba: sobre `main` hoy el grep ya devuelve
+  una línea, porque el literal nunca estuvo dos veces. La duplicación que este spec cierra es
+  semántica —`bg-slate-50` **es** `#f8fafc`— y ningún grep del valor la ve.)*
 - **AC7** — `TransportPanel.tsx` no usa `parseInt` sin base.
 - **AC8** — `specs/deuda.md` pierde el ítem del `manifest.json`.
-- **AC9** — Cero cambio de comportamiento: mismo audio, mismo layout, mismos colores de las doce piezas.
+- **AC9** — Cero cambio de comportamiento: mismo audio, mismo layout, mismos colores de las doce
+  piezas. Mecánico: `pnpm verify` verde con los 562 tests del 029 y el umbral 100 intacto. **Con una
+  salvedad medida**: hoy ningún test mira el fondo del `div` raíz de `App.tsx` —`git grep` de
+  `bg-slate-50` y `min-h-screen` en `src/` sólo pega en `App.tsx:251`—, así que el cambio de AC6 entra
+  sin red. Por eso AC11.
 - **AC10** — `pnpm verify` verde y el deploy de Netlify sigue publicando `dist`.
+- **AC11** — El fondo unificado tiene un test: en el proyecto `browser`, el `background-color` computado
+  del `div` raíz de `App.tsx` es el mismo que el del `body`. Es lo que convierte AC6 y la mitad visual
+  de AC9 en algo que `pnpm verify` puede fallar.
+- **AC12** — La documentación que este spec falsifica queda al día:
+  `docs/architecture/directory-structure.md:238-239` afirma **en presente** que `logo192.png` y
+  `logo512.png` están «Vivos» y que `manifest.json` está «con valores por defecto de CRA». Las dos
+  dejan de ser ciertas con este spec.
+- **AC13** — Las tres copias que la plataforma obliga quedan **atadas por un test** del proyecto `node`:
+  lee el token de `src/styles/index.css`, `theme_color` y `background_color` de `public/manifest.json` y
+  el `<meta name="theme-color">` de `index.html`, y exige que los cuatro valores coincidan. Es lo que
+  convierte «nada los sincroniza» —el problema con el que este spec abre— en algo que `pnpm verify`
+  puede fallar, en vez de un comentario que pide buena fe.
 
 ## Fuera de alcance
 

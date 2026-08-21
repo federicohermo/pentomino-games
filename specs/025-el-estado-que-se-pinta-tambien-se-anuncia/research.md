@@ -2,20 +2,30 @@
 
 Medido sobre `main` en `052aedf`, leyendo el DOM que los componentes producen.
 
+> **Revalidado contra `37abf53`**, que es `main` hoy: los specs **029** y **030** mergearon después de
+> escribirse esto. `git diff 052aedf..37abf53` sobre `index.html`, `PiecePalette.tsx`,
+> `TransportPanel.tsx`, `OrientationPanel.tsx` y `DESIGN.md` devuelve **cero**, así que todos los
+> anclajes de abajo siguen en pie tal cual. Cambiaron dos cosas y ninguna es un número: `.claude/rules/ui.md`
+> lo reescribió el 030, y la **premisa de §7** —el árbol de accesibilidad ya se puede leer hoy, sin
+> esperar al 024.
+
 ## 1. Censo de controles
 
 | Componente | Control | Cantidad | Nombre accesible hoy | Estado hoy |
 |---|---|---|---|---|
-| `OrientationPanel` | Miniatura de pieza | 12 | **Sí** — `aria-label` con letra, rotación y reflexión (016) | Ninguno |
+| `OrientationPanel` | Miniatura de pieza | 12 | **Sí** — `aria-label` con letra, rotación y reflexión (016) | **Ninguno**, y el fondo es textual «el canal de "seleccionada"» (`OrientationPanel.tsx:55-57`) |
 | `PiecePalette` | Rotación `0/90/180/270` | 4 | Sí, su texto (`90°`) | **Ninguno** |
 | `PiecePalette` | Régimen `escala`/`orden` | 2 | Sí, su texto | **Ninguno** |
 | `PiecePalette` | Reflexión | 1 | `ON`/`OFF` — el valor, no el control | **Ninguno** |
 | `PiecePalette` | Recorrido en el vacío | 1 | `ON`/`OFF` — ídem | **Ninguno** |
-| `TransportPanel` | Play/Pausa | 1 | **Sí** — `aria-label`, agregado por el 019… no: por el propio 014/016 al sacarle el texto | El nombre cambia con el estado, que acá alcanza |
+| `TransportPanel` | Play/Pausa | 1 | **Sí** — `aria-label`, puesto al dejarlo solo-icono, con el motivo escrito en `TransportPanel.tsx:41-42` | El nombre cambia con el estado, que acá alcanza |
 | `TransportPanel` | Reset | 1 | Sí, su texto | N/A |
 | `TransportPanel` | Tempo (`input[type=range]`) | 1 | **No** | El valor, sin unidad |
 
-**22 botones + 1 input.** Búsqueda exhaustiva sobre `src/**/*.tsx`:
+**22 botones + 1 input**, salidos de **siete** sitios de JSX: `OrientationPanel.tsx:80` (×12 por el
+`map`), `PiecePalette.tsx:76` (×4), `:84` (×2), `:92`, `:117`, y `TransportPanel.tsx:51` y `:57`.
+`Board.tsx` no tiene un solo `<button>`, así que el censo es de los dos paneles y nada más. Búsqueda
+exhaustiva sobre `src/**/*.tsx`, sin `__tests__/`:
 
 ```
 aria-pressed  → 0 ocurrencias
@@ -67,7 +77,7 @@ identidad**. Dos botones distintos de la misma tarjeta se anuncian con exactamen
 
 ## 4. El slider, y el argumento que el repo ya escribió
 
-`TransportPanel.tsx:23-28`, comentario textual:
+`TransportPanel.tsx:23-27`, comentario textual:
 
 > Con la unidad: "110" a secas no dice si son bpm o intervalos, y desde el spec 008 el instrumento
 > maneja las dos unidades.
@@ -124,21 +134,37 @@ archivo.
 
 ## 7. Cómo se verifica
 
-Con el spec 024 puesto, los cinco ACs de contenido se verifican **leyendo el árbol de accesibilidad** y
-no el `className`:
+**Reescrita contra `37abf53`.** La versión anterior decía «sin el 024 esto no se puede hacer». **Ya se
+puede**: el 029 construyó el segundo proyecto de Vitest —Chromium por Playwright, sufijo
+`*.browser.test.tsx`, `setupFiles` con la hoja de estilos— siguiendo el diseño que el 024 había fijado.
+El **024 quedó `Superado`** por eso, así que la arista «024 es precondición del 025» del `log.md` ya no
+existe: no hay nada del lote 023–028 que este spec tenga que esperar.
+
+Los tres componentes que toca **ya tienen su archivo de test**, con el nombre PascalCase del componente:
+`TransportPanel.browser.test.tsx`, `PiecePalette.browser.test.tsx` y `OrientationPanel.browser.test.tsx`.
+Los tests nuevos se agregan ahí; no se crea ningún archivo.
+
+El idioma del repo es `page` de `vitest/browser` con `render` de `vitest-browser-react`, **no** `screen`
+de testing-library —que se evaluó y se descartó con jsdom—, y el atributo se lee con `.element()`:
 
 ```tsx
-await expect.element(screen.getByRole('slider', { name: 'Tempo' })).toBeVisible();
-expect(slider.getAttribute('aria-valuetext')).toBe('110 bpm');
-await expect.element(screen.getByRole('button', { name: 'Reflexión', pressed: false })).toBeVisible();
+import { page } from 'vitest/browser';
+
+await expect.element(page.getByRole('slider', { name: 'Tempo' })).toBeVisible();
+expect(page.getByRole('slider').element().getAttribute('aria-valuetext')).toBe('110 bpm');
+await expect.element(page.getByRole('button', { name: /^Reflexión$/, pressed: false })).toBeVisible();
 ```
 
-Es la primera vez que un test del repo consulta por **rol y nombre** en vez de por estructura, y es la
-diferencia entre testear accesibilidad y testear que se escribió un atributo. Sin el 024 esto no se
-puede hacer: `environment: 'node'` no tiene árbol de accesibilidad.
+El nombre va **anclado con regex**, por el motivo que `PiecePalette.browser.test.tsx:93-94` ya dejó
+escrito: `getByRole` empareja por **subcadena**, y las doce miniaturas traen «rotación 180°» en su
+`aria-label`.
 
-Si el 025 se implementara antes que el 024, los ACs se verifican a mano con las devtools y las tareas de
-test quedan abiertas — pero es peor, y por eso el orden del `log.md` los pone al revés.
+Es la primera vez que un test del repo consulta por **rol y nombre** en vez de por estructura, y es la
+diferencia entre testear accesibilidad y testear que se escribió un atributo.
+
+**AC1 es la excepción**: `index.html` no lo carga el browser mode, que sirve su propio documento. Va con
+un test de `environment: 'node'` que lee el archivo y afirma el atributo — AC12. Sin esa tarea, AC1 es el
+único criterio del spec que nada falsea.
 
 ## 8. Archivos que toca
 
@@ -147,10 +173,11 @@ test quedan abiertas — pero es peor, y por eso el orden del `log.md` los pone 
 | `index.html` | Un atributo |
 | `TransportPanel.tsx` | `id` en el `<span>`, `aria-labelledby` + `aria-valuetext` en el `input`, `type` en dos botones |
 | `PiecePalette.tsx` | Dos `role="group"`, `aria-pressed` en 6 botones, nombre accesible en 2, `type` en 8 |
-| `OrientationPanel.tsx` | `type` en el botón de la miniatura (×12 por el `map`) |
-| `.claude/rules/ui.md` | La regla del AC7 |
-| `src/components/__tests__/*.browser.test.tsx` | Los tests de §7 |
-| `DESIGN.md` | La frase «el estado nunca se comunica con hue» gana su mitad no visual |
+| `OrientationPanel.tsx` | `type` **y `aria-pressed`** en el botón de la miniatura (×12 por el `map`) |
+| `.claude/rules/ui.md` | La regla del AC7. **El 030 lo reescribió**: la sección nueva va sobre ese archivo, que hoy tiene tres encabezados y ninguno de accesibilidad |
+| `TransportPanel.browser.test.tsx` · `PiecePalette.browser.test.tsx` · `OrientationPanel.browser.test.tsx` | Los tests de §7. **Los tres ya existen** (029): se extienden, no se crean |
+| Un test de `environment: 'node'` | AC12 — `index.html` declara `lang="es"` |
+| `DESIGN.md:120` | «El color comunica identidad, nunca estado» gana su mitad no visual |
 
 **Cero cambios en `domain/`, `audio/` y `App.tsx`.**
 
@@ -161,4 +188,6 @@ test quedan abiertas — pero es peor, y por eso el orden del `log.md` los pone 
 | `aria-pressed` sobre un botón cuyo texto ya dice `ON`/`OFF` suena redundante al escuchar | Media | Es el caso previsto: el nombre pasa a ser la etiqueta y `ON`/`OFF` queda como texto visual. AC8 lo verifica leyendo el nombre, que tiene que ser «Reflexión» y no «OFF» |
 | Alguien lee `role="group"` como una versión pobre de `radiogroup` | Media | D4 lo argumenta y Seguimiento lo deja anotado con su condición: después del 026 |
 | El 019 borra la mitad del trabajo | **Medida: 2 de 6 frentes** | Se acepta explícitamente; lo que sobrevive es la regla (D6) |
-| Un cambio visual accidental al agregar atributos | Baja | AC9, y los tests de layout del 024 ya cubren los dos altos que importan |
+| Un cambio visual accidental al agregar atributos | Baja | AC9. Ningún cambio agrega un nodo: los dos `role="group"` van sobre los `div.flex.gap-1` que ya existen (`PiecePalette.tsx:74`, `:82`), así que el `space-y-2` de hijo directo que `PiecePalette.tsx:26-30` argumenta no se toca. Y los tests de alto del 029 (`PiecePalette.browser.test.tsx:66-76`) ya miden los dos que importan |
+| Romper un test que hoy está en verde | Baja | Verificado leyendo los tres archivos: `PiecePalette.browser.test.tsx:126-134` localiza Reflexión y Recorrido por `querySelector` y afirma su `textContent`, no su nombre accesible, así que sobrevive al cambio de nombre; los de rotación (`:95`) y régimen (`:109`) buscan por un nombre que no cambia; y `TransportPanel.browser.test.tsx:67` pide `getByRole('slider')` sin nombre |
+| Coverage: el umbral del 029 es **100** | Baja | Nada de lo que agrega este spec es una rama nueva —son atributos, y `aria-pressed={mirror}` no bifurca—, así que el gate no se mueve. Lo que sí es obligatorio es que cada AC traiga su test: es la regla del 029 |

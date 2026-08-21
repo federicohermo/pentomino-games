@@ -9,8 +9,11 @@
 > El bug: **tras `Reset` con el transporte parado, el velo de una pieza que ya no está en el tablero
 > sigue dibujado**. Está reproducido con un test que se escribió, se corrió y falló como se esperaba.
 >
-> **No cambia una nota.** Toca `route-source.ts`, `audio/engine.ts`, `Spectrum.tsx` y una línea de
-> `App.tsx`.
+> **No cambia una nota.** Toca `components/route-source.ts`, `components/use-engine.ts`,
+> `audio/engine.ts`, `components/spectrum-loop.ts` —donde el 029 mudó el loop que vivía en
+> `Spectrum.tsx`— y una línea de `App.tsx`. Más los tests: uno nuevo por cada rama que se agrega —el
+> umbral de coverage es **100** en las cuatro métricas y no hay `/* v8 ignore */`— y **uno viejo que
+> se reescribe**, el que el 029 le puso al estado degradado del motor.
 
 ## Problema
 
@@ -74,17 +77,26 @@ Es exactamente la falla suave que `.claude/rules/audio.md` obliga a chequear en 
 entrando por una puerta que `alternarTransporte` no puede ver: la pura pregunta si el motor arrancó, y
 el motor contesta que sí.
 
+**Y el 029 le puso test.** `audio/__tests__/engine.browser.test.tsx:503` fabrica este mismo fallo
+—`class SinGain extends AudioContext`— y **afirma que el reloj arranca igual**
+(`expect(e.clockRunning()).toBe(true)`), con un comentario que llama al estado degradado «alcanzable
+de verdad». Es la evidencia más fuerte de que el hallazgo existe, porque alguien lo reprodujo; y es
+también trabajo, porque arreglarlo es reescribir ese test.
+
 Y una segunda consecuencia del mismo `catch`: cuando el fallo es **total** tampoco queda marcado, así
 que cada llamada a `audio()` reintenta construir el `AudioContext` y vuelve a hacer `console.warn`. Un
 click, un warning.
 
 ### 3. `Spectrum` redibuja el reposo 60 veces por segundo, para siempre
 
-Su loop llama a `drawIdle()` en cada cuadro mientras no hay `AudioContext`. Son, por cuadro: un
-`clearRect`, 48 `fillRect` y un `fillText` — **50 operaciones de canvas para pintar exactamente la misma
-imagen**, desde que carga la página hasta el primer click. A 60 fps, 3.000 por segundo.
+Su loop —hoy en `components/spectrum-loop.ts`, que el 029 sacó del `.tsx` sin cambiarle una línea de
+comportamiento— llama a `drawIdle()` en cada cuadro mientras no hay `AudioContext`. Son, por cuadro:
+un `clearRect`, 48 `fillRect`, **cinco** asignaciones de estilo y un `fillText` — **55 operaciones de
+canvas para pintar exactamente la misma imagen**, desde que carga la página hasta el primer click. A
+60 fps, **3.300 por segundo**.
 
-`Playhead`, en el mismo repo y con el mismo patrón, **sí** tiene la guarda, y su docblock la argumenta:
+`playhead-loop.ts`, en el mismo repo y con el mismo patrón, **sí** tiene la guarda, y su docblock la
+argumenta (`playhead-loop.ts:52-56`):
 
 > Clave de lo ÚLTIMO escrito […]. Es lo que baja de 60 escrituras por segundo a entre 4 y 11, y lo que
 > hace que en pausa el loop no toque el DOM ni una vez (AC7).
@@ -135,8 +147,19 @@ estrechamiento adentro del closure.
 
 ### D1 — `route-source` gana una puerta de reinicio, y la usa `Reset`
 
-`reiniciar()` exportada, que devuelve `activa`, `pendiente` y `estrenando` a cero. La llama
-`resetBoard()` junto a `frenarTransporte()`.
+`reiniciar()` exportada desde `route-source.ts`, que devuelve `activa`, `pendiente`, `estrenando` y
+`veloActual` a su valor inicial. Dos precisiones que si no se escriben se re-descubren mal:
+
+- **`generacion` se sincroniza, no se pone en cero.** `cycleGen` del motor **no se resetea nunca** —lo
+  dice su propio docblock (`audio/engine.ts:230`): «resetear haría creer a la UI que hubo un swap que
+  no hubo»—, así que dejar `generacion = 0` de este lado reintroduce exactamente esa mentira, y peor:
+  con la pendiente vacía que `encolar` deja inmediatamente después, el próximo cuadro haría un swap
+  fuera del borde del ciclo. `reiniciar()` la deja en `cycleGeneration()`.
+- **La llamada entra por `components/use-engine.ts`, no importando `route-source.ts` desde el shell.**
+  Hoy `App.tsx` no conoce ninguna de las dos colas: al motor le pide por `frenarTransporte()` —que es
+  `stopClock()` re-exportado exactamente por esto— y a la cola de dibujo no le pide nada porque la
+  encola el efecto de reconciliación. Que el reinicio entre por el mismo módulo es lo que sostiene la
+  simetría cuya ausencia **es** este bug.
 
 **No** se arregla haciendo que `encolar` con una secuencia vacía limpie sola: eso convertiría «el
 tablero quedó vacío» en «volvé a cero», y son cosas distintas —quitar la última pieza con el transporte
@@ -148,11 +171,38 @@ orden explícita, igual que del lado del motor.
 `ctx = null` (y `master`, y `analyser`) dentro del `catch`, más una marca de que ya falló para no
 reintentar en cada click. La marca es lo que apaga el warning repetido **sin** apagar el warning.
 
-### D3 — La guarda del reposo se copia de `Playhead`, no se inventa
+Tres cosas van escritas al lado, porque si no se re-discuten al implementar:
 
-Un booleano de «ya dibujé el reposo», que el `resize` invalida —redimensionar borra el canvas—. Es la
-misma forma que la variable `dibujado` del otro loop, y el comentario lo dice: el argumento ya estaba
-medido, sólo faltaba aplicarlo del otro lado.
+- **La marca latchea, y es el precio.** Desde el primer fallo la app queda muda hasta recargar, aunque
+  la causa fuera transitoria. Se acepta porque el reintento tampoco la desmutea —lo único que agrega
+  hoy es un warning por click— y porque un estado que se recupera solo es un estado que nadie puede
+  reproducir.
+- **El contexto a medio construir no se cierra.** `close()` devuelve una promesa y obligaría a un
+  `.catch(() => {})` que no corre nunca: con el umbral 100 y cero `/* v8 ignore */`, eso es una
+  función sin cubrir. Queda vivo y sin referencias, igual que hoy.
+- **Las guardas `if (!c || !master)` se quedan.** Con `ctx` y `master` cayendo juntos su segunda mitad
+  deja de ser alcanzable desde afuera, y aun así no se borra: es lo que impide que un fallo futuro
+  llegue a `scheduleVoice` con destino nulo. Va con el comentario que lo diga, porque «rama
+  inalcanzable» es lo que el repo pide borrar y ésta es la excepción argumentada. Si el coverage la
+  marcara descubierta, se resuelve con un test que la alcance, **nunca** con un ignore.
+
+### D3 — La guarda del reposo se copia de `playhead-loop.ts`, no se inventa
+
+Se copia la **forma exacta** del otro loop, que es una **clave de lo último dibujado** y no un
+booleano. La diferencia decide si el arreglo es correcto, porque hay **tres** transiciones y no dos:
+
+| Transición | Qué tiene que pasar | Con un booleano de «ya dibujé el reposo» |
+|---|---|---|
+| reposo → reposo | no redibujar | ✔ |
+| reposo → señal | dibujar barras | ✔ |
+| **señal → reposo** | **volver a dibujar el reposo** | ✘ deja el último cuadro de barras congelado |
+
+La tercera es alcanzable: `readSpectrum()` devuelve `null` también con el contexto **suspendido**, no
+sólo antes del primer click. Con un booleano crudo el arreglo cambiaría una falla muda por otra, en
+el spec que se llama como se llama. El `resize` la invalida igual —redimensionar borra el canvas—.
+
+El comentario **no** argumenta desde cero: cita el de `playhead-loop.ts`, que ya midió esto del otro
+lado. El argumento ya estaba medido, sólo faltaba aplicarlo de este.
 
 ### D4 — La paleta se mide **antes** de memoizarla
 
@@ -188,18 +238,39 @@ deja, y se escribe por qué — para que la próxima lectura no lo cuente como d
 - **AC2** — Quitar la última pieza con el transporte **corriendo** sigue respetando D5 del 009: el ciclo
   activo termina. El reinicio es sólo de `Reset`.
 - **AC3** — Si `audio()` falla a mitad, `clockRunning()` **no** puede quedar en `true`. El botón no dice
-  «Pausa» sin sonido.
+  «Pausa» sin sonido. Y el test del 029 que hoy afirma lo contrario —«con el grafo a medio construir,
+  tick se planta en su guarda», `audio/__tests__/engine.browser.test.tsx:503`— queda **reescrito**
+  contra el oráculo nuevo y no borrado: sigue fabricando el mismo fallo.
 - **AC4** — Un fallo total de Web Audio produce **un** `console.warn`, no uno por click.
-- **AC5** — En reposo, el loop de `Spectrum` no vuelve a dibujar el canvas después del primer cuadro, y
-  vuelve a dibujarlo tras un `resize`.
+- **AC5** — El loop de `spectrum-loop.ts` cubre las **tres** transiciones: en reposo no vuelve a
+  dibujar el canvas después del primer cuadro; vuelve a dibujarlo tras un `resize`; y vuelve a
+  dibujarlo cuando la señal desaparece —`readSpectrum()` en `null` con el canvas lleno de barras—. Las
+  tres, o el arreglo cambia una falla muda por otra.
 - **AC6** — Existe un número medido de cuántas veces se ejecuta `OrientationPanel` al recorrer diez
-  celdas con el cursor, y está escrito en `App.tsx` al lado de la decisión que hoy lo afirma sin medir.
+  celdas con el cursor —contadas **además** del render inicial, que es lo que vuelve falsificable el
+  «diez»— y está escrito en `App.tsx` al lado de la decisión que hoy lo afirma sin medir
+  (`App.tsx:253-257`). Se cuentan **ejecuciones y no milisegundos**: por eso no necesita el `skipIf`
+  bajo coverage con el que el 029 salvó los dos presupuestos de tiempo del 009.
 - **AC7** — Si ese número se considera caro, `OrientationPanel` está memoizado y el test afirma el
   número nuevo. Si no, el comentario queda con la medición y **no se memoiza nada**.
 - **AC8** — `src/` no tiene la aserción de `engine.ts:129`, y la de `main.tsx` está argumentada en un
   comentario.
-- **AC9** — `pnpm verify` verde. Los 322 + 85 siguen pasando, más los tests nuevos.
+- **AC9** — `pnpm verify` verde con sus cuatro nodos, incluida la segunda pasada de `suite` con el
+  umbral de **coverage en 100**. Los 562 tests de `src/` y los del MCP server siguen pasando, más los
+  nuevos y menos ninguno: el único que cambia es el del estado degradado, que se reescribe. (Los «322
+  + 85» que este spec decía antes son de antes del 029.)
 - **AC10** — Cero cambio visual y cero cambio de audio.
+- **AC11** — Ninguna rama nueva queda sin test y **ningún `/* v8 ignore */` entra al árbol**. Si al
+  caer el estado degradado alguna mitad de `if (!c || !master)` quedara marcada como descubierta, se
+  resuelve con un test que la alcance.
+- **AC12** — `App.tsx` **no** importa `components/route-source.ts`: el reinicio de la segunda cola se
+  expone desde `components/use-engine.ts`, que es de donde ya sale `frenarTransporte()`. Las dos colas
+  se reinician por el mismo camino, o vuelve la asimetría que este hallazgo es.
+- **AC13** — `src/components/Playhead.tsx` ya no afirma que el `z-10` «no lo atrapa ningún test»:
+  `components/__tests__/Playhead.browser.test.tsx:65` lo atrapa desde el 029, sobre las dos capas.
+  Es la sexta cosa que falla en silencio y la única que no está en el código sino **sobre** el código
+  — un comentario que sobrevivió a su propio arreglo manda a hacer trabajo ya hecho, y se lee con la
+  misma cara con la que antes decía la verdad.
 
 ## Fuera de alcance
 
@@ -210,3 +281,10 @@ deja, y se escribe por qué — para que la próxima lectura no lo cuente como d
 - **`useSyncExternalStore` en `Playhead` y `Spectrum`.** Ese hook existe para que un store externo
   **re-renderice**, y acá el objetivo medido es el contrario.
 - **Los arrastres de Create React App**, que son el 028.
+- **La rotación sin acotar** (`deuda.md`), que es la sexta falla muda y la única ya **registrada**: en
+  el régimen `orden` una rotación fuera de `0..3` no cae a ningún `else` —`base[j + rot]` da
+  `undefined`, y `midiName` de eso no explota: devuelve `undefinedNaN` y lo pinta en la celda—, y la
+  implementación lo tapó con un módulo que tardó dos intentos en cerrar. Queda afuera por alcance y no
+  por criterio: el arreglo es acotar el tipo, o sea cambiar firmas en cuatro lugares y tocar
+  `domain/`, y este spec **no toca `domain/`**. Se nombra acá para que la lista de cinco no se lea
+  como la lista completa.
