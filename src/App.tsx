@@ -248,7 +248,7 @@ export default function App(){
   const previewValid = hover && !hoverEdita ? isValid(previewCells, placed) : false;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 p-4">
+    <div className="min-h-screen bg-fondo text-slate-900 p-4">
       <div className="max-w-6xl mx-auto grid grid-cols-12 gap-4">
         {/* Los dos objetos se arman INLINE y no en un `useMemo`: tienen identidad nueva
             por render, y eso no cuesta nada porque `PiecePalette` no esta memoizado —
