@@ -68,4 +68,17 @@ jobs:
       # sin el flag el binario baja y falla igual al lanzarlo.
       - run: pnpm exec playwright install --with-deps chromium
 
+      # TEMPORAL — se borra en el commit siguiente. Imprime QUE rama de `symbols.ts` queda
+      # sin cubrir en Linux, que en Windows si se cubre. Va antes de `verify` porque `verify`
+      # falla y cortaria el job.
+      - name: TEMPORAL detalle de ramas de symbols.ts
+        run: |
+          cd mcp-server
+          node --test --experimental-test-coverage             --test-coverage-include="src/**"             --test-coverage-exclude="src/__tests__/**"             --test-coverage-exclude="src/index.ts"             --test-reporter=lcov --test-reporter-destination=cov.info             "src/__tests__/*.test.ts" > /dev/null 2>&1 || true
+          echo "=== BRDA sin cubrir en symbols.ts (linea,bloque,rama,hits) ==="
+          awk '/^SF:.*symbols\.ts/,/^end_of_record/' cov.info | grep '^BRDA:' | awk -F, '$4=="0" || $4=="-"'
+          echo "=== total de ramas del archivo ==="
+          awk '/^SF:.*symbols\.ts/,/^end_of_record/' cov.info | grep -c '^BRDA:'
+          rm -f cov.info
+
       - run: pnpm verify
