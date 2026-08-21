@@ -22,8 +22,9 @@ dos últimos lugares donde quedaba lógica encerrada: los bucles de `Playhead.ts
 salieron a `playhead-loop.ts` y `spectrum-loop.ts` sin cambiar una línea de comportamiento.
 
 Desde ese spec `components/` tiene **dos clases de test y las dos corren con `pnpm test`**: los `.ts`
-puros en el proyecto `node` —`input.ts`, `cell-text.ts`, `piece-mini.ts`, `route-source.ts`,
-`engine-bridge.ts`, `palette.constants.ts` y los dos `-loop.ts`— y los `*.browser.test.tsx` en un
+puros en el proyecto `node` —`input.ts`, `cell-text.ts`, `cell-name.ts`, `piece-mini.ts`,
+`route-source.ts`, `engine-bridge.ts`, `palette.constants.ts` y los dos `-loop.ts`— y los
+`*.browser.test.tsx` en un
 Chromium de verdad, que es donde se verifican los seis componentes, `App.tsx` y los dos hooks. El
 discriminante es el **sufijo**, no la carpeta. Y el umbral es 100 en las cuatro métricas: lo que se
 agregue acá viene con su test o no mergea.
@@ -103,6 +104,100 @@ distinta y ahí no tiene que pasar nada.
   número **medido**, no elegido: sale de `min(interior / 10, interior / 6)` sobre la tarjeta real, así
   que mover un `col-span` obliga a remedirlo en el DOM.
 
+## El árbol de accesibilidad dice lo que el color pinta
+
+`DESIGN.md` titula «El color comunica identidad, nunca estado» y `palette.constants.ts` mide contraste
+con APCA contra un piso de Lc 60 — un rigor que casi ningún proyecto tiene. Lo que no se cubría es el
+canal donde no hay color. El spec 025 lo midió sobre `src/`: **cero** `aria-pressed`, **cero**
+`aria-checked` y **cero** `role=` en los 22 botones y el `input` de la app.
+
+Las tres cláusulas, y las tres ya existían en el repo como comentarios sueltos antes de ser regla:
+
+- **Todo control solo-icono lleva `aria-label`: el glifo no es un nombre.** El precedente es el botón de
+  transporte de `TransportPanel.tsx`, que al quedarse sin su texto se quedó sin nombre accesible y lo
+  dice en su propio comentario —«`aria-label` porque al sacar el texto el botón se queda sin nombre
+  accesible: el glifo no lo es»—. La regla es lo que hace que el próximo nazca con nombre: el 019 muda
+  «Recorrido en el vacío» a la fila de transporte como un SVG solo-icono, que es exactamente este caso.
+- **Todo control que alterna lleva `aria-pressed`, y su nombre es lo que alterna, no el valor.** Un
+  botón que se llama `OFF` tiene el nombre equivocado: lo que hace falta saber es **qué** se apaga. Y un
+  grupo de selección única donde la selección es sólo un fondo oscuro no llega al árbol de ninguna forma
+  — va como `role="group"` con `aria-labelledby`, sobre un nodo que **ya exista**, y `aria-pressed` en
+  cada botón. **No** como `radiogroup`: eso obliga a un modelo de foco —una sola parada de tabulación y
+  flechas para moverse dentro— y ese modelo lo fija el spec 026 para el tablero. Tomarlo de refilón para
+  cuatro botones sería decidirlo dos veces y probablemente distinto.
+- **La etiqueta se toma del texto visible con `aria-labelledby`, no se duplica en un `aria-label`.** El
+  precedente es el `aria-label` de las doce miniaturas del spec 016 —«para que el lector de pantalla
+  diga lo que el ojo ve»—, que es la forma correcta justamente porque ahí **no hay** texto visible que
+  referenciar: una forma dibujada con `div`s no tiene nombre. Cuando el texto sí está en pantalla,
+  duplicarlo es la misma cadena escrita dos veces, y la copia que se olvida de actualizar es la que
+  nadie ve.
+
+Y **`type="button"` en todo `<button>`**, sin excepción. Hoy no hay un solo `<form>` en el árbol, así
+que no hay bug; pero el default de un `<button>` dentro de un formulario es `submit`, y en esta app eso
+es recargar la página perdiendo el tablero entero, **sin deshacer** (`specs/deuda.md`).
+
+Lo que verifica todo esto es un test de navegador que consulta por **rol y nombre**, nunca por
+`className`: preguntarle al árbol de accesibilidad es la diferencia entre verificar accesibilidad y
+verificar que se escribió un atributo. Ojo con `getByRole`, que empareja el nombre por **subcadena** —
+los nombres van anclados con regex—.
+
+## El foco se mueve por regiones, no por controles
+
+Lo que el 025 midió en el árbol de accesibilidad, el spec 026 lo midió en el teclado: **cero**
+`tabIndex`, **cero** `role` y **cero** estilo de foco en todo `src/`. El caso caro es el tablero —una
+celda es un `div` con `onClick`, así que no recibe foco ni lo anuncia nadie— y desde el spec 014 eso
+dejó de ser un hueco de *lectura*: quitar una pieza y mutearla **sólo existen ahí**, o sea que hay una
+operación destructiva sin ninguna otra vía y sin deshacer (`specs/deuda.md`).
+
+- **Una región compuesta es UNA parada de tabulación, y adentro se mueve con las flechas.** Es el
+  *roving tabindex*: el elemento activo lleva `tabIndex={0}` y todos sus hermanos `-1`, así que el
+  `Tab` entra a la región y no a cada uno de sus miembros. Las sesenta celdas del tablero no son
+  sesenta paradas:
+
+  | | 60 paradas | **1 parada + flechas** |
+  |---|---|---|
+  | `Tab` para cruzar el tablero | 60 pulsaciones | 1 |
+  | `Tab` para salir hacia lo que sigue | 60 pulsaciones | 1 |
+  | Patrón ARIA | ninguno lo recomienda | es el patrón `grid` |
+  | Coherente con el gesto que ya existe | no | sí — el mouse también se mueve *dentro* del tablero |
+
+  Sesenta paradas convierten la tarjeta del tablero en una **trampa de salida**. Y no en el camino al
+  transporte —`TransportPanel` se compone adentro de `PiecePalette` y la paleta va antes que el
+  tablero en el DOM, así que a Play se llega sin pasar por ninguna celda—: la trampa es la de
+  **después**, con todo lo que venga detrás del tablero a sesenta pulsaciones y el `Shift`+`Tab` de
+  vuelta costando lo mismo.
+
+- **El estado del cursor vive en el shell, y el cursor de teclado es el mismo que el del mouse.**
+  `App.tsx` ya tiene `hover: Cell | null`, y de ahí salen el fantasma, el cursor (`pointer` /
+  `not-allowed`) y la decisión de si el click edita o coloca. Mover el foco con una flecha escribe
+  **ese mismo estado**, así que el fantasma, la nota y la validez funcionan con teclado sin una línea
+  nueva de dibujo — y no aparece un segundo «dónde está apuntando» que pueda desincronizarse del
+  primero. Es la misma razón por la que `hoverEdita` le llega calculado a `Board` en vez de derivarse
+  ahí: dos copias de dónde está el cursor son dos formas de que prometa una cosa y el gesto haga otra.
+
+- **El anillo de foco va en la caja de afuera, y son dos propiedades y no una.** Una celda son dos
+  cajas —la de `CELL_PX` y la baldosa redondeada de adentro, con 2 px de aire—, y los canales de la
+  baldosa están todos tomados: el fondo es identidad, el blanco es el muteo, el rosa es la jugada
+  inválida, el gris es el fantasma, el grosor de borde es la cabeza lectora y la opacidad es el velo.
+  La caja de afuera no pinta nada, así que ahí va el foco. Y van **dos** tonos —claro adentro, oscuro
+  afuera— porque abajo puede haber `#FFFF00` (la `V`) o `#0000FF` (la `W`) y un `outline` de CSS tiene
+  un solo color: `outline` para el claro y `box-shadow` con spread para el oscuro. Ver
+  [DESIGN.md](../../DESIGN.md).
+
+- **Lo prohibido es `transform: scale`**, y el repo ya lo midió: el docblock de
+  `components/constants/playhead.constants.ts` lo dice para la cabeza lectora —«`scale` agranda la
+  region scrolleable y `box-shadow` es ink overflow, o sea que pinta afuera de la caja sin
+  agrandarla»—, con el `scrollHeight` del `overflow-x-auto` de `Board` pasando de 378 a 381 y las dos
+  barras de desplazamiento apareciendo. El anillo de foco es exactamente el mismo caso: pinta encima
+  de la grilla que scrollea, y con `scale` la haría scrollear más.
+
+Con esto queda cerrado el `T025` de Seguimiento del spec 025, que quedó esperando este modelo: su
+tercera cláusula descartó `radiogroup` para el grupo de orientación porque «obliga a un modelo de foco
+—una sola parada de tabulación y flechas para moverse dentro— y ese modelo lo fija el spec 026». El
+modelo está escrito acá y vale para **toda** región compuesta, así que ese grupo puede pasar a
+`radiogroup` sin volver a decidirlo — y mientras no pase, su `role="group"` con `aria-pressed` sigue
+siendo lo correcto.
+
 ## Los listeners de entrada
 
 El spec 013 fue el primero que agregó uno —hasta ahí el único `addEventListener` de `src/` era un
@@ -142,7 +237,9 @@ El spec 013 fue el primero que agregó uno —hasta ahí el único `addEventList
   corre, así que parece que anda.
 - **El handler global se saltea `<button>` e `<input>`**: si se saltea el evento, el navegador tiene
   que quedárselo entero — es lo que evita el doble disparo con un control enfocado sin recurrir a un
-  `blur()` a mano.
+  `blur()` a mano. **Una celda del tablero es el caso intermedio y va por su propia pregunta**: se
+  lleva la barra, el `Enter` y las flechas, y deja pasar todo lo demás. Ensanchar la guarda vieja
+  apagaría también `Shift` y `Ctrl` justo donde más se usan.
 - **«¿Hay acción?» y «¿hay que frenar el default?» son dos preguntas y van en dos puras.** Parecen la
   misma hasta que aparece el auto-repeat: la barra mantenida **no** tiene que alternar el transporte a
   30 Hz, pero **sí** tiene que seguir frenando el scroll, porque cada `keydown` repetido trae su propio

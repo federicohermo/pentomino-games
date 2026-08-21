@@ -122,6 +122,22 @@ mapeo está en
 Es la regla **D7** del spec 007, y decide sola los cuatro componentes: *el color va donde ya se
 comunicaba identidad de pieza, y nunca sobre el canal de estado.*
 
+**Y tiene una mitad no visual, que el spec 025 escribió: si el color es el único canal que dice el
+estado, el árbol de accesibilidad no lo dice.** No es una regla nueva, es la misma leída desde el canal
+donde no hay color — y estaba entera sin cubrir: medido sobre `src/`, **cero** `aria-pressed`, **cero**
+`aria-checked` y **cero** `role=` en los 22 botones y el `input` de la app. Un fondo oscuro que
+significa «seleccionada» le llega al ojo y no le llega a nadie más. Las tres cláusulas —nombre accesible
+en todo control solo-icono, `aria-pressed` en todo lo que alterna y con el nombre siendo lo que alterna,
+y la etiqueta tomada del texto visible en vez de duplicada— viven en
+[`.claude/rules/ui.md`](./.claude/rules/ui.md).
+
+**Ese canal y el anillo de foco del spec 026 son complementarios, no rivales.** El 025 reclama lo **no
+visual** —el rol, el nombre accesible y el `aria-pressed`, que es lo que un lector de pantalla
+anuncia— y el 026 reclama la **caja de afuera** de la celda, que es píxel. Son dos ejes distintos, así
+que agotar uno no agota el otro y un control puede necesitar los dos: el árbol dice *qué es esto y en
+qué estado está*, y el anillo dice *acá está el cursor ahora*. Lo que sí comparten es lo que **no**
+tocan: ninguno de los dos le saca canal a los 12 colores.
+
 | Dónde | Qué hace el color | Por qué |
 |---|---|---|
 | `Board` | celda ocupada = color de pieza | identidad debajo, estado encima |
@@ -202,7 +218,37 @@ queda al color ahí es el par gris/rosa, que es la señal de *entra* / *no entra
 Los tres **ganan** sobre el color de pieza cuando conviven en la misma celda. Si alguna vez hace falta un
 estado nuevo, el canal disponible es el borde, la opacidad o la superposición — no el fondo. La cabeza
 lectora del spec 010 es ese caso ya cobrado, y usó los tres: borde para el resalte, opacidad y
-superposición para el velo.
+superposición para el velo — y ése fue el último que quedaba, como cuenta lo que sigue.
+
+### Los canales de la celda, y por qué se acabaron
+
+Esa frase —«el canal disponible es el borde, la opacidad o la superposición»— hablaba de la
+**baldosa**, y la baldosa hoy no tiene ninguno libre:
+
+| Canal de la baldosa | Quién lo usa |
+|---|---|
+| Color de fondo | identidad de pieza — los 12 colores medidos con APCA |
+| Blanco | pieza muteada (spec 014) |
+| Rosa | jugada inválida |
+| Gris `slate-300` | fantasma |
+| Grosor de borde (`box-shadow` interior y exterior) | cabeza lectora: nota / cruce / click (specs 010, 011) |
+| Opacidad + borde punteado | velo de «no se estrenó» (spec 010) |
+
+Lo que quedaba libre es **la otra caja**. Cada celda son dos: la de `CELL_PX` y la baldosa redondeada
+de adentro, con 2 px de aire entre las dos — y la de afuera no pinta nada. Ahí va el **anillo de foco**
+del teclado (spec 026), y con eso **se acabaron**: el próximo estado que aparezca no tiene canal que
+tomar, va a tener que sacárselo a otro y escribir cuál.
+
+**El anillo son dos propiedades y no una**, y el motivo es la lámina: abajo de la celda enfocada puede
+haber el `#FFFF00` de `V` o el `#0000FF` de `W`, así que un solo tono se pierde contra alguno de los
+doce. Van dos —claro adentro, oscuro afuera—, y como un `outline` de CSS tiene un único color, el claro
+va por `outline` y el oscuro por `box-shadow` con spread.
+
+Lo **prohibido** es `transform: scale`, por la medición que la cabeza lectora ya pagó y que está más
+abajo: `scale` cuenta para el overflow scrolleable del contenedor y hace aparecer las dos barras.
+`outline` y `box-shadow` son *ink overflow* — pintan afuera de la caja sin agrandarla. Es el mismo
+movimiento con el que el 014 eligió la ausencia de color para el muteo: se toma el canal que quedaba
+libre, y se escribe que se acabaron.
 
 ## La cabeza lectora: el estado va al borde
 

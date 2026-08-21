@@ -70,7 +70,7 @@ export function abreTapLimpio(e: EventoDeModificador): boolean {
 /**
  * Qué acción pide una tecla, o `null` si el evento no es nuestro.
  *
- * Las cuatro guardas, en orden y con su motivo:
+ * Las cinco guardas, en orden y con su motivo:
  *
  * 1. **`targetEsControl`** — con el foco sobre un `<button>` o un `<input>` el navegador
  *    ya tiene un significado para la barra: activar el control. Si además contestáramos
@@ -87,9 +87,19 @@ export function abreTapLimpio(e: EventoDeModificador): boolean {
  *    porque el `Ctrl`+click de macOS necesita que el `keyup` sea el que alterna (D2).
  * 4. **La barra sigue en `keydown`** — es donde el navegador scrollea, así que es el
  *    único momento en que un `preventDefault` sirve de algo.
+ * 5. **`targetEsCelda` veta a la barra, y sólo a la barra** — desde el spec 026 el tablero
+ *    es una parada de tabulación y la barra sobre una celda enfocada coloca o quita la
+ *    pieza. Sin esta guarda, un solo golpe haría las dos cosas: alternar el transporte por
+ *    acá y editar por el `onKeyDown` de la celda. Que viva adentro de la rama de la barra
+ *    y no arriba de todo, al lado de la guarda 1, ES la decisión del spec (D4): la 1 apaga
+ *    todas las teclas y ésta apaga una sola, porque con una celda enfocada `Shift` y
+ *    `Ctrl` tienen que seguir rotando y reflejando. Ensanchar la guarda 1 para que
+ *    matcheara la celda —que es lo tentador, porque es una línea— apagaría los tres
+ *    atajos del 013 para arreglar uno.
  *
  * Lo que esta función NO contesta es si hay que hacer `preventDefault`: son dos
- * preguntas distintas y las separa la guarda 2. Ver `frenaElDefault`.
+ * preguntas distintas, y ahora las separan DOS casos —el auto-repeat de la guarda 2 y la
+ * celda enfocada de la 5—. Ver `frenaElDefault`.
  */
 export function accionDeTecla(e: EventoDeTecla): Accion | null {
   if (e.targetEsControl) return null;
@@ -97,7 +107,7 @@ export function accionDeTecla(e: EventoDeTecla): Accion | null {
 
   if (e.key === 'Shift') return e.tipo === 'keyup' && e.tapLimpio ? ACCION.rotar : null;
   if (e.key === 'Control') return e.tipo === 'keyup' && e.tapLimpio ? ACCION.reflejar : null;
-  if (e.key === ' ') return e.tipo === 'keydown' ? ACCION.transporte : null;
+  if (e.key === ' ') return e.tipo === 'keydown' && !e.targetEsCelda ? ACCION.transporte : null;
 
   return null;
 }
@@ -117,6 +127,14 @@ export function accionDeTecla(e: EventoDeTecla): Accion | null {
  * foco está sobre un `<button>` o un `<input>`, el evento es del navegador entero y no
  * a medias — es lo que deja que la barra active el control armado sin un `blur()` a
  * mano.
+ *
+ * `targetEsCelda`, en cambio, **no** la veta, y esa asimetría con `accionDeTecla` es
+ * deliberada: el default de la barra es scrollear la página, y eso hay que frenarlo lo
+ * maneje quien lo maneje. Con una celda enfocada la barra deja de alternar el transporte
+ * para pasar a colocar la pieza, pero si además la página scrolleara, el mismo golpe que
+ * coloca se llevaría el tablero fuera de la pantalla. No es lo mismo que la guarda de
+ * `targetEsControl`: ahí el default es la acción que uno quiere —activar el control— y acá
+ * es un efecto que nadie pidió.
  *
  * Los modificadores no aparecen acá: `Shift` y `Control` sueltos no tienen ningún
  * default que frenar, ni al bajar ni al soltar.

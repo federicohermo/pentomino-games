@@ -195,6 +195,17 @@ Estas son las reglas:
   contraparte lint es `noInlineConfig`: **no hay `eslint-disable`**, porque silenciar la regla es la
   otra forma de tapar el problema. Si hace falta una excepción real, va como override por archivo en
   `eslint.config.js` —que se ve en el diff y se explica— y no como un comentario suelto.
+- **La aserción no nula (`!`) es de la misma familia, y el spec 027 la nombró.** Un `!` es un `any`
+  chiquito: le dice al compilador que se calle sin darle un motivo. La regla es que **en código de
+  producción cada una viene con el comentario que dice por qué el compilador no puede verlo**, y que
+  antes de escribirla se pruebe el `const` — el `!` de `engine.ts` existía sólo porque TypeScript
+  pierde el estrechamiento al entrar al closure de un `forEach` cuando la variable es un `let` de
+  módulo, y salió gratis con una `const` local. Quedan **dos**, las dos anotadas: la de `main.tsx`
+  (el idiom de Vite sobre un `#root` que el propio `index.html` garantiza) y la de
+  `domain/invariants.ts` (el `queue.shift()!` de un BFS, dentro de un `while` que ya garantiza la
+  cola no vacía). **No** vale para los tests, donde el `!` sobre un `find` o un `querySelector` que
+  el propio test acaba de fijar es la forma de que el test **falle** si el nodo no está — hay 66 en
+  `src/**/__tests__/` y son deliberadas.
 - **Sin estado global.** Ni Context, ni Redux, ni Zustand — y desde el 030 lo verifica el linter, por
   el paquete y por la llamada a `createContext`.
 - **Nada de `.only` ni `.skip` en un test.** Es la misma familia de bug que el `--filter "{.}"` y el

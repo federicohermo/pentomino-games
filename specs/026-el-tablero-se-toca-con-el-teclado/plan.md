@@ -65,8 +65,16 @@ arranque para que el tablero siga siendo alcanzable con `Tab`.
 **Un solo estado no quiere decir un solo escritor**, y ahí hay una regla que hay que escribir: hoy
 `onMouseLeave` pone `hover` en `null` (`App.tsx:286`), y con una celda enfocada eso apagaría el fantasma
 contra AC3. Mientras el foco del DOM esté adentro del tablero **manda el foco**: `onMouseLeave` no borra
-nada y el mouse sólo mueve el cursor si vuelve a entrar. Es AC16, y es la única forma de que «la celda
-enfocada ES el hover» no sea una promesa que el mouse rompe.
+nada y el mouse tampoco mueve el cursor si vuelve a entrar. Es AC16, y es la única forma de que «la
+celda enfocada ES el hover» no sea una promesa que el mouse rompe.
+
+Al implementarlo apareció la mitad que este párrafo no decía, y es la que hace que la regla no se
+vuelva contra el mouse: **un `div` con `tabIndex` es enfocable por click**, así que sin nada más el
+primer click del mouse metería el foco en el tablero y el mouse quedaría inerte a partir de ahí —el
+fantasma congelado en la celda clickeada—. La guarda es un `preventDefault` en el `mousedown` de la
+celda: el foco entra al tablero **sólo por teclado**, que es además lo que hace verdadero que el anillo
+sea de teclado y no aparezca bajo el mouse. El `0` del roving tabindex sigue viajando con `hover`, así
+que el `Tab` de después de un click aterriza en la celda que estaba bajo el cursor.
 
 Las flechas mueven ese estado y llaman a `preventDefault`: sin eso, la flecha scrollea la página y el
 `overflow-x-auto` del tablero. Es el mismo trato que la rueda ya tiene, y por el mismo motivo.

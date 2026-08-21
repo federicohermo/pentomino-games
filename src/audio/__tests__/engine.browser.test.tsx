@@ -128,6 +128,28 @@ describe('audio() — el singleton y su grafo', () => {
 
     warn.mockRestore();
   });
+
+  it('el fallo avisa UNA vez y no una por click', async () => {
+    // Sin la marca de «ya fallo», cada llamada reintenta el constructor: y las llamadas
+    // vienen del usuario tocando el instrumento, asi que la consola se llenaba a razon
+    // de un warning por click. Se cuenta el warn y no se mira `audio()`, porque lo que
+    // cambio no es la respuesta —siempre fue null— sino cuantas veces se intenta.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubGlobal('AudioContext', class { constructor() { throw new Error('sin Web Audio'); } });
+
+    const e = await motor();
+    expect(e.audio()).toBeNull();
+    expect(warn).toHaveBeenCalledTimes(1);
+
+    // Las tres puertas de sonido mas una consulta directa: cuatro intentos mas.
+    e.playNotes([69]);
+    e.playNow([69]);
+    e.startClock();
+    expect(e.audio()).toBeNull();
+
+    expect(warn, 'la marca latchea: el segundo intento ya no llega al constructor').toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
 });
 
 describe('readSpectrum() — el buffer reusado', () => {
@@ -498,12 +520,19 @@ describe('tick() — el despacho de las tres clases', () => {
     expect(e.clockRunning()).toBe(true);
   });
 
-  it('con el grafo a medio construir, tick se planta en su guarda', async () => {
-    // El estado degradado que la guarda `if (!c || !master) return` existe para
-    // atajar, y que es alcanzable de verdad: si `createGain()` falla, `audio()` cae al
-    // `catch` y devuelve null PERO `ctx` ya quedo asignado. Desde ahi el `if (ctx)
-    // return ctx` de la proxima llamada devuelve un contexto con `master` en null, y
-    // `startClock` —que solo mira que `audio()` no sea null— arranca el timer igual.
+  it('con el grafo a medio construir, el motor NO dice que arranco', async () => {
+    // Este test afirmaba lo contrario hasta el spec 027, y el estado que describia era
+    // alcanzable de verdad: si `createGain()` falla, `audio()` cae al `catch` y devuelve
+    // null PERO `ctx` ya quedaba asignado, asi que el `if (ctx) return ctx` de la
+    // llamada siguiente contestaba un contexto con `master` en null. Desde ahi
+    // `startClock` —que solo mira que `audio()` no sea null— arrancaba el timer,
+    // `clockRunning()` pasaba a `true`, el boton decia «Pausa» y no sonaba nada: la
+    // falla suave entrando por la unica puerta que el llamador no puede chequear.
+    //
+    // Dejo de ser alcanzable porque el `catch` ahora baja las tres referencias juntas.
+    // Lo que se afirma aca es esa consecuencia y no la guarda de `tick()`: con un fallo
+    // parcial el motor tiene que contestar lo MISMO que con un fallo total, o sea que
+    // no arranco.
     //
     // Se hereda del AudioContext real en vez de fabricar uno de mentira: asi `state`,
     // `currentTime` y `resume` son los de verdad y lo unico distinto es lo que se
@@ -515,17 +544,18 @@ describe('tick() — el despacho de las tres clases', () => {
     vi.stubGlobal('AudioContext', SinGain);
 
     const e = await conReloj();
-    expect(e.audio()).toBeNull();      // primera llamada: explota adentro del try
-    expect(e.audio()).not.toBeNull();  // segunda: el `ctx` quedo, el `master` no
+    expect(e.audio()).toBeNull();  // primera llamada: explota adentro del try
+    expect(e.audio()).toBeNull();  // segunda: el `ctx` a medio construir ya no esta
 
     e.setSequence(CICLO);
     e.startClock();
-    expect(e.clockRunning()).toBe(true);
+    // AC3: el reloj no puede arrancar sobre un grafo roto. Si arrancara, la UI
+    // preguntaria `clockRunning()` y le contestarian que si.
+    expect(e.clockRunning()).toBe(false);
 
-    // Y los ticks pasan sin agendar nada ni romperse. Sin la guarda, `scheduleVoice`
-    // recibiria `null` como destino.
+    // Y sigue sin arrancar despues de varios ticks: no hay timer que los dispare.
     await esperar(TICK_MS * 4);
-    expect(e.clockRunning()).toBe(true);
+    expect(e.clockRunning()).toBe(false);
     expect(e.sequenceInfo().steps).toBe(0);
 
     warn.mockRestore();

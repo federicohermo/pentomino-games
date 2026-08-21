@@ -94,9 +94,13 @@ Tres cosas que parecen bugs y no lo son:
 - **Con el botón de Play enfocado, la barra activa ese botón** — y con el foco sobre `Reset`, activa
   `Reset`. Es el comportamiento nativo, y es el correcto: el foco dice qué control está armado.
 
-El tablero **no se alcanza con el teclado** (las celdas son `div` sin `tabIndex`); es deuda conocida y
-está en [specs/deuda.md](../../specs/deuda.md). Los atajos de arriba son globales y funcionan sin foco,
-así que no dependen de eso.
+Desde el spec 026 **el tablero también se toca con el teclado**, y es **una** parada de tabulación:
+un `Tab` entra y otro lo pasa de largo. Adentro se mueve con las flechas —`Home` y `End` van a los
+extremos de su fila—, `Enter` y la barra hacen lo mismo que un click, y `Alt`+ellos lo mismo que
+`Alt`+click. La celda enfocada **es** el cursor, así que el fantasma y la nota son los mismos que con
+el mouse. Con una celda enfocada la barra deja de alternar el transporte —la usa el tablero para
+colocar— pero `Shift` y `Ctrl` siguen rotando y reflejando: el tablero se lleva la barra, el `Enter` y
+las flechas, y nada más.
 
 ## Flujos de trabajo típicos
 
