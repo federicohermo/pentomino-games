@@ -65,12 +65,13 @@ export default function TransportPanel({ transporte }: { transporte: PropsDeTran
           "apreta esto para que suene". */}
       <div className="flex gap-2">
         <button
+          type="button"
           onClick={onTogglePlay}
           aria-label={playing? 'Pausa':'Reproducir'}
           title={playing? 'Pausa':'Reproducir'}
           className={`px-3 py-1 rounded text-white ${playing? 'bg-slate-900 hover:bg-slate-800':'bg-emerald-600 hover:bg-emerald-700'}`}
         >{playing? '⏸':'▶'}</button>
-        <button onClick={onReset} className="px-3 py-1 rounded bg-slate-200 hover:bg-slate-300">Reset</button>
+        <button type="button" onClick={onReset} className="px-3 py-1 rounded bg-slate-200 hover:bg-slate-300">Reset</button>
       </div>
     </div>
   );

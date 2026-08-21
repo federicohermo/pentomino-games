@@ -390,3 +390,23 @@ describe('App — la orientacion, por panel y por gesto', () => {
     expect(container.textContent).toContain('tónica');
   });
 });
+
+describe('App — lo que llega al arbol de accesibilidad', () => {
+  it('ningun boton de la app puede enviar un formulario', async () => {
+    // Hoy no hay un solo `<form>` en el arbol, asi que no hay bug — y por eso mismo
+    // esta es la unica linea del spec 025 que nada mas falsea: existe para una
+    // regresion futura. El default de un `<button>` dentro de un formulario es
+    // `submit`, y en esta app eso significa recargar la pagina perdiendo el tablero
+    // entero, sin deshacer (`specs/deuda.md`).
+    //
+    // Se afirma sobre la app COMPLETA y no componente por componente porque los 22
+    // botones salen de tres archivos —doce miniaturas, ocho de la tarjeta, dos de
+    // transporte— y ninguno de los tres los tiene todos.
+    const { container } = await render(<App />);
+    const botones = [...container.querySelectorAll('button')];
+    expect(botones.length).toBe(22);
+    for (const boton of botones) {
+      expect(boton.getAttribute('type'), boton.textContent ?? '').toBe('button');
+    }
+  });
+});

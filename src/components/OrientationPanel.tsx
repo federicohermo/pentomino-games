@@ -77,9 +77,16 @@ export default function OrientationPanel({ orientacion }: { orientacion: PropsDe
         // el borde de la miniatura y el `aria-pressed`, y tienen que invertirse en el
         // mismo momento.
         const activo = selected === key;
+        // `type="button"` y no el default, aca y en los otros seis sitios de JSX que
+        // renderizan los 22 botones de la app: hoy no hay un solo `<form>` en el arbol,
+        // asi que no hay bug. Pero el default de un `<button>` DENTRO de un formulario es
+        // `submit`, y en esta app eso significa recargar la pagina perdiendo el tablero
+        // entero, y no hay deshacer (`specs/deuda.md`). Va sin excepcion y sin discutir
+        // caso por caso: un boton de esta app nunca envia nada.
         return (
           <button
             key={key}
+            type="button"
             onClick={()=> onSelect(key)}
             aria-label={`${key}, rotación ${rotation * 90}°${mirror ? ', reflejada' : ''}`}
             aria-pressed={activo}
