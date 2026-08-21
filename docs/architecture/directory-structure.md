@@ -177,8 +177,11 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 por lo que el test necesita:
 
 - **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre `src/**/__tests__/*.test.ts`.
-  Son 16 archivos. El dominio es puro y el audio tiene una implementación nativa de Web Audio, así que
-  corren ahí sin adaptación.
+  Son 17 archivos. El dominio es puro y el audio tiene una implementación nativa de Web Audio, así que
+  corren ahí sin adaptación. El único que no es el test de un módulo es
+  `src/__tests__/documento.test.ts`, del spec 025: lee `index.html` **del disco** porque el proyecto de
+  navegador sirve su propio documento y nunca carga ese archivo, así que el `lang` de la página era lo
+  único del repo que ningún test podía falsear.
 - **`browser`** — Chromium de verdad, por Playwright, sobre `src/**/__tests__/*.browser.test.tsx`. Son
   10: los seis componentes, `App.tsx`, los dos hooks y `audio/engine.ts`. Renderizan con
   `vitest-browser-react`, y el `setupFiles` (`browser-setup.ts`) importa la hoja de estilos **una** vez:
