@@ -90,8 +90,10 @@ nuevo necesita `pnpm exec playwright install chromium` antes del primer `verify`
 Los del MCP server son de `node --test`, en su propio paquete, y desde el 029 corren con los
 `--test-coverage-*=100` de node.
 
-Node ≥ 20.19 o ≥ 22.12 — Vite 7 lo exige en `engines`. El MCP server pide **≥ 22.18** porque corre
-TypeScript sin compilar; es un piso de tooling y con Node 20 solo se pierde el server.
+Node ≥ 20.19 o ≥ 22.12 — lo exige Vite 7 y desde el spec 023 lo declara **nuestro propio**
+`engines`, no el de Vite: con Node 18 el gestor lo dice al instalar, en vez de que se entere el build.
+El MCP server pide **≥ 22.18** porque corre TypeScript sin compilar; es un piso de tooling, vive en el
+`engines` del server —que es quien lo necesita— y con Node 20 solo se pierde el server.
 
 ---
 

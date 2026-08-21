@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "MCP server que ejecuta el dominio de pentomino-games. Tooling local: no entra al bundle ni al deploy.",
+  "description": "MCP server que ejecuta el dominio de pentomino-games. Tooling local: no entra al bundle ni al deploy. `typescript` es devDependency y no dependency: lo usa `tsc` en `typecheck` y no lo usa `start`, porque Node >=22.18 corre los .ts por type-stripping nativo — el mismo motivo por el que este archivo declara ese piso en `engines`.",
   "engines": {
     "node": ">=22.18"
   },
@@ -14,10 +14,10 @@
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",
-    "zod": "^4.2.0",
-    "typescript": "~5.8.3"
+    "zod": "^4.2.0"
   },
   "devDependencies": {
-    "@types/node": "^24.3.1"
+    "@types/node": "^24.3.1",
+    "typescript": "~5.8.3"
   }
 }
