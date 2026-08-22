@@ -21,7 +21,7 @@ import type { RefObject } from 'react';
  *    `Ctrl` lo encuentra limpio y da vuelta la reflexion. Es el gesto que D10 nombra
  *    por su nombre.
  */
-const acciones = () => ({ rotar: vi.fn(), reflejar: vi.fn(), transporte: vi.fn() });
+const acciones = () => ({ rotar: vi.fn(), reflejar: vi.fn(), transporte: vi.fn(), seleccionar: vi.fn() });
 
 /** El ref del tap limpio, que los dos hooks comparten y escriben en las dos direcciones. */
 const tap = (v = false): RefObject<boolean> => ({ current: v });
@@ -116,11 +116,33 @@ describe('useAtajosDeTeclado', () => {
   });
 
   it('una tecla sin accion no llama a nadie', async () => {
+    // `'q'` no es un pentominó, y desde el spec 018 eso es load-bearing: si lo fuera,
+    // este test dejaria de medir "sin accion". Lo mismo vale para la `'c'` del test de
+    // `Ctrl`+C de mas arriba.
     const a = acciones();
     await renderHook(() => useAtajosDeTeclado(a, tap()));
     tap_(window, 'q');
     expect(a.rotar).not.toHaveBeenCalled();
     expect(a.reflejar).not.toHaveBeenCalled();
+    expect(a.transporte).not.toHaveBeenCalled();
+    expect(a.seleccionar).not.toHaveBeenCalled();
+  });
+
+  it('la letra elige la pieza y NO arranca el transporte (spec 018)', async () => {
+    // El segundo `expect` es el que importa: la rama de la letra puesta como un `if`
+    // suelto DESPUES de la cadena de `despachar` —en vez de antes del `else transporte()`—
+    // selecciona la pieza y ademas arranca el instrumento, y eso pasa typecheck y lint sin
+    // que nada se queje. Ningun test de la pura lo puede ver: el bug vive en el cableado.
+    const a = acciones();
+    await renderHook(() => useAtajosDeTeclado(a, tap()));
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'l', bubbles: true, cancelable: true }));
+    expect(a.seleccionar).toHaveBeenCalledWith('L');
+    expect(a.transporte).not.toHaveBeenCalled();
+
+    // Y con `Ctrl` abajo el atajo es del navegador entero: ni seleccion ni transporte.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true, cancelable: true }));
+    expect(a.seleccionar).toHaveBeenCalledTimes(1);
     expect(a.transporte).not.toHaveBeenCalled();
   });
 
