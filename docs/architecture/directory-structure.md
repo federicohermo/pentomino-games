@@ -130,12 +130,14 @@ src/
     ├── use-input.ts              # los dos efectos de entrada del 013: teclado y rueda. Reciben
     │                             #   callbacks, no setters, y el tapLimpio del shell
     ├── cell-px.ts                # la fórmula del tamaño de celda contra el viewport (spec 021):
-    │                             #   max(CELL_PX_MIN, min(vw/10, vh/6)). Pura, fuera del hook
-    │                             #   para poder testearla sin navegador
+    │                             #   min(CELL_PX_MAX, max(CELL_PX_MIN, min(vw/10, vh/6))). Pura,
+    │                             #   fuera del hook para poder testearla sin navegador. Con el
+    │                             #   techo donde está —igual al piso— devuelve siempre 73
     ├── use-cell-px.ts            # el tercer hook de entrada: mide el contenedor raíz y escribe
     │                             #   el resultado en la custom property --cell (spec 021)
     ├── constants/
-    │   ├── layout.constants.ts   # CELL_PX_MIN —el PISO, no el tamaño, desde el spec 021— y las
+    │   ├── layout.constants.ts   # CELL_PX_MIN y CELL_PX_MAX —el piso y el techo, hoy el mismo
+    │   │                         #   número, o sea la celda fija de antes del 021— y las
     │   │                         #   razones que vuelven proporcional la baldosa · MINI_BOX ·
     │   │                         #   MINI_CELL_PX · MINI_PISTA_PX · TEMPO_MIN · TEMPO_MAX · las
     │   │                         #   dos razones del anillo de foco de la celda (spec 026)

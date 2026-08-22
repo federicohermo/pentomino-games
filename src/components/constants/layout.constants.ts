@@ -3,8 +3,13 @@
  * constante: se calcula contra el viewport y viaja por la custom property `--cell`.
  *
  * ```
- * CELL_PX = max(CELL_PX_MIN, min(vw / GRID_W, vh / GRID_H))
+ * CELL_PX = min(CELL_PX_MAX, max(CELL_PX_MIN, min(vw / GRID_W, vh / GRID_H)))
  * ```
+ *
+ * **El `min` de afuera es el techo, y hoy vale lo mismo que el piso** (ver `CELL_PX_MAX`,
+ * abajo): con los dos en 73 la celda volvio a ser el numero fijo de antes del 021. Lo que
+ * queda del 021 es el mecanismo —la custom property y quien la escribe—, que es lo que
+ * hace que subir el techo sea cambiar UN numero y no volver a cablear 60 celdas.
  *
  * La formula vive en `components/cell-px.ts` —donde tiene test— y quien la escribe en el
  * DOM es `components/use-cell-px.ts`. Todo lo que dependa del tamano de celda lee
@@ -12,18 +17,21 @@
  * elemento, asi que redimensionar la ventana reposiciona 60 celdas, el velo y la cabeza
  * lectora **sin un solo re-render de React**.
  *
- * Medido sobre los viewports reales:
+ * Medido sobre los viewports reales. La columna `sin techo` es lo que la formula daba
+ * cuando el 021 no tenia `CELL_PX_MAX`, y esta porque explica el techo mejor que ninguna
+ * prosa: al lado va la `nota`, que es el tamano al que quedaba el nombre de la nota
+ * —`CELL_PX x NOTA_RAZON`— y que es lo que se veia como una baldosa gigante.
  *
  * ```
- * viewport      por ancho   por alto   CELL_PX   nota      scroll-x
- * 1920 x 1080     192,0      180,0      180,0    46,8 px
- * 1512 x  982     151,2      163,7      151,2    39,4 px
- * 1440 x  900     144,0      150,0      144,0    37,5 px
- * 1366 x  768     136,6      128,0      128,0    33,3 px
- * 1280 x  720     128,0      120,0      120,0    31,2 px
- *  834 x 1112      83,4      185,3       83,4    21,7 px
- *  430 x  932      43,0      155,3       73,0    19,0 px    si
- *  375 x  667      37,5      111,2       73,0    19,0 px    si
+ * viewport      por ancho   por alto   sin techo   nota      hoy    scroll-x
+ * 1920 x 1080     192,0      180,0       180,0    46,8 px    73,0
+ * 1512 x  982     151,2      163,7       151,2    39,4 px    73,0
+ * 1440 x  900     144,0      150,0       144,0    37,5 px    73,0
+ * 1366 x  768     136,6      128,0       128,0    33,3 px    73,0
+ * 1280 x  720     128,0      120,0       120,0    31,2 px    73,0
+ *  834 x 1112      83,4      185,3        83,4    21,7 px    73,0
+ *  430 x  932      43,0      155,3        73,0    19,0 px    73,0    si
+ *  375 x  667      37,5      111,2        73,0    19,0 px    73,0    si
  * ```
  *
  * ## Por que el piso es 73 y no 60
@@ -52,6 +60,39 @@
  * de abajo — es la trampa que este docblock ya se comio dos veces con el layout viejo.
  */
 export const CELL_PX_MIN = 73;
+
+/**
+ * El TECHO del tamano de celda, en px. Es lo unico que el 021 no tenia, y por eso en un
+ * escritorio de 1920 x 1080 la baldosa quedaba en 180 px con el nombre de la nota a 46,8:
+ * el tablero pasaba a ser una grilla de doce tarjetas grandes en vez del instrumento denso
+ * que era. Lo pedido, y lo que hace este numero: **que la celda vuelva a medir lo de
+ * antes.**
+ *
+ * Vale `CELL_PX_MIN` y no un literal, y esa igualdad ES la decision: piso y techo en el
+ * mismo lugar significa celda fija en 73, que es exactamente el `CELL_PX` que el repo tuvo
+ * desde el spec 016 hasta el 021. Escribir un `73` aparte seria el par de numeros que
+ * tienen que coincidir y nada sincroniza — el motivo por el que este archivo existe.
+ *
+ * ## Lo que el techo NO deshace
+ *
+ * El layout del 021: no hay tarjetas ni `col-span`, el contenedor raiz sigue midiendo
+ * `100dvh` y los dos paneles siguen flotando `fixed` encima sin empujar la grilla. La
+ * pantalla entera sigue siendo del tablero; lo que cambia es que la GRILLA no se estira
+ * para llenarla, porque con celdas cuadradas de 73 px un tablero de 10 x 6 mide 730 x 438
+ * y ningun reparto lo hace cubrir un viewport de escritorio. Las dos cosas no pueden ser
+ * ciertas a la vez, y de las dos la que se pidio explicitamente es el tamano de la celda.
+ *
+ * Tampoco deshace el MECANISMO, y esa es la otra mitad de por que el techo es una
+ * constante y no un `return 73`: la celda se sigue calculando y sigue viajando por
+ * `--cell`, asi que aflojar el techo —a 96, a 110, a lo que se mida— es cambiar este
+ * numero solo. Con un tamano cableado habria que volver a repartir los `calc()` de las 60
+ * celdas, el velo, la cabeza lectora y las cajas de los dos flotantes.
+ *
+ * Y el piso sigue mandando por debajo: entre 730 px de viewport y el techo la celda es
+ * constante igual, asi que en un telefono el tablero scrollea horizontalmente como
+ * scrolleaba antes del 021.
+ */
+export const CELL_PX_MAX = CELL_PX_MIN;
 
 /**
  * Las razones que vuelven proporcional todo lo que la baldosa media en px fijos.

@@ -261,10 +261,14 @@ export default function Board({
   // para repartir un `max-w-6xl` entre dos tarjetas. Ya no hay dos tarjetas ni hay
   // `max-w-6xl`: el tablero ES la pantalla y los dos paneles flotan encima.
   //
-  // Lo que reemplaza a esa cadena entera es una linea: `--cell`, que sale del viewport
-  // (`components/cell-px.ts`) y no del interior de una caja. La grilla mide
-  // `GRID_W x --cell` y crece con la ventana — entre 2,7 y 6 veces en area contra el
-  // layout viejo, medido sobre los cinco viewports de escritorio de la tabla del spec.
+  // Lo que reemplaza a esa cadena entera es una linea: `--cell`, que sale de
+  // `components/cell-px.ts` y no del interior de una caja. La grilla mide `GRID_W x --cell`
+  // y se CENTRA en la pantalla; lo que ya no hace es crecer con ella. El 021 la dejaba
+  // crecer entre 2,7 y 6 veces en area contra el layout viejo, y eso es justamente lo que
+  // el techo de `CELL_PX_MAX` deshizo: a 1920 x 1080 la baldosa quedaba en 180 px con el
+  // nombre de la nota a 46,8 y el tablero dejaba de leerse como un instrumento denso. La
+  // pantalla sigue siendo del tablero —no hay tarjeta, los dos paneles flotan encima— pero
+  // la celda vale lo que valia antes del 021.
   return (
     <div className="w-full h-full flex items-center justify-center">
       {/* `overflow-x-auto` y no una celda mas chica. La celda tiene PISO —73 px, ver
