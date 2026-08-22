@@ -7,54 +7,90 @@ import TransportPanel from './TransportPanel.tsx';
 import type { PropsDeOrientacion, PropsDeTransporte } from './types/panel.types.ts';
 
 /**
- * La tarjeta de piezas: el contenedor de los dos paneles y las dos filas del medio.
+ * El DOCK de piezas: el panel que flota sobre el tablero, pegado al borde derecho.
  *
  * Presentacional: sin estado, sin efectos. Desde el spec 022 recibe DOS objetos en vez de
  * dieciseis props planas —`orientacion` y `transporte`—, y cada panel recibe solo el
- * suyo. El criterio de reparto esta en `types/panel.types.ts`.
+ * suyo; el criterio de reparto esta en `types/panel.types.ts`. El spec 021 le suma un
+ * tercero, el del plegado, que es estado del shell como todo lo demas.
  *
- * ## Por que este archivo se queda con dos filas
+ * ## De tarjeta en una columna a dock flotante
  *
- * Bajo el `space-y-2` de abajo el orden es regimen → linea de notas, y el bloque de las
- * doce miniaturas no cuelga de ese `space-y-2` sino de la tarjeta, un nivel mas arriba.
+ * Hasta el 021 esto era una tarjeta `md:col-span-4` en una fila de dos, y de ahi salia
+ * todo: el ancho, el alto de la fila y —por esa via— el tamano de la celda del tablero.
+ * Ese razonamiento entero se fue con el `max-w-6xl`. Hoy la caja se mide **en celdas**,
+ * `2 x 4`, y flota encima: no le quita un pixel a la grilla.
  *
- * Hasta el 019 habia una razon mas fuerte para que el reparto fuera este: la fila del
- * recorrido, que es del TRANSPORTE, caia ENTRE dos bloques de orientacion, asi que la
- * orientacion vivia en tres regiones no adyacentes y en dos niveles de anidamiento. Ese
- * problema se acabo: el 019 mudo el boton de los clicks a la fila de transporte, o sea
- * que lo que queda aca es todo del mismo lado.
+ * **Se mide en celdas y no en px, y eso es AC9.** Con medidas fijas la cuenta de «que
+ * celdas tapa» vale para un solo viewport: un dock de 640 px de alto centrado entra en la
+ * fila 5 a 1366 x 768 y tapa `(9,5)`, que es donde arranca la cabeza lectora. Medido en
+ * celdas, tapa `(8,1)`…`(9,4)` en cualquier viewport, porque la caja y la grilla se miden
+ * con la misma unidad.
  *
- * Lo que sigue valiendo es la restriccion que fijo la particion, y por eso no se borra:
- * `space-y-2` compila a `& > :not([hidden]) ~ :not([hidden])`, un selector de HIJO
- * DIRECTO, asi que cualquier envoltorio nuevo convierte dos hijos en uno y se come un
- * margen con las clases intactas y sin que ningun test lo note. Y mover la grilla adentro
- * del `space-y-2` la empujaria 16 px hacia abajo por el `mt-4` del contenedor. Cada
- * componente se lleva un subarbol CONTIGUO y lo devuelve tal cual: las doce miniaturas
- * (`OrientationPanel`) y el bloque `border-t` del transporte (`TransportPanel`).
+ * ## Por que el contenido necesita scroll propio
+ *
+ * Porque la caja dejo de crecer con el contenido. Al piso —`--cell = 73`— el dock mide
+ * 146 x 292 px y lo que va adentro medía del orden de 349 x 428. El `overflow-y-auto` es
+ * lo que hace que eso entre sin empujar la grilla; el ANCHO lo resuelven en su casa
+ * `OrientationPanel` (la tabla de columnas contra el contenedor) y `TransportPanel` (las
+ * dos filas que se apilan).
+ *
+ * ## Lo que se queda del layout viejo
+ *
+ * El `space-y-2` de las dos filas del medio: compila a
+ * `& > :not([hidden]) ~ :not([hidden])`, un selector de HIJO DIRECTO, asi que cualquier
+ * envoltorio nuevo convierte dos hijos en uno y se come un margen con las clases intactas
+ * y sin que ningun test lo note. Y mover la grilla de miniaturas adentro de ese
+ * `space-y-2` la empujaria 16 px hacia abajo por el `mt-4`.
  */
 
 interface Props {
   orientacion: PropsDeOrientacion;
   transporte: PropsDeTransporte;
+  /** El plegado, que vive en el shell: este componente lo lee y lo pide, no lo guarda. */
+  abierto: boolean;
+  onToggle: () => void;
 }
 
-export default function PiecePalette({ orientacion, transporte }: Props) {
+export default function PiecePalette({ orientacion, transporte, abierto, onToggle }: Props) {
   const { selected, orientaciones, regimen, noteSet, onRegimen, onResetOrientacion } = orientacion;
   // La de la pieza en la mano, derivada del `Record` y no recibida como dos props sueltas:
   // dos fuentes de la misma verdad son dos formas de que la linea diga una orientacion y
   // la miniatura dibuje otra.
   const { rotation, mirror } = orientaciones[selected];
   const { grados, reflejada } = textoDeOrientacion(rotation, mirror);
-  // `md:col-span-4` desde el spec 014: al morir `PlacedList` quedaron dos columnas libres
-  // y esta es una de las dos. La otra va al tablero, y el reparto sale MEDIDO y no
-  // elegido: a partir de `md:col-span-8` el tablero deja de estar limitado por el ancho y
-  // pasa a estarlo por el alto, asi que la novena columna no le compraria un solo pixel
-  // (la tabla esta en `Board.tsx`). El interior de esta tarjeta pasa de 252 a 349,3 px,
-  // que es donde el spec 016 va a meter las doce miniaturas — y es la premisa de la tabla
-  // de columnas de `OrientationPanel.tsx`, que sin este dato no se puede re-derivar.
+  // La posicion sale de la MEDICION y no de la estetica, y leyendo `fixed right-0 top-1/2`
+  // no se adivina: `2 x 4` celdas pegadas al borde derecho y centradas en vertical tapan
+  // `(8,1)`…`(9,4)` y dejan libres `(0,0)` y `(9,5)`, que son las dos celdas que no se
+  // pueden tapar — ahi es donde el circuito cierra (spec 009) y donde arranca la cabeza
+  // lectora (spec 010). Arriba se descarto por lo mismo: una barra superior tapa el borde
+  // de arriba entero, `(0,0)` incluida.
+  //
+  // El fondo va semiopaco con `backdrop-blur` y no opaco: abajo hay celdas con nota, y un
+  // panel opaco las esconde mientras uno translucido dice que estan ahi.
   return (
-    <div className="col-span-12 md:col-span-4 bg-white rounded-2xl shadow p-3">
-      <h2 className="text-lg font-semibold mb-2">Piezas</h2>
+    <aside
+      className="fixed right-0 top-1/2 -translate-y-1/2 z-20 flex flex-col rounded-l-2xl shadow-lg bg-white/85 backdrop-blur p-2 text-sm"
+      style={{ width: `calc(var(--cell) * 2)`, maxHeight: `calc(var(--cell) * 4)` }}
+    >
+      {/* Un `<button>` y no un `<h2>` con `onClick`: es un control, y como control tiene
+          que existir para el teclado tambien. `aria-expanded` dice si esta plegado y
+          `aria-controls` a que region se refiere. Plegado deja el encabezado y NADA mas —el
+          panel sigue diciendo que es, en vez de convertirse en un icono suelto. */}
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={abierto}
+        aria-controls="dock-piezas"
+        className="shrink-0 text-left text-base font-semibold mb-2"
+      >Piezas</button>
+      {/* `hidden` y no desmontar, y de eso dependen dos cosas medidas. Una: el
+          `ResizeObserver` del espectro redibuja porque su contenedor CAMBIA DE TAMANO, y
+          eso vale para el otro flotante por el mismo mecanismo. Dos: la barrera del `memo`
+          de `OrientationPanel` (spec 027) — desmontar y remontar le cuesta exactamente las
+          ejecuciones que el memo existe para ahorrar. Con el arbol vivo, las dos siguen
+          valiendo. */}
+      <div id="dock-piezas" hidden={!abierto} className="min-h-0 overflow-y-auto">
       <OrientationPanel orientacion={orientacion} />
       <div className="mt-4 space-y-2">
         {/* El régimen ASCIENDE a fila propia con el spec 019, y no es cosmética. Hasta acá
@@ -172,7 +208,22 @@ export default function PiecePalette({ orientacion, transporte }: Props) {
           <p className="min-h-[2lh]">Notas actuales: {noteSet.map(m => midiName(m)).join(" · ")}</p>
         </div>
         <TransportPanel transporte={transporte} />
+        {/* La leyenda de gestos, mudada aca por el spec 021 desde el `<footer>` del shell.
+            No se borra: es el UNICO lugar donde los cuatro gestos del 013 y la letra del
+            018 estan escritos, y sacarla los vuelve invisibles otra vez — el problema que
+            su propio comentario decia haber resuelto. Y no puede quedar debajo del tablero,
+            que es donde estaba: eso le daria scroll vertical a la pagina, que es lo primero
+            que AC1 prohibe. */}
+        <p className="mt-4 border-t pt-3 text-xs text-slate-500">
+          Rotación cambia la fórmula de escala o el arranque del arpegio, según el régimen; Reflexión invierte el orden (retrógrado).
+          {' '}Click en tablero para colocar y escuchar.
+          {' '}<span className="whitespace-nowrap">Rueda sobre el tablero o <kbd>Shift</kbd> rota</span>;
+          {' '}<span className="whitespace-nowrap">botón derecho o <kbd>Ctrl</kbd> refleja</span>;
+          {' '}<span className="whitespace-nowrap"><kbd>Espacio</kbd> arranca y para</span>;
+          {' '}<span className="whitespace-nowrap">la <kbd>letra</kbd> de una pieza la elige</span>.
+        </p>
       </div>
-    </div>
+      </div>
+    </aside>
   );
 }

@@ -9,7 +9,21 @@ import { cellTextFor } from './cell-text.ts';
 import { cellNameFor } from './cell-name.ts';
 import type { CeldaOcupada } from './cell-name.ts';
 import type { CellText } from './types/cell-text.types.ts';
-import { CELL_PX, ANILLO_FOCO_CLARO, ANILLO_FOCO_OSCURO } from './constants/layout.constants.ts';
+import {
+  NOTA_RAZON, PASO_RAZON, AIRE_RAZON, RADIO_RAZON, RESERVA_RAZON,
+  PASO_ABAJO_RAZON, PASO_DERECHA_RAZON,
+  ANILLO_FOCO_CLARO_RAZON, ANILLO_FOCO_OSCURO_RAZON,
+} from './constants/layout.constants.ts';
+
+/**
+ * Lo que mide `n` celdas, en CSS. Es la unica forma en que este archivo habla de tamanos
+ * desde el spec 021: el numero vive en la custom property `--cell`, que escribe
+ * `use-cell-px.ts` sobre el contenedor raiz y que hereda hasta aca.
+ *
+ * Va por estilo inline y nunca por clase, y eso no es preferencia: Tailwind escanea el
+ * fuente, asi que un `w-[calc(var(--cell)*1)]` interpolado no se generaria.
+ */
+const celdas = (n: number) => `calc(var(--cell) * ${n})`;
 import { PIECE_COLOR } from './constants/palette.constants.ts';
 import Playhead from './Playhead.tsx';
 
@@ -247,36 +261,29 @@ export default function Board({
   // y no elegido, y lo que lo decide es que a partir de ocho columnas cambia quien limita.
   // La tabla es la medicion que DECIDIO el reparto, tomada con la paleta de ENTONCES
   // (429,6 px de alto): su ultima columna no es el `CELL_PX` de hoy, que es 73 y sale
-  // del parrafo de abajo.
+  // La TARJETA se fue con el spec 021, y con ella la tabla de repartos de columnas que
+  // vivia aca: siete specs de mediciones sobre `col-span-7`, `col-span-8` y `col-span-9`
+  // para repartir un `max-w-6xl` entre dos tarjetas. Ya no hay dos tarjetas ni hay
+  // `max-w-6xl`: el tablero ES la pantalla y los dos paneles flotan encima.
   //
-  //   reparto   interior del tablero   por ancho   por alto   CELL_PX
-  //   3 / 7        633,3 × 429,6          63,3       71,6       63  (lo limita el ancho)
-  //   4 / 8        730,7 × 429,6          73,1       71,6       71  (lo limita el ALTO)
-  //   3 / 9        828,0 × 429,6          82,8       71,6       71  (lo limita el ALTO)
-  //
-  // O sea que la novena columna no le compra al tablero un solo pixel: los dos repartos
-  // que la incluyen dan 71. Por eso la segunda columna va a la paleta, que la necesita
-  // para el spec 016 — su interior pasa de 252 a 349,3 px.
-  //
-  // El alto de la tarjeta lo fijaba la PALETA, que era la mas alta de la fila, y el
-  // tablero se estiraba con ella — el spec 016 lo EJERCIO: con las doce miniaturas la
-  // paleta paso de 461,6 a 496 px de caja y `CELL_PX` llego a **73**, que es el techo por
-  // ancho de este reparto (730,7 / 10). Ahi se detuvo, porque pasado ese punto lo que la
-  // paleta crezca ya no agranda el tablero.
-  //
-  // El spec 019 dio vuelta la relacion: al borrar tres filas la paleta cayo a **428** px
-  // contra los 470 del tablero, o sea que la tarjeta mas alta de la fila pasa a ser ESTA.
-  // El interior queda en 730,7 × 438 = 6 × 73 exactos, y `CELL_PX` no se movio porque el
-  // 73 ya lo decidia el ancho. El detalle de la cadena entera esta en el docblock de
-  // `CELL_PX`.
+  // Lo que reemplaza a esa cadena entera es una linea: `--cell`, que sale del viewport
+  // (`components/cell-px.ts`) y no del interior de una caja. La grilla mide
+  // `GRID_W x --cell` y crece con la ventana — entre 2,7 y 6 veces en area contra el
+  // layout viejo, medido sobre los cinco viewports de escritorio de la tabla del spec.
   return (
-    <div className="col-span-12 md:col-span-8 bg-white rounded-2xl shadow p-4">
-      {/* `overflow-x-auto` y no un `CELL_PX` mas chico: la grilla mide 10 × 73 =
-          730 px FIJOS y no se encoge, y abajo del breakpoint `md` el panel util
-          queda en ~311 px. Sin esto la grilla se sale del borde derecho y —toda la
-          cadena de ancestros es `overflow-x: visible`— empuja scroll horizontal a
-          la PAGINA entera. Scrollea el tablero, que es lo que sobra, en vez de
-          achicar la celda: la nota es lo que hay que poder leer. */}
+    <div className="w-full h-full flex items-center justify-center">
+      {/* `overflow-x-auto` y no una celda mas chica. La celda tiene PISO —73 px, ver
+          `CELL_PX_MIN`— asi que abajo de 730 px de viewport la grilla deja de entrar y no
+          se encoge. Sin esto se sale del borde derecho y —toda la cadena de ancestros es
+          `overflow-x: visible`— empuja scroll horizontal a la PAGINA entera. Scrollea el
+          tablero, que es lo que sobra, en vez de achicar la celda: la nota es lo que hay
+          que poder leer.
+          El eje Y computa a `auto` por la regla de CSS que dice que si un eje es `auto` el
+          otro no puede quedar `visible`, y el `max-h-full` es lo que lo pone a trabajar: sin
+          el, en un viewport apaisado y bajo (`vh < 438`) la grilla no desborda a ESTE nodo
+          —que crece con su contenido— sino al raiz, que es `overflow-hidden`, y las filas de
+          abajo quedan recortadas y sin forma de llegar. Con el tope, el desborde vertical es
+          de este contenedor y se scrollea, que es lo que AC5 pide. */}
       {/* La cabeza lectora se monta ACA, dentro del contenedor que scrollea: un
           absoluto se posiciona contra la caja de padding de su contenedor posicionado,
           asi que scrollea con la grilla y sigue alineada debajo de `md`. Se importa
@@ -296,7 +303,7 @@ export default function Board({
           que anda. Por eso la rueda va por `addEventListener(..., { passive: false })`
           desde `use-input.ts`, y lo unico que llega aca es el `ref` del nodo. `contextmenu`
           no esta entre esos tres nombres, asi que el boton derecho si puede ir por prop. */}
-      <div ref={boardRef} className="relative overflow-x-auto" onContextMenu={onContextMenu}>
+      <div ref={boardRef} className="relative max-h-full overflow-x-auto" onContextMenu={onContextMenu}>
         <Playhead />
         {/* FILAS DE VERDAD y no `display: contents` sobre filas ficticias. `role="grid"`
             exige `role="row"`, y hasta el spec 026 esto eran 60 hijos planos dentro de un
@@ -329,7 +336,7 @@ export default function Board({
             key={fila}
             role="row"
             className="grid"
-            style={{ gridTemplateColumns: `repeat(${GRID_W}, ${CELL_PX}px)` }}
+            style={{ gridTemplateColumns: `repeat(${GRID_W}, var(--cell))` }}
           >
           {Array.from({ length: GRID_W }, (_, columna) => {
             const i = fila * GRID_W + columna;
@@ -414,11 +421,18 @@ export default function Board({
             // Va por estilo inline y no por clase porque los dos anchos salen de una
             // constante, y Tailwind escanea el fuente: un `outline-[${N}px]` interpolado no
             // se generaria. El reparto de las dos bandas esta en `layout.constants.ts`.
-            const caja: CSSProperties = { width: CELL_PX, height: CELL_PX };
+            //
+            // Desde el spec 021 los dos son RAZONES de la celda y no dos numeros de 2 px, y
+            // el motivo es el reparto mismo: las bandas se miden en «aires» —una sobre el
+            // aire, la siguiente sobre la baldosa— y el aire dejo de ser fijo. Con los dos
+            // clavados en 2 px, a celda 180 el aire mide 4,93 y las dos bandas caen adentro
+            // de el: el anillo queda de un solo tono, que es lo que estos dos numeros
+            // existen para evitar.
+            const caja: CSSProperties = { width: celdas(1), height: celdas(1), padding: celdas(AIRE_RAZON), borderRadius: celdas(RADIO_RAZON) };
             if (focoEnTablero && x === cursorX && y === cursorY) {
-              caja.boxShadow = `inset 0 0 0 ${ANILLO_FOCO_OSCURO}px #0f172a`;
-              caja.outline = `${ANILLO_FOCO_CLARO}px solid #fff`;
-              caja.outlineOffset = `-${ANILLO_FOCO_OSCURO + ANILLO_FOCO_CLARO}px`;
+              caja.boxShadow = `inset 0 0 0 ${celdas(ANILLO_FOCO_OSCURO_RAZON)} #0f172a`;
+              caja.outline = `${celdas(ANILLO_FOCO_CLARO_RAZON)} solid #fff`;
+              caja.outlineOffset = celdas(-(ANILLO_FOCO_OSCURO_RAZON + ANILLO_FOCO_CLARO_RAZON));
             }
 
             return (
@@ -479,13 +493,14 @@ export default function Board({
                    COLOCAR es invalida —la pieza se choca consigo misma— pero el click no
                    coloca, borra. Sin esto el cursor diria "aca no entra" justo donde el
                    gesto es destructivo, que es lo contrario de lo que pasa. */
-                /* El `rounded-lg` no pinta nada —esta caja no tiene fondo ni borde— y esta
-                   solo para el anillo: `outline` y `box-shadow` siguen el radio del
+                /* El redondeo de `caja` no pinta nada —esta caja no tiene fondo ni borde— y
+                   esta solo para el anillo: `outline` y `box-shadow` siguen el radio del
                    elemento, asi que sin el, el anillo saldria cuadrado alrededor de una
-                   baldosa redondeada. Repite el `rounded-lg` de la baldosa a proposito: es
-                   la misma forma dicha dos veces sobre el mismo objeto. Con el foco afuera
-                   no cambia un pixel. */
-                className={`p-0.5 rounded-lg ${previewValid || !hover || hoverEdita ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                   baldosa redondeada. Repite el de la baldosa a proposito: es la misma
+                   forma dicha dos veces sobre el mismo objeto. Con el foco afuera no cambia
+                   un pixel. Los dos son `RADIO_RAZON` desde el 021, no dos `rounded-lg`
+                   sueltos: una clase de Tailwind no puede interpolar `--cell`. */
+                className={previewValid || !hover || hoverEdita ? 'cursor-pointer' : 'cursor-not-allowed'}
                 /* El title dice las tres cosas de la celda, no solo su coordenada: la
                    nota entra en la baldosa pero el paso va abreviado a `#3`, y sobre
                    el fantasma las dos son lo que decide la jugada. Sale del MISMO
@@ -513,23 +528,53 @@ export default function Board({
                     tablero no se rellena, porque el fondo pintado le sacaba el
                     protagonismo a los 12 colores, que son los que tienen que
                     hablar. */}
-                {/* `pb-2` y `leading-none` no son estetica: son lo que deja crecer la
-                    nota. Lo que la limita NO es el ancho —a 19 px el nombre mas largo
-                    de los 48 (`D#5`) mide 35,4 en 57 de baldosa, o sea 10,8 de aire
+                {/* La reserva de abajo y el `leading-none` no son estetica: son lo que deja
+                    crecer la nota. Lo que la limita NO es el ancho —a 19 px el nombre mas
+                    largo de los 48 (`D#5`) mide 35,4 en 57 de baldosa, o sea 10,8 de aire
                     por lado— sino el `#N`, que esta anclado abajo mientras la nota se
                     centra en todo el alto: compiten por el mismo espacio y a 18 px
                     centrada ya se tocaban. Con la nota centrada en el alto que el `#N`
                     no usa, los 19 px entran con 2,3 px de separacion medidos.
 
+                    Los cuatro numeros de esta baldosa —la reserva, el aire, el redondeo y
+                    la posicion del `#N`— pasaron a RAZONES con el spec 021, no solo las dos
+                    fuentes. Si crecieran solo las letras, a celda 180 la nota quedaria
+                    apretada contra un aire de 2 px y un redondeo de 8, y la baldosa dejaria
+                    de leerse como una ficha para leerse como un casillero — que es
+                    exactamente la lectura que estos numeros existen para evitar. A
+                    `--cell = 73` los cuatro dan los px de siempre.
+
                     El `pb` no mueve el `#N`: un absolute se posiciona contra la caja
                     de PADDING del contenedor, asi que el padding no lo empuja. */}
-                <div style={style}
-                  className={`relative w-full h-full rounded-lg border border-slate-900 flex items-center justify-center pb-2 text-[19px] leading-none font-semibold tabular-nums ${tone}`}>
+                {/* El borde de 1 px es el UNICO numero fijo que sobrevive al spec 021, y
+                    hay que decirlo o el proximo que lea el archivo lo va a leer como un
+                    olvido. Dos razones:
+                    (a) un filete de 1 px es un DELIMITADOR y no un elemento tipografico
+                    —`DESIGN.md` lo argumenta asi, «el tablero se define reforzando la
+                    celda, no rellenando el fondo»—, y proporcional creceria a 2,5 px a
+                    celda 180, donde 60 baldosas contorneadas dejan de leerse como fichas y
+                    pasan a leerse como una grilla dibujada;
+                    (b) un borde en `calc()` da pixeles fraccionarios que el navegador
+                    redondea distinto por arista, y sobre 60 celdas ADYACENTES eso se ve
+                    como un enrejado irregular — el artefacto mas visible posible justo en
+                    el elemento que se repite 60 veces.
+                    El mismo argumento cubre por analogia los otros filetes que este spec
+                    tampoco convierte, y por eso van nombrados: el `border-2 border-dashed`
+                    de `VELO_TAPA` y los tres escalones de grosor de la cabeza (3/2, 2/1,
+                    2/0) que `DESIGN.md` fija. Son GRADOS del mismo filete: si el borde base
+                    se queda en 1 px, lo que lo engorda se queda tambien, o el escalon deja
+                    de medirse contra nada.
+                    No toca la alineacion: el borde se dibuja ADENTRO de la caja. */}
+                <div style={{ ...style, borderRadius: celdas(RADIO_RAZON), paddingBottom: celdas(RESERVA_RAZON), fontSize: celdas(NOTA_RAZON) }}
+                  className={`relative w-full h-full border border-slate-900 flex items-center justify-center leading-none font-semibold tabular-nums ${tone}`}>
                   {/* El paso va como el indice que devuelve el dominio (0..4) y sin
                       renumerar: lo que se lee en la celda es exactamente lo que
                       responden los tests y el `playOrder` del MCP server. El `#` y la
                       esquina inferior derecha son de la lamina. */}
-                  {cell && <span className="absolute bottom-0.5 right-1.5 text-[13px] font-normal leading-tight opacity-70">#{cell.step}</span>}
+                  {cell && <span
+                    className="absolute font-normal leading-tight opacity-70"
+                    style={{ bottom: celdas(PASO_ABAJO_RAZON), right: celdas(PASO_DERECHA_RAZON), fontSize: celdas(PASO_RAZON) }}
+                  >#{cell.step}</span>}
                   {cell?.note ?? ''}
                 </div>
               </div>

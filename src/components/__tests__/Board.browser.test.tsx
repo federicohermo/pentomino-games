@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { page } from 'vitest/browser';
 import Board from '../Board.tsx';
-import { CELL_PX, ANILLO_FOCO_CLARO, ANILLO_FOCO_OSCURO } from '../constants/layout.constants.ts';
+import { CELL_PX_MIN, ANILLO_FOCO_CLARO_RAZON, ANILLO_FOCO_OSCURO_RAZON } from '../constants/layout.constants.ts';
 import { GRID_W, GRID_H } from '../../domain/constants/board.constants.ts';
 import { SHAPES, ANCHOR_INDEX } from '../../domain/constants/pieces.constants.ts';
 import { REGIMEN } from '../../domain/constants/music.constants.ts';
@@ -17,13 +17,29 @@ import type { Cell } from '../../domain/types/transform.types.ts';
  *
  * Lo que se verifica es la jerarquia de canales que el archivo argumenta —**el color de
  * pieza es IDENTIDAD y pierde contra cualquier ESTADO**— y las dos mediciones de layout
- * que sostiene un comentario: que la grilla mida `10 × CELL_PX` fijos y que el
- * `overflow-x-auto` impida que eso empuje scroll horizontal a la PAGINA debajo de `md`.
+ * que sostiene un comentario: que la grilla mida `GRID_W × --cell` y que el
+ * `overflow-x-auto` impida que eso empuje scroll horizontal a la PAGINA cuando gana el
+ * piso.
  *
  * Las dos ultimas necesitan un navegador con viewport: en jsdom no hay ni layout ni
  * scroll, asi que la afirmacion «no empuja scroll a la pagina» seria trivialmente cierta
  * y no verificaria nada.
+ *
+ * ## `--cell` la escribe el test, y eso es parte de lo que verifica
+ *
+ * Desde el spec 021 el tamano de celda no es una constante: viaja por una custom property
+ * que `use-cell-px.ts` cuelga del contenedor RAIZ de la app. `Board` se monta solo aca, sin
+ * ese contenedor, asi que sin un `--cell` puesto `repeat(10, var(--cell))` es invalido y la
+ * grilla colapsa a una columna. Escribirla sobre el nodo que monta el test es lo que ademas
+ * verifica la HERENCIA: si alguna medida de la baldosa dejara de leer `--cell`, dejaria de
+ * seguir a este valor y las aserciones de abajo lo dirian.
  */
+
+/** Pone `--cell` sobre el contenedor del render, como hace el shell sobre su raiz. */
+const conCelda = (container: HTMLElement, px: number) => {
+  container.style.setProperty('--cell', `${px}px`);
+  return container;
+};
 const colocar = (piece: PieceKey, x: number, y: number, muted = false): PlacedPiece => ({
   id: piece,
   piece,
@@ -71,24 +87,79 @@ const enIndice = (container: HTMLElement, x: number, y: number) => celdas(contai
 const baldosa = (celda: HTMLElement) => celda.firstElementChild as HTMLElement;
 
 describe('Board', () => {
-  it('son GRID_W × GRID_H celdas, y cada una mide CELL_PX', async () => {
+  it('son GRID_W × GRID_H celdas, y cada una mide lo que dice `--cell`', async () => {
     const { container } = await render(<Board {...props()} />);
     expect(celdas(container).length).toBe(GRID_W * GRID_H);
 
-    const c = enIndice(container, 0, 0).getBoundingClientRect();
-    expect(Math.round(c.width)).toBe(CELL_PX);
-    expect(Math.round(c.height)).toBe(CELL_PX);
+    // Al piso y al techo: la celda sigue al valor, que es lo que el spec 021 promete y lo
+    // que una constante no podia decir.
+    for (const px of [CELL_PX_MIN, 180]) {
+      conCelda(container, px);
+      const c = enIndice(container, 0, 0).getBoundingClientRect();
+      expect(Math.round(c.width), `${px}`).toBe(px);
+      expect(Math.round(c.height), `${px}`).toBe(px);
+    }
   });
 
-  it('la grilla mide 10 × CELL_PX y NO le empuja scroll horizontal a la pagina', async () => {
-    // La medicion que decide el `overflow-x-auto`: abajo de `md` el panel util queda en
-    // ~311 px y la grilla no se encoge, asi que sin el contenedor que scrollea —toda la
+  it('021 AC18 — las medidas de la baldosa son RAZONES: al techo dan las mismas que al piso', async () => {
+    // No solo las dos fuentes. De la reserva, el aire, el redondeo y la posicion del `#N`
+    // depende que la baldosa «se lea como una ficha y no como un casillero»: si crecieran
+    // solo las letras, a celda 180 la nota quedaria apretada contra un aire de 2 px.
+    const { container } = await render(<Board {...props({ placed: [colocar('F', 3, 2)] })} />);
+    const razones = (px: number) => {
+      conCelda(container, px);
+      const celda = enIndice(container, 3, 2);
+      const tile = baldosa(celda);
+      const paso = tile.querySelector('span')!;
+      const cs = getComputedStyle(celda);
+      const ct = getComputedStyle(tile);
+      const cp = getComputedStyle(paso);
+      return {
+        aire: parseFloat(cs.paddingTop) / px,
+        radio: parseFloat(ct.borderTopLeftRadius) / px,
+        reserva: parseFloat(ct.paddingBottom) / px,
+        nota: parseFloat(ct.fontSize) / px,
+        pasoTamano: parseFloat(cp.fontSize) / px,
+        pasoAbajo: parseFloat(cp.bottom) / px,
+      };
+    };
+
+    const alPiso = razones(CELL_PX_MIN);
+    const alTecho = razones(180);
+    // Que el layout exista: en jsdom todo esto seria 0 y las dos serian iguales por vacias.
+    expect(alPiso.nota).toBeGreaterThan(0);
+    for (const clave of Object.keys(alPiso) as (keyof typeof alPiso)[]) {
+      // La tolerancia es de ±0,5 px sobre la celda mas chica, que es el redondeo del
+      // navegador y no una holgura de criterio.
+      expect(alTecho[clave], clave).toBeCloseTo(alPiso[clave], 2);
+    }
+    // Y al piso los px son los de siempre, que es AC4: la nota a 19 y el `#N` a 13.
+    expect(alPiso.nota * CELL_PX_MIN).toBeCloseTo(19, 0);
+    expect(alPiso.pasoTamano * CELL_PX_MIN).toBeCloseTo(13, 0);
+  });
+
+  it('021 AC20 — el borde de 1 px NO escala, y sigue separando al techo', async () => {
+    // Es el unico numero fijo que sobrevive: un filete es un delimitador y no un elemento
+    // tipografico, y en `calc()` daria fracciones que el navegador redondea distinto por
+    // arista — sobre 60 celdas adyacentes, un enrejado irregular.
+    const { container } = await render(<Board {...props({ placed: [colocar('F', 3, 2)] })} />);
+    for (const px of [CELL_PX_MIN, 180]) {
+      conCelda(container, px);
+      const ancho = getComputedStyle(baldosa(enIndice(container, 3, 2))).borderTopWidth;
+      expect(ancho, `${px}`).toBe('1px');
+    }
+  });
+
+  it('la grilla mide GRID_W × --cell y NO le empuja scroll horizontal a la pagina', async () => {
+    // La medicion que decide el `overflow-x-auto`: la celda tiene PISO, asi que abajo de
+    // 730 px de viewport la grilla no se encoge, y sin el contenedor que scrollea —toda la
     // cadena de ancestros es `overflow-x: visible`— el desborde llega hasta el `body`.
     await page.viewport(375, 800);
     try {
       const { container } = await render(<Board {...props()} />);
+      conCelda(container, CELL_PX_MIN);
       const grilla = container.querySelector('div.grid')!;
-      expect(Math.round(grilla.getBoundingClientRect().width)).toBe(GRID_W * CELL_PX);
+      expect(Math.round(grilla.getBoundingClientRect().width)).toBe(GRID_W * CELL_PX_MIN);
 
       // El que scrollea es el tablero, que es lo que sobra.
       const scroller = container.querySelector('div.relative.overflow-x-auto')!;
@@ -406,10 +477,25 @@ describe('Board — el teclado y el foco', () => {
 
     const conFoco = await render(<Board {...props({ hover: [4, 2] as Cell, focoEnTablero: true })} />);
     const enfocada = enIndice(conFoco.container, 4, 2);
-    expect(enfocada.style.outline).toContain(`${ANILLO_FOCO_CLARO}px`);
-    expect(enfocada.style.outlineOffset).toBe(`-${ANILLO_FOCO_OSCURO + ANILLO_FOCO_CLARO}px`);
-    // Normalizado por el navegador: el color va adelante y el `inset` atras.
-    expect(enfocada.style.boxShadow).toContain(`0px 0px 0px ${ANILLO_FOCO_OSCURO}px inset`);
+    expect(enfocada.style.outline).toContain('calc(');
+    // Desde el spec 021 el anillo es una RAZON de la celda, asi que se lee el COMPUTADO y
+    // no la cadena escrita: comparar el literal ataria el test a la sintaxis del `calc()`
+    // en vez de a lo que el anillo mide. Se verifica al TECHO, que es donde el bug vive: con
+    // los dos anchos clavados en 2 px, a celda 180 el aire mide 4,93 y las dos bandas caen
+    // adentro de el — la clara deja de pisar la baldosa y el anillo queda de un solo tono.
+    conCelda(conFoco.container, 180);
+    const cs = getComputedStyle(enfocada);
+    // Chromium redondea `outline-width` y `outline-offset` a pixeles ENTEROS, asi que se
+    // comparan contra el par floor/ceil y no con una igualdad: 4,93 computa a 4. Lo que
+    // importa es que hayan CRECIDO con la celda —a 73 valian 2 y -4— y no el decimal.
+    const entre = (valor: number, exacto: number) => {
+      expect(valor).toBeGreaterThanOrEqual(Math.floor(exacto));
+      expect(valor).toBeLessThanOrEqual(Math.ceil(exacto));
+    };
+    entre(parseFloat(cs.outlineWidth), 180 * ANILLO_FOCO_CLARO_RAZON);
+    entre(parseFloat(cs.outlineOffset), -180 * (ANILLO_FOCO_OSCURO_RAZON + ANILLO_FOCO_CLARO_RAZON));
+    expect(parseFloat(cs.outlineWidth)).toBeGreaterThan(2);
+    expect(cs.boxShadow).toContain('inset');
     // Una sola celda con anillo, como una sola con `tabIndex={0}`.
     expect(celdas(conFoco.container).filter(c => c.style.outline !== '').length).toBe(1);
   });
@@ -418,13 +504,17 @@ describe('Board — el teclado y el foco', () => {
     // La medicion que el repo ya pago para la cabeza lectora: `scale` cuenta para el
     // overflow scrolleable y hace aparecer las dos barras. `outline` y `box-shadow` son
     // ink overflow, y dibujados hacia adentro ni siquiera asoman de la caja.
+    // Re-corrido al TECHO desde el spec 021, que es donde el anillo es mas grande: a celda
+    // 180 las dos bandas miden 4,93 px cada una en vez de 2.
     const esquina = [GRID_W - 1, GRID_H - 1] as Cell;
     const sinFoco = await render(<Board {...props({ hover: esquina })} />);
+    conCelda(sinFoco.container, 180);
     const antes = sinFoco.container.querySelector('div.relative.overflow-x-auto')!;
     const medida = [antes.scrollWidth, antes.scrollHeight];
     await sinFoco.unmount();
 
     const conFoco = await render(<Board {...props({ hover: esquina, focoEnTablero: true })} />);
+    conCelda(conFoco.container, 180);
     const despues = conFoco.container.querySelector('div.relative.overflow-x-auto')!;
     expect([despues.scrollWidth, despues.scrollHeight]).toEqual(medida);
   });

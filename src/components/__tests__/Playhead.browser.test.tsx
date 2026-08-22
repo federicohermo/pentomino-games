@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from 'vitest-browser-react';
-import { CELL_PX } from '../constants/layout.constants.ts';
+import { CELL_PX_MIN } from '../constants/layout.constants.ts';
 import { MARCA } from '../constants/route.constants.ts';
 import type { Marca, CeldaPorEstrenar } from '../types/route.types.ts';
 
@@ -17,7 +17,23 @@ import type { Marca, CeldaPorEstrenar } from '../types/route.types.ts';
  * mientras estuvo adentro del `useEffect` de un `.tsx` no se podia exportar
  * —`react-refresh/only-export-components`— y por lo tanto no se podia llamar. Es el
  * mismo movimiento con el que el 005 saco el dominio de `App.tsx`.
+ *
+ * ## Las posiciones se leen COMPUTADAS, no como la cadena escrita
+ *
+ * Desde el spec 021 el bucle escribe `calc(var(--cell) * n)` y no un producto en pixeles,
+ * asi que comparar contra la cadena literal ataria el test a la SINTAXIS en vez de a la
+ * posicion. Lo que se afirma es donde queda la cabeza, que es lo que el modulo decide.
+ *
+ * Y el test tiene que poner `--cell`: `Playhead` se monta solo, sin el contenedor raiz que
+ * la cuelga en la app. Sin ella, un `calc()` con una custom property indefinida es una
+ * declaracion invalida y el computado sale vacio.
  */
+
+/** Pone `--cell` sobre el contenedor del render, como hace el shell sobre su raiz. */
+const conCelda = (container: HTMLElement, px = CELL_PX_MIN) => {
+  container.style.setProperty('--cell', `${px}px`);
+  return container;
+};
 const fuente = vi.hoisted(() => ({
   marcas: [] as (Marca | null)[],
   velo: [] as CeldaPorEstrenar[],
@@ -83,16 +99,24 @@ describe('Playhead — el montaje', () => {
 });
 
 describe('Playhead — la cabeza', () => {
-  it('salta a la celda del offset, en pixeles de CELL_PX', async () => {
+  it('salta a la celda del offset, en celdas de `--cell`', async () => {
     fuente.marcas = [nota(3, 2)];
     fuente.offset = 0;
     const { container } = await render(<Playhead />);
+    conCelda(container);
     await cuadro();
 
     const [, cabeza] = capas(container);
     expect(cabeza.style.display).toBe('block');
     // Salta y no se desliza: el instrumento esta cuantizado a la grilla de intervalos.
-    expect(cabeza.style.transform).toBe(`translate(${3 * CELL_PX}px, ${2 * CELL_PX}px)`);
+    const en = (px: number) => {
+      conCelda(container, px);
+      return getComputedStyle(cabeza).transform;
+    };
+    expect(en(CELL_PX_MIN)).toBe(`matrix(1, 0, 0, 1, ${3 * CELL_PX_MIN}, ${2 * CELL_PX_MIN})`);
+    // Y sigue a `--cell` sin que el bucle vuelva a escribir nada, que es lo que hace que la
+    // cabeza quede alineada mientras se arrastra el borde de la ventana (AC6).
+    expect(en(180)).toBe(`matrix(1, 0, 0, 1, ${3 * 180}, ${2 * 180})`);
   });
 
   it('los tres kinds tienen tres bordes distintos, y el click no pinta afuera', async () => {
@@ -170,12 +194,20 @@ describe('Playhead — el velo', () => {
     const { container } = await render(<Playhead />);
     await cuadro();
 
+    conCelda(container);
     const [capa] = capas(container);
     const tapas = [...capa.children] as HTMLElement[];
     expect(tapas.length).toBe(2);
-    expect(tapas[0].style.left).toBe(`${1 * CELL_PX}px`);
-    expect(tapas[0].style.top).toBe('0px');
-    expect(tapas[0].style.width).toBe(`${CELL_PX}px`);
+    const cs = () => getComputedStyle(tapas[0]);
+    expect(cs().left).toBe(`${1 * CELL_PX_MIN}px`);
+    expect(cs().top).toBe('0px');
+    expect(cs().width).toBe(`${CELL_PX_MIN}px`);
+    // El aire del velo es la MISMA razon que el de la baldosa: si se desalinearan, el velo
+    // dejaria de cubrir la celda exacta, que es lo unico que esas medidas garantizan.
+    conCelda(container, 180);
+    expect(cs().left).toBe(`${1 * 180}px`);
+    expect(cs().width).toBe('180px');
+    expect(parseFloat(cs().paddingTop) / 180).toBeCloseTo(2 / CELL_PX_MIN, 3);
   });
 
   it('una celda se destapa cuando la cabeza la PISA, no cuando arranca el ciclo', async () => {

@@ -148,15 +148,69 @@ const click = (el: HTMLElement, init: MouseEventInit = {}) =>
   el.dispatchEvent(new MouseEvent('click', { bubbles: true, ...init }));
 
 describe('App — la composicion', () => {
-  it('monta las tres tarjetas y el pie con los gestos', async () => {
+  it('021 — el tablero y los dos flotantes, sin una sola tarjeta', async () => {
+    // Hasta el 021 este caso se llamaba «monta las tres tarjetas y el pie con los gestos».
+    // Ya no hay tarjetas: el tablero ES la pantalla y los dos paneles flotan encima. Se
+    // afirma por ROL Y NOMBRE y no por `className`, que es lo que deja que el test
+    // sobreviva al proximo cambio de layout.
     const { container } = await render(<App />);
-    expect(container.textContent).toContain('Piezas');
-    expect(container.textContent).toContain('Señal');
-    // El pie decia el modelo y no mencionaba un solo gesto, que es lo que hacia
-    // invisibles a los atajos del 013.
+    expect(celdas(container).length).toBe(60);
+
+    // Los dos flotantes existen y son plegables: el encabezado es un control, no un `<h2>`.
+    await expect.element(page.getByRole('button', { name: /^Piezas$/, expanded: true })).toBeInTheDocument();
+    await expect.element(page.getByRole('button', { name: /^Señal$/, expanded: true })).toBeInTheDocument();
+
+    // Y no EMPUJAN la grilla: los dos son `fixed`, o sea que salen del flujo.
+    for (const flotante of container.querySelectorAll('aside')) {
+      expect(getComputedStyle(flotante).position).toBe('fixed');
+    }
+
+    // La leyenda de gestos sobrevivio a la mudanza del `<footer>`: es el unico lugar donde
+    // los cuatro gestos del 013 y la letra del 018 estan escritos.
     expect(container.textContent).toContain('Rueda sobre el tablero');
     expect(container.textContent).toContain('arranca y para');
-    expect(celdas(container).length).toBe(60);
+  });
+
+  it('021 AC1 — la pagina no scrollea: el tablero mide exactamente el viewport', async () => {
+    await render(<App />);
+    // Es la mitad falsable de AC1 que no necesita cinco viewports: si el raiz creciera mas
+    // que la ventana —una tarjeta de vuelta, un flotante en el flujo, un `min-h-screen`
+    // con contenido debajo— esto se cae.
+    expect(document.documentElement.scrollHeight).toBe(document.documentElement.clientHeight);
+  });
+
+  it('021 AC10 y AC11 — los dos flotantes se pliegan, y el espectro sigue vivo al plegarse', async () => {
+    // Plegar OCULTA y no desmonta, y de eso dependen dos cosas medidas: el
+    // `ResizeObserver` del espectro —que redibuja porque su contenedor cambia de TAMAÑO— y
+    // la barrera del `memo` de `OrientationPanel`, que se pagaria entera al remontar.
+    const { container } = await render(<App />);
+    const senal = page.getByRole('button', { name: /^Señal$/ });
+    const region = container.querySelector('#franja-senal')!;
+    expect(region.hasAttribute('hidden')).toBe(false);
+    expect(region.querySelector('canvas')).not.toBeNull();
+
+    await senal.click();
+    await vi.waitFor(() => expect(region.hasAttribute('hidden')).toBe(true));
+    // El canvas sigue en el DOM: es lo que hace que el observador siga observando.
+    expect(region.querySelector('canvas')).not.toBeNull();
+
+    await senal.click();
+    await vi.waitFor(() => expect(region.hasAttribute('hidden')).toBe(false));
+
+    // Y el dock de piezas, con el mismo mecanismo y su propio estado: son dos plegados
+    // independientes, no uno compartido. Acá también OCULTA y no desmonta — de eso depende
+    // la barrera del `memo` de `OrientationPanel`, que remontar pagaría entera.
+    const piezas = page.getByRole('button', { name: /^Piezas$/ });
+    const dock = container.querySelector('#dock-piezas')!;
+    expect(dock.hasAttribute('hidden')).toBe(false);
+    await piezas.click();
+    await vi.waitFor(() => expect(dock.hasAttribute('hidden')).toBe(true));
+    // La franja no se plegó con él.
+    expect(region.hasAttribute('hidden')).toBe(false);
+    // Las doce miniaturas siguen en el DOM.
+    expect(dock.querySelectorAll('button').length).toBeGreaterThan(12);
+    await piezas.click();
+    await vi.waitFor(() => expect(dock.hasAttribute('hidden')).toBe(false));
   });
 
   it('arranca con el tempo del motor y el regimen de siempre', async () => {
@@ -387,8 +441,11 @@ describe('App — la orientacion, por panel y por gesto', () => {
     // dejaste), AC7 (el `0°` no toca las otras once) y AC9 (la línea sigue a la pieza).
     const { container } = await render(<App />);
     const linea = () => [...container.querySelectorAll('p > span')].find(e => /^\d+°/.test(e.textContent!))!;
+    // Los dos encabezados de los flotantes son `<button>` SIN `aria-label` —su nombre es su
+    // texto visible— asi que hay que filtrarlos antes de leerlo.
     const nombreDe = (key: string) => [...container.querySelectorAll('button')]
-      .find(b => b.getAttribute('aria-label')!.startsWith(`${key},`))!.getAttribute('aria-label');
+      .map(b => b.getAttribute('aria-label'))
+      .find(n => n !== null && n.startsWith(`${key},`));
 
     // La `F` a 180° y reflejada, con los dos gestos de teclado.
     tapDeModificador(window, 'Shift');
@@ -424,7 +481,8 @@ describe('App — la orientacion, por panel y por gesto', () => {
     await page.getByRole('button', { name: 'Vaciar el tablero y frenar el transporte' }).click();
     await vi.waitFor(() => expect(conNota(container)).toBe(0));
     const nombre = [...container.querySelectorAll('button')]
-      .find(b => b.getAttribute('aria-label')!.startsWith('F,'))!.getAttribute('aria-label');
+      .map(b => b.getAttribute('aria-label'))
+      .find(n => n !== null && n.startsWith('F,'));
     expect(nombre).toBe('F, rotación 90°');
   });
 
@@ -584,10 +642,11 @@ describe('App — lo que llega al arbol de accesibilidad', () => {
     //
     // Eran 22 hasta el spec 019, que borro los cuatro grados y el ON/OFF de Reflexion y
     // mudo el del recorrido: 12 + 2 + 3 = 17. El 020 devuelve UNO —el `0°` de la linea de
-    // orientacion— y son 18.
+    // orientacion— y son 18. El 021 suma los DOS encabezados de los flotantes, que pasan de
+    // `<h2>` a `<button>` con `aria-expanded`: 20.
     const { container } = await render(<App />);
     const botones = [...container.querySelectorAll('button')];
-    expect(botones.length).toBe(18);
+    expect(botones.length).toBe(20);
     for (const boton of botones) {
       expect(boton.getAttribute('type'), boton.textContent ?? '').toBe('button');
     }
@@ -702,10 +761,19 @@ describe('App — el tablero se toca con el teclado (spec 026)', () => {
     const origen = celda(container, 4, 2);
     origen.focus();
 
-    // Y la pagina tiene de donde scrollear: sin esto, el par del final seria trivialmente
-    // cierto tambien con una tecla real, por no haber margen que perder.
+    // **El oraculo cambio de forma con el spec 021, y hacia arriba.** Hasta ahi la pagina
+    // TENIA de donde scrollear —la app medía mas que el viewport— y lo que se afirmaba era
+    // que las cuatro flechas no le hicieran perder esa posicion; sin esa premisa el par del
+    // final habria sido trivialmente cierto. Hoy el contenedor raiz mide exactamente
+    // `100dvh` y es `overflow-hidden`, asi que la pagina **no tiene scroll que perder**: es
+    // AC1, y es una propiedad mas fuerte que la que este test verificaba.
+    //
+    // Lo que se sigue verificando con teclas de VERDAD es lo de arriba —que las flechas
+    // muevan el foco— y que no aparezca scroll de pagina en el intento. El
+    // `preventDefault` en si lo verifica `Board.browser.test.tsx` con eventos sinteticos,
+    // que ahi es el oraculo correcto porque afirma lo que hace el HANDLER.
     expect(document.documentElement.scrollHeight)
-      .toBeGreaterThan(document.documentElement.clientHeight);
+      .toBe(document.documentElement.clientHeight);
     const antes = [document.documentElement.scrollTop, document.documentElement.scrollLeft];
 
     await new Promise(r => setTimeout(r, 60));
@@ -904,7 +972,10 @@ describe('App — el fondo, un solo valor (spec 028)', () => {
   // El hex no se escribe aca por eso mismo: su unica aparicion en `src/` es el token.
   it('el div raiz pinta lo mismo que el body, y ninguno de los dos es transparente', async () => {
     const { container } = await render(<App />);
-    const raiz = container.querySelector('div.min-h-screen')!;
+    // El primer hijo del contenedor y no `div.min-h-screen`: el spec 021 cambio esa clase
+    // por `h-[100dvh] overflow-hidden`. Buscarlo por posicion en vez de por una clase de
+    // layout es lo que hace que este test siga midiendo el FONDO cuando el layout cambie.
+    const raiz = container.firstElementChild!;
     const delDiv = getComputedStyle(raiz).backgroundColor;
     const delBody = getComputedStyle(document.body).backgroundColor;
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { CELL_PX } from './constants/layout.constants.ts';
+import { AIRE_RAZON, RADIO_RAZON } from './constants/layout.constants.ts';
 import { NOTA } from './constants/playhead.constants.ts';
 import { iniciarCabeza, borde } from './playhead-loop.ts';
 
@@ -62,10 +62,13 @@ import { iniciarCabeza, borde } from './playhead-loop.ts';
  * La cabeza SALTA y no se desliza (D6): el instrumento esta cuantizado a la grilla de
  * intervalos, y un movimiento continuo sugeriria una continuidad que no existe.
  */
+/** Lo que mide `n` celdas, en CSS. Ver `Board.tsx` y `playhead-loop.ts`. */
+const celdas = (n: number) => `calc(var(--cell) * ${n})`;
+
 export default function Playhead() {
   const capaRef = useRef<HTMLDivElement>(null);
   const ref = useRef<HTMLDivElement>(null);
-  // Dos refs para la cabeza y no una: el `transform` va en la caja de `CELL_PX` —que es la
+  // Dos refs para la cabeza y no una: el `transform` va en la caja de una celda —que es la
   // que se mueve sobre la grilla— y el borde en la baldosa de adentro, 2 px mas chica,
   // que es la que tiene la forma y el redondeo de la celda. Dibujarlo en la caja externa
   // daria un rectangulo que pisa la separacion entre celdas.
@@ -96,12 +99,15 @@ export default function Playhead() {
       <div
         ref={ref}
         aria-hidden="true"
-        className="absolute top-0 left-0 z-10 p-0.5 pointer-events-none"
-        style={{ width: CELL_PX, height: CELL_PX, display: 'none' }}
+        className="absolute top-0 left-0 z-10 pointer-events-none"
+        style={{ width: celdas(1), height: celdas(1), padding: celdas(AIRE_RAZON), display: 'none' }}
       >
-        {/* Misma caja que la baldosa de `Board.tsx` —2 px de aire y `rounded-lg`— para que
-            el borde cubra la celda exacta y no medio pixel afuera. */}
-        <div ref={resalteRef} className="w-full h-full rounded-lg" style={{ boxShadow: borde(NOTA) }} />
+        {/* Misma caja que la baldosa de `Board.tsx` —el aire y el radio, los dos como razon
+            de `--cell` desde el spec 021— para que el borde cubra la celda exacta y no medio
+            pixel afuera. Eran un `p-0.5` y un `rounded-lg` literales: con la baldosa vuelta
+            proporcional y estos dos clavados, a celda 180 el anillo de la cabeza cubriria
+            2 px de aire sobre una baldosa que tiene 4,93. */}
+        <div ref={resalteRef} className="w-full h-full" style={{ borderRadius: celdas(RADIO_RAZON), boxShadow: borde(NOTA) }} />
       </div>
     </>
   );

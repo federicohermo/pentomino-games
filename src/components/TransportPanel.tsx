@@ -20,7 +20,13 @@ export default function TransportPanel({ transporte }: { transporte: PropsDeTran
   const { tempo, playing, clicks, onTempo, onTogglePlay, onToggleClicks, onReset } = transporte;
   return (
     <div className="mt-4 border-t pt-3 space-y-2">
-      <div className="flex items-center justify-between">
+      {/* La fila de Tempo se APILA desde el spec 021, y no es estetica: estaba dimensionada
+          para la tarjeta de ~349 px que ese spec borra, y el dock mide 146 al piso. Tres
+          cosas en una fila —la etiqueta, el slider y un lector de ancho fijo— no entran, y
+          el desborde seria HORIZONTAL: ni el `overflow-y` del dock lo corta ni un
+          `overflow-x` lo arregla, porque ese scroll es justamente lo que AC19 prohibe.
+          Apilado, el slider toma el ancho que haya y el lector se acomoda debajo. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-2">
         <span id="tempo-etiqueta" className="font-medium">Tempo</span>
         {/* `aria-labelledby` y no `aria-label`: el nombre toma el mismo texto que ya se
             ve en el span de arriba, en vez de escribirlo dos veces. Si alguien cambia la
@@ -38,13 +44,15 @@ export default function TransportPanel({ transporte }: { transporte: PropsDeTran
           onChange={e=>onTempo(Number(e.target.value))}
           aria-labelledby="tempo-etiqueta"
           aria-valuetext={`${tempo} bpm`}
+          className="w-full min-w-0 order-last"
         />
         {/* Con la unidad: "110" a secas no dice si son bpm o intervalos, y desde el
-            spec 008 el instrumento maneja las dos unidades. `w-16` y no `w-10`
-            porque " bpm" agrega ~24 px; lo absorbe el `range`, que es el unico
-            elemento elastico de la fila. `tabular-nums` mantiene el numero quieto
-            al arrastrar, que es para lo que estaba el ancho fijo. */}
-        <span className="tabular-nums w-16 text-right whitespace-nowrap">{tempo} <span className="text-slate-500">bpm</span></span>
+            spec 008 el instrumento maneja las dos unidades. El `w-16` que tenia se fue con
+            el 021: era el ancho fijo que le reservaba lugar al numero en una fila de tres,
+            y en un dock de 146 px es justamente lo que la hacia desbordar. `tabular-nums`
+            sigue: es lo que mantiene el numero quieto al arrastrar, que es para lo que
+            estaba el ancho fijo — el ancho solo lo reservaba de mas. */}
+        <span className="tabular-nums text-right whitespace-nowrap">{tempo} <span className="text-slate-500">bpm</span></span>
       </div>
       {/* Los TRES botones del transporte, los tres solo-icono. Desde el spec 019 esta fila
           es todo el vocabulario del instrumento en marcha: que suene, que se oiga el
@@ -70,7 +78,10 @@ export default function TransportPanel({ transporte }: { transporte: PropsDeTran
           `↺` (`bg-slate-200`): el boton principal del instrumento quedaria indistinguible
           de los dos secundarios. El verde es lo que un transporte pide leer como "apreta
           esto para que suene". */}
-      <div className="flex gap-2">
+      {/* `flex-wrap` por lo mismo que la fila de arriba: son tres controles desde que el
+          019 le mudo el metronomo, y al piso del 021 el dock mide 146 px. Envolver es lo
+          unico que no desborda horizontalmente. */}
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={onTogglePlay}

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { page } from 'vitest/browser';
-import PiecePalette from '../PiecePalette.tsx';
+import Dock from '../PiecePalette.tsx';
 import { REGIMEN } from '../../domain/constants/music.constants.ts';
 import { ORIENTACIONES_INICIALES } from '../constants/orientation.constants.ts';
 import type { PropsDeOrientacion, PropsDeTransporte } from '../types/panel.types.ts';
@@ -52,6 +52,15 @@ const transporte = (over: Partial<PropsDeTransporte> = {}): PropsDeTransporte =>
   onReset: vi.fn(),
   ...over,
 });
+
+/**
+ * El dock con el plegado ya resuelto, para que los casos de abajo sigan hablando de lo que
+ * les importa. El spec 021 le sumo dos props —`abierto` y `onToggle`, que son estado del
+ * shell— y ninguno de estos tests es sobre eso: el que lo verifica esta al final y usa
+ * `Dock` directo.
+ */
+const PiecePalette = (props: { orientacion: PropsDeOrientacion; transporte: PropsDeTransporte }) =>
+  <Dock {...props} abierto onToggle={vi.fn()} />;
 
 /** Sin un solo sostenido: el mejor caso de los 48. */
 const SIN_SOSTENIDOS = [60, 62, 64, 67, 69];
@@ -244,6 +253,67 @@ describe('PiecePalette', () => {
     expect(largo.h).toBe(corto.h);
     // Y UN renglon, no dos: el peor caso entra sin envolver.
     expect(corto.h).toBe(Math.round(corto.interlineado));
+  });
+
+  it('021 — el encabezado es un BOTON que pliega, y plegado deja solo el encabezado', async () => {
+    // Un `<button>` y no un `<h2>` con `onClick`: es un control, y un control que solo
+    // existe para el mouse es justo la deuda que este spec ya agranda por otro lado.
+    const onToggle = vi.fn();
+    const abierto = await render(
+      <Dock orientacion={orientacion()} transporte={transporte()} abierto onToggle={onToggle} />,
+    );
+    const encabezado = page.getByRole('button', { name: /^Piezas$/, expanded: true });
+    await expect.element(encabezado).toBeInTheDocument();
+    // La region que el boton controla existe y es la que lleva el contenido.
+    const region = abierto.container.querySelector('#dock-piezas')!;
+    expect(region.getAttribute('aria-controls')).toBeNull();
+    expect(encabezado.element().getAttribute('aria-controls')).toBe('dock-piezas');
+    expect(region.hasAttribute('hidden')).toBe(false);
+
+    await encabezado.click();
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    await abierto.unmount();
+
+    // Plegado: el encabezado sigue diciendo que es, y el contenido se OCULTA sin
+    // desmontarse — de eso dependen el `ResizeObserver` del espectro y la barrera del
+    // `memo` de `OrientationPanel`.
+    const plegado = await render(
+      <Dock orientacion={orientacion()} transporte={transporte()} abierto={false} onToggle={onToggle} />,
+    );
+    await expect.element(page.getByRole('button', { name: /^Piezas$/, expanded: false })).toBeInTheDocument();
+    const oculta = plegado.container.querySelector('#dock-piezas')!;
+    expect(oculta.hasAttribute('hidden')).toBe(true);
+    // El arbol sigue vivo: las doce miniaturas estan en el DOM aunque no se vean.
+    expect(oculta.querySelectorAll('button').length).toBeGreaterThan(12);
+  });
+
+  it('021 — la caja del dock se mide en CELDAS, que es lo que la deja fuera de (9,5)', async () => {
+    // Con medidas fijas la cuenta de «que celdas tapa» vale para un solo viewport: un dock
+    // de 640 px de alto centrado entra en la fila 5 a 1366 x 768 y tapa `(9,5)`, que es
+    // donde arranca la cabeza lectora. Medido en celdas, tapa las mismas ocho siempre.
+    const { container } = await render(
+      <Dock orientacion={orientacion()} transporte={transporte()} abierto onToggle={vi.fn()} />,
+    );
+    const dock = container.querySelector('aside')!;
+    for (const px of [73, 180]) {
+      container.style.setProperty('--cell', `${px}px`);
+      const caja = dock.getBoundingClientRect();
+      expect(Math.round(caja.width), `${px}`).toBe(px * 2);
+      expect(Math.round(parseFloat(getComputedStyle(dock).maxHeight)), `${px}`).toBe(px * 4);
+    }
+  });
+
+  it('021 — la leyenda de gestos se mudo acá y no se borró', async () => {
+    // Es el único lugar donde los cuatro gestos del 013 y la letra del 018 están escritos:
+    // borrarla los vuelve invisibles otra vez, que es el problema que su propio comentario
+    // decía haber resuelto. Y debajo del tablero no puede quedar — eso da scroll de página.
+    const { container } = await render(
+      <PiecePalette orientacion={orientacion()} transporte={transporte()} />,
+    );
+    expect(container.textContent).toContain('Rueda sobre el tablero');
+    expect(container.textContent).toContain('refleja');
+    expect(container.textContent).toContain('arranca y para');
+    expect(container.textContent).toContain('pieza la elige');
   });
 
   it('el orden de la tarjeta, de arriba abajo', async () => {
