@@ -165,21 +165,23 @@ operación destructiva sin ninguna otra vía y sin deshacer (`specs/deuda.md`).
 
 - **Una región compuesta es UNA parada de tabulación, y adentro se mueve con las flechas.** Es el
   *roving tabindex*: el elemento activo lleva `tabIndex={0}` y todos sus hermanos `-1`, así que el
-  `Tab` entra a la región y no a cada uno de sus miembros. Las sesenta celdas del tablero no son
-  sesenta paradas:
+  `Tab` entra a la región y no a cada uno de sus miembros. Las celdas del tablero no son una parada
+  cada una — eran sesenta cuando el spec 026 midió esta tabla, y desde el 031 son **hasta 390**:
 
-  | | 60 paradas | **1 parada + flechas** |
+  | | una parada por celda | **1 parada + flechas** |
   |---|---|---|
-  | `Tab` para cruzar el tablero | 60 pulsaciones | 1 |
-  | `Tab` para salir hacia lo que sigue | 60 pulsaciones | 1 |
+  | `Tab` para cruzar el tablero | 60 pulsaciones (390 hoy) | 1 |
+  | `Tab` para salir hacia lo que sigue | 60 pulsaciones (390 hoy) | 1 |
   | Patrón ARIA | ninguno lo recomienda | es el patrón `grid` |
   | Coherente con el gesto que ya existe | no | sí — el mouse también se mueve *dentro* del tablero |
 
-  Sesenta paradas convierten la tarjeta del tablero en una **trampa de salida**. Y no en el camino al
+  Una parada por celda convierte al tablero en una **trampa de salida**. Y no en el camino al
   transporte —`TransportPanel` se compone adentro de `PiecePalette` y la paleta va antes que el
   tablero en el DOM, así que a Play se llega sin pasar por ninguna celda—: la trampa es la de
-  **después**, con todo lo que venga detrás del tablero a sesenta pulsaciones y el `Shift`+`Tab` de
-  vuelta costando lo mismo.
+  **después**, con todo lo que venga detrás del tablero a esa cantidad de pulsaciones y el
+  `Shift`+`Tab` de vuelta costando lo mismo. **Y el otro extremo también es una falla**: si NINGUNA
+  celda lleva el `0`, el tablero se cae del orden de tabulación entero — ver el cursor acotado a
+  `dims`, abajo.
 
 - **El estado del cursor vive en el shell, y el cursor de teclado es el mismo que el del mouse.**
   `App.tsx` ya tiene `hover: Cell | null`, y de ahí salen el fantasma, el cursor (`pointer` /
@@ -188,6 +190,14 @@ operación destructiva sin ninguna otra vía y sin deshacer (`specs/deuda.md`).
   nueva de dibujo — y no aparece un segundo «dónde está apuntando» que pueda desincronizarse del
   primero. Es la misma razón por la que `hoverEdita` le llega calculado a `Board` en vez de derivarse
   ahí: dos copias de dónde está el cursor son dos formas de que prometa una cosa y el gesto haga otra.
+
+  **Y desde el spec 031 lo que se dibuja no es `hover` sino `cursor`, que es `hover` acotado a `dims`.**
+  El tablero cambia de tamaño solo y ni el mouse ni el foco se enteran de un `resize`, así que el par
+  guardado puede quedar apuntando a una celda que ya no existe — y eso no es inofensivo: `Board` ancla
+  el roving tabindex ahí, o sea que un cursor colgado deja al tablero **sin ninguna** `tabIndex={0}` y
+  fuera del orden de tabulación. Es el mismo corte que `visibles`/`placed` hace con las piezas, sobre
+  el otro estado que lleva coordenadas de tablero adentro. La regla que generaliza: **cuando una
+  constante pasa a ser un parámetro, hay que enumerar todo el estado que la tenía embebida.**
 
 - **El anillo de foco va en la caja de afuera, y son dos propiedades y no una.** Una celda son dos
   cajas —la de `--cell` y la baldosa redondeada de adentro, con un aire de `2/73` de la celda—, y los canales de la
@@ -199,11 +209,12 @@ operación destructiva sin ninguna otra vía y sin deshacer (`specs/deuda.md`).
   [DESIGN.md](../../DESIGN.md).
 
 - **Lo prohibido es `transform: scale`**, y el repo ya lo midió: el docblock de
-  `components/constants/playhead.constants.ts` lo dice para la cabeza lectora —«`scale` agranda la
-  region scrolleable y `box-shadow` es ink overflow, o sea que pinta afuera de la caja sin
-  agrandarla»—, con el `scrollHeight` del `overflow-x-auto` de `Board` pasando de 378 a 381 y las dos
-  barras de desplazamiento apareciendo. El anillo de foco es exactamente el mismo caso: pinta encima
-  de la grilla que scrollea, y con `scale` la haría scrollear más.
+  `components/constants/playhead.constants.ts` lo dice para la cabeza lectora —«`scale` AGRANDA la caja
+  a efectos de overflow y `box-shadow` es *ink overflow*: pinta afuera sin agrandar nada»—, y cuando se
+  midió el síntoma eran las dos barras del `overflow-x-auto` de `Board`, con el `scrollHeight` pasando
+  de 378 a 381. Desde el spec 031 ese contenedor no scrollea y quien recorta es el `overflow-hidden`
+  del raíz, así que el síntoma cambió —una celda cortada en el borde en vez de una barra— pero el
+  mecanismo no. El anillo de foco es exactamente el mismo caso.
 
 Con esto queda cerrado el `T025` de Seguimiento del spec 025, que quedó esperando este modelo: su
 tercera cláusula descartó `radiogroup` para el grupo de orientación porque «obliga a un modelo de foco

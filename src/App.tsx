@@ -104,6 +104,9 @@ export default function App(){
   // `not-allowed` y `hoverEdita` funcionen con teclado sin una línea de dibujo nueva, y de
   // ahí también que no aparezca un segundo «dónde está apuntando» que pueda
   // desincronizarse del primero.
+  //
+  // Lo que se DIBUJA con esto es `cursor`, más abajo: desde el spec 031 la grilla cambia de
+  // tamaño sola y el par guardado acá puede quedar apuntando a una celda que ya no existe.
   const [hover, setHover] = useState<Cell | null>(null);
 
   // Si el foco del DOM está adentro del tablero. Es lo único que `hover` no puede contestar
@@ -207,6 +210,31 @@ export default function App(){
   // tener celdas adentro de la grilla nueva —«no entra entera» no es «esta toda afuera»— y
   // colocar encima dejaria dos solapadas en cuanto la ventana crezca.
   const visibles = useMemo(()=> placed.filter(p => cabeEn(p, dims)), [placed, dims]);
+
+  // Y el mismo corte para el CURSOR, que es el otro estado que la grilla nueva puede dejar
+  // apuntando a una celda que ya no existe. `hover` lo escriben el mouse y el foco (spec
+  // 026) y ninguno de los dos se entera de un `resize`: quien mueve el borde de la ventana
+  // —o aprieta `Ctrl`+`=`, que es zoom y por lo tanto viewport— no toca ni el mouse ni el
+  // teclado, asi que el par que quedo guardado puede caer afuera de `dims`.
+  //
+  // Y afuera de `dims` NO es inofensivo, que es lo que lo hace un derivado y no una
+  // prolijidad: `Board` ancla el roving tabindex en esta celda, asi que con el cursor
+  // apuntando a una que no se dibuja **ninguna** celda se queda con `tabIndex={0}` y el
+  // tablero entero sale del orden de tabulacion — el estado que el `?? [0, 0]` de
+  // `Board.tsx` existe para que no pase, y que hasta el 031 era inalcanzable porque las
+  // dimensiones no cambiaban. De paso `previewValid` da `false` con `hover` puesto, o sea
+  // que las celdas quedan todas en `cursor-not-allowed` diciendo "aca no entra" donde la
+  // jugada es perfectamente valida.
+  //
+  // `isValid([hover], [], dims)` y no un predicado nuevo: "esta celda esta adentro del
+  // tablero" es exactamente lo que `isValid` contesta con el tablero vacio, que es el mismo
+  // argumento con el que `cabeEn` se implementa sobre ella en vez de repetir los cuatro
+  // limites.
+  const cursor = hover !== null && isValid([hover], [], dims) ? hover : null;
+  // Y con el cursor apagado el foco tampoco esta en una celda: las dos mitades las escribe
+  // `alMoverElFoco` en la misma linea, asi que se caen juntas. Sin esto el anillo de foco
+  // se dibujaria sobre la (0,0) —adonde cae el ancla— sin que el foco del DOM este ahi.
+  const focoEnCelda = focoEnTablero && cursor !== null;
 
   // Los dos flotantes arrancan ABIERTOS: un instrumento que arranca con los controles
   // escondidos no se descubre. Plegado, cada panel deja solo su encabezado, y cualquier
@@ -473,7 +501,7 @@ export default function App(){
   // quién le pasa el foco, así que `Board` ya distingue «salió del tablero» de «saltó a
   // otra celda» antes de llamar a `alMoverElFoco(null)`.
   function alSalirElMouse(){
-    if (!focoEnTablero) setHover(null);
+    if (!focoEnCelda) setHover(null);
   }
 
   // Si la celda bajo el cursor está ocupada por la pieza que está en la mano, el click
@@ -481,7 +509,7 @@ export default function App(){
   // cursor no puede prometer una cosa y el gesto hacer otra — y por eso mira `visibles`,
   // que es lo que `handleCellClick` mira: con `placed` entero, una pieza que la ventana
   // dejó afuera apagaba el fantasma y prometía una edición sobre una celda vacía.
-  const hoverEdita = esLaPiezaEnLaMano(hover ? occupantAt(visibles, hover[0], hover[1]) : null, selected);
+  const hoverEdita = esLaPiezaEnLaMano(cursor ? occupantAt(visibles, cursor[0], cursor[1]) : null, selected);
 
   // Fantasma: dónde caería la pieza desde la celda bajo el cursor. Las celdas
   // fuera del tablero no se pintan, pero sí cuentan para marcar la jugada
@@ -492,8 +520,8 @@ export default function App(){
   // que el fantasma saldría rosa entero, diciendo "acá no entra" sobre la única celda
   // donde el click sí hace algo. Lo que se ve es la pieza colocada, que es sobre lo que
   // el gesto va a actuar.
-  const previewCells = hover && !hoverEdita ? cellsAt(transformedShape, ANCHOR_INDEX[selected], hover[0], hover[1]) : [];
-  const previewValid = hover && !hoverEdita ? isValid(previewCells, placed, dims) : false;
+  const previewCells = cursor && !hoverEdita ? cellsAt(transformedShape, ANCHOR_INDEX[selected], cursor[0], cursor[1]) : [];
+  const previewValid = cursor && !hoverEdita ? isValid(previewCells, placed, dims) : false;
 
   // El porque de este `useMemo` —y el numero que lo justifica— esta abajo, al lado del
   // `<PiecePalette>` que lo consume: es donde estaba escrita la decision contraria.
@@ -511,8 +539,10 @@ export default function App(){
   //
   // `100dvh` y no `100vh`: en iOS `100vh` incluye la barra del navegador, asi que el
   // tablero salta al aparecer y desaparecer. `overflow-hidden` es lo que hace cierta la
-  // primera mitad de AC1 —cero scroll vertical de pagina—; el desborde del tablero lo
-  // absorbe su propio `overflow-x-auto`, que es adonde tiene que ir.
+  // primera mitad de AC1 —cero scroll vertical de pagina—, y desde el spec 031 tambien la
+  // otra mitad: el tablero ya no tiene un `overflow-x-auto` propio donde absorber su
+  // desborde, porque no puede desbordar —`grid-fit.ts` elige las celdas contra ESTA caja—.
+  // O sea que esta clase paso de ser la red a ser la garantia.
   //
   // `bg-fondo text-slate-900` SOBREVIVEN: desde el spec 028 este `div` es uno de los cuatro
   // lugares donde vive el color de fondo, y `src/__tests__/fondo-sincronizado.test.ts`
@@ -586,7 +616,7 @@ export default function App(){
           dims={dims}
           previewCells={previewCells}
           previewValid={previewValid}
-          hover={hover}
+          hover={cursor}
           selected={selected}
           rotation={rotation}
           mirror={mirror}
@@ -594,7 +624,7 @@ export default function App(){
           onCellClick={handleCellClick}
           onCellEnter={setHover}
           onMouseLeave={alSalirElMouse}
-          focoEnTablero={focoEnTablero}
+          focoEnTablero={focoEnCelda}
           onFoco={alMoverElFoco}
           hoverEdita={hoverEdita}
           onContextMenu={handleContextMenu}

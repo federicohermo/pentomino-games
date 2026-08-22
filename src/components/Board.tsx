@@ -257,7 +257,8 @@ export default function Board({
   // lo recibe, y `contains` distingue los dos casos: sin esa pregunta cada flecha apagaria
   // el cursor a mitad de camino, porque mover el foco es siempre un `blur` seguido de un
   // `focus`. React registra este handler como `focusout`, que burbujea, asi que uno solo en
-  // el contenedor cubre las 60 celdas.
+  // el contenedor cubre todas las celdas, sean las 60 del tablero de referencia o las 390
+  // de un escritorio.
   const alSalirElFoco = (e: FocusEvent<HTMLDivElement>) => {
     if (!e.currentTarget.contains(e.relatedTarget)) onFoco(null);
   };
@@ -283,16 +284,21 @@ export default function Board({
           por abajo. Hoy no hay tal caso: `grid-fit.ts` elige `cols` y `rows` contra la caja
           real, y `cols * cell <= vw` y `rows * cell <= vh` valen por definicion de `floor`.
           El `overflow-hidden` del contenedor raiz pasa de ser la red a ser la garantia. */}
-      {/* La cabeza lectora se monta ACA, dentro del contenedor que scrollea: un
-          absoluto se posiciona contra la caja de padding de su contenedor posicionado,
-          asi que scrollea con la grilla y sigue alineada debajo de `md`. Se importa
+      {/* La cabeza lectora se monta ACA, dentro del `relative` que envuelve la grilla: un
+          absoluto se posiciona contra la caja de padding de su contenedor posicionado, asi
+          que queda alineada con las celdas por construccion y no por aritmetica. Hasta el
+          spec 031 el mismo argumento decia «el contenedor que SCROLLEA», que era la mitad
+          que ese spec se llevo — ya no scrollea nada. Se importa
           directo y no llega por una ranura de `children`: `Playhead` no recibe props, o
           sea que no le pide nada a `App`, y una ranura generica reabriria la puerta que
           el review del 007 cerro midiendo. */}
       {/* Los dos gestos del spec 013 enganchan ACA y no en el `.grid` de adentro ni en
-          la tarjeta: este div cubre exactamente el area del tablero —incluida la franja
-          que queda a la derecha cuando la grilla scrollea debajo de `md`— mientras que
-          el `.grid` dejaria un borde muerto y la tarjeta se comeria el `p-4`.
+          la tarjeta: este div cubre exactamente el area del tablero, mientras que la
+          tarjeta se comeria el `p-4`. El argumento decia ademas «incluida la franja que
+          queda a la derecha cuando la grilla scrollea debajo de `md`», y esa franja se fue
+          con el `overflow-x-auto` del spec 031: hoy este div y el `.grid` miden lo mismo,
+          asi que la eleccion dejo de cambiar nada y se queda por no mover el nodo del
+          `ref`.
 
           Entran distinto y la asimetria esta medida, no elegida: React registra sus
           listeners en el contenedor raiz y a `touchstart`, `touchmove` y `wheel` los
@@ -309,13 +315,13 @@ export default function Board({
             solo CSS grid. La tecnica de mantener el DOM plano y poner `display: contents`
             en el envoltorio tiene historial de SACAR el nodo del arbol de accesibilidad en
             varios navegadores — o sea que fallaria en silencio, solo en algunos, y
-            justamente en lo que este spec viene a arreglar. Seis filas reales de diez
-            celdas, sin `gap`, layout identico al pixel.
+            justamente en lo que este spec viene a arreglar. `dims.h` filas reales de
+            `dims.w` celdas, sin `gap`, layout identico al pixel.
 
-            Por eso el `gridTemplateColumns` se MUDO del contenedor a la fila: las diez
-            columnas estaban donde los hijos eran las 60 celdas, y ahora los hijos son
-            seis. Dejarlo arriba pondria seis filas dentro de una grilla de diez columnas,
-            que es el pixel que AC11 prohibe. El contenedor sigue siendo grid con su
+            Por eso el `gridTemplateColumns` se MUDO del contenedor a la fila: las columnas
+            estaban donde los hijos eran las celdas, y ahora los hijos son las filas.
+            Dejarlo arriba pondria `dims.h` filas dentro de una grilla de `dims.w`
+            columnas, que es el pixel que AC11 prohibe. El contenedor sigue siendo grid con su
             columna implicita —una fila por renglon, ancho de contenido—. El `w-max` que
             tenia se fue con el `overflow-x-auto` del spec 031: sostenia el ancho de una
             grilla que podia ser mas ancha que su caja, y ya no puede serlo.
@@ -438,11 +444,18 @@ export default function Board({
             return (
               <div key={i}
                 role="gridcell"
-                /* Roving tabindex: el `0` viaja con el cursor y las otras 59 celdas quedan
-                   en `-1`, asi que el tablero es UNA parada de tabulacion y no sesenta.
-                   Sesenta convertirian la tarjeta en una trampa de salida: todo lo que
-                   venga detras del tablero quedaria a sesenta pulsaciones, y el
-                   `Shift`+`Tab` de vuelta costaria lo mismo. */
+                /* Roving tabindex: el `0` viaja con el cursor y TODAS las demas quedan en
+                   `-1`, asi que el tablero es UNA parada de tabulacion y no una por celda.
+                   Una por celda lo convertiria en una trampa de salida: todo lo que venga
+                   detras quedaria a esa cantidad de pulsaciones, y el `Shift`+`Tab` de
+                   vuelta costaria lo mismo. Eran sesenta cuando el spec 026 lo midio y
+                   desde el 031 son hasta 390, o sea que el argumento se hizo mas fuerte.
+
+                   El `0` lo tiene que llevar SIEMPRE alguna celda, o el tablero se cae del
+                   orden de tabulacion entero. De ahi el `?? [0, 0]` de arriba para el
+                   cursor apagado — y de ahi tambien que el shell acote `hover` a `dims`
+                   antes de mandarlo, porque una celda que no se dibuja no puede recibirlo
+                   (ver `cursor` en `App.tsx`). */
                 tabIndex={x === cursorX && y === cursorY ? 0 : -1}
                 onClick={(e) => onCellClick(x, y, e.altKey)}
                 onKeyDown={(e) => alTeclear(e, x, y)}
@@ -552,12 +565,13 @@ export default function Board({
                     (a) un filete de 1 px es un DELIMITADOR y no un elemento tipografico
                     —`DESIGN.md` lo argumenta asi, «el tablero se define reforzando la
                     celda, no rellenando el fondo»—, y proporcional creceria a 2,5 px a
-                    celda 180, donde 60 baldosas contorneadas dejan de leerse como fichas y
+                    celda 180, donde las baldosas contorneadas dejan de leerse como fichas y
                     pasan a leerse como una grilla dibujada;
                     (b) un borde en `calc()` da pixeles fraccionarios que el navegador
-                    redondea distinto por arista, y sobre 60 celdas ADYACENTES eso se ve
+                    redondea distinto por arista, y sobre celdas ADYACENTES eso se ve
                     como un enrejado irregular — el artefacto mas visible posible justo en
-                    el elemento que se repite 60 veces.
+                    el elemento que mas se repite, que desde el spec 031 son hasta 390
+                    veces y no 60.
                     El mismo argumento cubre por analogia los otros filetes que este spec
                     tampoco convierte, y por eso van nombrados: el `border-2 border-dashed`
                     de `VELO_TAPA` y los tres escalones de grosor de la cabeza (3/2, 2/1,

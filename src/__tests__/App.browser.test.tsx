@@ -1169,4 +1169,39 @@ describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
     await page.viewport(...VIEWPORT);
     await vi.waitFor(() => expect(conPieza()).toBe(SHAPES.I.length));
   });
+
+  it('AC9 — achicar la ventana no deja al tablero sin ancla de tabulacion', async () => {
+    // El OTRO estado que la grilla nueva puede dejar apuntando afuera, y que no es una
+    // pieza: el cursor. Lo escriben el mouse y el foco (spec 026) y ninguno de los dos se
+    // entera de un `resize`, asi que el par guardado puede caer fuera de `dims`.
+    //
+    // `Board` ancla el roving tabindex en esa celda, o sea que si no se acota, NINGUNA
+    // celda se queda con `tabIndex={0}` y el tablero entero sale del orden de tabulacion —
+    // para quien navega con teclado, que es de quien es el 026, la app se vuelve
+    // inalcanzable hasta que un mouse toque el tablero.
+    //
+    // Se fija el cursor con el MOUSE y no con el foco a proposito: al achicar, la celda
+    // enfocada se DESMONTA, y si el navegador emite el `focusout` de ese desmonte el cursor
+    // se apaga por otro camino y el test pasaria sin verificar nada. El `mouseover` no tiene
+    // esa segunda via — nadie movio el puntero, asi que no hay `mouseout` que lo limpie.
+    const { container } = await render(<App />);
+    const anclas = () => celdas(container).filter(e => e.getAttribute('tabindex') === '0');
+
+    // Una celda de la derecha del todo, que en el tablero chico no existe.
+    hover(celda(container, anchoDe(container) - 1, 4));
+    await vi.waitFor(() => expect(anclas()).toEqual([celda(container, anchoDe(container) - 1, 4)]));
+
+    const chico = grillaPara(375, 667).dims;
+    await page.viewport(375, 667);
+    await vi.waitFor(() => expect(celdas(container).length).toBe(chico.w * chico.h));
+
+    // Sigue habiendo exactamente UNA parada de tabulacion, y es la (0,0): el destino del
+    // `?? [0, 0]` de `Board`, que es lo que el cursor apagado le devuelve.
+    expect(anclas()).toEqual([celda(container, 0, 0)]);
+
+    // Y la otra mitad del mismo cursor colgado: con `hover` puesto fuera del tablero,
+    // `previewValid` da `false` y pintaba las 45 celdas de `cursor-not-allowed`, diciendo
+    // "aca no entra" justo donde la jugada entra.
+    expect(celdas(container).filter(e => e.className.includes('cursor-not-allowed'))).toEqual([]);
+  });
 });
