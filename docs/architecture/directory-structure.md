@@ -189,7 +189,7 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 por lo que el test necesita:
 
 - **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre `src/**/__tests__/*.test.ts`.
-  Son 17 archivos. El dominio es puro y el audio tiene una implementación nativa de Web Audio, así que
+  Son 22 archivos. El dominio es puro y el audio tiene una implementación nativa de Web Audio, así que
   corren ahí sin adaptación. El único que no es el test de un módulo es
   `src/__tests__/documento.test.ts`, del spec 025: lee `index.html` **del disco** porque el proyecto de
   navegador sirve su propio documento y nunca carga ese archivo, así que el `lang` de la página era lo
