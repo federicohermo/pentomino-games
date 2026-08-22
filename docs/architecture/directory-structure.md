@@ -158,6 +158,8 @@ src/
         ├── palette.test.ts       # contraste WCAG recalculado desde el fondo; puro, sin jsdom
         ├── route-source.test.ts  # el par activa/pendiente y el velo, con el motor mockeado
         ├── cell-text.test.ts     # el #N es el paso y la nota es el grado, en las 96
+        ├── cell-name.test.ts     # el nombre accesible de la celda y el texto de las tres
+        │                         #   ediciones que anuncia la región aria-live (spec 026)
         ├── input.test.ts         # la decisión de cada gesto: rueda, teclas y click (013 y 014)
         ├── engine-bridge.test.ts # los tres estados de Click.note al proyectar, y las dos ramas
         │                         #   de alternarTransporte — AC10 del 008, sin jsdom
@@ -202,11 +204,13 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 por lo que el test necesita:
 
 - **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre `src/**/__tests__/*.test.ts`.
-  Son 22 archivos. El dominio es puro y el audio tiene una implementación nativa de Web Audio, así que
-  corren ahí sin adaptación. El único que no es el test de un módulo es
-  `src/__tests__/documento.test.ts`, del spec 025: lee `index.html` **del disco** porque el proyecto de
-  navegador sirve su propio documento y nunca carga ese archivo, así que el `lang` de la página era lo
-  único del repo que ningún test podía falsear.
+  Son 23 archivos. El dominio es puro y el audio tiene una implementación nativa de Web Audio, así que
+  corren ahí sin adaptación. Los que **no** son el test de un módulo son los **tres** de
+  `src/__tests__/`, y los tres leen un archivo **del disco** porque el proyecto de navegador sirve su
+  propio documento y nunca carga esos archivos: `documento.test.ts` (spec 025) verifica el `lang` de
+  `index.html`, y `fondo-sincronizado.test.ts` y `nombre-sincronizado.test.ts` (spec 028) verifican que
+  el color de fondo y el nombre de la app digan lo mismo en los tres lugares donde están escritos. Eran
+  lo único del repo que ningún test podía falsear.
 - **`browser`** — Chromium de verdad, por Playwright, sobre `src/**/__tests__/*.browser.test.tsx`. Son
   11: los seis componentes, `App.tsx`, los tres hooks —el tercero es `use-cell-px.ts`, del spec
   021— y `audio/engine.ts`. Renderizan con
