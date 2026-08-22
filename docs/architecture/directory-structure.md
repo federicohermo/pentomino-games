@@ -95,11 +95,12 @@ src/
 │       ├── playhead.test.ts      #   offsetAt: borde de ciclo, t < origin y los degradados (AC2)
 │       └── test-context.ts       #   helpers de render y medición (no es un test)
 └── components/                   # un componente por archivo, presentacionales
-    ├── PiecePalette.tsx          # el dock flotante y la composición de los dos paneles, más
-    │                             #   las filas que quedan interpoladas entre ellos (spec 022).
-    │                             #   Dejó de ser una tarjeta en columna con el spec 021
-    ├── OrientationPanel.tsx      # las doce miniaturas en la orientación actual (spec 016)
-    ├── TransportPanel.tsx        # tempo, play/pausa y reset
+    ├── PiecePalette.tsx          # el dock flotante y la composición de los dos paneles, más las
+    │                             #   dos filas que quedan entre ellos (specs 022 y 019). Dejó de
+    │                             #   ser una tarjeta en columna con el spec 021
+    ├── OrientationPanel.tsx      # las doce miniaturas, cada una en SU orientación recordada
+    │                             #   (spec 016 la forma, spec 020 la orientación por pieza)
+    ├── TransportPanel.tsx        # tempo, play/pausa, el recorrido en el vacío y el reset
     ├── Board.tsx                 # grilla 10×6: color por pieza, nota por celda, y el fantasma
     │                             #   diciendo lo mismo antes de colocar
     ├── Spectrum.tsx              # canvas del espectro: rAF + HiDPI, sin props
@@ -116,6 +117,9 @@ src/
     │                             #   del .tsx por lo mismo que cell-text.ts
     ├── piece-mini.ts             # la forma de una pieza centrada en la caja de 5×5 de la paleta,
     │                             #   ya rotada y reflejada (spec 016). Fuera del .tsx por lo mismo
+    ├── orientation-text.ts       # la orientación en palabras, en dos fragmentos: la línea visible
+    │                             #   del panel y el aria-label de las miniaturas la componen cada
+    │                             #   uno a su formato (spec 019). Fuera del .tsx por lo mismo
     ├── input.ts                  # la decisión de cada gesto de entrada: rueda, tecla, menú
     │                             #   contextual y click sobre una celda (specs 013 y 014)
     ├── engine-bridge.ts          # las dos puras del puente con el motor: proyectarAlMotor
@@ -138,6 +142,8 @@ src/
     │   ├── palette.constants.ts  # los 12 colores y su color de texto (ver DESIGN.md)
     │   ├── route.constants.ts    # MARCA: los estados de una celda bajo la cabeza lectora
     │   ├── input.constants.ts    # ACCION y EDICION: lo que puede pedir un gesto
+    │   ├── orientation.constants.ts # ROTACION, la orientación inicial y las doce ranuras
+    │   │                         #   derivadas de SHAPES (spec 020)
     │   ├── playhead.constants.ts # los tres grosores de borde, su tabla por MarcaKind y las
     │   │                         #   clases del velo (spec 029, al salir del .tsx)
     │   └── spectrum.constants.ts # BAR_COUNT · GAP · MIN_BAR · IDLE_TEXT
@@ -145,6 +151,7 @@ src/
     │   ├── cell-text.types.ts    # CellText: lo que una celda muestra
     │   ├── route.types.ts        # Marca · CeldaPorEstrenar
     │   ├── engine.types.ts       # MotorDeTransporte · SequenceDelMotor
+    │   ├── orientation.types.ts  # Rotacion · Orientacion · MemoriaDeOrientacion (spec 020)
     │   ├── panel.types.ts        # PropsDeOrientacion · PropsDeTransporte
     │   └── input.types.ts        # Accion · Edicion · los campos de evento que las puras miran
     └── __tests__/
@@ -154,7 +161,13 @@ src/
         ├── input.test.ts         # la decisión de cada gesto: rueda, teclas y click (013 y 014)
         ├── engine-bridge.test.ts # los tres estados de Click.note al proyectar, y las dos ramas
         │                         #   de alternarTransporte — AC10 del 008, sin jsdom
-        └── piece-mini.test.ts    # la forma entra y queda centrada en la caja, en las 96
+        ├── piece-mini.test.ts    # la forma entra y queda centrada en la caja, en las 96
+        ├── orientation-text.test.ts # las ocho combinaciones, y que las 29 orientaciones que la
+        │                         #   miniatura no distingue den textos distintos (AC5 del 019)
+        ├── orientation-constants.test.ts # las doce ranuras salen de SHAPES y arrancan en 0°
+        │                         #   sin reflejar (spec 020)
+        └── cell-px.test.ts       # el piso, los dos techos y el empate de max(min(vw/10, vh/6))
+                                  #   (spec 021)
 ```
 
 ## La dirección de dependencia
