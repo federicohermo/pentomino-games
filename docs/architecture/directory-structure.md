@@ -95,10 +95,10 @@ src/
 │       ├── playhead.test.ts      #   offsetAt: borde de ciclo, t < origin y los degradados (AC2)
 │       └── test-context.ts       #   helpers de render y medición (no es un test)
 └── components/                   # un componente por archivo, presentacionales
-    ├── PiecePalette.tsx          # la tarjeta y la composición de los dos paneles, más las dos
-    │                             #   filas que quedan entre ellos (specs 022 y 019)
+    ├── PiecePalette.tsx          # la tarjeta y la composición de los dos paneles, más las
+    │                             #   filas que quedan interpoladas entre ellos (spec 022)
     ├── OrientationPanel.tsx      # las doce miniaturas en la orientación actual (spec 016)
-    ├── TransportPanel.tsx        # tempo, play/pausa, el recorrido en el vacío y el reset
+    ├── TransportPanel.tsx        # tempo, play/pausa y reset
     ├── Board.tsx                 # grilla 10×6: color por pieza, nota por celda, y el fantasma
     │                             #   diciendo lo mismo antes de colocar
     ├── Spectrum.tsx              # canvas del espectro: rAF + HiDPI, sin props
@@ -115,9 +115,6 @@ src/
     │                             #   del .tsx por lo mismo que cell-text.ts
     ├── piece-mini.ts             # la forma de una pieza centrada en la caja de 5×5 de la paleta,
     │                             #   ya rotada y reflejada (spec 016). Fuera del .tsx por lo mismo
-    ├── orientation-text.ts       # la orientación en palabras, en dos fragmentos: la línea visible
-    │                             #   del panel y el aria-label de las miniaturas la componen cada
-    │                             #   uno a su formato (spec 019). Fuera del .tsx por lo mismo
     ├── input.ts                  # la decisión de cada gesto de entrada: rueda, tecla, menú
     │                             #   contextual y click sobre una celda (specs 013 y 014)
     ├── engine-bridge.ts          # las dos puras del puente con el motor: proyectarAlMotor
@@ -149,9 +146,7 @@ src/
         ├── input.test.ts         # la decisión de cada gesto: rueda, teclas y click (013 y 014)
         ├── engine-bridge.test.ts # los tres estados de Click.note al proyectar, y las dos ramas
         │                         #   de alternarTransporte — AC10 del 008, sin jsdom
-        ├── piece-mini.test.ts    # la forma entra y queda centrada en la caja, en las 96
-        └── orientation-text.test.ts # las ocho combinaciones, y que las 29 orientaciones que la
-                                  #   miniatura no distingue den textos distintos (AC5 del 019)
+        └── piece-mini.test.ts    # la forma entra y queda centrada en la caja, en las 96
 ```
 
 ## La dirección de dependencia
@@ -186,7 +181,7 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 por lo que el test necesita:
 
 - **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre `src/**/__tests__/*.test.ts`.
-  Son 20 archivos. El dominio es puro y el audio tiene una implementación nativa de Web Audio, así que
+  Son 17 archivos. El dominio es puro y el audio tiene una implementación nativa de Web Audio, así que
   corren ahí sin adaptación. El único que no es el test de un módulo es
   `src/__tests__/documento.test.ts`, del spec 025: lee `index.html` **del disco** porque el proyecto de
   navegador sirve su propio documento y nunca carga ese archivo, así que el `lang` de la página era lo
