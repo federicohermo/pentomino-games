@@ -1,4 +1,4 @@
-# Pentomino Games
+# Synthominos
 
 Un prototipo de **instrumento musical**, no un juego con reglas de resolución. El usuario coloca
 pentominós en un tablero de 10×6 y cada pieza dispara un arpegio de cinco notas —salvo que esté

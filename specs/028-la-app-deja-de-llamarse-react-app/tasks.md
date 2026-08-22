@@ -176,6 +176,22 @@ que es ortogonal en semántica y no en texto: ver la sección 10 del research. N
       usuario para que suene: una app instalada que abre muda es peor que una pestaña
 - [ ] T030 **Open Graph.** Con la `description` arreglada, un `og:image` con el tablero haría que
       compartir el link muestre el instrumento. Es identidad y no arrastre, así que no entra acá
-- [ ] T031 **El `title` del `index.html`** dice «Pentomino Games» y arrastra la misma ambigüedad que la
+- [x] T031 **El `title` del `index.html`** dice «Pentomino Games» y arrastra la misma ambigüedad que la
       `description` tenía. No se toca acá porque es el nombre del proyecto y cambiarlo es una decisión de
-      nombre, no de higiene
+      nombre, no de higiene.
+      **La decisión llegó el 2026-08-22: la app se llama `Synthominos`.** El usuario la escribió en el
+      `manifest.json` (commit `72e335b`) y el resto se sincronizó después. La línea que se trazó, y que
+      esta tarea necesitaba: **cambia lo que ve una persona, no la identidad del repositorio.** O sea
+      `manifest.json`, el `<title>` y el encabezado del `README.md` — y **no** `package.json:name`, el
+      remoto de GitHub ni el `pentomino-games` de los docs de tooling. Atar las dos cosas obligaría a
+      renombrar el remoto y repasar el deploy para cambiar un `<title>`, que es justo el costo que
+      deja un rename a medias — y de hecho lo dejó: entre `72e335b` y el arreglo, el manifest decía
+      `Synthominos` y el `<title>` y el README decían `Pentomino Games`, **con `pnpm verify` en
+      verde**.
+      Que quede en verde era el agujero real y tiene test propio ahora:
+      `src/__tests__/nombre-sincronizado.test.ts`, hermano exacto del `fondo-sincronizado.test.ts`
+      que creó este mismo spec y por el mismo argumento —un valor en N archivos y nada que los
+      sincronice—. Ninguno de los dos tests que ya leían estos archivos lo atrapaba:
+      `documento.test.ts` lee el `index.html` pero sólo mira `lang`, y `fondo-sincronizado.test.ts`
+      compara colores. Pase de mutación hecho: las cuatro mutaciones —`title` viejo, README viejo,
+      `short_name` de otro nombre, y `title` ausente— dan rojo
