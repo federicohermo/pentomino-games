@@ -3,6 +3,9 @@ import { AIRE_RAZON, RADIO_RAZON } from './constants/layout.constants.ts';
 import { NOTA } from './constants/playhead.constants.ts';
 import { iniciarCabeza, borde } from './playhead-loop.ts';
 
+/** Lo que mide `n` celdas, en CSS. Ver `Board.tsx` y `playhead-loop.ts`. */
+const celdas = (n: number) => `calc(var(--cell) * ${n})`;
+
 /**
  * La capa que se dibuja ENCIMA de la grilla al ritmo del audio: la cabeza lectora y el
  * velo de las celdas que todavia no se estrenaron.
@@ -62,14 +65,12 @@ import { iniciarCabeza, borde } from './playhead-loop.ts';
  * La cabeza SALTA y no se desliza (D6): el instrumento esta cuantizado a la grilla de
  * intervalos, y un movimiento continuo sugeriria una continuidad que no existe.
  */
-/** Lo que mide `n` celdas, en CSS. Ver `Board.tsx` y `playhead-loop.ts`. */
-const celdas = (n: number) => `calc(var(--cell) * ${n})`;
-
 export default function Playhead() {
   const capaRef = useRef<HTMLDivElement>(null);
   const ref = useRef<HTMLDivElement>(null);
   // Dos refs para la cabeza y no una: el `transform` va en la caja de una celda —que es la
-  // que se mueve sobre la grilla— y el borde en la baldosa de adentro, 2 px mas chica,
+  // que se mueve sobre la grilla— y el borde en la baldosa de adentro, un aire mas chica
+  // por lado (`AIRE_RAZON`, 2 px al piso y 4,93 al techo desde el spec 021),
   // que es la que tiene la forma y el redondeo de la celda. Dibujarlo en la caja externa
   // daria un rectangulo que pisa la separacion entre celdas.
   const resalteRef = useRef<HTMLDivElement>(null);

@@ -95,8 +95,9 @@ src/
 │       ├── playhead.test.ts      #   offsetAt: borde de ciclo, t < origin y los degradados (AC2)
 │       └── test-context.ts       #   helpers de render y medición (no es un test)
 └── components/                   # un componente por archivo, presentacionales
-    ├── PiecePalette.tsx          # la tarjeta y la composición de los dos paneles, más las
-    │                             #   filas que quedan interpoladas entre ellos (spec 022)
+    ├── PiecePalette.tsx          # el dock flotante y la composición de los dos paneles, más
+    │                             #   las filas que quedan interpoladas entre ellos (spec 022).
+    │                             #   Dejó de ser una tarjeta en columna con el spec 021
     ├── OrientationPanel.tsx      # las doce miniaturas en la orientación actual (spec 016)
     ├── TransportPanel.tsx        # tempo, play/pausa y reset
     ├── Board.tsx                 # grilla 10×6: color por pieza, nota por celda, y el fantasma
@@ -124,9 +125,16 @@ src/
     │                             #   clicks, la secuencia contra el tablero y el desmontaje
     ├── use-input.ts              # los dos efectos de entrada del 013: teclado y rueda. Reciben
     │                             #   callbacks, no setters, y el tapLimpio del shell
+    ├── cell-px.ts                # la fórmula del tamaño de celda contra el viewport (spec 021):
+    │                             #   max(CELL_PX_MIN, min(vw/10, vh/6)). Pura, fuera del hook
+    │                             #   para poder testearla sin navegador
+    ├── use-cell-px.ts            # el tercer hook de entrada: mide el contenedor raíz y escribe
+    │                             #   el resultado en la custom property --cell (spec 021)
     ├── constants/
-    │   ├── layout.constants.ts   # CELL_PX · MINI_BOX · MINI_CELL_PX · TEMPO_MIN · TEMPO_MAX ·
-    │   │                         #   los dos anchos del anillo de foco de la celda (spec 026)
+    │   ├── layout.constants.ts   # CELL_PX_MIN —el PISO, no el tamaño, desde el spec 021— y las
+    │   │                         #   razones que vuelven proporcional la baldosa · MINI_BOX ·
+    │   │                         #   MINI_CELL_PX · MINI_PISTA_PX · TEMPO_MIN · TEMPO_MAX · las
+    │   │                         #   dos razones del anillo de foco de la celda (spec 026)
     │   ├── palette.constants.ts  # los 12 colores y su color de texto (ver DESIGN.md)
     │   ├── route.constants.ts    # MARCA: los estados de una celda bajo la cabeza lectora
     │   ├── input.constants.ts    # ACCION y EDICION: lo que puede pedir un gesto
@@ -187,7 +195,8 @@ por lo que el test necesita:
   navegador sirve su propio documento y nunca carga ese archivo, así que el `lang` de la página era lo
   único del repo que ningún test podía falsear.
 - **`browser`** — Chromium de verdad, por Playwright, sobre `src/**/__tests__/*.browser.test.tsx`. Son
-  10: los seis componentes, `App.tsx`, los dos hooks y `audio/engine.ts`. Renderizan con
+  11: los seis componentes, `App.tsx`, los tres hooks —el tercero es `use-cell-px.ts`, del spec
+  021— y `audio/engine.ts`. Renderizan con
   `vitest-browser-react`, y el `setupFiles` (`browser-setup.ts`) importa la hoja de estilos **una** vez:
   sin ella `z-10` está en el `className` y `getComputedStyle` devuelve `auto`, o sea que un test de
   layout pasa o falla por el motivo equivocado y en silencio.

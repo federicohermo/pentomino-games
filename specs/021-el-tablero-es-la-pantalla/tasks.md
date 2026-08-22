@@ -444,3 +444,13 @@ una persona y no bloquea el cierre.
 - [ ] T041 El estado plegado no persiste: recargar abre los dos. Fuera de alcance a propósito
 - [ ] T042 `requestFullscreen` del navegador queda sin hacer: el tablero llena el **viewport**, que es
       otra cosa
+- [ ] T075 **`calc(var(--cell) * n)` se escribe en CINCO lugares y el argumento que lo permite quedó
+      corto.** `playhead-loop.ts:23-33` justifica la duplicación con «son dos archivos que no se
+      importan entre sí y el string es de una línea», y eso era cierto cuando eran dos. Hoy son tres
+      copias de la pura `celdas` —`Board.tsx:26`, `Playhead.tsx:6`, `playhead-loop.ts:33`— más dos
+      literales sueltos: `App.tsx:559` (la franja de Señal) y `PiecePalette.tsx:74` (el dock). No se
+      unifica en este PR a propósito: el destino natural es un export de `components/cell-px.ts`, y
+      eso toca cinco archivos de los que tres los toca también el resto del lote 018–021, así que el
+      arreglo cuesta un conflicto de rebase por cada uno. Cuando el lote esté mergeado, mover `celdas`
+      a `cell-px.ts` y hacer que los cinco lo importen — y borrar el párrafo de `playhead-loop.ts` que
+      argumenta lo contrario

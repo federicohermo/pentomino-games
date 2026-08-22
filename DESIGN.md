@@ -267,8 +267,8 @@ Esa frase —«el canal disponible es el borde, la opacidad o la superposición�
 | Grosor de borde (`box-shadow` interior y exterior) | cabeza lectora: nota / cruce / click (specs 010, 011) |
 | Opacidad + borde punteado | velo de «no se estrenó» (spec 010) |
 
-Lo que quedaba libre es **la otra caja**. Cada celda son dos: la de `CELL_PX` y la baldosa redondeada
-de adentro, con 2 px de aire entre las dos — y la de afuera no pinta nada. Ahí va el **anillo de foco**
+Lo que quedaba libre es **la otra caja**. Cada celda son dos: la de `--cell` y la baldosa redondeada
+de adentro, con un aire de `2/73` de la celda entre las dos — y la de afuera no pinta nada. Ahí va el **anillo de foco**
 del teclado (spec 026), y con eso **se acabaron**: el próximo estado que aparezca no tiene canal que
 tomar, va a tener que sacárselo a otro y escribir cuál.
 

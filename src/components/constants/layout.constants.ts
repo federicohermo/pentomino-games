@@ -73,8 +73,8 @@ export const CELL_PX_MIN = 73;
  * AIRE_RAZON       2 px   el `p-0.5` entre la caja de la celda y la baldosa
  * RADIO_RAZON      8 px   el `rounded-lg`, dicho DOS veces sobre el mismo objeto
  * RESERVA_RAZON    8 px   el `pb-2` que le deja alto a la nota sobre el `#N`
- * PASO_ABAJO       2 px   el `bottom-0.5` del `#N`
- * PASO_DERECHA     6 px   el `right-1.5` del `#N`
+ * PASO_ABAJO_RAZON     2 px   el `bottom-0.5` del `#N`
+ * PASO_DERECHA_RAZON   6 px   el `right-1.5` del `#N`
  * ```
  *
  * **El borde de 1 px NO esta en esta lista, y es a proposito** — ver el comentario junto

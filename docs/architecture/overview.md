@@ -125,6 +125,8 @@ esta escala no hace falta, y agregarlo sería la clase de complejidad que un pro
 | `playing` | `boolean` | Si el transporte está corriendo. Lo escribe `togglePlay` con lo que devuelve `clockRunning()`, no con la negación del valor anterior: `startClock()` es un no-op silencioso sin Web Audio |
 | `placed` | `PlacedPiece[]` | Piezas en el tablero |
 | `hover` | `Cell \| null` | Celda bajo el cursor, para el fantasma |
+| `piezasAbierto` | `boolean` | Si el dock de piezas está desplegado, desde el spec 021. Arranca en `true` —un instrumento que arranca con los controles escondidos no se descubre— y **no persiste**: recargar lo abre, como recargar vacía el tablero |
+| `senalAbierta` | `boolean` | Ídem para la franja de Señal. Son dos y no uno: se pliegan por separado, que es lo que deja destapar sólo las celdas que hagan falta |
 
 Derivados con `useMemo`: `transformedShape`, `secuencia`, `noteSet` y —desde el spec 027— el objeto
 `orientacion`. Ese cuarto no es una derivación cara sino **la otra mitad del `memo()` de
