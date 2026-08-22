@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   rotacionPorRueda, accionDeTecla, frenaElDefault, abreTapLimpio, reflejaElContextMenu,
-  accionDeClick, esLaPiezaEnLaMano,
+  accionDeClick, esLaPiezaEnLaMano, piezaDeTecla,
 } from '../input.ts';
 import { ACCION, EDICION } from '../constants/input.constants.ts';
 import { SHAPES } from '../../domain/constants/pieces.constants.ts';
@@ -10,7 +10,8 @@ import type { PieceKey } from '../../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../../domain/types/board.types.ts';
 
 /**
- * Las decisiones de los cinco gestos del spec 013. Lo que NO está acá es el cableado
+ * Las decisiones de los cinco gestos del spec 013 y del sexto que agregó el 018 —la letra
+ * que elige la pieza—. Lo que NO está acá es el cableado
  * —que `components/use-input.ts` mire bien el `e.target`, que el `preventDefault` frene el scroll de
  * verdad—: eso queda en las tareas `[M]` del navegador, porque el repo no monta
  * componentes y no tiene jsdom.
@@ -18,8 +19,12 @@ import type { PlacedPiece } from '../../domain/types/board.types.ts';
 
 /** Un evento de tecla con todo apagado: cada test enciende solo lo que mide. */
 const tecla = (p: Partial<EventoDeTecla> & Pick<EventoDeTecla, 'key' | 'tipo'>): EventoDeTecla => ({
-  repeat: false, targetEsControl: false, targetEsCelda: false, tapLimpio: true, ...p,
+  repeat: false, targetEsControl: false, targetEsCelda: false, tapLimpio: true,
+  ctrlKey: false, metaKey: false, altKey: false, ...p,
 });
+
+/** Las doce letras, tomadas de `SHAPES` y no escritas a mano: la fuente es la misma que la pura. */
+const LETRAS = Object.keys(SHAPES) as PieceKey[];
 
 describe('AC1 — la rueda rota en los dos sentidos, con vuelta cíclica', () => {
   it('abajo suma 90° y arriba resta 90°', () => {
@@ -245,6 +250,9 @@ describe('qué keydown abre un tap limpio', () => {
 
 describe('las teclas que no son nuestras', () => {
   it('no producen acción', () => {
+    // Desde el spec 018 este barrido es load-bearing y no una lista cualquiera: la `'a'`
+    // pasa a decir que `A` NO es un pentominó, así que si algún día `SHAPES` ganara una
+    // entrada `A` este test es el que lo grita.
     for (const key of ['a', 'Enter', 'Alt', 'ArrowUp', 'Escape']) {
       expect(accionDeTecla(tecla({ key, tipo: 'keydown' })), key).toBeNull();
       expect(accionDeTecla(tecla({ key, tipo: 'keyup' })), key).toBeNull();
@@ -342,5 +350,106 @@ describe('la llave de la edición, sola', () => {
   it('no mira el muteo: una pieza muteada se puede quitar igual', () => {
     expect(esLaPiezaEnLaMano(pieza('1', 'N', true), 'N')).toBe(true);
     expect(accionDeClick(pieza('1', 'N', true), 'N', false)).toBe(EDICION.quitar);
+  });
+});
+
+describe('018 AC1 y AC2 — la letra elige su pieza, en minúscula y en mayúscula', () => {
+  it('las doce letras seleccionan, en los dos casos', () => {
+    expect(LETRAS.length).toBe(12);
+    for (const letra of LETRAS) {
+      for (const key of [letra.toLowerCase(), letra]) {
+        expect(accionDeTecla(tecla({ key, tipo: 'keydown' })), key).toBe(ACCION.seleccionar);
+        expect(piezaDeTecla(key), key).toBe(letra);
+      }
+    }
+  });
+
+  it('`piezaDeTecla` devuelve `null` para lo que no es pentominó', () => {
+    for (const key of ['A', 'a', '1', 'Enter', 'ArrowUp', '']) {
+      expect(piezaDeTecla(key), key).toBeNull();
+    }
+    // `in` mira la cadena de prototipos, así que contra un objeto literal contesta `true`
+    // para las claves de `Object.prototype`. Acá no llega ninguna porque el `toUpperCase`
+    // va primero y `'TOSTRING'` no es una de ellas — pero el día que el estrechamiento se
+    // escriba de otra forma, esta línea es la que lo dice.
+    for (const key of ['toString', 'constructor', 'valueOf']) {
+      expect(piezaDeTecla(key), key).toBeNull();
+    }
+  });
+});
+
+describe('018 AC4 — un modificador le devuelve la letra al navegador', () => {
+  it('con `ctrlKey`, `metaKey` o `altKey` la letra no selecciona', () => {
+    // `Ctrl`+`F` (buscar), `Ctrl`+`P` (imprimir) y `Ctrl`+`V` (pegar) son tres atajos que
+    // el navegador se queda enteros, y las tres letras son pentominós.
+    for (const mod of ['ctrlKey', 'metaKey', 'altKey'] as const) {
+      expect(accionDeTecla(tecla({ key: 'f', tipo: 'keydown', [mod]: true })), mod).toBeNull();
+    }
+  });
+
+  it('el `keyup` de una letra tampoco selecciona, aunque llegue sin modificadores', () => {
+    // El `Ctrl`+`V` que suelta el `Ctrl` primero: el `keyup` de la `V` llega con
+    // `ctrlKey: false` y pasaría la guarda de arriba. La decisión es del `keydown`.
+    expect(accionDeTecla(tecla({ key: 'v', tipo: 'keyup' }))).toBeNull();
+    expect(accionDeTecla(tecla({ key: 'V', tipo: 'keyup', ctrlKey: true }))).toBeNull();
+  });
+});
+
+describe('018 AC5, AC6 y AC10 — lo que la letra NO hace', () => {
+  it('con el foco sobre un control del panel no selecciona', () => {
+    expect(accionDeTecla(tecla({ key: 'f', tipo: 'keydown', targetEsControl: true }))).toBeNull();
+  });
+
+  it('con auto-repeat no selecciona', () => {
+    // Mantener la letra apretada no tiene que repetir la selección: es idempotente, pero
+    // salir antes deja el gesto donde el spec lo puso, en un solo `keydown`.
+    expect(accionDeTecla(tecla({ key: 'f', tipo: 'keydown', repeat: true }))).toBeNull();
+  });
+
+  it('ninguna letra frena el default', () => {
+    // Una letra suelta no tiene default que frenar; frenarlo sería quitarle al navegador
+    // un evento que no es nuestro.
+    for (const letra of LETRAS) {
+      expect(frenaElDefault(tecla({ key: letra.toLowerCase(), tipo: 'keydown' })), letra).toBe(false);
+      expect(frenaElDefault(tecla({ key: letra, tipo: 'keyup' })), letra).toBe(false);
+    }
+  });
+
+  it('repetir la misma letra pide la misma acción y nada más', () => {
+    const dos = [1, 2].map(() => accionDeTecla(tecla({ key: 'f', tipo: 'keydown' })));
+    expect(dos).toEqual([ACCION.seleccionar, ACCION.seleccionar]);
+  });
+});
+
+describe('018 AC3 — la letra ensucia el tap, así que `Shift`+`f` no rota al soltar', () => {
+  it('`abreTapLimpio` es falso para una letra', () => {
+    // Caracterización: hoy sale gratis —sólo `Shift` y `Control` abren tap— y el test
+    // existe para que siga saliendo gratis.
+    expect(abreTapLimpio({ key: 'f', shiftKey: true, ctrlKey: false, altKey: false, metaKey: false })).toBe(false);
+    expect(abreTapLimpio({ key: 'F', shiftKey: true, ctrlKey: false, altKey: false, metaKey: false })).toBe(false);
+  });
+});
+
+describe('018 AC13 — con una celda enfocada la letra IGUAL selecciona', () => {
+  it('`targetEsCelda` no entra en la rama de las letras, y sí en la de la barra', () => {
+    // La asimetría es la decisión del 026 puesta a prueba desde el otro lado: esa guarda
+    // apaga la barra y sólo la barra.
+    expect(accionDeTecla(tecla({ key: 'f', tipo: 'keydown', targetEsCelda: true }))).toBe(ACCION.seleccionar);
+    expect(accionDeTecla(tecla({ key: ' ', tipo: 'keydown', targetEsCelda: true }))).toBeNull();
+  });
+});
+
+describe('018 AC11 — los tres gestos del 013 no cambian', () => {
+  it('la barra sigue alternando el transporte con `Ctrl`, `Alt` o `Meta` abajo', () => {
+    // La guarda de modificadores es DE LA RAMA DE LAS LETRAS. Subida al tope de la
+    // función también alcanzaría a la barra, y eso lo pediría cero ACs.
+    for (const mod of ['ctrlKey', 'metaKey', 'altKey'] as const) {
+      expect(accionDeTecla(tecla({ key: ' ', tipo: 'keydown', [mod]: true })), mod).toBe(ACCION.transporte);
+    }
+  });
+
+  it('`Shift` y `Control` siguen rotando y reflejando con el tap limpio', () => {
+    expect(accionDeTecla(tecla({ key: 'Shift', tipo: 'keyup' }))).toBe(ACCION.rotar);
+    expect(accionDeTecla(tecla({ key: 'Control', tipo: 'keyup' }))).toBe(ACCION.reflejar);
   });
 });

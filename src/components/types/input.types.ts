@@ -1,6 +1,6 @@
 import type { ACCION, EDICION } from '../constants/input.constants.ts';
 
-/** Las tres acciones de entrada: ver `ACCION` en `input.constants.ts`. */
+/** Las cuatro acciones de entrada: ver `ACCION` en `input.constants.ts`. */
 export type Accion = (typeof ACCION)[keyof typeof ACCION];
 
 /** Lo que pide un click sobre una celda: ver `EDICION` en `input.constants.ts`. */
@@ -11,7 +11,7 @@ export type Edicion = (typeof EDICION)[keyof typeof EDICION];
  *
  * No es el `KeyboardEvent` del DOM a propósito: los tests de `src/` corren en
  * `environment: 'node'` y no hay jsdom, así que una pura que reciba el evento no se
- * puede testear sin fabricar uno. Recibiendo campos, las seis guardas quedan cubiertas
+ * puede testear sin fabricar uno. Recibiendo campos, las siete guardas quedan cubiertas
  * en `environment: 'node'` y lo único que queda sin test es el cableado.
  *
  * Los dos `target*` y `tapLimpio` los calcula el llamador porque salen de afuera del
@@ -20,11 +20,28 @@ export type Edicion = (typeof EDICION)[keyof typeof EDICION];
  * estado entre eventos, que una pura por definición no tiene.
  */
 export interface EventoDeTecla {
-  /** El `key` del DOM: `'Shift'`, `'Control'` o `' '` para la barra espaciadora. */
+  /**
+   * El `key` del DOM: `'Shift'`, `'Control'`, `' '` para la barra espaciadora y —desde el
+   * spec 018— cualquiera de las doce letras de pentominó, en minúscula o en mayúscula.
+   */
   key: string;
   tipo: 'keydown' | 'keyup';
   /** El auto-repeat del sistema. Solo lo ejerce la barra, que es la única en `keydown`. */
   repeat: boolean;
+  /**
+   * Los tres modificadores que le devuelven el evento entero al navegador o al sistema.
+   *
+   * Obligatorios y sin `?`: un campo opcional deja que un llamador nuevo se olvide de
+   * llenarlo y la guarda se apague sola, en silencio — el mismo criterio con el que el
+   * régimen del spec 017 se quedó sin default de parámetro.
+   *
+   * `shiftKey` **no** entra, y no es un olvido: ninguna decisión de estas puras lo mira.
+   * `Shift`+`f` selecciona igual (AC3 del 018) porque la letra ensucia el tap y de eso ya
+   * se ocupa `abreTapLimpio`, que recibe su propio evento con los cuatro modificadores.
+   */
+  ctrlKey: boolean;
+  metaKey: boolean;
+  altKey: boolean;
   /**
    * El foco está sobre un `<button>` o un `<input>`: el navegador se queda **todo**.
    *
