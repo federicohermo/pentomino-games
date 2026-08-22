@@ -65,8 +65,7 @@ export function cellsAt(shape: readonly Cell[], anchorIndex: number, x: number, 
  * tablero se achica con la ventana y las piezas que dejan de entrar se guardan sin
  * dibujarse; una de esas puede tener celdas adentro de la grilla nueva —«no entra entera»
  * no es «esta toda afuera»— y colocar encima dejaria dos piezas solapadas en cuanto la
- * ventana crezca. El filtro de lo visible es de `App.tsx` y alimenta al dibujo y a la
- * secuencia; esta funcion mira todo.
+ * ventana crezca. El filtro de lo visible es `cabeEn`, aca abajo; esta funcion mira todo.
  */
 export function isValid(cells: Cell[], placed: readonly PlacedPiece[], dims: Dims): boolean {
   if (cells.some(([x, y]) => x < 0 || y < 0 || x >= dims.w || y >= dims.h)) return false;
@@ -75,6 +74,32 @@ export function isValid(cells: Cell[], placed: readonly PlacedPiece[], dims: Dim
     if (cells.some(([x, y]) => set.has(`${x},${y}`))) return false;
   }
   return true;
+}
+
+/**
+ * Si la pieza entra ENTERA en un tablero de `dims`.
+ *
+ * Es el otro lado del parrafo de `isValid`, y el spec 031 lo necesita porque el tablero
+ * cambia de tamano con la ventana: la pieza que deja de entrar no se borra —el repo no
+ * tiene deshacer, y arrastrar el borde de una ventana no es un gesto de edicion— sino que
+ * se guarda entera y deja de dibujarse, de sonar y de recibir clicks, y vuelve igual
+ * cuando hay lugar otra vez.
+ *
+ * **Entera y no en parte**: una pieza con tres celdas adentro y dos afuera tampoco entra.
+ * Media pieza pintada seria una pieza que el tablero muestra y el circuito no visita, que
+ * es la clase de discrepancia que D5 del 009 existe para cerrar.
+ *
+ * Se implementa sobre `isValid` con el tablero vacio y no repitiendo los cuatro limites:
+ * «entra en el tablero» es exactamente la primera mitad de «la jugada es legal», y
+ * escribirla dos veces es la forma de que un dia digan cosas distintas. Es tambien lo que
+ * `mcp-server/src/tools/simulateBoard.ts` ya hacia para distinguir `fuera-del-tablero` de
+ * un choque.
+ *
+ * Vive en `domain/` y no adentro de `App.tsx` por la regla de `.claude/rules/ui.md` —el
+ * shell no lleva funciones puras—: aca se testea, y ahi no podria exportarse.
+ */
+export function cabeEn(p: PlacedPiece, dims: Dims): boolean {
+  return isValid(p.cells, [], dims);
 }
 
 /**
@@ -258,10 +283,13 @@ export function routeBetween(a: Cell, b: Cell, placed: readonly PlacedPiece[], d
  * la salida identificada: los pesos son solo dos (1 y `CROSS_COST`), asi que una cola de
  * baldes baja el `O(N^2)` de la busqueda lineal del minimo a `O(N * C)`.
  *
- * **No cambia una sola nota**, y eso esta verificado y no argumentado: 279 tableros
- * generados con PRNG determinista dan la misma secuencia con cache y sin ella
- * (`__tests__/sequence.test.ts`). El argumento igual existe: `dist[]` es funcion de
- * `(destino, placed)`, y adentro de un rutador `placed` no cambia.
+ * **No cambia una sola ruta**, y eso esta verificado y no argumentado: el test de AC7 en
+ * `__tests__/board.test.ts` contrasta este rutador contra `routeBetween` —que arma uno
+ * nuevo por consulta, o sea la version sin cache— sobre tableros con PRNG determinista, en
+ * el tablero de referencia y en uno de 26 x 15. Fuera del repo, el `compare.mjs` del
+ * research comparo ademas la SECUENCIA entera en 279 tableros al azar, con cero
+ * diferencias. El argumento igual existe: `dist[]` es funcion de `(destino, placed)`, y
+ * adentro de un rutador `placed` no cambia.
  */
 export function rutador(placed: readonly PlacedPiece[], dims: Dims): (a: Cell, b: Cell) => Ruta {
   const { w, h } = dims;

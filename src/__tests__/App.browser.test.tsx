@@ -1094,10 +1094,17 @@ describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
       .map(e => e.getAttribute('aria-label')!)
       .filter(n => n.includes('pieza'));
 
-    // Una `I` acostada bien a la derecha: en 14 columnas entra, en 5 no.
+    // Una `I` acostada bien a la derecha: con el ancla en (11,4) ocupa de (9,4) a (13,4),
+    // asi que en 14 columnas entra y en 5 no.
+    //
+    // Se ESPERA la seleccion antes del `Enter`, como en el test del tope: la letra es
+    // estado del shell y hasta que no re-renderiza, `Enter` coloca la pieza anterior. Sin
+    // la espera este test colocaba una `F` —que tambien mide cinco celdas, asi que la
+    // cuenta pasaba igual— y no verificaba lo que su comentario dice.
     const c = celda(container, 11, 4);
     c.focus();
     tecla(c, 'i');
+    await vi.waitFor(() => expect(page.getByRole('button', { name: /^I, / }).element().getAttribute('aria-pressed')).toBe('true'));
     tecla(c, 'Enter');
     await vi.waitFor(() => expect(conPieza()).toBe(SHAPES.I.length));
     const antes = nombres();
@@ -1109,5 +1116,57 @@ describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
     await page.viewport(...VIEWPORT);
     await vi.waitFor(() => expect(conPieza()).toBe(SHAPES.I.length));
     expect(nombres()).toEqual(antes);
+  });
+
+  it('AC8 — la pieza que queda a medias tampoco recibe clicks: la celda vacia se comporta como vacia', async () => {
+    // El caso que el AC8 de arriba no toca: ahi la ventana deja la pieza ENTERA afuera, y
+    // aca la deja **a medias** —dos celdas adentro de la grilla nueva y tres afuera—, que
+    // es el unico estado donde el modelo y lo que se ve pueden discrepar. La pieza no se
+    // dibuja (el criterio es la pieza entera), asi que sus celdas de adentro se ven vacias;
+    // y si el shell consultara el ocupante sobre `placed` en vez de sobre lo visible, un
+    // click ahi quitaria una pieza que no esta en pantalla y lo anunciaria.
+    //
+    // No hay deshacer (`specs/deuda.md`): borrar por accidente lo que no se ve es
+    // exactamente el gesto que el spec 031 vino a hacer imposible.
+    const { container } = await render(<App />);
+    const conPieza = () => celdas(container).filter(e => e.getAttribute('aria-label')!.includes('pieza')).length;
+    const dicho = () => container.querySelector('[aria-live="polite"]')!.textContent;
+
+    // La misma `I` acostada del test de arriba: ancla en (11,4), o sea las celdas 9 a 13.
+    const c = celda(container, 11, 4);
+    c.focus();
+    tecla(c, 'i');
+    await vi.waitFor(() => expect(page.getByRole('button', { name: /^I, / }).element().getAttribute('aria-pressed')).toBe('true'));
+    tecla(c, 'Enter');
+    await vi.waitFor(() => expect(conPieza()).toBe(SHAPES.I.length));
+
+    // 800 x 600 da 11 columnas: quedan adentro (9,4) y (10,4), y afuera las otras tres.
+    const chico = grillaPara(800, 600).dims;
+    expect(chico.w).toBe(11);
+    await page.viewport(800, 600);
+    await vi.waitFor(() => expect(celdas(container).length).toBe(chico.w * chico.h));
+    expect(conPieza()).toBe(0);
+
+    // El click sobre (9,4) —que el modelo sigue teniendo ocupada— no quita nada y no
+    // anuncia nada. Con la `I` en la mano, que es el unico gesto que podria quitarla.
+    const tapada = celda(container, 9, 4);
+    tapada.focus();
+    // Enfocarla ya escribe el cursor, asi que acá se ve la OTRA mitad de la misma consulta:
+    // el fantasma se dibuja, o sea que el gesto que la celda promete es colocar —invalido,
+    // porque la pieza guardada la sigue ocupando— y no editar. Si `hoverEdita` mirara
+    // `placed`, el fantasma se apagaria y el cursor prometeria una edicion sobre una celda
+    // que se ve vacia.
+    await vi.waitFor(() => expect(conNota(container)).toBeGreaterThan(0));
+
+    tecla(tapada, 'Enter');
+    // Se espera de verdad y no se afirma en el mismo tick: sin la espera, este `expect`
+    // pasaria por llegar antes del re-render y no por que no haya pasado nada.
+    await new Promise(r => setTimeout(r, 30));
+    expect(conPieza()).toBe(0);
+    expect(dicho()).not.toContain('quitada');
+
+    // Y no la quito de verdad: al agrandar vuelve entera.
+    await page.viewport(...VIEWPORT);
+    await vi.waitFor(() => expect(conPieza()).toBe(SHAPES.I.length));
   });
 });

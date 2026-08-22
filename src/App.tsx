@@ -3,7 +3,7 @@ import { playNow } from "./audio/engine.ts";
 import { DEFAULT_BPM } from "./audio/constants/engine.constants.ts";
 import { rotateN, reflect } from "./domain/transform.ts";
 import { arpeggioFor } from "./domain/music.ts";
-import { cellsAt, isValid, occupantAt } from "./domain/board.ts";
+import { cabeEn, cellsAt, isValid, occupantAt } from "./domain/board.ts";
 import { buildSequence } from "./domain/sequence.ts";
 import { SHAPES, ANCHOR_INDEX } from "./domain/constants/pieces.constants.ts";
 import { MAX_PIEZAS } from "./domain/constants/board.constants.ts";
@@ -196,17 +196,17 @@ export default function App(){
   // sonar, y vuelve entera cuando hay lugar otra vez. El repo no tiene deshacer
   // (`specs/deuda.md`) y arrastrar el borde de una ventana no es un gesto de edicion.
   //
-  // El criterio es la pieza ENTERA —`every` y no `some`—: media pieza pintada seria una
-  // pieza que el tablero muestra y el circuito no visita, que es la clase de discrepancia
-  // que D5 del 009 existe para cerrar.
+  // El criterio —la pieza ENTERA, y por que— vive en `cabeEn` y no aca: es una pura del
+  // dominio, y este shell no lleva ninguna (`.claude/rules/ui.md`).
   //
-  // Lo que NO se filtra es `isValid`, que sigue mirando `placed` entero: una pieza guardada
-  // puede tener celdas adentro de la grilla nueva, y colocar encima dejaria dos solapadas
-  // en cuanto la ventana crezca.
-  const visibles = useMemo(
-    ()=> placed.filter(p => p.cells.every(([x, y]) => x < dims.w && y < dims.h)),
-    [placed, dims],
-  );
+  // **`visibles` es lo que se ve, se toca y suena; `placed` es lo que existe**, y de ahi
+  // sale que de esta linea para abajo cada consulta elija una de las dos. Las que miran el
+  // tablero DIBUJADO —el ocupante de una celda, el gesto de edicion, el circuito— van con
+  // `visibles`, porque una pieza que no se dibuja no puede recibir un click sobre una celda
+  // que se ve vacia. Las que miran la LEGALIDAD van con `placed`: una pieza guardada puede
+  // tener celdas adentro de la grilla nueva —«no entra entera» no es «esta toda afuera»— y
+  // colocar encima dejaria dos solapadas en cuanto la ventana crezca.
+  const visibles = useMemo(()=> placed.filter(p => cabeEn(p, dims)), [placed, dims]);
 
   // Los dos flotantes arrancan ABIERTOS: un instrumento que arranca con los controles
   // escondidos no se descubre. Plegado, cada panel deja solo su encabezado, y cualquier
@@ -251,14 +251,29 @@ export default function App(){
   // de su `useMemo` la leería en su zona muerta temporal y tiraría un `ReferenceError`
   // en el primer render. Sigue estando ANTES de los dos hooks de entrada, que es donde
   // estaban los cuatro efectos, así que el orden de registro no cambia.
-  useMotorSincronizado({ secuencia, placed, tempo, clicks });
+  //
+  // `visibles` y no `placed`, por lo mismo que arriba: lo que este hook le pasa a la cola
+  // de dibujo es el tablero con el que se cruza la secuencia, y la secuencia sale de
+  // `visibles`. Con el tablero entero le llegaban piezas que la secuencia no nombra —una
+  // pieza que la ventana dejó afuera— y el cruce las ignoraba, que es la clase de dato de
+  // más que un día se lee como si estuviera.
+  useMotorSincronizado({ secuencia, placed: visibles, tempo, clicks });
 
   // El tablero se edita EN el tablero (spec 014): sobre una pieza ya colocada, y solo con
   // esa misma pieza en la mano, el click la quita y `Alt`+click alterna su muteo. Qué
   // gesto es lo decide `accionDeClick`, que es una pura y se testea; acá queda el
   // cableado y las dos consultas al dominio que la pura no puede hacer.
   function handleCellClick(x: number, y: number, altKey: boolean){
-    const ocupante = occupantAt(placed, x, y);
+    // `visibles` y no `placed`: la pieza que no entra en la grilla de ahora no se dibuja,
+    // asi que la celda que se ve vacia tiene que COMPORTARSE como vacia. Con el tablero
+    // entero, arrastrar el borde de la ventana dejaba piezas invisibles interceptando
+    // clicks —quitando o muteando algo que no esta en pantalla, y anunciandolo—, que es la
+    // misma discrepancia entre lo que se ve y lo que el modelo hace, dada vuelta.
+    //
+    // Lo que queda de la pieza guardada es su LEGALIDAD, y eso lo sigue mirando el
+    // `isValid` de mas abajo con `placed` entero: colocar sobre sus celdas se rechaza igual
+    // —el fantasma ya sale rosa— asi que no se puede pisar lo que no se ve.
+    const ocupante = occupantAt(visibles, x, y);
     const accion = accionDeClick(ocupante, selected, altKey);
     if (accion === null) return;   // celda ocupada por OTRA pieza: nada, como antes
 
@@ -288,6 +303,12 @@ export default function App(){
     // Se chequea DESPUES de `isValid` y con el mismo trato: no cambia el tablero. Lo que
     // agrega es el anuncio, porque es el unico rechazo que no se explica solo — una jugada
     // invalida se ve (el fantasma sale rosa) y esta no.
+    //
+    // Cuenta `placed` y no `visibles`, que es la unica de las tres consultas de este
+    // handler que mira el tablero entero: el tope existe para acotar el `2ⁿ` del circuito,
+    // y una pieza guardada afuera vuelve a entrar en cuanto la ventana crezca. Contando lo
+    // visible se podrian guardar veinte piezas achicando la ventana entre una y otra, y el
+    // `buildSequence` del primer agrandamiento las recibiria todas juntas.
     if (placed.length >= MAX_PIEZAS) {
       setAnuncio(`El tablero acepta ${MAX_PIEZAS} piezas y ya tiene ${MAX_PIEZAS}. Quitá una para poder colocar otra.`);
       return;
@@ -457,8 +478,10 @@ export default function App(){
 
   // Si la celda bajo el cursor está ocupada por la pieza que está en la mano, el click
   // no coloca: edita. La condición sale de la MISMA pura que decide el click, así que el
-  // cursor no puede prometer una cosa y el gesto hacer otra.
-  const hoverEdita = esLaPiezaEnLaMano(hover ? occupantAt(placed, hover[0], hover[1]) : null, selected);
+  // cursor no puede prometer una cosa y el gesto hacer otra — y por eso mira `visibles`,
+  // que es lo que `handleCellClick` mira: con `placed` entero, una pieza que la ventana
+  // dejó afuera apagaba el fantasma y prometía una edición sobre una celda vacía.
+  const hoverEdita = esLaPiezaEnLaMano(hover ? occupantAt(visibles, hover[0], hover[1]) : null, selected);
 
   // Fantasma: dónde caería la pieza desde la celda bajo el cursor. Las celdas
   // fuera del tablero no se pintan, pero sí cuentan para marcar la jugada

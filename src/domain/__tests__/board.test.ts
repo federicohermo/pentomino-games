@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cellsAt, isValid, occupantAt, occupantCellIndex, routeBetween, rutador, costuraDe } from '../board.ts';
+import { cabeEn, cellsAt, isValid, occupantAt, occupantCellIndex, routeBetween, rutador, costuraDe } from '../board.ts';
 import { rotateN, reflect } from '../transform.ts';
 import { SHAPES, ANCHOR_INDEX } from '../constants/pieces.constants.ts';
 import { GRID_DEFAULT, CROSS_COST } from '../constants/board.constants.ts';
@@ -103,6 +103,35 @@ describe('isValid', () => {
       const shape = rotateN(SHAPES[p], 0);
       expect(isValid(cellsAt(shape, ANCHOR_INDEX[p], 4, 2), [], GRID_DEFAULT)).toBe(true);
     }
+  });
+});
+
+describe('031 — `cabeEn`: si la pieza entra ENTERA en el tablero de ahora', () => {
+  it('la que entra entera si, y no le importa lo que haya colocado', () => {
+    // No mira solapamiento a proposito: es la pregunta «se dibuja o no», y dos piezas
+    // solapadas no pueden existir —`isValid` no las deja entrar—.
+    const p = piezaEn('a', [[0,0],[1,0],[2,0],[3,0],[4,0]]);
+    expect(cabeEn(p, GRID_DEFAULT)).toBe(true);
+    expect(cabeEn(p, { w: 5, h: 5 })).toBe(true);
+  });
+
+  it('la que se pasa por UNA celda no entra, y por cualquiera de los cuatro bordes', () => {
+    // Es la mitad del spec 031 que decide que se dibuja: «tres celdas adentro y dos
+    // afuera» tiene que dar false, o el tablero mostraria media pieza que el circuito no
+    // visita.
+    expect(cabeEn(piezaEn('a', [[3,0],[4,0],[5,0]]), { w: 5, h: 5 })).toBe(false);   // derecha
+    expect(cabeEn(piezaEn('a', [[0,3],[0,4],[0,5]]), { w: 5, h: 5 })).toBe(false);   // abajo
+    expect(cabeEn(piezaEn('a', [[-1,0],[0,0]]), GRID_DEFAULT)).toBe(false);          // izquierda
+    expect(cabeEn(piezaEn('a', [[0,-1],[0,0]]), GRID_DEFAULT)).toBe(false);          // arriba
+  });
+
+  it('la misma pieza entra o no segun el tablero, que es para lo que existe', () => {
+    // El caso que el spec 031 describe: la ventana se achica y la pieza deja de entrar sin
+    // que la pieza cambie. Achicar y volver a agrandar la devuelve.
+    const alBorde = piezaEn('a', [[7,1],[8,1],[9,1]]);
+    expect(cabeEn(alBorde, GRID_DEFAULT)).toBe(true);
+    expect(cabeEn(alBorde, { w: 6, h: 6 })).toBe(false);
+    expect(cabeEn(alBorde, GRID_DEFAULT)).toBe(true);
   });
 });
 
