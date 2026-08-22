@@ -63,9 +63,10 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
        —`grid-cols-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6`— atados al ancho del
        VIEWPORT, que era una buena aproximacion del ancho de esta caja mientras la caja era
        una tarjeta de `md:col-span-4`. Con el dock del 021 dejaron de ser la misma variable:
-       el dock mide `calc(var(--cell) * 2)` —entre 146 y 360 px— y el viewport puede estar
-       en `xl` igual. Medido: a 1366 x 768 el breakpoint pedia SEIS columnas adentro de una
-       caja de 256 px, y al piso pedia tres adentro de 146.
+       el dock mide `calc(var(--cell) * 2)` —146 px con el techo de `CELL_PX_MAX` puesto,
+       y hasta 360 si el techo se afloja— y el viewport puede estar en `xl` igual. Medido:
+       a 1366 x 768 el breakpoint pedia SEIS columnas adentro de una caja de 256 px, y al
+       piso pedia tres adentro de 146.
 
        `repeat(auto-fill, minmax(MINI_PISTA_PX, 1fr))` hace la cuenta contra la caja real.
        `MINI_PISTA_PX` sale de la caja del mini mas el `px-2` del boton mas su borde, o sea

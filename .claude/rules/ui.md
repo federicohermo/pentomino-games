@@ -106,7 +106,9 @@ distinta y ahí no tiene que pasar nada.
   ausencia de color— y el próximo estado tiene que buscarse el suyo. Ver [DESIGN.md](../../DESIGN.md).
 - **No hay `col-span` ni tarjetas desde el spec 021**: el tablero ocupa el viewport y los dos paneles
   flotan encima, `fixed`, sin empujar la grilla. El tamaño de celda es
-  `max(73, min(vw / 10, vh / 6))`, vive en la custom property `--cell` y lo escribe
+  `min(CELL_PX_MAX, max(CELL_PX_MIN, min(vw / 10, vh / 6)))` —con techo y piso en 73, o sea la celda
+  fija de antes del 021: el 021 sin techo la llevaba a 180 px en un escritorio—, vive en la custom
+  property `--cell` y lo escribe
   `components/use-cell-px.ts`. **Todo lo que dependa de él lo lee de ahí y nunca de una constante** —la
   grilla, la baldosa entera, el velo, la cabeza lectora y las cajas de los dos flotantes—, que es lo que
   hace que redimensionar la ventana reposicione las 60 celdas sin un solo re-render. Lo único que se

@@ -1,8 +1,8 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { renderHook } from 'vitest-browser-react';
 import { useCellPx } from '../use-cell-px.ts';
 import { cellPxPara } from '../cell-px.ts';
-import { CELL_PX_MIN } from '../constants/layout.constants.ts';
+import { CELL_PX_MIN, CELL_PX_MAX } from '../constants/layout.constants.ts';
 import type { RefObject } from 'react';
 
 /**
@@ -18,6 +18,16 @@ import type { RefObject } from 'react';
  *    durante un cuadro;
  * 3. que un `resize` la **reescriba**; y
  * 4. que la limpieza saque el listener — StrictMode monta dos veces.
+ *
+ * ## Lo que el techo le cambió a este archivo, y por qué se dice acá
+ *
+ * Con `CELL_PX_MAX === CELL_PX_MIN` el valor escrito es el mismo para cualquier caja, así
+ * que los puntos 3 y 4 **dejaron de ser observables por el valor**: un `resize` reescribe
+ * 73 sobre 73 y un listener que sobrevive al desmontaje escribe lo mismo que uno que no.
+ * La suscripción sigue siendo verificable —y sigue importando, porque es la que se duplica
+ * con StrictMode—, así que esos dos se miden sobre `addEventListener` y su limpieza, con
+ * el precio dicho: mientras el techo esté donde está, este archivo verifica que el hook se
+ * suscriba, no que el número cambie. Aflojar `CELL_PX_MAX` devuelve la otra mitad.
  */
 const basura: HTMLElement[] = [];
 const nodo = (w: number, h: number): RefObject<HTMLElement | null> => {
@@ -29,29 +39,29 @@ const nodo = (w: number, h: number): RefObject<HTMLElement | null> => {
   return { current: el };
 };
 
-afterEach(() => { basura.splice(0).forEach(el => el.remove()); });
+afterEach(() => { basura.splice(0).forEach(el => el.remove()); vi.restoreAllMocks(); });
 
 describe('useCellPx', () => {
-  it('escribe `--cell` con la unidad puesta, y con el valor de la caja', async () => {
+  it('escribe `--cell` con la unidad puesta, y con el valor de la fórmula', async () => {
     const ref = nodo(1000, 600);
     await renderHook(() => useCellPx(ref));
-    // Con la unidad: un `--cell` que valga `100` a secas deja inválido a cada `calc()` que
+    // Con la unidad: un `--cell` que valga `73` a secas deja inválido a cada `calc()` que
     // lo consume, y el navegador no dice nada.
     expect(ref.current!.style.getPropertyValue('--cell')).toBe(`${cellPxPara(1000, 600)}px`);
-    expect(ref.current!.style.getPropertyValue('--cell')).toBe('100px');
+    expect(ref.current!.style.getPropertyValue('--cell')).toBe(`${CELL_PX_MAX}px`);
   });
 
-  it('mide la CAJA y no `innerWidth`, que es lo que los hace ser el mismo número', async () => {
-    // Dos nodos de tamaños distintos en el mismo viewport: si el hook leyera la ventana,
-    // los dos escribirían lo mismo. La caja del raíz mide `100dvh`, y en iOS `innerHeight`
-    // incluye la barra del navegador — con la fórmula recibiendo uno y la caja teniendo el
-    // otro, la grilla desborda unos píxeles sin que nada falle.
+  it('el mismo número en cajas distintas, que es lo que el techo promete', async () => {
+    // Dos nodos de tamaños bien distintos: el de 800x600 daba 80 px antes del techo y el
+    // de 2000x1200 daba 200. Hoy los dos dan 73, que es el tamaño de celda de siempre —lo
+    // que se pidió— y por eso este test dice lo contrario de lo que decía: la promesa ya
+    // no es que la celda crezca con la caja sino que NO crezca.
     const chico = nodo(800, 600);
     const grande = nodo(2000, 1200);
     await renderHook(() => useCellPx(chico));
     await renderHook(() => useCellPx(grande));
-    expect(chico.current!.style.getPropertyValue('--cell')).toBe('80px');
-    expect(grande.current!.style.getPropertyValue('--cell')).toBe('200px');
+    expect(chico.current!.style.getPropertyValue('--cell')).toBe(`${CELL_PX_MAX}px`);
+    expect(grande.current!.style.getPropertyValue('--cell')).toBe(`${CELL_PX_MAX}px`);
   });
 
   it('el piso también llega escrito: nunca por debajo de `CELL_PX_MIN`', async () => {
@@ -60,28 +70,25 @@ describe('useCellPx', () => {
     expect(ref.current!.style.getPropertyValue('--cell')).toBe(`${CELL_PX_MIN}px`);
   });
 
-  it('un `resize` la reescribe, y al desmontar el listener se va', async () => {
+  it('se suscribe al `resize`, y al desmontar el listener se va', async () => {
+    const alta = vi.spyOn(window, 'addEventListener');
+    const baja = vi.spyOn(window, 'removeEventListener');
     const ref = nodo(1000, 600);
     const { unmount } = await renderHook(() => useCellPx(ref));
-    expect(ref.current!.style.getPropertyValue('--cell')).toBe('100px');
+    expect(alta.mock.calls.filter(([tipo]) => tipo === 'resize')).toHaveLength(1);
 
-    // La caja cambia y llega el evento: es el gesto completo de arrastrar el borde.
-    // Los DOS ejes, porque manda el más apretado: con la ventana el doble de ancha y el
-    // alto quieto, la celda no se mueve — que es lo que dice `cellPxPara` y lo que este
-    // test verificaría al revés si sólo tocara uno.
+    // El evento llega y el hook no explota: el handler corre sobre un nodo vivo y reescribe
+    // la propiedad. Lo que no se puede afirmar acá es que el número cambie — ver el
+    // docblock de arriba.
     ref.current!.style.width = '2000px';
     ref.current!.style.height = '1200px';
     window.dispatchEvent(new Event('resize'));
-    expect(ref.current!.style.getPropertyValue('--cell')).toBe('200px');
+    expect(ref.current!.style.getPropertyValue('--cell')).toBe(`${CELL_PX_MAX}px`);
 
     await unmount();
-    // Y después del desmontaje nadie escribe: sin el `removeEventListener`, StrictMode
-    // —que monta dos veces— deja dos handlers vivos sobre un nodo que ya no está en el
-    // árbol de React.
-    ref.current!.style.width = '3000px';
-    ref.current!.style.height = '1800px';
-    window.dispatchEvent(new Event('resize'));
-    expect(ref.current!.style.getPropertyValue('--cell')).toBe('200px');
+    // Sin el `removeEventListener`, StrictMode —que monta dos veces— deja dos handlers
+    // vivos sobre un nodo que ya no está en el árbol de React.
+    expect(baja.mock.calls.filter(([tipo]) => tipo === 'resize')).toHaveLength(1);
   });
 
   it('sin nodo no escribe nada y no explota', async () => {
