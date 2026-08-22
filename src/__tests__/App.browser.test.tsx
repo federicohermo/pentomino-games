@@ -131,6 +131,18 @@ const notaDelFantasma = (c: HTMLElement) => {
   return conTexto.map(e => e.getAttribute('title')).join('|');
 };
 
+/**
+ * El gesto COMPLETO de un modificador: son dos eventos y no uno. El `keydown` abre el tap
+ * limpio y el `keyup` es el que alterna, para que `Ctrl`+C no de vuelta la reflexion.
+ *
+ * Recibe el target porque los dos casos importan: sobre `window` es el atajo global del
+ * spec 013, y sobre una celda es el mismo atajo con el tablero enfocado (026).
+ */
+const tapDeModificador = (el: EventTarget, key: string) => {
+  el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+  el.dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true }));
+};
+
 const hover = (el: HTMLElement) => el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
 const click = (el: HTMLElement, init: MouseEventInit = {}) =>
   el.dispatchEvent(new MouseEvent('click', { bubbles: true, ...init }));
@@ -320,7 +332,9 @@ describe('App — el transporte', () => {
     await page.getByRole('button', { name: 'Reproducir' }).click();
     motor.stopClock.mockClear();
 
-    await page.getByRole('button', { name: 'Reset' }).click();
+    // El boton perdio la palabra `Reset` con el spec 019 y quedo en `↺`: se lo busca por
+    // el nombre accesible nuevo, que dice las dos mitades que este test verifica.
+    await page.getByRole('button', { name: 'Vaciar el tablero y frenar el transporte' }).click();
     expect(motor.stopClock).toHaveBeenCalled();
     await vi.waitFor(() => expect(conNota(container)).toBe(0));
     await expect.element(page.getByRole('button', { name: 'Reproducir' })).toBeVisible();
@@ -331,41 +345,48 @@ describe('App — el transporte', () => {
     await page.getByRole('slider').fill('128');
     await vi.waitFor(() => expect(motor.setBpm).toHaveBeenLastCalledWith(128));
 
-    const { container } = await render(<App />);
-    const recorrido = [...container.querySelectorAll('div.flex.items-center.justify-between')]
-      .find(d => d.textContent!.startsWith('Recorrido en el vacío'))!
-      .querySelector('button')!;
-    recorrido.click();
+    // Con el spec 019 el recorrido dejo de ser una fila con etiqueta visible y paso a ser
+    // el metronomo de la fila de transporte: se lo busca por su nombre accesible, que es
+    // la misma etiqueta mudada a `aria-label`. Y sobre el MISMO render que el tempo: el
+    // segundo `render(<App />)` que habia aca dejaba dos apps montadas, que con una
+    // consulta por rol sobre la pagina entera es una violacion de modo estricto.
+    await page.getByRole('button', { name: /^Recorrido en el vacío$/ }).click();
     await vi.waitFor(() => expect(motor.setClicksAudible).toHaveBeenLastCalledWith(true));
   });
 });
 
 describe('App — la orientacion, por panel y por gesto', () => {
-  it('el panel rota y refleja, y el tablero lo muestra', async () => {
+  it('el panel ya no rota ni refleja: lo que hace es DECIR la orientacion', async () => {
+    // El spec 019 le saco a la tarjeta los cuatro botones de grados y el ON/OFF de
+    // Reflexion, porque duplicaban la rueda, `Shift`, el boton derecho y `Ctrl`. Lo que
+    // queda en su lugar es un lector: una linea de texto que no se puede apretar.
+    //
+    // Este test es la mitad de arriba de AC1 desde el shell —los seis controles no estan—
+    // y la mitad de abajo de AC4: la linea sigue al gesto.
     const { container } = await render(<App />);
-    hover(celda(container, 4, 3));
-    await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length));
-    const antes = notaDelFantasma(container);
+    for (const grados of ['0°', '90°', '180°', '270°']) {
+      expect(page.getByRole('button', { name: new RegExp(`^${grados}$`) }).elements(), grados)
+        .toHaveLength(0);
+    }
+    expect(page.getByRole('button', { name: /^Reflexión$/ }).elements()).toHaveLength(0);
 
-    await page.getByRole('button', { name: /^90°$/ }).click();
-    hover(celda(container, 4, 3));
-    await vi.waitFor(() => expect(notaDelFantasma(container)).not.toBe(antes));
+    const linea = () => [...container.querySelectorAll('p')].find(e => /^\d+°/.test(e.textContent!))!;
+    expect(linea().textContent).toBe('0°');
 
-    // La reflexion no cambia la NOTA de una celda, cambia el orden en que suenan: lo
-    // que se mueve es el `#N`.
-    const conRotacion = notaDelFantasma(container);
-    const reflexion = [...container.querySelectorAll('div.flex.items-center.justify-between')]
-      .find(d => d.textContent!.startsWith('Reflexión'))!.querySelector('button')!;
-    reflexion.click();
-    hover(celda(container, 4, 3));
-    await vi.waitFor(() => expect(notaDelFantasma(container)).not.toBe(conRotacion));
+    tapDeModificador(window, 'Shift');
+    await vi.waitFor(() => expect(linea().textContent).toBe('90°'));
+    tapDeModificador(window, 'Control');
+    await vi.waitFor(() => expect(linea().textContent).toBe('90° · reflejada'));
   });
 
   it('el regimen cambia lo que la rotacion HACE, y se ve en el fantasma', async () => {
     // AC7 del 017: sin llevar el regimen a las tres derivaciones, cambiarlo no
     // re-derivaria el tablero.
     const { container } = await render(<App />);
-    await page.getByRole('button', { name: /^90°$/ }).click();
+    // Se rota con `Shift` y no con el boton `90°`: el spec 019 lo borro. Lo que este test
+    // mide no cambio — que el regimen llegue a las tres derivaciones — pero el gesto que
+    // lo pone en una rotacion distinta de cero, si.
+    tapDeModificador(window, 'Shift');
     hover(celda(container, 4, 3));
     await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length));
     const enEscala = notaDelFantasma(container);
@@ -485,12 +506,15 @@ describe('App — lo que llega al arbol de accesibilidad', () => {
     // `submit`, y en esta app eso significa recargar la pagina perdiendo el tablero
     // entero, sin deshacer (`specs/deuda.md`).
     //
-    // Se afirma sobre la app COMPLETA y no componente por componente porque los 22
-    // botones salen de tres archivos —doce miniaturas, ocho de la tarjeta, dos de
+    // Se afirma sobre la app COMPLETA y no componente por componente porque los botones
+    // salen de tres archivos —doce miniaturas, el regimen en la tarjeta, y los tres del
     // transporte— y ninguno de los tres los tiene todos.
+    //
+    // Eran 22 hasta el spec 019, que borro los cuatro grados y el ON/OFF de Reflexion y
+    // mudo el del recorrido: 12 + 2 + 3.
     const { container } = await render(<App />);
     const botones = [...container.querySelectorAll('button')];
-    expect(botones.length).toBe(22);
+    expect(botones.length).toBe(17);
     for (const boton of botones) {
       expect(boton.getAttribute('type'), boton.textContent ?? '').toBe('button');
     }
@@ -535,8 +559,9 @@ describe('App — lo que cuesta mover el cursor (spec 027)', () => {
     expect(panel.ejecuciones).toBe(0);
 
     // La memo no lo congelo: cuando la orientacion cambia DE VERDAD, se ejecuta. Sin esta
-    // mitad, el cero de arriba lo cumpliria igual un panel roto.
-    await page.getByRole('button', { name: /^90°$/ }).click();
+    // mitad, el cero de arriba lo cumpliria igual un panel roto. Se rota con `Shift`
+    // porque el spec 019 borro el boton `90°` que estaba escrito aca.
+    tapDeModificador(window, 'Shift');
     await vi.waitFor(() => expect(panel.ejecuciones).toBe(1));
   });
 });
@@ -560,15 +585,6 @@ const tecla = (el: Element, key: string, init: KeyboardEventInit = {}) => {
   const evento = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
   el.dispatchEvent(evento);
   return evento;
-};
-
-/**
- * El gesto COMPLETO de un modificador: son dos eventos y no uno. El `keydown` abre el tap
- * limpio y el `keyup` es el que alterna, para que `Ctrl`+C no de vuelta la reflexion.
- */
-const tapDeModificador = (el: Element, key: string) => {
-  el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
-  el.dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true }));
 };
 
 /** El tablero, entero a la vista: lo que scrollea despues es la tecla y no el `.focus()`. */

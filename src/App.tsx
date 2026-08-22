@@ -328,8 +328,6 @@ export default function App(){
   const orientacion = useMemo(()=> ({
     selected, rotation, mirror, regimen, noteSet,
     onSelect: setSelected,
-    onRotate: setRotation,
-    onMirror: ()=> setMirror(m=>!m),
     onRegimen: setRegimen,
   }), [selected, rotation, mirror, regimen, noteSet]);
 
