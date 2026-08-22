@@ -82,6 +82,27 @@ T001–T029 de arriba se refieren entre sí y en `specs/revisiones.md`.
       `GRID_W` en `scheduler.constants.ts`, y el docblock de `rutador` que mandaba el test de AC7 al
       archivo equivocado
 
+## Correcciones del review del PR
+
+Salieron de `/pr-review` sobre el PR #41. Mismo criterio de IDs que el bloque de arriba.
+
+- [x] T036 `src/App.tsx`: el CURSOR era el otro estado con coordenadas de tablero adentro, y tampoco
+      se acotaba a `dims`. Con `hover` apuntando a una celda que la grilla nueva no dibuja, **ninguna**
+      celda quedaba con `tabIndex={0}` y el tablero salía del orden de tabulación (AC9), y las celdas
+      quedaban todas en `cursor-not-allowed`. Se deriva `cursor` —y `focoEnCelda` con él, para que el
+      anillo de foco no se dibuje sobre una celda sin foco— con `isValid([hover], [], dims)`, que es la
+      misma reutilización con la que `cabeEn` se implementa
+- [x] T037 `src/__tests__/App.browser.test.tsx`: el test de T036, con el cursor fijado por **mouse** y
+      no por foco — al achicar, la celda enfocada se desmonta y el `focusout` de ese desmonte apagaría
+      el cursor por otra vía, con lo cual el test pasaría sin verificar nada
+- [x] T038 El barrido de comentarios que T035 no cubrió, porque no son símbolos sino cadenas:
+      `overflow-x-auto` nombrado como mecanismo vivo en `App.tsx`, `Board.tsx`, `Playhead.tsx`,
+      `input.ts`, `use-input.ts`, `layout.constants.ts`, `playhead.constants.ts` y **`DESIGN.md`**,
+      donde además contradecía a la tabla que este mismo spec reescribió; y «las 60 celdas» como
+      magnitud presente en esos mismos archivos más `cell-text.ts` y `domain/board.ts`
+- [x] T039 `docs/architecture/modelo-musical.md` y `overview.md`: la firma de `routeBetween` sin
+      `dims` y las dependencias del `useMemo` de `secuencia` sin `visibles` ni `dims`
+
 ## Seguimiento (no bloquea)
 
 - [ ] T030 El Dijkstra en 4K: cola de baldes, y remedir los 30,9 ms

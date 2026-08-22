@@ -1085,4 +1085,31 @@ las tareas no nombraban.
   que la pieza no estaba donde la geometría decía. El test del tope de 12 ya esperaba el `aria-pressed`
   y ese es el patrón; la lección general es la de siempre: una aserción sobre un CONTEO no distingue la
   cosa correcta de otra del mismo tamaño.
+- **2026-08-22 — El review del PR encontró que las piezas no eran lo único que la grilla nueva podía
+  dejar apuntando afuera: el CURSOR también.** El spec 031 se ocupó de `placed` —de ahí `visibles` y el
+  corte «lo que se ve / lo que existe»— y no de `hover`, que es el otro estado del shell con
+  coordenadas de tablero adentro. Lo escriben el mouse y el foco del 026, y ninguno de los dos se entera
+  de un `resize`: nadie mueve el puntero ni el foco cuando se arrastra el borde de una ventana o se
+  aprieta `Ctrl`+`=`. Y afuera de `dims` no era inofensivo, que es lo que lo hace un bug y no una
+  prolijidad: `Board` ancla el **roving tabindex** en esa celda, así que con el cursor apuntando a una
+  que no se dibuja **ninguna** celda quedaba con `tabIndex={0}` y el tablero entero salía del orden de
+  tabulación — o sea que el spec 026 se caía por un cambio de tamaño de ventana. De yapa, `previewValid`
+  daba `false` con `hover` puesto y las celdas quedaban todas en `cursor-not-allowed`, diciendo «acá no
+  entra» donde la jugada entraba.
+  La salida es la misma que ya estaba escrita para las piezas, aplicada al otro estado: un derivado
+  (`cursor`) que es «el cursor que el tablero de ahora tiene», con `focoEnCelda` cayéndose junto a él
+  para que el anillo de foco no se dibuje sobre una celda sin foco. **La lección es la que generaliza:
+  cuando una constante pasa a ser un parámetro, hay que enumerar TODO el estado que la tenía embebida,
+  y no sólo el que el spec fue a buscar.** El test lo fija con el mouse y no con el foco a propósito: al
+  achicar, la celda enfocada se desmonta y el `focusout` de ese desmonte apagaría el cursor por otro
+  camino, con lo cual el test pasaría sin verificar nada.
+- **2026-08-22 — Y el barrido de comentarios del 031 cubrió los símbolos borrados pero no las clases.**
+  El commit «Comentarios que nombraban lo que el 031 borró» buscó `use-cell-px.ts`, `CELL_PX_MAX`,
+  `SEAM` y `GRID_W` — nombres de cosas que dejaron de existir, que es lo que un `grep` encuentra
+  fácil. Quedaron afuera dos familias que no son símbolos: **`overflow-x-auto`**, nombrado como
+  mecanismo vivo en seis docblocks y en `DESIGN.md`, donde además contradecía a la tabla que el mismo
+  PR había reescrito tres párrafos arriba; y **«las 60 celdas»** como magnitud presente, en otros seis.
+  Ninguna rompe nada y por eso son caras: se leen como ciertas. La regla que sale: al borrar una clase
+  de CSS o al mover un número que la prosa usaba como constante, el barrido es por esa **cadena** y no
+  sólo por los identificadores del diff.
 
