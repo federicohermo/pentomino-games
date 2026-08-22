@@ -3,7 +3,9 @@ import { render } from 'vitest-browser-react';
 import { page } from 'vitest/browser';
 import PiecePalette from '../PiecePalette.tsx';
 import { REGIMEN } from '../../domain/constants/music.constants.ts';
+import { ORIENTACIONES_INICIALES } from '../constants/orientation.constants.ts';
 import type { PropsDeOrientacion, PropsDeTransporte } from '../types/panel.types.ts';
+import type { MemoriaDeOrientacion } from '../types/orientation.types.ts';
 
 /**
  * La tarjeta de piezas despues del spec 019: las doce miniaturas, la fila del regimen, la
@@ -22,14 +24,21 @@ import type { PropsDeOrientacion, PropsDeTransporte } from '../types/panel.types
  *
  * Necesita layout: se mide con `getBoundingClientRect`, que en jsdom da cero.
  */
+/** Las doce en cero con las ranuras que el test quiera pisar (spec 020). */
+const memoria = (pisadas: Partial<MemoriaDeOrientacion> = {}): MemoriaDeOrientacion =>
+  ({ ...ORIENTACIONES_INICIALES, ...pisadas });
+
 const orientacion = (over: Partial<PropsDeOrientacion> = {}): PropsDeOrientacion => ({
   selected: 'F',
-  rotation: 0,
-  mirror: false,
+  // Las DOCE desde el spec 020: la linea de orientacion deriva la de `selected` en vez de
+  // recibirla suelta, que es lo que impide que la linea diga una cosa y la miniatura
+  // dibuje otra.
+  orientaciones: ORIENTACIONES_INICIALES,
   regimen: REGIMEN.escala,
   noteSet: [60, 62, 64, 67, 69],
   onSelect: vi.fn(),
   onRegimen: vi.fn(),
+  onResetOrientacion: vi.fn(),
   ...over,
 });
 
@@ -93,9 +102,12 @@ describe('PiecePalette', () => {
     // subcadena, y el `aria-label` de las doce miniaturas dice «rotación 180°», asi que un
     // `/180°/` suelto encontraria la miniatura y este test no fallaria nunca.
     const { container } = await render(
-      <PiecePalette orientacion={orientacion({ rotation: 2, mirror: true })} transporte={transporte()} />,
+      <PiecePalette
+        orientacion={orientacion({ orientaciones: memoria({ F: { rotation: 2, mirror: true } }) })}
+        transporte={transporte()}
+      />,
     );
-    for (const grados of ['0°', '90°', '180°', '270°']) {
+    for (const grados of ['90°', '180°', '270°']) {
       expect(page.getByRole('button', { name: new RegExp(`^${grados}$`) }).elements(), grados)
         .toHaveLength(0);
     }
@@ -158,24 +170,65 @@ describe('PiecePalette', () => {
     // Las seis piezas ciegas —`I T U V W X`— suenan distinto sin verse distinto en 29 de
     // las 96 combinaciones. Se verifica por TEXTO y nunca por `className`.
     const sinReflejar = await render(
-      <PiecePalette orientacion={orientacion({ rotation: 3 })} transporte={transporte()} />,
+      <PiecePalette
+        orientacion={orientacion({ orientaciones: memoria({ F: { rotation: 3, mirror: false } }) })}
+        transporte={transporte()}
+      />,
     );
     expect(sinReflejar.container.textContent).toContain('270°');
     expect(sinReflejar.container.textContent).not.toContain('reflejada');
     await sinReflejar.unmount();
 
-    const { container } = await render(
-      <PiecePalette orientacion={orientacion({ rotation: 2, mirror: true })} transporte={transporte()} />,
+    const conReflexion = await render(
+      <PiecePalette
+        orientacion={orientacion({ orientaciones: memoria({ F: { rotation: 2, mirror: true } }) })}
+        transporte={transporte()}
+      />,
     );
-    expect(container.textContent).toContain('180° · reflejada');
+    expect(conReflexion.container.textContent).toContain('180° · reflejada');
+    await conReflexion.unmount();
+
+    // AC9 del spec 020: dice la de la PIEZA EN LA MANO, no una global. Con la misma
+    // memoria y otro `selected`, la linea cambia — que es lo que hace visible la memoria.
+    const otra = memoria({ F: { rotation: 2, mirror: true }, T: { rotation: 1, mirror: false } });
+    const { container } = await render(
+      <PiecePalette orientacion={orientacion({ selected: 'T', orientaciones: otra })} transporte={transporte()} />,
+    );
+    expect(container.textContent).toContain('90°');
+    expect(container.textContent).not.toContain('reflejada');
+  });
+
+  it('020 — el boton `0°` pide volver la pieza en la mano al arranque', async () => {
+    // AC7. El panel es presentacional: lo unico que se puede verificar aca es que el gesto
+    // llegue al callback del shell, y que el boton tenga nombre — la etiqueta visible dice
+    // solo los grados, pero resetea tambien la reflexion, asi que el nombre accesible es el
+    // que tiene que decir las dos cosas.
+    const onResetOrientacion = vi.fn();
+    await render(
+      <PiecePalette
+        orientacion={orientacion({
+          orientaciones: memoria({ F: { rotation: 2, mirror: true } }),
+          onResetOrientacion,
+        })}
+        transporte={transporte()}
+      />,
+    );
+    const boton = page.getByRole('button', { name: /^Volver esta pieza a 0° sin reflejar$/ });
+    await expect.element(boton).toHaveTextContent('0°');
+    expect(boton.element().getAttribute('title')).toBe('Volver esta pieza a 0° sin reflejar');
+    await boton.click();
+    expect(onResetOrientacion).toHaveBeenCalledTimes(1);
   });
 
   it('la linea de orientacion reserva su renglon y no salta con el peor caso', async () => {
     // Mismo bug que la linea de notas: si envuelve, mueve todo lo que tiene debajo justo
     // cuando lo estas tocando. El peor caso de largo es `270° · reflejada`.
-    const alto = async (over: Partial<PropsDeOrientacion>) => {
+    const alto = async (o: { rotation: 0 | 1 | 2 | 3; mirror: boolean }) => {
       const { container, unmount } = await render(
-        <PiecePalette orientacion={orientacion(over)} transporte={transporte()} />,
+        <PiecePalette
+          orientacion={orientacion({ orientaciones: memoria({ F: o }) })}
+          transporte={transporte()}
+        />,
       );
       const linea = [...container.querySelectorAll('p')]
         .find(p => /^\d+°/.test(p.textContent!))!;

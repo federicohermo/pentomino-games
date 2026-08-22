@@ -1,5 +1,6 @@
 import type { PieceKey } from '../../domain/types/pieces.types.ts';
 import type { RegimenDeRotacion } from '../../domain/types/music.types.ts';
+import type { MemoriaDeOrientacion } from './orientation.types.ts';
 
 /**
  * Los dos objetos de props de la tarjeta de piezas, que hasta el spec 022 eran
@@ -24,8 +25,19 @@ import type { RegimenDeRotacion } from '../../domain/types/music.types.ts';
 /** La pieza en la mano: cuál es, cómo está puesta, y qué hace girarla. */
 export interface PropsDeOrientacion {
   selected: PieceKey;
-  rotation: number;
-  mirror: boolean;
+  /**
+   * Las DOCE orientaciones y no la de la seleccionada, desde el spec 020.
+   *
+   * Baja entera porque la grilla de miniaturas necesita las doce: cada botón se dibuja en
+   * **su** orientación recordada, que es de lo que trata ese spec. Y los lectores que sólo
+   * quieren la de la pieza en la mano —la línea de texto del 019, el arpegio— la derivan
+   * con `orientaciones[selected]` en vez de recibirla como un par de props sueltas: dos
+   * props para la misma verdad son dos formas de que discrepen.
+   *
+   * `Board` es la excepción y sigue recibiendo el par suelto por su prop propia: es el
+   * único consumidor que no necesita las doce.
+   */
+  orientaciones: MemoriaDeOrientacion;
   /**
    * Que hace la rotacion (spec 017). Hasta el 019 completaba la frase de su propia fila
    * —«Rotacion … cambia escala / orden»—; al borrarse los cuatro botones de grados la
@@ -35,6 +47,14 @@ export interface PropsDeOrientacion {
   noteSet: readonly number[];
   onSelect: (piece: PieceKey) => void;
   onRegimen: (regimen: RegimenDeRotacion) => void;
+  /**
+   * El botón `0°`: devuelve la pieza en la mano —y sólo esa— a 0° sin reflejar.
+   *
+   * No lleva la pieza como argumento: el shell ya sabe cuál está en la mano, y pasársela
+   * desde el panel sería que el componente decida sobre qué escribe. `PiecePalette` es
+   * presentacional (`.claude/rules/ui.md`): recibe callbacks y no toca estado.
+   */
+  onResetOrientacion: () => void;
 }
 
 /** El transporte del instrumento: tempo, play/pausa, los clicks del recorrido y el reset. */
