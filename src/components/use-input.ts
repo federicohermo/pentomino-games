@@ -184,9 +184,11 @@ export function useRuedaRota(
       // incluido, y el navegador hace lo suyo. Un gesto del sistema le gana a uno nuestro.
       if (e.ctrlKey) return;
       // Un `deltaY` de 0 es un scroll horizontal puro, que no rota (lo dice también
-      // `rotacionPorRueda`). Sale antes del `preventDefault` porque este nodo es el
-      // `overflow-x-auto` con el que se recorre la grilla debajo de `md`: frenarle el
-      // default sería dejar sin scroll horizontal al único elemento que lo tiene.
+      // `rotacionPorRueda`). Sale antes del `preventDefault` porque no hay nada nuestro que
+      // hacer con ese gesto, así que el navegador se lo queda entero. Hasta el spec 031 el
+      // motivo era más concreto —este nodo era el `overflow-x-auto` con el que se recorría
+      // la grilla debajo de `md`, y frenarlo lo dejaba sin scroll—; ya no scrollea, y
+      // tragarse un default que no se usa sigue sin tener nada a favor.
       if (e.deltaY === 0) return;
       e.preventDefault();
       alRotar(e.deltaY);

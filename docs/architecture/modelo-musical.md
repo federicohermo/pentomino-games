@@ -102,7 +102,8 @@ era ruido blanco, o sea sin altura ninguna; lo que sigue siendo cierto es que **
 sobre la celda**, y ésa es la propiedad del modelo. Además arranca **apagado** (spec 015): el
 recorrido sobre el vacío se enciende desde el panel. Sobre celda **ocupada** suena
 la nota de esa celda —la misma altura que la celda muestra desde el spec 007— como una floritura más
-corta y más suave que la nota de una pieza (spec 011). `routeBetween(a, b, placed)` (`domain/board.ts`)
+corta y más suave que la nota de una pieza (spec 011). `routeBetween(a, b, placed, dims)`
+(`domain/board.ts`)
 materializa esas celdas intermedias: es el camino de **costo mínimo** sobre las celdas del tablero —peso 1 en
 celda vacía, `CROSS_COST` en celda ocupada, con desempate lexicográfico explícito entre caminos de
 igual costo— y no la regla "primero en X, después en Y" de `pathBetween`, que dejó de existir junto con

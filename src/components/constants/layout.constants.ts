@@ -209,7 +209,7 @@ export const TEMPO_MAX = 160;
  *
  * Por el orden de pintado. Los `outline` se pintan al final del contexto de apilamiento
  * —arriba de todo—, pero un `box-shadow` se pinta en la fase de fondo del elemento, y las
- * baldosas de las 60 celdas son `relative`, o sea POSICIONADAS: se pintan despues. Un
+ * baldosas de todas las celdas son `relative`, o sea POSICIONADAS: se pintan despues. Un
  * anillo hacia afuera dejaria la banda oscura tapada por las baldosas vecinas en los
  * cuatro lados y la clara visible encima — o sea un anillo de un solo tono, que es
  * justamente lo que estos dos numeros existen para evitar. Hacia adentro no hay
@@ -217,7 +217,9 @@ export const TEMPO_MAX = 160;
  *
  * Y de paso resuelve solo lo que AC7 manda medir: dibujado hacia adentro el anillo no
  * asoma ni un pixel fuera de la caja, asi que no puede agrandar la region scrolleable ni
- * quedar recortado por el `overflow-x-auto` en las celdas del borde.
+ * quedar recortado en las celdas del borde. Cuando se escribio, quien recortaba era el
+ * `overflow-x-auto` de `Board`; el spec 031 se lo llevo y hoy quien recorta es el
+ * `overflow-hidden` del contenedor raiz — el anillo sigue sin llegarle, por lo mismo.
  */
 export const ANILLO_FOCO_OSCURO_RAZON = AIRE_RAZON;
 export const ANILLO_FOCO_CLARO_RAZON = AIRE_RAZON;

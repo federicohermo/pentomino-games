@@ -32,21 +32,20 @@ import { MARCA } from './route.constants.ts';
  *
  * ## Por que engorda para los DOS lados
  *
- * Hacia adentro solo no alcanza: las 60 celdas ya tienen `border-slate-900`, ocupadas o
+ * Hacia adentro solo no alcanza: TODAS las celdas ya tienen `border-slate-900`, ocupadas o
  * no, asi que engrosarlo es un cambio de grado contra un campo lleno de bordes negros.
  * El anillo exterior es lo que agrega el salto de tamano — la celda se lee mas grande
  * sin que crezca su caja.
  *
  * ## Y por que NO se usa `transform: scale`, que es lo obvio
  *
- * Porque `scale` cuenta para el overflow SCROLLEABLE del contenedor: medido en el DOM
- * con `CELL_PX` en 63 —grilla de 630 x 378— con la cabeza en (9,5) y `scale(1.10)`, el
- * `scrollHeight` del `overflow-x-auto` de `Board` pasaba de 378 a 381 y aparecian las
- * barras de desplazamiento —las dos, porque Tailwind fija solo `overflow-x` y entonces
- * el eje Y computa a `auto`—. El spec 014 movio la celda a 71 y esos dos numeros no se
- * remidieron; lo que no depende del tamano es el MECANISMO, que es lo que decide:
- * `scale` agranda la region scrolleable y `box-shadow` es ink overflow, o sea que pinta
- * afuera de la caja sin agrandarla.
+ * Porque `scale` AGRANDA la caja a efectos de overflow y `box-shadow` es *ink overflow*:
+ * pinta afuera sin agrandar nada. La medicion que lo encontro es del layout viejo —con
+ * `CELL_PX` en 63, grilla de 630 x 378, la cabeza en (9,5) y `scale(1.10)`, el
+ * `scrollHeight` del entonces `overflow-x-auto` de `Board` pasaba de 378 a 381 y aparecian
+ * las dos barras de desplazamiento—, y desde el spec 031 ese contenedor ya no scrollea: el
+ * desborde lo recorta el `overflow-hidden` del raiz, asi que hoy el sintoma no seria una
+ * barra sino una celda cortada en el borde. El MECANISMO no cambio, y es lo que decide.
  *
  * Gris pizarra y no un color: el color es IDENTIDAD —que pieza es— y el estado nunca se
  * comunica con hue. Es la misma regla por la que el fantasma es gris y no verde.

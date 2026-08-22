@@ -115,12 +115,13 @@ panel blanco, sesenta casilleros blancos casi no se veían. Se probó pintar la 
 colores, que es lo único que este tablero está para comunicar. Queda **un borde negro de 1 px en cada
 baldosa**, ocupada o vacía: la grilla se dibuja sola y el resto del panel sigue blanco.
 
-**Abajo de 730 px de viewport el tablero no entra y scrollea en horizontal.** Ahí gana el piso: la
-celda se queda en 73 y la grilla mide 730 px contra un viewport más chico. Lo absorbe un
-`overflow-x-auto` en el contenedor de la grilla —scrollea el tablero, no la página— y deliberadamente
-**no** una celda menor: el nombre de nota es lo que hay que poder leer, así que achicar la celda
-devuelve el problema que el piso existe para resolver. El mismo contenedor absorbe el desborde vertical
-cuando la ventana es apaisada y baja.
+**No hay scroll, y no porque algo lo absorba: porque no puede haberlo.** Hasta el spec 031 la grilla
+medía 10 × 6 celdas de 73 px pasara lo que pasara, así que abajo de 730 px de viewport no entraba y un
+`overflow-x-auto` en el contenedor de la grilla scrolleaba el tablero en vez de la página. Con las
+dimensiones saliendo del viewport ese caso dejó de existir —`cols · cell ≤ vw` y `rows · cell ≤ vh` por
+definición de `floor`— y las tres clases que lo sostenían se fueron. Lo que cede en un viewport
+angosto sigue **sin** ser el nombre de nota: primero se sacan columnas, y sólo cuando ya no se puede
+—el mínimo de 5 × 5— se achica la celda.
 
 Cada celda es dueña de **su** nota, no de la letra de la pieza repetida cinco veces: de dónde sale ese
 mapeo está en
@@ -303,13 +304,14 @@ hay que poder leer. El borde marca el límite sin pisar el contenido.
 así que engrosar hacia adentro es un cambio de grado contra un campo lleno de bordes negros. El anillo
 exterior es lo que agrega el salto de tamaño: la celda se lee más grande sin que crezca su caja.
 
-**Por qué no `transform: scale`, que es lo obvio.** Porque `scale` cuenta para el overflow
-**scrolleable** del contenedor. Medido en el DOM con `CELL_PX` en 63 —grilla de 630 × 378—: con la
-cabeza en la última celda y `scale(1.10)`, el `scrollHeight` del `overflow-x-auto` de `Board` pasaba de 378 a
-381 y aparecían las barras de desplazamiento —las dos, porque Tailwind fija solo `overflow-x` y
-entonces el eje Y computa a `auto`—. El 014 movió la celda a 71 y el 016 a 73, y esos dos números no se
-remidieron; lo que no depende del tamaño es el mecanismo, que es lo que decide: `box-shadow` es *ink
-overflow*, pinta afuera de la caja sin agrandar la región scrolleable.
+**Por qué no `transform: scale`, que es lo obvio.** Porque `scale` **agranda la caja** a efectos de
+overflow. Medido en el DOM con `CELL_PX` en 63 —grilla de 630 × 378—: con la cabeza en la última celda
+y `scale(1.10)`, el `scrollHeight` del entonces `overflow-x-auto` de `Board` pasaba de 378 a 381 y
+aparecían las dos barras de desplazamiento. El 014 movió la celda a 71 y el 016 a 73, y esos dos
+números no se remidieron; el 031 se llevó además el contenedor que scrolleaba, así que hoy el síntoma
+sería una celda recortada por el `overflow-hidden` del raíz en vez de una barra. Lo que no depende de
+nada de eso es el mecanismo, que es lo que decide: `box-shadow` es *ink overflow*, pinta afuera de la
+caja sin agrandarla.
 
 **El color del resalte es gris pizarra (`#0f172a`) y no un color de pieza.** Es la regla de arriba sin
 excepción: el hue dice *qué pieza es*, nunca *qué está pasando*. Misma razón por la que el fantasma es

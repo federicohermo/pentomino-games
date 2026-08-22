@@ -38,8 +38,9 @@ const memo = new Map<string, readonly CellText[]>();
  *
  * ## El memo
  *
- * `degreeByCellIndex` ordena, hay hasta 60 celdas por render y hay un render por
- * movimiento del cursor. El dominio es CERRADO y chico —12 piezas x 4 rotaciones x 2
+ * `degreeByCellIndex` ordena, hay una llamada por celda y por render —eran 60 cuando se
+ * escribio y desde el spec 031 son hasta 390 en un escritorio, o sea que el memo cuenta
+ * mas— y hay un render por movimiento del cursor. El dominio es CERRADO y chico —12 piezas x 4 rotaciones x 2
  * reflexiones x 2 regimenes son 192 entradas—, asi que el memo vive en el modulo y no
  * adentro del componente: asi sobrevive al render en vez de rearmarse en cada uno. No
  * es estado de la app —no lo puede observar nadie, y para la misma entrada devuelve

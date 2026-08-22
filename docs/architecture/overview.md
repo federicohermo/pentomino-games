@@ -182,8 +182,10 @@ está en las dependencias: la secuencia es función del tablero y no del transpo
 Ese efecto **no vive en el shell**: desde el spec 022 está en `components/use-engine.ts` con los otros
 tres de reconciliación, y `App.tsx` sigue sin declarar un solo `useEffect` —el 021 le agregó un hook más,
 `use-grid.ts`, y lo puso donde van todos: en `components/`— (ver [Qué vive dónde](#qué-vive-dónde)). Lo
-que se queda en el shell es la **derivación** —`secuencia` es un `useMemo` sobre `[placed, regimen]`— y
-el hook recibe el resultado, para que el dibujo y el sonido no puedan mirar circuitos distintos.
+que se queda en el shell es la **derivación** —`secuencia` es un `useMemo` sobre
+`[visibles, regimen, dims]`, que desde el spec 031 son las tres cosas de las que depende: las piezas
+que entran en la grilla de ahora, el régimen y cuánto mide el tablero— y el hook recibe el resultado,
+para que el dibujo y el sonido no puedan mirar circuitos distintos.
 
 El patrón imperativo anterior —cada handler acordándose de limpiar lo suyo— es exactamente el que
 produjo el bug de loops huérfanos que sobrevivían a "Quitar" y "Reset". Ver

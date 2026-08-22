@@ -109,10 +109,16 @@ export function cabeEn(p: PlacedPiece, dims: Dims): boolean {
  * los seguimientos del 009 y el 010, que pedian saber si aguantaba que el tablero se
  * dibujara al ritmo del intervalo: con las 12 piezas colocadas —el maximo, y el peor
  * caso porque no queda ninguna celda vacia que corte antes— un render entero del
- * tablero son 60 llamadas y **4,1 us** en total (p95 7,4 us), o sea 0,07 us por celda
- * y el 0,02 % de un cuadro de 16,7 ms. A 160 bpm el intervalo mide 93,75 ms: aunque se
- * la llamara una vez por celda y por intervalo, sobraria por cuatro ordenes de
- * magnitud.
+ * tablero de referencia son 60 llamadas y **4,1 us** en total (p95 7,4 us), o sea
+ * 0,07 us por celda y el 0,02 % de un cuadro de 16,7 ms. A 160 bpm el intervalo mide
+ * 93,75 ms: aunque se la llamara una vez por celda y por intervalo, sobraria por cuatro
+ * ordenes de magnitud.
+ *
+ * **El costo es por CELDA, asi que el tablero del spec 031 lo escala y no lo cambia.** El
+ * tope de piezas sigue siendo 12 (`MAX_PIEZAS`), que es lo que fija el peor caso de cada
+ * llamada; lo que crece es cuantas veces se llama: 390 celdas en un escritorio de
+ * 1920 x 1080 son 6,5 veces las 60 de arriba, o sea ~27 us por render y el 0,16 % del
+ * cuadro. Sigue sobrando por tres ordenes.
  *
  * O sea que el indice por celda que la tarea preveia no hace falta, y el que dibuja a
  * ritmo de intervalo —la cabeza lectora del 010— igual no la usa: lee la tabla por
@@ -134,10 +140,12 @@ export function occupantAt(placed: readonly PlacedPiece[], x: number, y: number)
  * que solo necesitan lo primero.
  *
  * Existe para que la derivacion celda→nota no viva adentro de `Board.tsx`. El
- * argumento no es de costo —cinco comparaciones sobre 60 celdas es irrelevante—
- * sino de cobertura: `components/` no tiene tests, asi que un `findIndex` ahi
- * adentro dejaria verificado solo por captura el unico paso del que depende lo
- * que se ve, y una captura no distingue un mapeo correcto de uno corrido en uno.
+ * argumento no es de costo —cinco comparaciones por celda es irrelevante, midiera el
+ * tablero 60 celdas o las 390 del spec 031— sino de cobertura: cuando se escribio,
+ * `components/` no tenia tests, asi que un `findIndex` ahi adentro dejaba verificado solo
+ * por captura el unico paso del que depende lo que se ve, y una captura no distingue un
+ * mapeo correcto de uno corrido en uno. Los specs 024 y 029 le dieron tests a la capa,
+ * pero la pura sigue siendo mas barata de agotar que un render.
  *
  * El indice que devuelve sirve directamente contra la forma CANONICA gracias al
  * invariante del orden del array: `cells` se construye con `cellsAt`, que es un
