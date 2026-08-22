@@ -428,6 +428,29 @@ describe('App — la orientacion, por panel y por gesto', () => {
     expect(nombre).toBe('F, rotación 90°');
   });
 
+  it('020 — rotar la pieza en la mano no cambia una nota de la que ya esta puesta', async () => {
+    // AC11, que hasta este review solo tenia la confirmacion a ojo de T025 `[M]`. Es la
+    // promesa central del spec —«no cambia una nota»— y la que se rompe sola si algun dia
+    // la memoria del shell pasa a ser la fuente de lo que ya esta en el tablero: hoy cada
+    // `PlacedPiece` guarda la suya y por eso el `title` de sus cinco celdas —nota y `#N`,
+    // o sea sonido Y orden— no se mueve. Se lee del DOM y no del estado porque lo que hay
+    // que verificar es que el tablero no cambio, no que el shell no lo escribio.
+    const { container } = await render(<App />);
+    click(celda(container, 3, 2));
+    await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length));
+    const puesta = () => donde('F', 3, 2)
+      .map(([x, y]) => `${baldosa(celda(container, x, y)).textContent}@${celda(container, x, y).getAttribute('title')}`);
+    const antes = puesta();
+
+    // La `F` de la mano a 90° y reflejada: los dos gestos, los dos sobre una sola ranura.
+    tapDeModificador(window, 'Shift');
+    tapDeModificador(window, 'Control');
+    await vi.waitFor(() => expect(container.textContent).toContain('90° · reflejada'));
+
+    expect(puesta()).toEqual(antes);
+    expect(conNota(container)).toBe(SHAPES.F.length);
+  });
+
   it('el regimen cambia lo que la rotacion HACE, y se ve en el fantasma', async () => {
     // AC7 del 017: sin llevar el regimen a las tres derivaciones, cambiarlo no
     // re-derivaria el tablero.

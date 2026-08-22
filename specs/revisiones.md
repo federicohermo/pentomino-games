@@ -985,7 +985,7 @@ empuja—: el spec nombra el mecanismo y el linter tiene una opinión sobre la *
 pregunta que hay que hacerle a cualquier `ref` de este repo no es «¿qué guarda?» sino «¿quién lo
 escribe, y en qué fase». Cuando la respuesta es «el render», hay que buscar el escritor real del dato.
 
-## Y una medición que salió mejor de lo previsto
+### Y una medición que salió mejor de lo previsto
 
 AC15 pedía remedir `CELL_PX` **con el botón `0°` puesto**, porque el 019 acababa de medir esa fila y el
 spec estimaba el colchón de alto en ~30 px. Medido en el DOM: la paleta sigue en **428 px de caja

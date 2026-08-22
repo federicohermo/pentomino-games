@@ -45,11 +45,13 @@ import type { PlacedPiece } from '../domain/types/board.types.ts';
  */
 export function rotacionPorRueda(rotation: Rotacion, deltaY: number): Rotacion {
   const delta = deltaY > 0 ? 1 : deltaY < 0 ? -1 : 0;
-  // La ASERCION va aca y una sola vez, porque este es el unico lugar del repo donde el
-  // cuerpo garantiza lo que el tipo dice y el compilador no lo puede ver: la aritmetica
-  // modulo 4 sobre un entero no negativo produce exactamente `0 | 1 | 2 | 3`, y el `+ 4`
-  // de arriba es lo que asegura el "no negativo". TypeScript no estrecha `%`: el tipo de
-  // `x % 4` es `number` sin importar lo que sepa de `x`.
+  // La ASERCION a `Rotacion` va aca y una sola vez en todo el repo, porque este es el
+  // unico lugar donde una rotacion se calcula en vez de recibirse: la aritmetica modulo 4
+  // sobre un entero no negativo produce exactamente `0 | 1 | 2 | 3`, y el `+ 4` de arriba
+  // es lo que asegura el "no negativo". TypeScript no estrecha `%`: el tipo de `x % 4` es
+  // `number` sin importar lo que sepa de `x`. Es de la misma familia que el
+  // `Object.keys(SHAPES) as PieceKey[]` que el repo ya usa —el cuerpo garantiza lo que el
+  // tipo dice y el compilador no lo puede ver—, y como esa, viene con el motivo al lado.
   return ((rotation + 4 + delta) % 4) as Rotacion;
 }
 

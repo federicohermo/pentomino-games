@@ -242,6 +242,13 @@ que el typecheck de T004 sí enumera, pero que ninguna tarea estaba mandando a a
       de **AC6** —que hoy sólo tiene T027 `[M]`— y además es lo que atrapa que la derivación desde
       `SHAPES` de T002 se rompa: escrita a mano no la atraparía nada, derivada la atrapa esto. Va en
       el proyecto `node` porque el módulo es puro y no toca DOM — **AC6**
+- [x] T047 `src/__tests__/App.browser.test.tsx` (review del PR): **AC11 deja de ser sólo `[M]`.** Era
+      el único AC del spec que quedaba con la confirmación a ojo de T025 como única prueba, y es la
+      promesa que el spec pone en su encabezado —«no cambia una nota»—. Se coloca una `F`, se rota y
+      se refleja la de la mano, y se comparan el texto y el `title` de sus cinco celdas: nota **y**
+      `#N`, o sea sonido y orden. Se lee del DOM y no del estado porque lo que hay que verificar es
+      que el tablero no cambió, no que el shell no lo escribió. T025 se queda como está y pasa a ser
+      confirmación a ojo — **AC11**
 - [x] T020 `pnpm verify` en verde
 - [ ] T021 [M] Navegador: rotar con la rueda y confirmar que **las once miniaturas no seleccionadas no
       se mueven** — **AC3**. Es el criterio que da nombre al spec
@@ -275,6 +282,17 @@ este spec falsifica es la deuda que `d936597` y `eb154a0` ya tuvieron que pagar 
       la frase está partida en dos renglones): el botón de la paleta ya no se dibuja «en la
       orientación que está seleccionada ahora mismo» sino en **la suya**. Es el párrafo del 016, y el resto de esa sección
       —caja fija, borde, «la miniatura no dice notas»— **no cambia**
+- [x] T048 [P] (review del PR) Los **tres gemelos** del párrafo que T036 y T037 sí actualizaron, que
+      la lista de los dos no incluía y que quedaban afirmando en presente lo que este spec falsifica:
+      `docs/architecture/directory-structure.md` —la línea de `OrientationPanel.tsx` decía «en la
+      orientación actual», y las listas por archivo de `components/constants/` y `components/types/`,
+      que estaban completas, no tenían los dos módulos que T001 y T002 crean—;
+      `.claude/rules/ui.md` —fijaba las dependencias de los callbacks de teclado en `[rotation]` y
+      `[mirror]`, y prohibía sin excepción el `[]` con un ref del estado, que es exactamente lo que
+      `alRotar` necesita desde T010: la excepción se escribe ahí con su motivo (AC16 del 022) y con
+      lo que la vuelve legítima (un solo escritor de `selected`, y el ref fuera del render)—; y
+      `docs/guides/conventions.md`, cuyo ejemplo de const-object + union derivado era hipotético
+      (`ROTATION` en `constants/rotation.constants.ts`) y ahora es el real que estrena T003
 
 ## PR
 

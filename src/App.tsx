@@ -329,13 +329,15 @@ export default function App(){
     [orientar, selected],
   );
 
-  // La letra elige la pieza (spec 018). Dependencias VACÍAS porque `setSelected` es un
-  // setter de `useState`, cuya identidad React garantiza estable.
+  // La letra elige la pieza (spec 018). Es `elegirPieza` tal cual y no un callback nuevo:
+  // desde el 020 hay UN solo escritor de la pieza en la mano —el que actualiza el estado y
+  // el ref en la misma línea— y darle al hook otro envoltorio sería abrir la puerta a un
+  // segundo escritor que no toque el ref. Su identidad es estable por el `useCallback` de
+  // dependencias vacías de allá arriba, no porque `setSelected` lo sea.
   //
-  // Y va envuelto en un callback aunque `setSelected` sea asignable a la firma tal cual:
-  // el reparto que fijó el spec 022 es que el hook recibe callbacks, para que el día en
-  // que la ranura de estado cambie de forma —que es exactamente lo que el 020 le va a
-  // hacer a `rotation` y `mirror`— el cambio caiga acá y no adentro del hook.
+  // Que el hook reciba un callback y no el setter lo fijó el spec 022, y es lo que hizo que
+  // el cambio de forma de la ranura de estado —lo que el 020 le acaba de hacer a `rotation`
+  // y `mirror`— cayera acá y no adentro del hook.
   const seleccionarConTecla = elegirPieza;
 
   // `useCallback` de dependencias VACÍAS, y no es cosmética: es lo que deja que el

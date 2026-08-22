@@ -158,7 +158,7 @@ donde una es estrictamente mejor no es lenguaje visual, es alto de pantalla gast
 Desde el spec 016 cada botón dibuja **la pieza**, pintada con su color y **en su propia orientación**,
 con la letra chica debajo. Hasta el 020 los doce se dibujaban en la orientación de la pieza en la mano,
 que es lo mismo que decir que la orientación era del instrumento: rotar para acomodar una `F` movía 11
-de las 12 miniaturas. Antes decía sólo la letra, con un punto de 8 px al
+de las 12 miniaturas. Antes del 016 decía sólo la letra, con un punto de 8 px al
 costado para la identidad — y esas doce letras son nombres arbitrarios: la `N` no se parece a una N, y
 la `V` y la `L` son la misma forma con un brazo de distinto largo.
 
