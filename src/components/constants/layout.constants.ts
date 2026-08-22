@@ -1,66 +1,69 @@
 /**
- * El PISO del tamano de celda, en px. Desde el spec 021 el tamano real no es una
- * constante: se calcula contra el viewport y viaja por la custom property `--cell`.
+ * El tamano de celda OBJETIVO, en px, y lo unico que queda de la larga historia de
+ * `CELL_PX`.
+ *
+ * Desde el spec 031 el tablero no tiene un tamano fijo en celdas: la grilla es la que entra
+ * en el viewport a este tamano. O sea que este numero ya no decide cuanto mide el tablero
+ * —eso lo decide la pantalla— sino **que tan grande se ve una baldosa**, que es lo unico
+ * que siempre decidio de verdad.
  *
  * ```
- * CELL_PX = max(CELL_PX_MIN, min(vw / GRID_W, vh / GRID_H))
+ * 1. cuantas entran           c0 = max(GRID_MIN.w, round(vw / CELL_PX_OBJETIVO))
+ *                             r0 = max(GRID_MIN.h, round(vh / CELL_PX_OBJETIVO))
+ * 2. el tamano real           cell = min(vw / c0, vh / r0)
+ * 3. y cuantas entran a ESE   cols = max(GRID_MIN.w, floor(vw / cell))
+ *                             rows = max(GRID_MIN.h, floor(vh / cell))
  * ```
  *
- * La formula vive en `components/cell-px.ts` —donde tiene test— y quien la escribe en el
- * DOM es `components/use-cell-px.ts`. Todo lo que dependa del tamano de celda lee
+ * La formula vive en `components/grid-fit.ts` —donde tiene test— y quien la escribe en el
+ * DOM es `components/use-grid.ts`. Todo lo que dependa del tamano de celda lee
  * `var(--cell)` y no este numero: una custom property la resuelve el navegador en cada
- * elemento, asi que redimensionar la ventana reposiciona 60 celdas, el velo y la cabeza
+ * elemento, asi que redimensionar la ventana reposiciona las celdas, el velo y la cabeza
  * lectora **sin un solo re-render de React**.
  *
  * Medido sobre los viewports reales:
  *
  * ```
- * viewport      por ancho   por alto   CELL_PX   nota      scroll-x
- * 1920 x 1080     192,0      180,0      180,0    46,8 px
- * 1512 x  982     151,2      163,7      151,2    39,4 px
- * 1440 x  900     144,0      150,0      144,0    37,5 px
- * 1366 x  768     136,6      128,0      128,0    33,3 px
- * 1280 x  720     128,0      120,0      120,0    31,2 px
- *  834 x 1112      83,4      185,3       83,4    21,7 px
- *  430 x  932      43,0      155,3       73,0    19,0 px    si
- *  375 x  667      37,5      111,2       73,0    19,0 px    si
+ * viewport        cols x rows   celdas   celda    nota
+ * 1920 x 1080      26 x  15      390     72,0 px  18,7 px
+ * 1512 x  982      21 x  13      273     72,0 px  18,7 px
+ * 1440 x  900      20 x  12      240     72,0 px  18,7 px
+ * 1366 x  768      19 x  11      209     69,8 px  18,2 px
+ * 1280 x  720      18 x  10      180     71,1 px  18,5 px
+ *  834 x 1112      11 x  15      165     74,1 px  19,3 px
+ *  430 x  932       6 x  13       78     71,7 px  18,7 px
+ *  375 x  667       5 x   9       45     74,1 px  19,3 px
+ *  320 x  568       5 x   8       40     64,0 px  16,7 px
  * ```
  *
- * ## Por que el piso es 73 y no 60
+ * La celda real se queda entre 64 y 74,1 px: el redondeo la mueve un 4,4 % como mucho,
+ * salvo en el ultimo viewport, donde el minimo de 5 columnas de `GRID_MIN` no entra a 73 px
+ * y **se achica la celda antes que dejar que aparezca scroll**.
  *
- * El piso viejo era **60**, y estaba medido con un `Range` sobre el nodo de texto a la
- * fuente que se renderiza: los nombres con sostenido —`D#4`, `D#5`, todos iguales porque
- * `tabular-nums` iguala los digitos— ocupan **35,4 px a los 19 px** que la celda usaba, y
- * abajo de 60 px de celda ese nombre deja de entrar.
+ * ## Por que 73 y no 60
  *
- * Ese 60 valia **con la fuente clavada en 19 px**. Este spec vuelve la tipografia
- * proporcional a la celda —si no, una nota de 19 px en una baldosa de 180 se ve como una
- * mosca— y con eso el 60 deja de significar lo que significaba: a 60 de celda la nota
- * renderiza a **15,6 px**, o sea *por debajo* del tamano que el repo midio como necesario.
+ * Es el numero que el 021 midio como PISO y este spec convierte en objetivo, y el
+ * argumento no cambio: es **tipografico**. El piso viejo era 60 y estaba medido con un
+ * `Range` sobre el nodo de texto a la fuente que se renderiza —los nombres con sostenido,
+ * `D#4`, todos iguales porque `tabular-nums` iguala los digitos, ocupan 35,4 px a los 19 px
+ * que la celda usaba—, pero valia con la fuente clavada en 19 px. Con la tipografia
+ * proporcional a la celda (las razones de abajo), 60 de celda da una nota de 15,6 px, o sea
+ * por debajo del tamano que el repo midio como necesario. **73 es la celda donde la nota
+ * vale exactamente los 19 px medidos.**
  *
- * El piso coherente con la fuente proporcional es **73**: es la celda donde la nota vale
- * exactamente los 19 px medidos. Y tiene una segunda virtud, que es la promesa que deja:
- * **el tablero nunca es mas chico que hoy, solo mas grande.** Abajo de 730 px de viewport
- * el tablero scrollea horizontalmente, que es lo que ya hacia debajo de `md`.
- *
- * **El 73 no se hereda de las mediciones del 019 ni del 020**, aunque el numero coincida.
- * Aquellas dos salen de dividir el interior de una tarjeta que este spec borra: son
- * no-regresiones de un layout que deja de existir. El de aca es **tipografico**, y si
- * cualquiera de las dos hubiera dado 72 o 74 este seguiria siendo 73.
- *
- * El piso sube con la fuente, asi que hay que remedirlo cada vez que cambien las razones
+ * El numero sube con la fuente, asi que hay que remedirlo cada vez que cambien las razones
  * de abajo — es la trampa que este docblock ya se comio dos veces con el layout viejo.
  */
-export const CELL_PX_MIN = 73;
+export const CELL_PX_OBJETIVO = 73;
 
 /**
  * Las razones que vuelven proporcional todo lo que la baldosa media en px fijos.
  *
- * Cada una es `medida_de_hoy / CELL_PX_MIN`, con el denominador tomado del SIMBOLO y no
- * escrito a mano: asi el 73 vive en un solo lugar. A `--cell = 73` las seis dan de vuelta
- * el numero exacto que la baldosa tenia antes del spec 021, que es lo que sostiene que al
- * piso el tablero se vea **identico** a como se veia — y lo que evita tener que remedir el
- * aire alrededor del texto, la trampa que el docblock de arriba nombra.
+ * Cada una es `medida_de_hoy / CELL_PX_OBJETIVO`, con el denominador tomado del SIMBOLO y
+ * no escrito a mano: asi el 73 vive en un solo lugar. A `--cell = 73` las seis dan de
+ * vuelta el numero exacto que la baldosa tenia antes del spec 021, que es lo que sostiene
+ * que la baldosa se vea **igual** — y lo que evita tener que remedir el aire alrededor del
+ * texto, la trampa que el docblock de arriba nombra.
  *
  * Se consumen como `calc(var(--cell) * RAZON)` y por estilo inline, nunca como clase:
  * Tailwind escanea el fuente y una clase interpolada no se genera.
@@ -80,13 +83,13 @@ export const CELL_PX_MIN = 73;
  * **El borde de 1 px NO esta en esta lista, y es a proposito** — ver el comentario junto
  * al `border` de `Board.tsx`.
  */
-export const NOTA_RAZON = 19 / CELL_PX_MIN;
-export const PASO_RAZON = 13 / CELL_PX_MIN;
-export const AIRE_RAZON = 2 / CELL_PX_MIN;
-export const RADIO_RAZON = 8 / CELL_PX_MIN;
-export const RESERVA_RAZON = 8 / CELL_PX_MIN;
-export const PASO_ABAJO_RAZON = 2 / CELL_PX_MIN;
-export const PASO_DERECHA_RAZON = 6 / CELL_PX_MIN;
+export const NOTA_RAZON = 19 / CELL_PX_OBJETIVO;
+export const PASO_RAZON = 13 / CELL_PX_OBJETIVO;
+export const AIRE_RAZON = 2 / CELL_PX_OBJETIVO;
+export const RADIO_RAZON = 8 / CELL_PX_OBJETIVO;
+export const RESERVA_RAZON = 8 / CELL_PX_OBJETIVO;
+export const PASO_ABAJO_RAZON = 2 / CELL_PX_OBJETIVO;
+export const PASO_DERECHA_RAZON = 6 / CELL_PX_OBJETIVO;
 
 /* `PREVIEW_CELL_PX` (20) se fue con `PiecePreview.tsx`: la previsualizacion aparte
    dejo de existir cuando el fantasma del tablero paso a mostrar la nota de cada
@@ -206,7 +209,7 @@ export const TEMPO_MAX = 160;
  *
  * Por el orden de pintado. Los `outline` se pintan al final del contexto de apilamiento
  * —arriba de todo—, pero un `box-shadow` se pinta en la fase de fondo del elemento, y las
- * baldosas de las 60 celdas son `relative`, o sea POSICIONADAS: se pintan despues. Un
+ * baldosas de todas las celdas son `relative`, o sea POSICIONADAS: se pintan despues. Un
  * anillo hacia afuera dejaria la banda oscura tapada por las baldosas vecinas en los
  * cuatro lados y la clara visible encima — o sea un anillo de un solo tono, que es
  * justamente lo que estos dos numeros existen para evitar. Hacia adentro no hay
@@ -214,7 +217,9 @@ export const TEMPO_MAX = 160;
  *
  * Y de paso resuelve solo lo que AC7 manda medir: dibujado hacia adentro el anillo no
  * asoma ni un pixel fuera de la caja, asi que no puede agrandar la region scrolleable ni
- * quedar recortado por el `overflow-x-auto` en las celdas del borde.
+ * quedar recortado en las celdas del borde. Cuando se escribio, quien recortaba era el
+ * `overflow-x-auto` de `Board`; el spec 031 se lo llevo y hoy quien recorta es el
+ * `overflow-hidden` del contenedor raiz — el anillo sigue sin llegarle, por lo mismo.
  */
 export const ANILLO_FOCO_OSCURO_RAZON = AIRE_RAZON;
 export const ANILLO_FOCO_CLARO_RAZON = AIRE_RAZON;

@@ -1,43 +1,77 @@
-import type { Cell } from '../types/transform.types.ts';
+import type { Dims } from '../types/board.types.ts';
 
 /**
- * Dimensiones del tablero.
+ * El tablero mas chico que tiene sentido, en celdas.
  *
- * `GRID_W` ya NO es la cantidad de posiciones dentro del compas: eso valia
- * mientras el eje X era tiempo y la fase de una pieza salia de su columna (spec
- * 004). El spec 009 reemplaza esa lectura por el recorrido — el tiempo lo da el
- * orden en que se visitan las piezas, no la abscisa—, asi que `GRID_W` volvio a
- * ser ancho a secas.
+ * Desde el spec 031 el tamano del tablero **no es una constante**: sale del viewport y
+ * llega como parametro (`Dims`). Lo que queda fijo son estos dos bordes.
  *
- * Lo que si sigue dependiendo de las dos: las 60 celdas del circuito y los dos
- * extremos de la costura, que se derivan de aca y no se escriben a mano.
+ * 5 x 5 y no 4 x 4 porque 5 es el lado de la caja mas chica que contiene cualquier
+ * pentomino en cualquiera de sus 8 orientaciones —el maximo en un eje lo pone sola la
+ * `I`, 5x1 acostada y 1x5 parada—, o sea que abajo de 5 hay piezas que no entran en
+ * ninguna posicion. Es el mismo argumento que `MINI_BOX` en `components/`, sobre otro
+ * dibujo: aquel es la caja donde se dibuja la miniatura y este es el tablero, y coinciden
+ * porque los dos tienen que contener a la `I`.
+ *
+ * Es un piso duro: en un viewport donde 5 celdas de 73 px no entren, la que se achica es
+ * la celda. El tablero nunca tiene menos de 5 x 5 — sin eso hay piezas de la paleta que no
+ * se podrian colocar en ningun lado, que es peor que una celda chica.
  */
-export const GRID_W = 10;
-export const GRID_H = 6;
+export const GRID_MIN: Dims = { w: 5, h: 5 };
 
 /**
- * Los dos extremos de la costura: el tablero se repliega sobre si mismo y `(0,0)`
- * queda adyacente a `(9,5)` (spec 009, D2).
+ * El tablero de siempre: 10 x 6.
  *
- * Es UNA arista extra, no un toroide ni envoltura de todo el borde: ningun otro
- * par de celdas del borde se toca de mas. Medido sobre los 3.600 pares: acorta
- * 496 (13,8 %) y baja la distancia maxima del tablero de 14 a 12.
- *
- * El orden ya NO lo lee nadie. Mientras la ruta se elegia con formula cerrada, los
- * dos extremos eran dos rutas distintas —`viaStart` y `viaEnd`— y habia que saber
- * cual era cual. Con `routeBetween` (spec 011) la costura es una arista mas del
- * grafo y se recorre en los dos sentidos sin nombre propio, asi que `SEAM[0]` y
- * `SEAM[1]` son intercambiables: lo unico que importa es que sean estas dos celdas.
+ * Ya no es lo que la app dibuja —eso lo decide el viewport desde el 031— pero sigue
+ * siendo el tablero de REFERENCIA, y por eso vive acá y no como dos numeros sueltos en
+ * cada llamador: lo usan el MCP server cuando la consulta no dice dimensiones y los tests
+ * del dominio que no tienen ninguna razon para inventar un tamano. Que sea el mismo par de
+ * antes es lo que hace que una consulta a `simulate_board` escrita antes del 031 siga
+ * dando exactamente lo mismo.
  */
-export const SEAM: readonly [Cell, Cell] = [[0, 0], [GRID_W - 1, GRID_H - 1]];
+export const GRID_DEFAULT: Dims = { w: 10, h: 6 };
+
+/**
+ * Cuantas piezas acepta el tablero, sea del tamano que sea.
+ *
+ * **Es el numero que hasta el spec 031 garantizaba el AREA y no una regla.** El tablero
+ * medía 60 celdas y un pentomino ocupa 5, asi que nunca entraban mas de 12 y nadie tenia
+ * que escribirlo — `shortestCircuit` lo da por sentado en su docblock. Con el tablero
+ * saliendo del viewport el area deja de garantizarlo: 1920 x 1080 dan 390 celdas, o sea 78
+ * piezas.
+ *
+ * Y 78 no es un tablero mas grande: es otro problema. El circuito se resuelve con
+ * Held-Karp **exacto**, `O(n^2 * 2^n)`, y eso esta elegido a proposito —el greedy da
+ * recorridos +20,1 % en promedio y +79 % en el peor caso, y ademas no es determinista
+ * entre tableros iguales—. Medido sobre 26 x 14 = 364 celdas, con la cache de distancias
+ * por destino puesta:
+ *
+ * ```
+ * piezas   buildSequence
+ *   12        3,1 ms
+ *   13        3,7 ms
+ *   14        5,6 ms
+ *   15        9,7 ms
+ *   16       18,6 ms
+ * ```
+ *
+ * Duplica por pieza, que es lo que dice `2^n`. No hay optimizacion que compre 78: son 66
+ * duplicaciones.
+ *
+ * Asi que el tope se escribe, y vale **exactamente lo que hoy es cierto**. No recorta
+ * ningun tablero que se pueda armar hoy: lo que cambia es quien lo garantiza.
+ */
+export const MAX_PIEZAS = 12;
 
 /**
  * Lo que cuesta ENTRAR a una celda ocupada al trazar el camino entre dos piezas,
  * contra 1 de una celda vacia (spec 011, D1).
  *
- * Vive al lado de `SEAM` y no en un archivo de rutas porque es lo mismo que la
- * costura: una propiedad del GRAFO del tablero. La costura dice que celdas son
- * vecinas; esto dice cuanto cuesta pisar cada una.
+ * Es una propiedad del GRAFO del tablero, igual que la costura: aquella dice que celdas
+ * son vecinas y esto dice cuanto cuesta pisar cada una. Vivian una al lado de la otra
+ * hasta el spec 031, que convirtio a `SEAM` en la funcion `costuraDe(dims)` de `board.ts`
+ * —dejo de poder ser un valor cuando el tablero dejo de tener un tamano fijo—; este
+ * numero no depende de las dimensiones, asi que se queda.
  *
  * El 5 sale de barrer el peso sobre dos mediciones distintas, y la que decide **no**
  * es el caso testigo sino la segunda.

@@ -13,6 +13,7 @@ import { NOTES_PER_PIECE, REGIMEN } from '../../../src/domain/constants/music.co
 import type { Cell } from '../../../src/domain/types/transform.types.ts';
 import type { PlacedPiece } from '../../../src/domain/types/board.types.ts';
 import type { ToolDef } from '../tools/types.ts';
+import { GRID_DEFAULT } from '../../../src/domain/constants/board.constants.ts';
 
 /**
  * Estos tests miran el FORMATO de las respuestas, que es lo unico que el server
@@ -448,7 +449,7 @@ describe('simulate_board', () => {
       const tablero = (r.placements as (PlacedPiece & { valid: boolean })[]).filter(p => p.valid);
       for (const h of ruta(r).hops) {
         const donde = `${h.from}->${h.to}`;
-        const tramo = routeBetween(h.exit, h.entry, tablero);
+        const tramo = routeBetween(h.exit, h.entry, tablero, GRID_DEFAULT);
         assert.equal(tramo.steps, h.distance, donde);
         assert.deepEqual(tramo.path, h.path, donde);
       }
@@ -804,5 +805,39 @@ describe('spec_status', () => {
     // Y el orden es el de las carpetas, que es lo que hace la respuesta estable.
     assert.deepEqual(specs.map(s => s.dir), [...specs.map(s => s.dir)].sort());
     for (const s of specs) assert.match(s.dir, /^\d+-/);
+  });
+});
+
+describe('simulate_board — el tablero deja de ser 10x6 (spec 031)', () => {
+  test('sin `dims` contesta sobre el tablero de siempre', () => {
+    // La compatibilidad que el AC12 pide: una consulta escrita antes del 031 no dice
+    // dimensiones y tiene que dar exactamente lo mismo que antes. El oraculo es la propia
+    // respuesta: `[9, 5]` es la ultima celda del tablero de referencia, asi que una pieza
+    // que la pisa entra, y una pieza en la columna 10 no.
+    const dentro = call(simulateBoard, { pieces: [{ piece: 'I', at: [7, 5] }] });
+    assert.equal((dentro.placements as { valid: boolean }[])[0].valid, true);
+
+    const afuera = call(simulateBoard, { pieces: [{ piece: 'I', at: [12, 2] }] });
+    assert.equal((afuera.placements as { valid: boolean }[])[0].valid, false);
+    assert.equal((afuera.placements as { reason: string }[])[0].reason, 'fuera-del-tablero');
+  });
+
+  test('con `dims` contesta sobre el tablero que se le pida', () => {
+    // La misma jugada que se cae en 10 x 6 entra en el tablero de una pantalla de
+    // 1920 x 1080, que es de 26 x 15. Sin este parametro no habria forma de preguntarle al
+    // dominio por el tablero que se esta mirando.
+    const r = call(simulateBoard, { pieces: [{ piece: 'I', at: [12, 2] }], dims: { w: 26, h: 15 } });
+    assert.equal((r.placements as { valid: boolean }[])[0].valid, true);
+  });
+
+  test('el circuito cambia con las dimensiones, porque la costura son las esquinas', () => {
+    // No es solo el borde: la costura del spec 009 une `(0,0)` con la esquina opuesta, asi
+    // que agrandar el tablero mueve una arista del grafo y con ella los caminos. Dos
+    // tableros iguales en piezas y distintos en tamano tienen ciclos distintos.
+    const saltos = (r: Record<string, unknown>) => (r.route as { hops: unknown[] }).hops;
+    const piezas = [{ piece: 'F', at: [1, 1] }, { piece: 'Z', at: [7, 4] }];
+    const chico = call(simulateBoard, { pieces: piezas });
+    const grande = call(simulateBoard, { pieces: piezas, dims: { w: 26, h: 15 } });
+    assert.notDeepEqual(saltos(grande), saltos(chico));
   });
 });

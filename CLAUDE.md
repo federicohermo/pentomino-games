@@ -8,7 +8,9 @@ se puede averiguar mirando un archivo. El detalle vive en `docs/`, las reglas po
 ## Qué es
 
 Un prototipo de **instrumento musical**, no un juego con reglas de resolución. El usuario coloca
-pentominós en un tablero de 10×6 y cada pieza dispara un arpegio de cinco notas —salvo que esté
+pentominós en un tablero que **mide lo que entra en la pantalla** —26×15 en un escritorio de
+1920×1080, 5×9 en un teléfono, con la celda siempre en unos 73 px (spec 031)— y cada pieza dispara un
+arpegio de cinco notas —salvo que esté
 **muteada**, que desde el spec 014 la deja ocupando su lugar y su tiempo sin sonar—. Desde el spec 009 el
 tablero es un **recorrido**, no un compás: un circuito cerrado visita las piezas, y el orden y los
 silencios salen de la geometría. No hay puntaje ni condición de victoria — al evaluar una feature, la
@@ -137,7 +139,7 @@ board.ts + music.ts ← sequence.ts          components/ y App.tsx importan de l
 4. **`App.tsx`** — el shell: estado, derivados, handlers y la composición. Desde el spec 022 **sin un
    solo `useEffect`**: los cuatro de reconciliación viven en `components/use-engine.ts`, los dos de
    entrada en `components/use-input.ts` y —desde el 021— el que mide el viewport y escribe `--cell` en
-   `components/use-cell-px.ts`.
+   `components/use-grid.ts`.
 
 `domain/` y `audio/` son **hermanos sin aristas entre ellos**: el motor habla números MIDI y no sabe
 qué es un pentominó.

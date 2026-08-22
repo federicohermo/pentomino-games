@@ -80,14 +80,31 @@ en el **79 % de los tableros, un 10,4 % en promedio** (spec 012, D11). Se descar
 que mover una pieza cambiara el arpegio de sus vecinas. **Una pieza tiene que sonar igual esté donde
 esté**: el instrumento se toca de memoria o no se toca.
 
-**El tablero se repliega sobre sí mismo**: `(0,0)` y `(9,5)` son adyacentes (una costura extra sobre la
+**El tablero se repliega sobre sí mismo**: `(0,0)` y la esquina opuesta son adyacentes (una costura extra sobre la
 grilla, spec 009), y el orden de reproducción sale de un circuito exacto (Held-Karp) sobre esas
 distancias. Desde el spec 011 la distancia entre dos celdas **ya no es función solo de esas dos
-celdas**: `routeBetween(a, b, placed)` (`domain/board.ts`) reemplaza a `cellDistance` y `pathBetween`
+celdas**: `routeBetween(a, b, placed, dims)` (`domain/board.ts`) reemplaza a `cellDistance` y `pathBetween`
 —los dos dejaron de existir, junto con `bestRoute` y el const-object `ROUTE`— y devuelve
-`{ path, steps, cost, crossed }` en una sola llamada: el camino de costo mínimo sobre las 60 celdas,
-con las intermedias ocupadas pagando `CROSS_COST` (`domain/constants/board.constants.ts`, junto a
-`SEAM`) en vez de las dos puntas.
+`{ path, steps, cost, crossed }` en una sola llamada: el camino de costo mínimo sobre las celdas del tablero,
+con las intermedias ocupadas pagando `CROSS_COST` (`domain/constants/board.constants.ts`) en vez de
+las dos puntas.
+
+**El tamaño del tablero es un parámetro, no una constante** (spec 031). `GRID_W`/`GRID_H` y `SEAM` se
+fueron: el tablero mide lo que entra en la pantalla, así que `isValid`, `routeBetween` y
+`buildSequence` reciben un `Dims` y la costura la deriva `costuraDe(dims)`. Lo que queda en
+`constants/` son los tres bordes —`GRID_MIN` (5×5, la caja más chica donde entra cualquier pentominó),
+`GRID_DEFAULT` (10×6, el tablero de referencia que usan el MCP server y los tests) y `MAX_PIEZAS`—.
+
+**`MAX_PIEZAS` es 12 y no es una preferencia**: hasta el 031 ese tope lo garantizaba el área (60 ÷ 5) y
+`shortestCircuit` se apoya en él, porque el circuito es Held-Karp **exacto**, `O(n²·2ⁿ)`. Medido sobre
+364 celdas: 12 piezas 3,1 ms, 14 piezas 5,6 ms, 16 piezas 18,6 ms — duplica por pieza. Con 390 celdas
+el área permitiría 78, y no hay optimización que compre 66 duplicaciones.
+
+Y para que el tablero grande entrara en el presupuesto del 009, `buildSequence` pide las rutas por un
+**rutador** (`rutador(placed, dims)`) en vez de llamar `n²` veces a `routeBetween`: los destinos son
+`n` —las entradas de las piezas— así que las 144 corridas de Dijkstra son 12. Medido: 10,9 ms → 3,1 ms
+en 364 celdas, y también baja en el de 60 (2,3 → 1,9). Verificado contra la versión sin caché sobre
+tableros con semilla: cero rutas distintas.
 
 **El costo ordena, los pasos miden el tiempo, y confundirlos es un bug con nombre.** Un cruce cuesta
 `CROSS_COST` pero dura **un** intervalo, así que dos circuitos pueden costar lo mismo y durar distinto

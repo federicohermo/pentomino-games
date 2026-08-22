@@ -349,10 +349,10 @@ las celdas del tablero) en vez de anidar ternarios.
 **Lo que sale de una constante va por estilo inline, no por clase.** Tailwind escanea el fuente: una
 clase interpolada (`w-[${CELL_PX}px]`) no se generaría, así que el número volvería a estar escrito dos
 veces. Desde el spec 021 las celdas del tablero ya no se dimensionan ni con la constante ni con una
-clase: leen la custom property `--cell`, que `components/use-cell-px.ts` escribe sobre el contenedor
+clase: leen la custom property `--cell`, que `components/use-grid.ts` escribe sobre el contenedor
 raíz midiendo el viewport. El estilo inline sigue siendo la vía —`width: calc(var(--cell) * 1)`— y el
 motivo se sumó uno: una custom property la resuelve el navegador en cada elemento, así que
-redimensionar la ventana reposiciona 60 celdas, el velo y la cabeza lectora **sin un solo re-render de
+redimensionar la ventana reposiciona las celdas, el velo y la cabeza lectora **sin un solo re-render de
 React**.
 
 ## Commits

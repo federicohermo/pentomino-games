@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { page, userEvent } from 'vitest/browser';
-import { GRID_W } from '../domain/constants/board.constants.ts';
 import { SHAPES, ANCHOR_INDEX } from '../domain/constants/pieces.constants.ts';
+import { grillaPara } from '../components/grid-fit.ts';
+import { MAX_PIEZAS } from '../domain/constants/board.constants.ts';
 import { REGIMEN } from '../domain/constants/music.constants.ts';
 import { DEFAULT_BPM } from '../audio/constants/engine.constants.ts';
 import { arpeggioFor } from '../domain/music.ts';
@@ -96,19 +97,45 @@ vi.mock('../components/OrientationPanel.tsx', async (importActual) => {
 
 const App = (await import('../App.tsx')).default;
 
-beforeEach(() => {
+/**
+ * El viewport de estos tests, y por que ahora hay uno.
+ *
+ * Desde el spec 031 el tablero sale del viewport, asi que el tamano de la ventana dejo de
+ * ser un detalle del runner: sin fijarlo, Playwright arranca en **414 x 896** —un telefono
+ * en vertical— y el tablero queda de **6 columnas**, donde media docena de estos casos
+ * apuntan a celdas que no existen. Se fija uno de escritorio, y las dimensiones esperadas
+ * salen de la misma pura que las calcula y no de dos numeros escritos a mano: si la formula
+ * cambia, estos tests la siguen.
+ */
+const VIEWPORT: [number, number] = [1024, 768];
+const { dims: DIMS } = grillaPara(...VIEWPORT);
+
+beforeEach(async () => {
+  await page.viewport(...VIEWPORT);
   motor.estado.corriendo = false;
   for (const v of Object.values(motor)) if (typeof v === 'function' && 'mockClear' in v) v.mockClear();
 });
 
 /**
- * Las 60 celdas del tablero, en orden de indice.
+ * Las celdas del tablero, en orden de indice.
  *
- * Por ROL y no por estructura desde el spec 026: la grilla dejo de ser 60 hijos planos y
- * paso a ser seis `role="row"` de diez, asi que `div.grid.w-max > div` devuelve seis.
+ * Por ROL y no por estructura desde el spec 026: la grilla dejo de ser hijos planos y paso
+ * a ser `role="row"` con celdas adentro, asi que `div.grid > div` devuelve las filas. Y
+ * cuantas son ya no se puede escribir: desde el 031 el tablero mide lo que entra en la
+ * ventana del navegador de test.
  */
 const celdas = (c: HTMLElement) => [...c.querySelectorAll('[role="gridcell"]')] as HTMLElement[];
-const celda = (c: HTMLElement, x: number, y: number) => celdas(c)[y * GRID_W + x];
+/**
+ * El ancho del tablero RENDERIZADO, leido del arbol de accesibilidad.
+ *
+ * No es una constante, y esa es la mitad del spec 031 que este archivo nota: la app
+ * mide su contenedor y dibuja las celdas que entran, asi que el ancho depende del tamano
+ * de la ventana del navegador de test y no de una constante. Leerlo de `aria-colcount` —el
+ * mismo atributo que el 025 puso para el lector de pantalla— es lo que hace que estos
+ * tests no se rompan al cambiar el tamano de la ventana de Playwright.
+ */
+const anchoDe = (c: HTMLElement) => Number(c.querySelector('[role="grid"]')!.getAttribute('aria-colcount'));
+const celda = (c: HTMLElement, x: number, y: number) => celdas(c)[y * anchoDe(c) + x];
 const baldosa = (el: HTMLElement) => el.firstElementChild as HTMLElement;
 
 /** Donde caen las celdas de una pieza colocada con el ancla en (x, y). */
@@ -154,7 +181,7 @@ describe('App — la composicion', () => {
     // afirma por ROL Y NOMBRE y no por `className`, que es lo que deja que el test
     // sobreviva al proximo cambio de layout.
     const { container } = await render(<App />);
-    expect(celdas(container).length).toBe(60);
+    expect(celdas(container).length).toBe(DIMS.w * DIMS.h);
 
     // Los dos flotantes existen y son plegables: el encabezado es un control, no un `<h2>`.
     await expect.element(page.getByRole('button', { name: /^Piezas$/, expanded: true })).toBeInTheDocument();
@@ -331,7 +358,7 @@ describe('App — el fantasma', () => {
     hover(celda(container, 4, 3));
     await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length));
 
-    container.querySelector('div.grid.w-max')!.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
+    container.querySelector('[role="grid"]')!.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
     await vi.waitFor(() => expect(conNota(container)).toBe(0));
   });
 
@@ -549,7 +576,7 @@ describe('App — la orientacion, por panel y por gesto', () => {
 
   it('la rueda sobre el tablero rota, y `Ctrl`+rueda no', async () => {
     const { container } = await render(<App />);
-    const tablero = container.querySelector('div.relative.overflow-x-auto')!;
+    const tablero = container.querySelector('div.relative')!;
     hover(celda(container, 4, 3));
     await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length));
     const antes = notaDelFantasma(container);
@@ -570,7 +597,7 @@ describe('App — la orientacion, por panel y por gesto', () => {
 
   it('el boton derecho refleja, salvo el `Ctrl`+click de macOS', async () => {
     const { container } = await render(<App />);
-    const tablero = container.querySelector('div.relative.overflow-x-auto')!;
+    const tablero = container.querySelector('div.relative')!;
     hover(celda(container, 4, 3));
     await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length));
     const antes = notaDelFantasma(container);
@@ -721,7 +748,7 @@ const tecla = (el: Element, key: string, init: KeyboardEventInit = {}) => {
 
 /** El tablero, entero a la vista: lo que scrollea despues es la tecla y no el `.focus()`. */
 const aLaVista = (c: HTMLElement) =>
-  c.querySelector('div.relative.overflow-x-auto')!.scrollIntoView({ block: 'center' });
+  c.querySelector('div.relative')!.scrollIntoView({ block: 'center' });
 
 describe('App — el tablero se toca con el teclado (spec 026)', () => {
   it('desde la paleta, UN `Tab` entra al tablero y otro lo pasa de largo', async () => {
@@ -799,8 +826,8 @@ describe('App — el tablero se toca con el teclado (spec 026)', () => {
     media.focus();
 
     expect(tecla(media, 'End').defaultPrevented).toBe(true);
-    expect(document.activeElement).toBe(celda(container, GRID_W - 1, 3));
-    tecla(celda(container, GRID_W - 1, 3), 'Home');
+    expect(document.activeElement).toBe(celda(container, anchoDe(container) - 1, 3));
+    tecla(celda(container, anchoDe(container) - 1, 3), 'Home');
     expect(document.activeElement).toBe(celda(container, 0, 3));
     // Y en el extremo se queda: `Home` no salta a la fila de arriba, que es lo que haria
     // si el par mirara el tablero entero en vez de la fila.
@@ -930,7 +957,7 @@ describe('App — el tablero se toca con el teclado (spec 026)', () => {
     await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length));
     const conFoco = notaDelFantasma(container);
 
-    container.querySelector('div.grid.w-max')!.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
+    container.querySelector('[role="grid"]')!.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
     // Se espera de verdad: el mismo gesto con el foco AFUERA lo apaga en el mismo tick, asi
     // que sin la espera esta afirmacion pasaria por llegar antes que el re-render.
     await new Promise(r => setTimeout(r, 30));
@@ -989,5 +1016,192 @@ describe('App — el fondo, un solo valor (spec 028)', () => {
     // Ese es el modo de falla que hay que cerrar: verde sin fondo.
     expect(delDiv).not.toBe('rgba(0, 0, 0, 0)');
     expect(delBody).not.toBe('rgba(0, 0, 0, 0)');
+  });
+});
+
+describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
+  it('AC1 — no scrollea ninguno de los dos ejes, en escritorio ni en telefono', async () => {
+    // La mitad del AC1 que solo se puede ver montando la app entera: el tablero mide lo que
+    // el contenedor mide, y los dos flotantes van encima sin empujarlo. Se prueban los dos
+    // extremos de la tabla del spec — el escritorio grande y el telefono en vertical, que
+    // es el caso donde antes del 031 el tablero scrolleaba a lo ancho.
+    for (const [w, h] of [[1440, 900], [375, 667]] as const) {
+      await page.viewport(w, h);
+      const { container, unmount } = await render(<App />);
+      const raiz = document.documentElement;
+      expect(raiz.scrollWidth, `${w}x${h} ancho`).toBeLessThanOrEqual(raiz.clientWidth);
+      expect(raiz.scrollHeight, `${w}x${h} alto`).toBe(raiz.clientHeight);
+
+      // Y el tablero tampoco: es el nodo que hasta el 031 tenia `overflow-x-auto`.
+      const tablero = container.querySelector('div.relative')!;
+      expect(tablero.scrollWidth, `${w}x${h} tablero`).toBeLessThanOrEqual(tablero.clientWidth + 1);
+      await unmount();
+    }
+  });
+
+  it('AC2 — la grilla que se dibuja es la que sale del viewport', async () => {
+    // El extremo chico de la tabla: 5 columnas por 9 filas en un telefono en vertical,
+    // contra las 26 x 15 de un escritorio. Es el numero que hasta el 031 era 10 x 6 en los
+    // dos.
+    await page.viewport(375, 667);
+    const { container } = await render(<App />);
+    const grilla = container.querySelector('[role="grid"]')!;
+    const esperado = grillaPara(375, 667).dims;
+    expect(Number(grilla.getAttribute('aria-colcount'))).toBe(esperado.w);
+    expect(Number(grilla.getAttribute('aria-rowcount'))).toBe(esperado.h);
+    expect(celdas(container).length).toBe(esperado.w * esperado.h);
+  });
+
+  it('AC5 — la pieza 13 no entra, y se dice', async () => {
+    // El tope que hasta el 031 lo garantizaba el area: con 154 celdas entrarian 30 piezas y
+    // el circuito exacto es `O(n^2 * 2^n)`. Es el unico rechazo que no se explica solo —una
+    // jugada invalida se ve, porque el fantasma sale rosa— asi que se anuncia.
+    const { container } = await render(<App />);
+    const dicho = () => container.querySelector('[aria-live="polite"]')!.textContent;
+    const conPieza = () => celdas(container).filter(e => e.getAttribute('aria-label')!.includes('pieza')).length;
+
+    // Doce `I` acostadas, dos por fila: la `I` mide 5 x 1 y el tablero de 1024 x 768 tiene
+    // 14 columnas y 11 filas, asi que entran dos por fila y sobra lugar. La letra se aprieta
+    // UNA vez —seleccionar es estado del shell, no del gesto de colocar— y recien cuando el
+    // fantasma dice `I` se empieza a colocar.
+    const primera = celda(container, 2, 0);
+    primera.focus();
+    tecla(primera, 'i');
+    await vi.waitFor(() => expect(page.getByRole('button', { name: /^I, / }).element().getAttribute('aria-pressed')).toBe('true'));
+
+    for (let i = 0; i < MAX_PIEZAS; i++) {
+      const c = celda(container, (i % 2) * 7 + 2, Math.floor(i / 2));
+      c.focus();
+      tecla(c, 'Enter');
+      await vi.waitFor(() => expect(conPieza()).toBe(SHAPES.I.length * (i + 1)));
+    }
+
+    const trece = celda(container, 2, 7);
+    trece.focus();
+    tecla(trece, 'Enter');
+    // El tablero no cambio…
+    await vi.waitFor(() => expect(dicho()).toContain(`acepta ${MAX_PIEZAS} piezas`));
+    expect(conPieza()).toBe(SHAPES.I.length * MAX_PIEZAS);
+  });
+
+  it('AC8 — achicar la ventana no borra piezas: vuelven enteras al agrandarla', async () => {
+    // El repo no tiene deshacer (`specs/deuda.md`) y arrastrar el borde de una ventana no es
+    // un gesto de edicion. La pieza que deja de entrar se guarda: no se dibuja, no suena, y
+    // vuelve identica cuando hay lugar.
+    const { container } = await render(<App />);
+    const conPieza = () => celdas(container).filter(e => e.getAttribute('aria-label')!.includes('pieza')).length;
+    const nombres = () => celdas(container)
+      .map(e => e.getAttribute('aria-label')!)
+      .filter(n => n.includes('pieza'));
+
+    // Una `I` acostada bien a la derecha: con el ancla en (11,4) ocupa de (9,4) a (13,4),
+    // asi que en 14 columnas entra y en 5 no.
+    //
+    // Se ESPERA la seleccion antes del `Enter`, como en el test del tope: la letra es
+    // estado del shell y hasta que no re-renderiza, `Enter` coloca la pieza anterior. Sin
+    // la espera este test colocaba una `F` —que tambien mide cinco celdas, asi que la
+    // cuenta pasaba igual— y no verificaba lo que su comentario dice.
+    const c = celda(container, 11, 4);
+    c.focus();
+    tecla(c, 'i');
+    await vi.waitFor(() => expect(page.getByRole('button', { name: /^I, / }).element().getAttribute('aria-pressed')).toBe('true'));
+    tecla(c, 'Enter');
+    await vi.waitFor(() => expect(conPieza()).toBe(SHAPES.I.length));
+    const antes = nombres();
+
+    await page.viewport(375, 667);
+    await vi.waitFor(() => expect(celdas(container).length).toBe(grillaPara(375, 667).dims.w * grillaPara(375, 667).dims.h));
+    expect(conPieza()).toBe(0);
+
+    await page.viewport(...VIEWPORT);
+    await vi.waitFor(() => expect(conPieza()).toBe(SHAPES.I.length));
+    expect(nombres()).toEqual(antes);
+  });
+
+  it('AC8 — la pieza que queda a medias tampoco recibe clicks: la celda vacia se comporta como vacia', async () => {
+    // El caso que el AC8 de arriba no toca: ahi la ventana deja la pieza ENTERA afuera, y
+    // aca la deja **a medias** —dos celdas adentro de la grilla nueva y tres afuera—, que
+    // es el unico estado donde el modelo y lo que se ve pueden discrepar. La pieza no se
+    // dibuja (el criterio es la pieza entera), asi que sus celdas de adentro se ven vacias;
+    // y si el shell consultara el ocupante sobre `placed` en vez de sobre lo visible, un
+    // click ahi quitaria una pieza que no esta en pantalla y lo anunciaria.
+    //
+    // No hay deshacer (`specs/deuda.md`): borrar por accidente lo que no se ve es
+    // exactamente el gesto que el spec 031 vino a hacer imposible.
+    const { container } = await render(<App />);
+    const conPieza = () => celdas(container).filter(e => e.getAttribute('aria-label')!.includes('pieza')).length;
+    const dicho = () => container.querySelector('[aria-live="polite"]')!.textContent;
+
+    // La misma `I` acostada del test de arriba: ancla en (11,4), o sea las celdas 9 a 13.
+    const c = celda(container, 11, 4);
+    c.focus();
+    tecla(c, 'i');
+    await vi.waitFor(() => expect(page.getByRole('button', { name: /^I, / }).element().getAttribute('aria-pressed')).toBe('true'));
+    tecla(c, 'Enter');
+    await vi.waitFor(() => expect(conPieza()).toBe(SHAPES.I.length));
+
+    // 800 x 600 da 11 columnas: quedan adentro (9,4) y (10,4), y afuera las otras tres.
+    const chico = grillaPara(800, 600).dims;
+    expect(chico.w).toBe(11);
+    await page.viewport(800, 600);
+    await vi.waitFor(() => expect(celdas(container).length).toBe(chico.w * chico.h));
+    expect(conPieza()).toBe(0);
+
+    // El click sobre (9,4) —que el modelo sigue teniendo ocupada— no quita nada y no
+    // anuncia nada. Con la `I` en la mano, que es el unico gesto que podria quitarla.
+    const tapada = celda(container, 9, 4);
+    tapada.focus();
+    // Enfocarla ya escribe el cursor, asi que acá se ve la OTRA mitad de la misma consulta:
+    // el fantasma se dibuja, o sea que el gesto que la celda promete es colocar —invalido,
+    // porque la pieza guardada la sigue ocupando— y no editar. Si `hoverEdita` mirara
+    // `placed`, el fantasma se apagaria y el cursor prometeria una edicion sobre una celda
+    // que se ve vacia.
+    await vi.waitFor(() => expect(conNota(container)).toBeGreaterThan(0));
+
+    tecla(tapada, 'Enter');
+    // Se espera de verdad y no se afirma en el mismo tick: sin la espera, este `expect`
+    // pasaria por llegar antes del re-render y no por que no haya pasado nada.
+    await new Promise(r => setTimeout(r, 30));
+    expect(conPieza()).toBe(0);
+    expect(dicho()).not.toContain('quitada');
+
+    // Y no la quito de verdad: al agrandar vuelve entera.
+    await page.viewport(...VIEWPORT);
+    await vi.waitFor(() => expect(conPieza()).toBe(SHAPES.I.length));
+  });
+
+  it('AC9 — achicar la ventana no deja al tablero sin ancla de tabulacion', async () => {
+    // El OTRO estado que la grilla nueva puede dejar apuntando afuera, y que no es una
+    // pieza: el cursor. Lo escriben el mouse y el foco (spec 026) y ninguno de los dos se
+    // entera de un `resize`, asi que el par guardado puede caer fuera de `dims`.
+    //
+    // `Board` ancla el roving tabindex en esa celda, o sea que si no se acota, NINGUNA
+    // celda se queda con `tabIndex={0}` y el tablero entero sale del orden de tabulacion —
+    // para quien navega con teclado, que es de quien es el 026, la app se vuelve
+    // inalcanzable hasta que un mouse toque el tablero.
+    //
+    // Se fija el cursor con el MOUSE y no con el foco a proposito: al achicar, la celda
+    // enfocada se DESMONTA, y si el navegador emite el `focusout` de ese desmonte el cursor
+    // se apaga por otro camino y el test pasaria sin verificar nada. El `mouseover` no tiene
+    // esa segunda via — nadie movio el puntero, asi que no hay `mouseout` que lo limpie.
+    const { container } = await render(<App />);
+    const anclas = () => celdas(container).filter(e => e.getAttribute('tabindex') === '0');
+
+    // Una celda de la derecha del todo, que en el tablero chico no existe.
+    hover(celda(container, anchoDe(container) - 1, 4));
+    await vi.waitFor(() => expect(anclas()).toEqual([celda(container, anchoDe(container) - 1, 4)]));
+
+    const chico = grillaPara(375, 667).dims;
+    await page.viewport(375, 667);
+    await vi.waitFor(() => expect(celdas(container).length).toBe(chico.w * chico.h));
+
+    // Sigue habiendo exactamente UNA parada de tabulacion, y es la (0,0): el destino del
+    // `?? [0, 0]` de `Board`, que es lo que el cursor apagado le devuelve.
+    expect(anclas()).toEqual([celda(container, 0, 0)]);
+
+    // Y la otra mitad del mismo cursor colgado: con `hover` puesto fuera del tablero,
+    // `previewValid` da `false` y pintaba las 45 celdas de `cursor-not-allowed`, diciendo
+    // "aca no entra" justo donde la jugada entra.
+    expect(celdas(container).filter(e => e.className.includes('cursor-not-allowed'))).toEqual([]);
   });
 });

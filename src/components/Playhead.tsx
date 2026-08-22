@@ -48,13 +48,17 @@ const celdas = (n: number) => `calc(var(--cell) * ${n})`;
  *
  * ## Se mueve UN elemento, no cambian sesenta (D2)
  *
- * La alternativa era recalcular la clase de las 60 celdas en cada cuadro: tocar 60
- * nodos para cambiar uno. Aca el costo por cuadro es una lectura aritmetica y, cuando
- * la celda cambio, una escritura de `transform`.
+ * La alternativa era recalcular la clase de TODAS las celdas en cada cuadro: tocarlas a
+ * todas para cambiar una. Aca el costo por cuadro es una lectura aritmetica y, cuando
+ * la celda cambio, una escritura de `transform`. Eran sesenta cuando se midio, y desde el
+ * spec 031 son hasta 390 en un escritorio — o sea que el argumento se hizo mas fuerte, no
+ * menos.
  *
- * El absoluto se posiciona contra el contenedor que SCROLLEA (`Board.tsx`), y eso es
- * deliberado aunque parezca contraintuitivo: asi la capa scrollea con la grilla y sigue
- * alineada debajo de `md`, donde el tablero no entra y `overflow-x-auto` lo contiene.
+ * El absoluto se posiciona contra el `relative` que envuelve la grilla (`Board.tsx`), asi
+ * que queda alineado con las celdas por construccion. Hasta el spec 031 ese contenedor
+ * ademas SCROLLEABA —y el argumento era que la capa scrolleaba con la grilla debajo de
+ * `md`—; el `overflow-x-auto` se fue con ese spec y lo que queda es la mitad que siempre
+ * importo: el posicionado.
  *
  * ## Que dibuja y que NO calcula (D5, AC4)
  *

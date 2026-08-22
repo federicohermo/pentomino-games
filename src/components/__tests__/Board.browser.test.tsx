@@ -2,8 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { page } from 'vitest/browser';
 import Board from '../Board.tsx';
-import { CELL_PX_MIN, ANILLO_FOCO_CLARO_RAZON, ANILLO_FOCO_OSCURO_RAZON } from '../constants/layout.constants.ts';
-import { GRID_W, GRID_H } from '../../domain/constants/board.constants.ts';
+import { CELL_PX_OBJETIVO, ANILLO_FOCO_CLARO_RAZON, ANILLO_FOCO_OSCURO_RAZON } from '../constants/layout.constants.ts';
+import { GRID_DEFAULT } from '../../domain/constants/board.constants.ts';
 import { SHAPES, ANCHOR_INDEX } from '../../domain/constants/pieces.constants.ts';
 import { REGIMEN } from '../../domain/constants/music.constants.ts';
 import { cellsAt } from '../../domain/board.ts';
@@ -40,6 +40,12 @@ const conCelda = (container: HTMLElement, px: number) => {
   container.style.setProperty('--cell', `${px}px`);
   return container;
 };
+// Estos tests dibujan el tablero de REFERENCIA: sus numeros —las 60 celdas, el ancho de
+// la grilla, la celda (9,5)— describen ese tamano. Que el tablero real salga del viewport
+// lo cubre `grid-fit.test.ts`, y que el componente dibuje lo que le digan, el test de AC1
+// de mas abajo, que lo renderiza con tres tamanos distintos.
+const { w: GRID_W, h: GRID_H } = GRID_DEFAULT;
+
 const colocar = (piece: PieceKey, x: number, y: number, muted = false): PlacedPiece => ({
   id: piece,
   piece,
@@ -52,6 +58,7 @@ const colocar = (piece: PieceKey, x: number, y: number, muted = false): PlacedPi
 type Props = Parameters<typeof Board>[0];
 
 const props = (over: Partial<Props> = {}): Props => ({
+  dims: GRID_DEFAULT,
   placed: [],
   previewCells: [],
   previewValid: true,
@@ -93,7 +100,7 @@ describe('Board', () => {
 
     // Al piso y al techo: la celda sigue al valor, que es lo que el spec 021 promete y lo
     // que una constante no podia decir.
-    for (const px of [CELL_PX_MIN, 180]) {
+    for (const px of [CELL_PX_OBJETIVO, 180]) {
       conCelda(container, px);
       const c = enIndice(container, 0, 0).getBoundingClientRect();
       expect(Math.round(c.width), `${px}`).toBe(px);
@@ -124,7 +131,7 @@ describe('Board', () => {
       };
     };
 
-    const alPiso = razones(CELL_PX_MIN);
+    const alPiso = razones(CELL_PX_OBJETIVO);
     const alTecho = razones(180);
     // Que el layout exista: en jsdom todo esto seria 0 y las dos serian iguales por vacias.
     expect(alPiso.nota).toBeGreaterThan(0);
@@ -134,8 +141,8 @@ describe('Board', () => {
       expect(alTecho[clave], clave).toBeCloseTo(alPiso[clave], 2);
     }
     // Y al piso los px son los de siempre, que es AC4: la nota a 19 y el `#N` a 13.
-    expect(alPiso.nota * CELL_PX_MIN).toBeCloseTo(19, 0);
-    expect(alPiso.pasoTamano * CELL_PX_MIN).toBeCloseTo(13, 0);
+    expect(alPiso.nota * CELL_PX_OBJETIVO).toBeCloseTo(19, 0);
+    expect(alPiso.pasoTamano * CELL_PX_OBJETIVO).toBeCloseTo(13, 0);
   });
 
   it('021 AC20 — el borde de 1 px NO escala, y sigue separando al techo', async () => {
@@ -143,32 +150,41 @@ describe('Board', () => {
     // tipografico, y en `calc()` daria fracciones que el navegador redondea distinto por
     // arista — sobre 60 celdas adyacentes, un enrejado irregular.
     const { container } = await render(<Board {...props({ placed: [colocar('F', 3, 2)] })} />);
-    for (const px of [CELL_PX_MIN, 180]) {
+    for (const px of [CELL_PX_OBJETIVO, 180]) {
       conCelda(container, px);
       const ancho = getComputedStyle(baldosa(enIndice(container, 3, 2))).borderTopWidth;
       expect(ancho, `${px}`).toBe('1px');
     }
   });
 
-  it('la grilla mide GRID_W × --cell y NO le empuja scroll horizontal a la pagina', async () => {
-    // La medicion que decide el `overflow-x-auto`: la celda tiene PISO, asi que abajo de
-    // 730 px de viewport la grilla no se encoge, y sin el contenedor que scrollea —toda la
-    // cadena de ancestros es `overflow-x: visible`— el desborde llega hasta el `body`.
+  it('AC1 — la grilla mide lo que dicen `dims` y `--cell`, y nada scrollea', async () => {
+    // Lo que este test verificaba hasta el spec 031 era lo contrario: que el tablero
+    // SCROLLEARA cuando no entraba, para no achicar la celda. Hoy no puede no entrar
+    // —`grillaPara` elige `cols` y `rows` contra la caja, asi que `cols * cell <= vw`— y
+    // lo que hay que fijar es que no quede una sola forma de scrollear: ni el tablero, ni
+    // la pagina, ni con la ventana chica.
     await page.viewport(375, 800);
     try {
-      const { container } = await render(<Board {...props()} />);
-      conCelda(container, CELL_PX_MIN);
-      const grilla = container.querySelector('div.grid')!;
-      expect(Math.round(grilla.getBoundingClientRect().width)).toBe(GRID_W * CELL_PX_MIN);
+      // Tres tableros bien distintos, incluido uno mas ancho que el viewport de 375 px si
+      // la celda no se hubiera achicado: el componente dibuja lo que le dicen.
+      for (const dims of [GRID_DEFAULT, { w: 5, h: 9 }, { w: 26, h: 15 }]) {
+        const { container, unmount } = await render(<Board {...props({ dims })} />);
+        const cell = Math.min(375 / dims.w, 800 / dims.h);
+        conCelda(container, cell);
+        const grilla = container.querySelector('[role="grid"]')!;
+        expect(Math.round(grilla.getBoundingClientRect().width), `${dims.w}x${dims.h}`)
+          .toBe(Math.round(dims.w * cell));
+        expect(container.querySelectorAll('[role="gridcell"]').length).toBe(dims.w * dims.h);
 
-      // El que scrollea es el tablero, que es lo que sobra.
-      const scroller = container.querySelector('div.relative.overflow-x-auto')!;
-      expect(scroller.scrollWidth).toBeGreaterThan(scroller.clientWidth);
-      // Y la pagina no: la nota es lo que hay que poder leer, y para eso la celda no se
-      // achica — se scrollea el tablero.
-      expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
-        document.documentElement.clientWidth + 1,
-      );
+        // Ni el tablero scrollea —ya no hay contenedor que pueda—…
+        const caja = container.querySelector('div.relative')!;
+        expect(caja.scrollWidth, `${dims.w}x${dims.h}`).toBeLessThanOrEqual(caja.clientWidth + 1);
+        // …ni la pagina.
+        expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
+          document.documentElement.clientWidth + 1,
+        );
+        await unmount();
+      }
     } finally {
       await page.viewport(800, 600);
     }
@@ -276,12 +292,12 @@ describe('Board', () => {
     enIndice(container, 4, 2).dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
     await vi.waitFor(() => expect(onCellEnter).toHaveBeenCalledWith([4, 2]));
 
-    container.querySelector('div.grid')!.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
+    container.querySelector('[role="grid"]')!.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
     await vi.waitFor(() => expect(onMouseLeave).toHaveBeenCalled());
 
     // `contextmenu` NO esta entre los tres eventos que React registra pasivos, asi que
     // el boton derecho si puede ir por prop.
-    container.querySelector('div.relative.overflow-x-auto')!
+    container.querySelector('div.relative')!
       .dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
     expect(onContextMenu).toHaveBeenCalled();
   });
@@ -308,7 +324,7 @@ describe('Board', () => {
   it('el ref del tablero queda colgado del nodo que scrollea, que es donde engancha la rueda', async () => {
     const boardRef: { current: HTMLDivElement | null } = { current: null };
     const { container } = await render(<Board {...props({ boardRef })} />);
-    expect(boardRef.current).toBe(container.querySelector('div.relative.overflow-x-auto'));
+    expect(boardRef.current).toBe(container.querySelector('div.relative'));
   });
 });
 
@@ -504,18 +520,20 @@ describe('Board — el teclado y el foco', () => {
     // La medicion que el repo ya pago para la cabeza lectora: `scale` cuenta para el
     // overflow scrolleable y hace aparecer las dos barras. `outline` y `box-shadow` son
     // ink overflow, y dibujados hacia adentro ni siquiera asoman de la caja.
-    // Re-corrido al TECHO desde el spec 021, que es donde el anillo es mas grande: a celda
-    // 180 las dos bandas miden 4,93 px cada una en vez de 2.
+    // Se corre a celda 180 —mucho mas grande que la real— porque es donde el anillo es mas
+    // grande: las dos bandas miden 4,93 px cada una en vez de 2. Que la app ya no dibuje
+    // celdas de 180 px no le saca sentido: lo que se verifica es que el anillo no asome de
+    // la caja a NINGUN tamano.
     const esquina = [GRID_W - 1, GRID_H - 1] as Cell;
     const sinFoco = await render(<Board {...props({ hover: esquina })} />);
     conCelda(sinFoco.container, 180);
-    const antes = sinFoco.container.querySelector('div.relative.overflow-x-auto')!;
+    const antes = sinFoco.container.querySelector('div.relative')!;
     const medida = [antes.scrollWidth, antes.scrollHeight];
     await sinFoco.unmount();
 
     const conFoco = await render(<Board {...props({ hover: esquina, focoEnTablero: true })} />);
     conCelda(conFoco.container, 180);
-    const despues = conFoco.container.querySelector('div.relative.overflow-x-auto')!;
+    const despues = conFoco.container.querySelector('div.relative')!;
     expect([despues.scrollWidth, despues.scrollHeight]).toEqual(medida);
   });
 

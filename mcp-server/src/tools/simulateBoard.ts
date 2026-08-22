@@ -6,10 +6,10 @@ import { cellsAt, isValid, occupantAt } from '../../../src/domain/board.ts';
 import { midiName } from '../../../src/domain/music.ts';
 import { buildSequence, gates } from '../../../src/domain/sequence.ts';
 import { SHAPES, ANCHOR_INDEX, CELLS_PER_PIECE } from '../../../src/domain/constants/pieces.constants.ts';
-import { GRID_W, GRID_H } from '../../../src/domain/constants/board.constants.ts';
+import { GRID_DEFAULT, GRID_MIN, MAX_PIEZAS } from '../../../src/domain/constants/board.constants.ts';
 import { REGIMEN, DEFAULT_REGIMEN } from '../../../src/domain/constants/music.constants.ts';
 import type { Cell } from '../../../src/domain/types/transform.types.ts';
-import type { PlacedPiece } from '../../../src/domain/types/board.types.ts';
+import type { PlacedPiece, Dims } from '../../../src/domain/types/board.types.ts';
 import { collectHits, barDuration, intervalDuration } from '../../../src/audio/scheduler.ts';
 import { midiToHz } from '../../../src/audio/voice.ts';
 import { LOOKAHEAD, TICK_MS, HIT } from '../../../src/audio/constants/scheduler.constants.ts';
@@ -54,12 +54,24 @@ const placementSchema = z.object({
   // el default es `false` porque es el tablero de siempre.
   muted: z.boolean().default(false),
   at: z.tuple([z.number().int(), z.number().int()])
-    .describe(`Celda [x, y] donde cae la CELDA DE AGARRE, no la esquina. Tablero de ${GRID_W}x${GRID_H}, y crece hacia abajo.`),
+    .describe(`Celda [x, y] donde cae la CELDA DE AGARRE, no la esquina. El tablero mide ${GRID_DEFAULT.w}x${GRID_DEFAULT.h} salvo que se pase \`dims\`, y la y crece hacia abajo.`),
 });
 
 const inputSchema = z.object({
-  pieces: z.array(placementSchema).min(1).max(Math.floor(GRID_W * GRID_H / CELLS_PER_PIECE))
+  pieces: z.array(placementSchema).min(1).max(MAX_PIEZAS)
     .describe('Las piezas, en el orden en que se colocarían: cada una choca con las anteriores válidas.'),
+  // El tablero deja de ser 10x6 fijo con el spec 031: en la app lo decide el viewport, y
+  // acá hay que poder preguntar por el mismo tablero que se está mirando. El default es el
+  // de siempre, así que una consulta escrita antes del 031 contesta exactamente lo mismo.
+  //
+  // El tope de piezas NO sale del área y por eso `pieces` usa `MAX_PIEZAS` y ya no
+  // `GRID_W * GRID_H / CELLS_PER_PIECE`: hasta el 031 los dos números coincidían —60 ÷ 5—
+  // pero el que manda es el del circuito, que es exponencial en la cantidad de piezas.
+  dims: z.object({
+    w: z.number().int().min(GRID_MIN.w).max(64),
+    h: z.number().int().min(GRID_MIN.h).max(64),
+  }).default(GRID_DEFAULT)
+    .describe(`Cuánto mide el tablero, en celdas. Por defecto ${GRID_DEFAULT.w}x${GRID_DEFAULT.h}, que es el de siempre.`),
   bpm: z.number().min(40).max(240).default(DEFAULT_BPM),
   // El tope no es el de `bars` dividido a ojo. Con compases el costo del bucle de
   // ventanas dependia del tempo y del tablero a la vez; con ciclos el peor caso
@@ -148,7 +160,7 @@ function crucesDe(tramo: readonly { cell: Cell; note?: number }[]): Cruce[] {
  * `buildSequence`: rearmarlas afuera a partir de `Resolved` seria construir dos
  * veces lo mismo.
  */
-function resolve(entries: z.output<typeof inputSchema>['pieces']): { resolved: Resolved[]; placed: PlacedPiece[] } {
+function resolve(entries: z.output<typeof inputSchema>['pieces'], dims: Dims): { resolved: Resolved[]; placed: PlacedPiece[] } {
   const placed: PlacedPiece[] = [];
   const resolved: Resolved[] = [];
 
@@ -158,10 +170,10 @@ function resolve(entries: z.output<typeof inputSchema>['pieces']): { resolved: R
     const cells = cellsAt(shape, ANCHOR_INDEX[e.piece], e.at[0], e.at[1]);
 
     const id = String(i + 1);
-    const valid = isValid(cells, placed);
+    const valid = isValid(cells, placed, dims);
     let reason: string | null = null;
     if (!valid) {
-      if (!isValid(cells, [])) {
+      if (!isValid(cells, [], dims)) {
         reason = 'fuera-del-tablero';
       } else {
         const choque = cells.map(([x, y]) => occupantAt(placed, x, y)).find(p => p !== null);
@@ -244,12 +256,12 @@ export const simulateBoard = defineTool({
     '(`escala`) o el arranque del arpegio (`orden`), y sin decirlo la línea de tiempo es ambigua en ' +
     '36 de las 48 combinaciones. El circuito no cambia con el régimen — solo las alturas.',
   inputSchema,
-  run: ({ pieces, bpm, cycles, regimen }) => {
-    const { resolved, placed } = resolve(pieces);
+  run: ({ pieces, bpm, cycles, regimen, dims }) => {
+    const { resolved, placed } = resolve(pieces, dims);
 
     // Etapa 2 — la secuencia del recorrido, la misma que arma la app. Una pieza
     // invalida no esta en `placed` y por lo tanto no entra al circuito.
-    const seq = buildSequence(placed, regimen);
+    const seq = buildSequence(placed, regimen, dims);
     // El circuito y no los pasos: desde el spec 014 una pieza MUTEADA visita su lugar
     // sin emitir `Step`, asi que contar pasos reportaria un recorrido al que le faltan
     // nodos y fusionaria dos tramos en uno.

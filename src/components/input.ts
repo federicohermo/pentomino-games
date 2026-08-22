@@ -38,10 +38,12 @@ import type { PlacedPiece } from '../domain/types/board.types.ts';
  *
  * Un `deltaY` de 0 no rota. Llega de verdad —un scroll horizontal puro con `deltaX`
  * deja `deltaY` en 0— y girar ahí sería rotar sin que nadie lo haya pedido. El cableado
- * de `use-input.ts` además **sale antes** en ese caso, por un motivo que esta pura no puede
- * ver: el nodo que escucha la rueda es el `overflow-x-auto` con el que se recorre la
- * grilla debajo de `md`, así que hacerle `preventDefault` a un gesto horizontal sería
- * dejar sin scroll al único elemento que lo tiene.
+ * de `use-input.ts` además **sale antes** en ese caso, o sea sin `preventDefault`: no hay
+ * nada nuestro que hacer con un gesto horizontal, así que el navegador se lo queda entero.
+ * Hasta el spec 031 el motivo era más fuerte —el nodo que escucha la rueda era el
+ * `overflow-x-auto` con el que se recorría la grilla debajo de `md`, y frenarlo dejaba sin
+ * scroll al único elemento que lo tenía—; ese contenedor ya no scrollea, pero tragarse un
+ * default que no se usa sigue sin tener a favor nada.
  */
 export function rotacionPorRueda(rotation: Rotacion, deltaY: number): Rotacion {
   const delta = deltaY > 0 ? 1 : deltaY < 0 ? -1 : 0;

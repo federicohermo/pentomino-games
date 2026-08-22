@@ -7,8 +7,10 @@ export const TICK_MS = 25;
 /**
  * Pulsos por compas. El instrumento esta en 4/4.
  *
- * No confundir con `GRID_W`: el ancho del tablero es en cuantas POSICIONES se
- * puede caer dentro del compas (10), no en cuantos pulsos se divide (4).
+ * No confundir con el ancho del tablero, que ademas dejo de ser un numero fijo con el
+ * spec 031: aquel dice cuantas celdas hay y este en cuantos pulsos se divide el compas.
+ * Que se hayan podido confundir alguna vez es del spec 004, cuando el eje X del tablero
+ * ERA el tiempo; desde el 009 el tablero es un recorrido y el motor no lo mira.
  */
 export const BEATS_PER_BAR = 4;
 

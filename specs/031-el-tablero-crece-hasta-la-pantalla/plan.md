@@ -11,8 +11,10 @@ Cuatro bloques, en este orden. El primero es el único que puede correr solo: el
      siempre: lo usan el MCP server y los tests que no tienen por qué inventar dimensiones).
    - `SEAM` se va: la costura depende de las dimensiones, así que pasa a ser una función.
    - Entra `MAX_PIEZAS = 12`.
-3. `domain/board.ts`: `costuraDe(dims)`, y `Dims` como parámetro de `isValid`, `routeBetween` y de los
-   tres helpers de id (`nodeOf`, `cellOf`, `neighborsOf`).
+3. `domain/board.ts`: `costuraDe(dims)`, `cabeEn(p, dims)` —«¿entra esta pieza entera?», implementada
+   sobre `isValid` con el tablero vacío para no escribir los cuatro límites dos veces— y `Dims` como
+   parámetro de `isValid`, `routeBetween` y de los tres helpers de id (`nodeOf`, `cellOf`,
+   `neighborsOf`).
 4. `domain/sequence.ts`: `buildSequence(placed, regimen, dims)`, y la **caché de distancias por
    destino** adentro — un `Map<number, Int32Array>` que vive lo que dura la llamada. `routeBetween`
    queda como la puerta pública de una llamada suelta y se implementa sobre las dos mitades nuevas.
@@ -40,9 +42,16 @@ Cuatro bloques, en este orden. El primero es el único que puede correr solo: el
 9. `App.tsx`:
    - `const dims = useGrilla(raizRef)`,
    - `const visibles = useMemo(() => placed.filter(p => cabeEn(p, dims)), [placed, dims])` — lo que se
-     dibuja y lo que suena,
+     dibuja, lo que suena **y lo que se toca**,
    - `buildSequence(visibles, regimen, dims)`,
    - el tope de `MAX_PIEZAS` en el handler de colocación, con su anuncio.
+
+   **El corte entre las dos listas es una sola regla, y se aplica consulta por consulta:** `visibles`
+   es lo que se ve, se toca y suena; `placed` es lo que existe. Van con `visibles` el dibujo, la
+   secuencia, el `occupantAt` del click y el `hoverEdita` del cursor —una pieza que no se dibuja no
+   puede recibir un click sobre una celda que se ve vacía—, y van con `placed` las dos que no miran la
+   pantalla: `isValid`, para que no se pueda pisar lo guardado, y el tope de `MAX_PIEZAS`, porque una
+   pieza guardada vuelve al circuito en cuanto la ventana crezca.
 
 ## Bloque 4 — Lo que cruza el borde del paquete y la prosa
 
