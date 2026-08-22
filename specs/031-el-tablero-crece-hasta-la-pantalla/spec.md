@@ -148,7 +148,9 @@ Media pieza pintada sería una pieza que el tablero muestra y el circuito no vis
   tabla. El piso duro es que **no haya scroll**, así que en un viewport donde las 5 columnas mínimas no
   entren a 73 px la celda se achica (320 × 568 → 64 px) en vez de desbordar.
 - **AC4 — `domain/` recibe las dimensiones y no las lee de una constante.** Ni un módulo de `domain/`
-  importa `GRID_W`/`GRID_H`; `isValid`, `routeBetween` y `buildSequence` toman un `Dims`.
+  importa `GRID_W`/`GRID_H`; `isValid`, `routeBetween` y `buildSequence` toman un `Dims`. El predicado
+  «esta pieza entra en este tablero» también es del dominio y no del shell (`cabeEn`): `App.tsx` no
+  lleva funciones puras (`.claude/rules/ui.md`), y ahí adentro no se podría testear.
 - **AC5 — El tope de 12 piezas se aplica y se anuncia.** La pieza 13 no entra, el tablero no cambia, y
   la región `aria-live` del 025 lo dice.
 - **AC6 — `buildSequence` con 12 piezas entra en 5 ms** sobre el tablero de referencia de 1920 × 1080
@@ -156,8 +158,14 @@ Media pieza pintada sería una pieza que el tablero muestra y el circuito no vis
   009, sobre un tablero 6,5 veces más grande.
 - **AC7 — La caché no cambia una nota.** Test que compara la secuencia con y sin caché sobre tableros
   generados con PRNG determinista.
-- **AC8 — Achicar la ventana no borra piezas.** Achicar hasta dejar una pieza afuera y volver a
-  agrandar la devuelve idéntica —mismas celdas, mismo muteo, mismo id—.
+- **AC8 — Achicar la ventana no borra piezas, y mientras están afuera son inertes.** Achicar hasta
+  dejar una pieza afuera y volver a agrandar la devuelve idéntica —mismas celdas, mismo muteo, mismo
+  id—. Y el caso que no es «afuera» ni «adentro»: una pieza que queda **a medias** —dos celdas dentro
+  de la grilla nueva y tres fuera— tampoco se dibuja, así que esas dos celdas se ven vacías y tienen
+  que **comportarse** como vacías: no reciben el click de edición, no apagan el fantasma y no
+  anuncian nada. Un click que quita lo que no se ve es irreversible, porque no hay deshacer. Lo único
+  que la pieza guardada sigue haciendo es ocupar lugar para `isValid`, así que colocar sobre esas
+  celdas se rechaza como cualquier jugada inválida.
 - **AC9 — El teclado respeta las dimensiones.** `Home`/`End` y las flechas del 026 se mueven dentro de
   `cols × rows` y no de `10 × 6`.
 - **AC10 — El árbol de accesibilidad dice el tamaño real**: `aria-rowcount`, `aria-colcount` y el

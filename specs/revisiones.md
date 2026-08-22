@@ -1067,3 +1067,22 @@ las tareas no nombraban.
   `O(n²·2ⁿ)`: medido, 12 piezas 3,1 ms, 14 piezas 5,6 ms, 16 piezas 18,6 ms, 22 piezas 1,78 s. El tope
   pasó a ser `MAX_PIEZAS`, y lo importante es que **no recorta ningún tablero que hoy se pueda armar**:
   es el mismo número, con otro garante.
+- **2026-08-22 — El review del 031 corrió con el código ya escrito, y lo que encontró fue el estado
+  intermedio que nadie enumeró: la pieza «a medias».** El spec parte las piezas en dos —las que entran
+  y las que no— y de ahí sale un filtro que alimenta el dibujo y la secuencia. Pero una pieza que la
+  ventana deja con dos celdas adentro y tres afuera no se dibuja **y sigue ocupando esas dos en el
+  modelo**, así que el shell tenía dos consultas —el `occupantAt` del click y el `hoverEdita` del
+  cursor— contestando sobre `placed`: la celda se veía vacía y el click la quitaba, anunciándolo, sin
+  deshacer. La regla que faltaba escribir no es una excepción sino un corte: **`visibles` es lo que se
+  ve, se toca y suena; `placed` es lo que existe**, y cada consulta elige una. Las dos que se quedan
+  con `placed` son `isValid` —para que no se pueda pisar lo guardado— y el tope de `MAX_PIEZAS`, que
+  cuenta lo que va a volver al circuito y no lo que hay en pantalla.
+- **2026-08-22 — Y un test que pasaba por el motivo equivocado, que es la otra mitad del mismo review.**
+  El test de AC8 del 031 apretaba la letra `i` y el `Enter` en el mismo tick: la selección es estado del
+  shell, así que hasta el re-render `Enter` coloca la pieza ANTERIOR. Colocaba una `F` donde su
+  comentario decía `I`, y la aserción —`conPieza() === SHAPES.I.length`— pasaba igual **porque los dos
+  pentominós miden cinco celdas**. Se descubrió recién al usar el mismo tablero para otra cosa y ver
+  que la pieza no estaba donde la geometría decía. El test del tope de 12 ya esperaba el `aria-pressed`
+  y ese es el patrón; la lección general es la de siempre: una aserción sobre un CONTEO no distingue la
+  cosa correcta de otra del mismo tamaño.
+

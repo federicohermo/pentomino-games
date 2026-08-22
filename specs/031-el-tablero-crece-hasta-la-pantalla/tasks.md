@@ -65,6 +65,23 @@ Formato en `specs/README.md`. `[P]` = paralelizable dentro de su bloque; `[M]` =
       carácter sin que cambie el modelo, y hay que decidir si eso está bien
 - [ ] T029 PR contra `fix/celda-vuelve-al-tamano-de-antes` (o contra `main` si ese ya mergeó)
 
+## Correcciones del review (post-implementación)
+
+Salieron de `/spec-review 031`, que corrió con el código ya escrito. IDs nuevos y no renumerados: los
+T001–T029 de arriba se refieren entre sí y en `specs/revisiones.md`.
+
+- [x] T032 `src/domain/board.ts`: `cabeEn(p, dims)` sobre `isValid`, y el filtro de `App.tsx` deja de
+      llevar la pura inline que `.claude/rules/ui.md` prohíbe en el shell
+- [x] T033 `src/App.tsx`: el `occupantAt` del click y el `hoverEdita` del cursor pasan a mirar
+      `visibles` — una pieza a medias afuera quitaba y anunciaba desde una celda que se ve vacía (AC8)
+- [x] T034 `src/__tests__/App.browser.test.tsx`: el test de la pieza a medias, y la espera de la
+      selección que le faltaba al AC8 —sin ella colocaba una `F` y la cuenta pasaba igual, porque las
+      dos miden cinco celdas—
+- [x] T035 Comentarios que nombraban lo que el 031 borró: `use-cell-px.ts` en `Board.tsx` y
+      `playhead-loop.ts`, `CELL_PX_MAX` en `OrientationPanel.tsx`, `SEAM` en `board.constants.ts`,
+      `GRID_W` en `scheduler.constants.ts`, y el docblock de `rutador` que mandaba el test de AC7 al
+      archivo equivocado
+
 ## Seguimiento (no bloquea)
 
 - [ ] T030 El Dijkstra en 4K: cola de baldes, y remedir los 30,9 ms
