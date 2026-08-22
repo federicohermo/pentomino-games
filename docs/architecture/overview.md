@@ -3,7 +3,8 @@
 ## Descripción del Sistema
 
 Pentomino Games es un prototipo de instrumento musical. El usuario elige uno de los 12 pentominós, lo
-rota o refleja, y lo coloca en un tablero de 10×6. Cada colocación dispara un arpegio de cinco notas
+rota o refleja, y lo coloca en un tablero que mide **lo que entra en la pantalla** —26×15 en un
+escritorio, 5×9 en un teléfono, con la celda siempre en unos 73 px (spec 031)—. Cada colocación dispara un arpegio de cinco notas
 cuya identidad depende de la pieza y cuya escala depende de la orientación — a menos que la pieza esté
 **muteada** (spec 014), que la deja ocupando su lugar y su tiempo en el circuito sin sonar.
 
@@ -75,7 +76,7 @@ composición de los componentes, con **cero `useEffect`**. Ninguna función pura
 dominio.
 
 Los que había son ahora **dos archivos** de `components/`, y el corte es el que la lista ya dibujaba
-(el spec 021 suma un tercero, `use-cell-px.ts`, por la misma regla y sin tocar el shell: sigue en cero):
+(el spec 021 suma un tercero —hoy `use-grid.ts`— por la misma regla y sin tocar el shell: sigue en cero):
 
 - `use-engine.ts` — los **cuatro de reconciliación**: tempo, clicks, la secuencia contra el tablero, y la
   limpieza al desmontar. `useMotorSincronizado` los declara en ese orden y recibe la `secuencia` ya
@@ -100,12 +101,12 @@ Sin React, sin audio, sin DOM. Determinísticas y testeables en aislamiento.
 | Módulo | Símbolos | Responsabilidad |
 |---|---|---|
 | `transform.ts` | `rotate90`, `normalize`, `rotateN`, `reflect`, `centroid`, `angleFromCentroid`, `pathThroughCells` | Transformaciones de un `Cell[]`, el centroide con el ángulo de cada celda a su alrededor, y el camino que recorre una forma celda vecina a celda vecina |
-| `board.ts` | `cellsAt`, `isValid`, `routeBetween`, `occupantAt`, `occupantCellIndex` | Las reglas del tablero, el camino de costo mínimo entre dos celdas replegando la costura `(0,0)↔(9,5)` y pesando `CROSS_COST` las celdas ocupadas que cruza (spec 011), y qué celda de la pieza cae en `(x, y)` |
+| `board.ts` | `cellsAt`, `isValid`, `routeBetween`, `rutador`, `costuraDe`, `occupantAt`, `occupantCellIndex` | Las reglas del tablero, el camino de costo mínimo entre dos celdas replegando la costura que une `(0,0)` con la esquina opuesta y pesando `CROSS_COST` las celdas ocupadas que cruza (spec 011), y qué celda de la pieza cae en `(x, y)`. Las tres primeras reciben las **dimensiones** por parámetro desde el spec 031, y `rutador` es la puerta con caché que usa `buildSequence` |
 | `music.ts` | `midiFor`, `midiName`, `notesForRotation`, `arpeggioFor`, `degreeByCellIndex`, `angularRank` | De pieza + rotación a cinco notas MIDI, y de la forma a qué celda lleva cuál. `arpeggioFor` es la derivación completa —tónica, escala y retrógrado—, y la única fuente del arpegio de una pieza colocada. `angularRank` es el orden angular del spec 007, que desde el 012 solo desempata la dirección del camino |
 | `sequence.ts` | `buildSequence`, `cellsByPlayOrder`, `gates`, `noteAtCell` | El circuito que visita las piezas colocadas (Held-Karp sobre `routeBetween`) y los offsets del ciclo — orden, silencios y clicks. Las otras tres son las derivaciones celda↔nota que el circuito necesita y que no pueden vivir escondidas en su único consumidor: el orden de reproducción, las dos puertas de una pieza y qué nota suena en una celda (la que da su altura al cruce del spec 011) |
 | `invariants.ts` | `checkArrayOrder`, `checkAnchors`, `checkShapes`, `checkBaseMap`, `checkNotes`, `checkAll` | Los cinco chequeos del modelo. Los dos geométricos recorren las 96 orientaciones; los otros tres, lo que les corresponde |
 
-Los datos (`SHAPES`, `ANCHOR_INDEX`, `BASE_MAP`, `PENT_*`, `GRID_W/H`) viven en `domain/constants/`, y
+Los datos (`SHAPES`, `ANCHOR_INDEX`, `BASE_MAP`, `PENT_*`, `GRID_MIN`/`GRID_DEFAULT`) viven en `domain/constants/`, y
 los tipos (`Cell`, `PieceKey`, `PlacedPiece`) en `domain/types/`. Detalle en
 [modelo-musical.md](./modelo-musical.md).
 
@@ -180,7 +181,7 @@ está en las dependencias: la secuencia es función del tablero y no del transpo
 
 Ese efecto **no vive en el shell**: desde el spec 022 está en `components/use-engine.ts` con los otros
 tres de reconciliación, y `App.tsx` sigue sin declarar un solo `useEffect` —el 021 le agregó un hook más,
-`use-cell-px.ts`, y lo puso donde van todos: en `components/`— (ver [Qué vive dónde](#qué-vive-dónde)). Lo
+`use-grid.ts`, y lo puso donde van todos: en `components/`— (ver [Qué vive dónde](#qué-vive-dónde)). Lo
 que se queda en el shell es la **derivación** —`secuencia` es un `useMemo` sobre `[placed, regimen]`— y
 el hook recibe el resultado, para que el dibujo y el sonido no puedan mirar circuitos distintos.
 

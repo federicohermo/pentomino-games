@@ -5,6 +5,7 @@ import {
 } from '../audio/engine.ts';
 import { buildSequence } from '../domain/sequence.ts';
 import { DEFAULT_REGIMEN } from '../domain/constants/music.constants.ts';
+import { GRID_DEFAULT } from '../domain/constants/board.constants.ts';
 import type { Sequence } from '../domain/types/sequence.types.ts';
 import type { PlacedPiece } from '../domain/types/board.types.ts';
 import type { MotorDeTransporte } from './types/engine.types.ts';
@@ -141,14 +142,14 @@ export function useMotorSincronizado({ secuencia, placed, tempo, clicks }: Recon
   // en vez de escribir el literal vacío a mano, para no meter la forma de un
   // dato de dominio en la capa de la UI.
   //
-  // Va `DEFAULT_REGIMEN` y no el `regimen` del estado, y es la unica llamada del
-  // archivo donde fijar uno es correcto: con el tablero vacio `buildSequence` corta en
-  // `n === 0` y devuelve la secuencia vacia sin mirar el regimen, asi que la eleccion
-  // es inerte. Usar el del estado lo metería en las dependencias de un efecto que existe
+  // Va `DEFAULT_REGIMEN` y `GRID_DEFAULT` y no lo que hay en el estado, y es la unica
+  // llamada del archivo donde fijarlos es correcto: con el tablero vacio `buildSequence`
+  // corta en `n === 0` y devuelve la secuencia vacia sin mirar ni el regimen ni las
+  // dimensiones, asi que las dos elecciones son inertes. Usar el del estado lo metería en las dependencias de un efecto que existe
   // SOLO para el desmontaje, y entonces la limpieza correria en cada cambio de regimen:
   // frenaria el reloj y vaciaria la secuencia, que es exactamente lo que AC7 prohibe.
   useEffect(()=> ()=>{
     stopClock();
-    setSequence(proyectarAlMotor(buildSequence([], DEFAULT_REGIMEN)));
+    setSequence(proyectarAlMotor(buildSequence([], DEFAULT_REGIMEN, GRID_DEFAULT)));
   }, []);
 }

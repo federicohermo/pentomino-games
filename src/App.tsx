@@ -6,6 +6,7 @@ import { arpeggioFor } from "./domain/music.ts";
 import { cellsAt, isValid, occupantAt } from "./domain/board.ts";
 import { buildSequence } from "./domain/sequence.ts";
 import { SHAPES, ANCHOR_INDEX } from "./domain/constants/pieces.constants.ts";
+import { MAX_PIEZAS } from "./domain/constants/board.constants.ts";
 import { DEFAULT_REGIMEN } from "./domain/constants/music.constants.ts";
 import type { Cell } from "./domain/types/transform.types.ts";
 import type { PieceKey } from "./domain/types/pieces.types.ts";
@@ -17,7 +18,7 @@ import Spectrum from "./components/Spectrum.tsx";
 import { alternarTransporte } from "./components/engine-bridge.ts";
 import { MOTOR, frenarTransporte, reiniciarRecorrido, useMotorSincronizado } from "./components/use-engine.ts";
 import { useAtajosDeTeclado, useRuedaRota } from "./components/use-input.ts";
-import { useCellPx } from "./components/use-cell-px.ts";
+import { useGrilla } from "./components/use-grid.ts";
 import {
   rotacionPorRueda, siguienteRotacion, reflejaElContextMenu, accionDeClick, esLaPiezaEnLaMano,
 } from "./components/input.ts";
@@ -178,13 +179,34 @@ export default function App(){
   // `fixed` fuera de `Board`, asi que colgada del tablero sus cajas —medidas en celdas— no
   // resolverian `var(--cell)`.
   //
-  // El efecto que la escribe vive en `components/use-cell-px.ts` y no aca: desde el spec
+  // El efecto que la escribe vive en `components/use-grid.ts` y no aca: desde el spec
   // 022 este shell **no declara un solo `useEffect`**, y un listener de `resize` es
   // exactamente el caso que `.claude/rules/ui.md` ya resuelve —el listener global vive en
   // un hook de `components/`, con el `ref` creado en el shell—. El precedente literal es
   // `useRuedaRota` recibiendo `boardRef`.
   const raizRef = useRef<HTMLDivElement | null>(null);
-  useCellPx(raizRef);
+  // Y desde el spec 031 el hook **contesta** ademas de escribir: cuanto mide el tablero en
+  // celdas sale de la misma medicion que el tamano de celda, y a diferencia de ella no la
+  // puede resolver el CSS —decide cuantos nodos existen—, asi que vuelve como estado. El
+  // hook solo lo cambia cuando cambian los numeros, no en cada pixel del arrastre.
+  const dims = useGrilla(raizRef);
+
+  // Las piezas que ENTRAN en el tablero de ahora. Achicar la ventana achica la grilla, y
+  // una pieza que queda afuera no se borra: se queda en `placed`, deja de dibujarse y de
+  // sonar, y vuelve entera cuando hay lugar otra vez. El repo no tiene deshacer
+  // (`specs/deuda.md`) y arrastrar el borde de una ventana no es un gesto de edicion.
+  //
+  // El criterio es la pieza ENTERA —`every` y no `some`—: media pieza pintada seria una
+  // pieza que el tablero muestra y el circuito no visita, que es la clase de discrepancia
+  // que D5 del 009 existe para cerrar.
+  //
+  // Lo que NO se filtra es `isValid`, que sigue mirando `placed` entero: una pieza guardada
+  // puede tener celdas adentro de la grilla nueva, y colocar encima dejaria dos solapadas
+  // en cuanto la ventana crezca.
+  const visibles = useMemo(
+    ()=> placed.filter(p => p.cells.every(([x, y]) => x < dims.w && y < dims.h)),
+    [placed, dims],
+  );
 
   // Los dos flotantes arrancan ABIERTOS: un instrumento que arranca con los controles
   // escondidos no se descubre. Plegado, cada panel deja solo su encabezado, y cualquier
@@ -215,7 +237,7 @@ export default function App(){
   // cachas de derivacion que AC15 obliga a llevarlo. Sin el, cambiar el regimen no
   // re-derivaria el tablero y AC7 quedaria falso — que es justo la consecuencia
   // buscada de que las notas no se guarden en `PlacedPiece`.
-  const secuencia = useMemo(()=> buildSequence(placed, regimen), [placed, regimen]);
+  const secuencia = useMemo(()=> buildSequence(visibles, regimen, dims), [visibles, regimen, dims]);
 
   // El arpegio de la pieza SELECCIONADA, para el panel y para el click de colocacion.
   // La derivacion vive en `domain/music.ts` y no aca: las piezas ya colocadas la piden
@@ -257,7 +279,19 @@ export default function App(){
     }
 
     const cells = cellsAt(transformedShape, ANCHOR_INDEX[selected], x, y);
-    if (!isValid(cells, placed)) return;
+    if (!isValid(cells, placed, dims)) return;
+    // El tope de piezas, que hasta el spec 031 lo garantizaba el AREA: 60 celdas ÷ 5 daban
+    // 12 y nadie tenia que escribirlo. Con el tablero saliendo del viewport entran 78 en un
+    // escritorio, y el circuito se resuelve con Held-Karp exacto —`O(n²·2ⁿ)`, medido: 12
+    // piezas 3,1 ms y 16 piezas 18,6 ms—. El porque del numero esta en `MAX_PIEZAS`.
+    //
+    // Se chequea DESPUES de `isValid` y con el mismo trato: no cambia el tablero. Lo que
+    // agrega es el anuncio, porque es el unico rechazo que no se explica solo — una jugada
+    // invalida se ve (el fantasma sale rosa) y esta no.
+    if (placed.length >= MAX_PIEZAS) {
+      setAnuncio(`El tablero acepta ${MAX_PIEZAS} piezas y ya tiene ${MAX_PIEZAS}. Quitá una para poder colocar otra.`);
+      return;
+    }
     // `Alt` significa "muteado" en los dos lados del gesto: colocar así mete una pieza al
     // circuito por su ESPACIO y su TIEMPO —mueve el orden de visita y agrega distancia—
     // sin agregar cinco notas. Es la única forma de componer con silencio.
@@ -436,7 +470,7 @@ export default function App(){
   // donde el click sí hace algo. Lo que se ve es la pieza colocada, que es sobre lo que
   // el gesto va a actuar.
   const previewCells = hover && !hoverEdita ? cellsAt(transformedShape, ANCHOR_INDEX[selected], hover[0], hover[1]) : [];
-  const previewValid = hover && !hoverEdita ? isValid(previewCells, placed) : false;
+  const previewValid = hover && !hoverEdita ? isValid(previewCells, placed, dims) : false;
 
   // El porque de este `useMemo` —y el numero que lo justifica— esta abajo, al lado del
   // `<PiecePalette>` que lo consume: es donde estaba escrita la decision contraria.
@@ -525,7 +559,8 @@ export default function App(){
         />
 
         <Board
-          placed={placed}
+          placed={visibles}
+          dims={dims}
           previewCells={previewCells}
           previewValid={previewValid}
           hover={hover}

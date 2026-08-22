@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from 'vitest-browser-react';
-import { CELL_PX_MIN } from '../constants/layout.constants.ts';
+import { CELL_PX_OBJETIVO } from '../constants/layout.constants.ts';
 import { MARCA } from '../constants/route.constants.ts';
 import type { Marca, CeldaPorEstrenar } from '../types/route.types.ts';
 
@@ -30,7 +30,7 @@ import type { Marca, CeldaPorEstrenar } from '../types/route.types.ts';
  */
 
 /** Pone `--cell` sobre el contenedor del render, como hace el shell sobre su raiz. */
-const conCelda = (container: HTMLElement, px = CELL_PX_MIN) => {
+const conCelda = (container: HTMLElement, px = CELL_PX_OBJETIVO) => {
   container.style.setProperty('--cell', `${px}px`);
   return container;
 };
@@ -113,7 +113,7 @@ describe('Playhead — la cabeza', () => {
       conCelda(container, px);
       return getComputedStyle(cabeza).transform;
     };
-    expect(en(CELL_PX_MIN)).toBe(`matrix(1, 0, 0, 1, ${3 * CELL_PX_MIN}, ${2 * CELL_PX_MIN})`);
+    expect(en(CELL_PX_OBJETIVO)).toBe(`matrix(1, 0, 0, 1, ${3 * CELL_PX_OBJETIVO}, ${2 * CELL_PX_OBJETIVO})`);
     // Y sigue a `--cell` sin que el bucle vuelva a escribir nada, que es lo que hace que la
     // cabeza quede alineada mientras se arrastra el borde de la ventana (AC6).
     expect(en(180)).toBe(`matrix(1, 0, 0, 1, ${3 * 180}, ${2 * 180})`);
@@ -199,15 +199,15 @@ describe('Playhead — el velo', () => {
     const tapas = [...capa.children] as HTMLElement[];
     expect(tapas.length).toBe(2);
     const cs = () => getComputedStyle(tapas[0]);
-    expect(cs().left).toBe(`${1 * CELL_PX_MIN}px`);
+    expect(cs().left).toBe(`${1 * CELL_PX_OBJETIVO}px`);
     expect(cs().top).toBe('0px');
-    expect(cs().width).toBe(`${CELL_PX_MIN}px`);
+    expect(cs().width).toBe(`${CELL_PX_OBJETIVO}px`);
     // El aire del velo es la MISMA razon que el de la baldosa: si se desalinearan, el velo
     // dejaria de cubrir la celda exacta, que es lo unico que esas medidas garantizan.
     conCelda(container, 180);
     expect(cs().left).toBe(`${1 * 180}px`);
     expect(cs().width).toBe('180px');
-    expect(parseFloat(cs().paddingTop) / 180).toBeCloseTo(2 / CELL_PX_MIN, 3);
+    expect(parseFloat(cs().paddingTop) / 180).toBeCloseTo(2 / CELL_PX_OBJETIVO, 3);
   });
 
   it('una celda se destapa cuando la cabeza la PISA, no cuando arranca el ciclo', async () => {

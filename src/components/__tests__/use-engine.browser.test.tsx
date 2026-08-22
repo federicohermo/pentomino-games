@@ -8,6 +8,7 @@ import { REGIMEN, DEFAULT_REGIMEN } from '../../domain/constants/music.constants
 import { proyectarAlMotor } from '../engine-bridge.ts';
 import type { PieceKey } from '../../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../../domain/types/board.types.ts';
+import { GRID_DEFAULT } from '../../domain/constants/board.constants.ts';
 
 /**
  * Los cuatro efectos que el spec 022 saco de `App.tsx`.
@@ -49,7 +50,7 @@ const UNA = [colocar('F', 2, 2)];
 const DOS = [colocar('F', 2, 2), colocar('L', 7, 1)];
 
 const props = (placed: readonly PlacedPiece[], tempo = 110, clicks = false) => ({
-  secuencia: buildSequence(placed, REGIMEN.escala),
+  secuencia: buildSequence(placed, REGIMEN.escala, GRID_DEFAULT),
   placed,
   tempo,
   clicks,
@@ -124,9 +125,9 @@ describe('useMotorSincronizado — los cuatro efectos', () => {
     await unmount();
 
     expect(motor.stopClock).toHaveBeenCalledTimes(1);
-    // Se proyecta `buildSequence([], …)` en vez de escribir el literal vacio a mano:
+    // Se proyecta `buildSequence([], …, GRID_DEFAULT)` en vez de escribir el literal vacio a mano:
     // asi la forma de un dato de dominio no se filtra a la capa de la UI.
-    expect(motor.setSequence).toHaveBeenCalledWith(proyectarAlMotor(buildSequence([], DEFAULT_REGIMEN)));
+    expect(motor.setSequence).toHaveBeenCalledWith(proyectarAlMotor(buildSequence([], DEFAULT_REGIMEN, GRID_DEFAULT)));
   });
 
   it('el efecto de limpieza corre SOLO al desmontar, no en cada cambio', async () => {
