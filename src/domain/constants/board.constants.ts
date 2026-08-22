@@ -67,9 +67,11 @@ export const MAX_PIEZAS = 12;
  * Lo que cuesta ENTRAR a una celda ocupada al trazar el camino entre dos piezas,
  * contra 1 de una celda vacia (spec 011, D1).
  *
- * Vive al lado de `SEAM` y no en un archivo de rutas porque es lo mismo que la
- * costura: una propiedad del GRAFO del tablero. La costura dice que celdas son
- * vecinas; esto dice cuanto cuesta pisar cada una.
+ * Es una propiedad del GRAFO del tablero, igual que la costura: aquella dice que celdas
+ * son vecinas y esto dice cuanto cuesta pisar cada una. Vivian una al lado de la otra
+ * hasta el spec 031, que convirtio a `SEAM` en la funcion `costuraDe(dims)` de `board.ts`
+ * —dejo de poder ser un valor cuando el tablero dejo de tener un tamano fijo—; este
+ * numero no depende de las dimensiones, asi que se queda.
  *
  * El 5 sale de barrer el peso sobre dos mediciones distintas, y la que decide **no**
  * es el caso testigo sino la segunda.

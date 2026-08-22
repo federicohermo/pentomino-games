@@ -17,7 +17,7 @@ import {
 /**
  * Lo que mide `n` celdas, en CSS. Es la unica forma en que este archivo habla de tamanos
  * desde el spec 021: el numero vive en la custom property `--cell`, que escribe
- * `use-cell-px.ts` sobre el contenedor raiz y que hereda hasta aca.
+ * `use-grid.ts` sobre el contenedor raiz y que hereda hasta aca.
  *
  * Va por estilo inline y nunca por clase, y eso no es preferencia: Tailwind escanea el
  * fuente, asi que un `w-[calc(var(--cell)*1)]` interpolado no se generaria.

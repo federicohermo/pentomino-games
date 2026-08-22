@@ -26,7 +26,7 @@ import type { CeldaPorEstrenar } from './types/route.types.ts';
  * proposito: son dos archivos que no se importan entre si y el string es de una linea.
  * Compartirla obligaria a un modulo mas para ahorrar veinte caracteres.
  *
- * El numero vive en la custom property `--cell`, que escribe `use-cell-px.ts` sobre el
+ * El numero vive en la custom property `--cell`, que escribe `use-grid.ts` sobre el
  * contenedor raiz. Escribir `calc()` y no el producto en pixeles es lo que hace que
  * redimensionar la ventana reubique la cabeza y el velo sin que este bucle escriba nada.
  */
