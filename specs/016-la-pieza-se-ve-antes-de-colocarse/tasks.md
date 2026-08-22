@@ -117,11 +117,6 @@ una persona y no bloquea el cierre.
       reemplazo ya decidido (const-object + union type, nunca `enum`). No se arregla acá porque cambia
       firmas de `domain/` y AC11 lo prohíbe, pero el spec que lo haga tiene que contar este consumidor
 - [x] T033 ~~Si el aire muerto en la tarjeta del tablero (T016) queda feo, la salida no es achicar la
-
-      > **Cerrada por el spec 021.** Proponía «alinear la grilla arriba y dejar el sobrante abajo» si
-      > el aire muerto de la tarjeta del tablero quedaba feo. El 021 borra la tarjeta entera: no queda
-      > ni aire que alinear ni tarjeta donde hacerlo. Se cierra de los dos lados para que
-      > `spec_status` no reporte trabajo que ya no existe.
       paleta sino **alinear la grilla arriba y dejar el sobrante abajo**, que es lo que ya pasa hoy con
       51,6 px sin que nadie lo haya notado~~
       **Cerrada por el 019 y el 021, y ninguno de los dos la resuelve como estaba pensada.** El 019 se

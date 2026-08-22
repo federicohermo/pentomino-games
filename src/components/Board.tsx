@@ -256,11 +256,6 @@ export default function Board({
     if (!e.currentTarget.contains(e.relatedTarget)) onFoco(null);
   };
 
-  // `md:col-span-8` desde el spec 014, cuando murio `PlacedList` y quedaron dos columnas
-  // libres. El reparto —una para el tablero y otra para la paleta— esta MEDIDO en el DOM
-  // y no elegido, y lo que lo decide es que a partir de ocho columnas cambia quien limita.
-  // La tabla es la medicion que DECIDIO el reparto, tomada con la paleta de ENTONCES
-  // (429,6 px de alto): su ultima columna no es el `CELL_PX` de hoy, que es 73 y sale
   // La TARJETA se fue con el spec 021, y con ella la tabla de repartos de columnas que
   // vivia aca: siete specs de mediciones sobre `col-span-7`, `col-span-8` y `col-span-9`
   // para repartir un `max-w-6xl` entre dos tarjetas. Ya no hay dos tarjetas ni hay
