@@ -218,6 +218,32 @@ una persona y no bloquea el cierre.
 - [ ] T046 `src/components/PiecePalette.tsx`: scroll interno propio. A `CELL_PX = 73` el dock queda en
       146 × 292 px y el panel mide hoy del orden de 349 × 496 (medición sobre `main`; el 019 y el 020
       la mueven, ver §4 del research) — sin scroll, crece y se come celdas — **AC19**
+- [ ] T073 `src/components/OrientationPanel.tsx`: **el scroll de T046 es vertical y el problema del
+      dock también es de ancho.** La grilla de las doce miniaturas es hoy
+      `grid-cols-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6` (`OrientationPanel.tsx:66`), o sea
+      columnas atadas al **breakpoint del viewport** — y después de este spec el ancho del contenedor
+      ya no lo da el viewport sino `calc(var(--cell) * 2)`. **Son dos variables distintas, y ahí AC19
+      se cae**: a 1366 × 768 —el viewport con el que el §4 falsificó el dock de medidas fijas— el
+      breakpoint es `xl`, o sea **seis columnas adentro de un dock de 256 px**; y al piso son tres
+      columnas adentro de 146. La tabla de columnas pasa a derivar del **ancho real del contenedor**
+      —`repeat(auto-fill, minmax(…, 1fr))`, que lo resuelve el navegador contra la caja y no contra la
+      pantalla—, que es la misma decisión de una sola fuente del número que el §1 tomó para la grilla
+      y T045 para las dos cajas flotantes. Medir el mini con `MINI_BOX × MINI_CELL_PX` (5 × 8 = 40 px)
+      más el `px-2` del botón y su borde, y que el `minmax` salga de ahí y no de un número tipeado.
+      **Esto es lo que el `T017` deja colgado y no cierra**: ahí se borra el comentario del
+      `md:col-span-4` que se declara «la premisa de la tabla de columnas de `OrientationPanel.tsx`»,
+      pero la tabla misma queda con la premisa vieja adentro. Falsable donde AC19 ya pide: al piso,
+      146 × 292, sin desborde horizontal — **AC19**
+- [ ] T074 `src/components/TransportPanel.tsx`: **la fila de transporte tiene el mismo problema en el
+      mismo eje.** El bloque de Tempo es un `flex items-center justify-between` con la etiqueta, el
+      `<input type="range">` y un lector `tabular-nums w-16` (64 px clavados) — tres cosas en una
+      fila, dimensionadas para la tarjeta de ~349 px que este spec borra, no para 146. Y abajo el
+      `flex gap-2` de Play + Reset, que el 019 vuelve tres controles al mudarle el metrónomo (su
+      `T011`). Al piso se apila en vez de repartirse: el slider a lo ancho con el lector debajo o al
+      lado sin `w-16` fijo, y los botones envolviendo. **No se resuelve con el `overflow-y` de T046**
+      —eso corta lo que sobra por abajo, no lo que sobra por el costado— ni con `overflow-x`, que es
+      justamente el desborde que AC19 prohíbe. Es el archivo que el 019 y el 020 acaban de tocar, así
+      que anclar por texto y no por número de línea — **AC19**
 - [ ] T066 `src/components/Spectrum.tsx`: **la franja de `3 × 1` celdas no entra, y AC19 sólo mide el
       dock.** A `CELL_PX = 73` la franja mide 219 × **73 px**, y adentro tienen que caber el
       `<h2>Señal</h2>` que T022 vuelve `<button>` (`text-lg font-semibold mb-2`, ~28 px + 8 de margen)

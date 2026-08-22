@@ -74,8 +74,9 @@ archivo o el número que la justifica. Un carril sin esa justificación es una c
 Los cuatro juicios que este paso erra si se hacen de memoria —y la medición que fija cada uno— están
 en [`calibracion.md`](./calibracion.md).
 
-Si sale **un solo carril**, decilo y ofrecé la corrida en serie: el batch sigue comprando el Paso 2 y
-el preámbulo, pero no compra reloj.
+Si sale **un solo carril**, decilo y **arrancá igual en serie, sin preguntar**: el batch sigue
+comprando el Paso 2 y el preámbulo, pero no compra reloj. Que no compre reloj es un dato del reporte,
+no una decisión que necesite al usuario.
 
 ---
 
@@ -95,17 +96,26 @@ Lo que ningún `/spec-implement` suelto puede ver, porque mira un spec. Corré l
 4. **Un spec que cierra una tarea de otro.** Es el único archivo que se escribe fuera de su propio
    spec: anotalo para que dos carriles no lo pisen.
 
-Lo que salga es una decisión de diseño que le falta al spec. **Reportala y frená con
-`AskUserQuestion`**: arreglar un spec cuesta un párrafo, arreglar dos carriles cuesta un rebase. Con la
-respuesta en mano, escribila en el `tasks.md` que corresponda antes de lanzar.
+Lo que salga es una decisión de diseño que le falta al spec. **Decidila vos, escribila en el `tasks.md`
+que corresponda antes de lanzar, y seguí** — no se frena con `AskUserQuestion`. Sigue valiendo el
+argumento de por qué se resuelve *acá* y no en el carril: arreglar un spec cuesta un párrafo y
+arreglar dos carriles cuesta un rebase; lo que cambia es quién contesta. La recomendación se toma, no
+se ofrece.
+
+Va escrita **como tarea con su porqué y su AC**, no como nota al pie: el carril la va a leer sin este
+contexto. Y va al reporte del Paso 5, que es donde el usuario la ve — si quiere revertirla, revierte
+un párrafo escrito, que es más barato que el turno de ida y vuelta que la habría evitado.
+
+Lo único que sigue frenando es lo de siempre: que proceder bajo cualquier supuesto sea inseguro, o
+deje el lote inservible si el supuesto está mal. Eso casi nunca es una decisión de diseño de un spec.
 
 **Terminado cuando** las cuatro preguntas tienen respuesta escrita, incluidas las que dieron que no.
 
-> **Por eso este skill no lleva `context: fork`, y acá el motivo es doble.** `AskUserQuestion` **no
-> existe en un subagente** (docs de Claude Code, *user-input · Limitations*), así que forkeado esta
-> parada no se rechazaría: se ejecutaría eligiendo sola. Y además este skill **escribe código** en N
-> worktrees y corre `pnpm verify`: esconder eso del usuario no es ahorrar contexto, es sacarle de
-> encima el trabajo que tiene que poder frenar a mitad de camino.
+> **Y este skill sigue sin llevar `context: fork`.** El motivo era doble y ahora es simple: **escribe
+> código** en N worktrees y corre `pnpm verify`. Esconder eso del usuario no es ahorrar contexto — es
+> sacarle de encima el trabajo que tiene que poder frenar a mitad de camino. (La otra mitad del
+> argumento era que `AskUserQuestion` no existe en un subagente, y con la parada afuera dejó de
+> aplicar.)
 
 ---
 
