@@ -449,6 +449,32 @@ describe('App — la orientacion, por panel y por gesto', () => {
     await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.I.length));
     expect(container.textContent).toContain('tónica');
   });
+
+  it('la LETRA elige la pieza, sin ir al panel (spec 018)', async () => {
+    // No es redundante con el test de `use-input`: lo que cubre de mas es el callback del
+    // shell, que es el que traduce la pieza a la ranura de estado y que ningun test del
+    // hook ejerce.
+    const { container } = await render(<App />);
+    hover(celda(container, 4, 3));
+    await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length));
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'i', bubbles: true, cancelable: true }));
+
+    // El oraculo es DONDE cae el fantasma y no cuantas celdas tiene: las doce piezas
+    // tienen cinco, asi que contarlas no distingue una `I` de una `F`.
+    await vi.waitFor(() => {
+      for (const [x, y] of donde('I', 4, 3)) {
+        expect(baldosa(celda(container, x, y)).textContent, `${x},${y}`).not.toBe('');
+      }
+    });
+    // Y en minuscula tanto como en mayuscula: `Shift`+`p` es la misma pieza.
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'P', shiftKey: true, bubbles: true, cancelable: true }));
+    await vi.waitFor(() => {
+      for (const [x, y] of donde('P', 4, 3)) {
+        expect(baldosa(celda(container, x, y)).textContent, `${x},${y}`).not.toBe('');
+      }
+    });
+  });
 });
 
 describe('App — lo que llega al arbol de accesibilidad', () => {
@@ -716,6 +742,25 @@ describe('App — el tablero se toca con el teclado (spec 026)', () => {
     const conRotacion = notaDelFantasma(container);
     tapDeModificador(c, 'Control');
     await vi.waitFor(() => expect(notaDelFantasma(container)).not.toBe(conRotacion));
+  });
+
+  it('con una celda enfocada, la letra IGUAL elige la pieza (spec 018)', async () => {
+    // AC13: `targetEsCelda` apaga la barra y solo la barra. El `switch` del `onKeyDown` de
+    // la celda cierra con `default: return`, asi que una letra no la maneja nadie mas y no
+    // hay doble disparo que evitar — vetarla ahi apagaria el atajo justo donde mas sirve.
+    const { container } = await render(<App />);
+    const c = celda(container, 4, 3);
+    c.focus();
+    await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length));
+
+    tecla(c, 'i');
+    await vi.waitFor(() => {
+      for (const [x, y] of donde('I', 4, 3)) {
+        expect(baldosa(celda(container, x, y)).textContent, `${x},${y}`).not.toBe('');
+      }
+    });
+    // Y el transporte sigue parado: la letra elige y no hace nada ademas.
+    expect(motor.startClock).not.toHaveBeenCalled();
   });
 
   it('con el foco en una celda, sacar el mouse de la grilla no apaga el fantasma', async () => {

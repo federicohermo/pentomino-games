@@ -1,4 +1,5 @@
 import { ACCION, EDICION } from './constants/input.constants.ts';
+import { SHAPES } from '../domain/constants/pieces.constants.ts';
 import type { Accion, Edicion, EventoDeTecla, EventoDeModificador } from './types/input.types.ts';
 import type { PieceKey } from '../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../domain/types/board.types.ts';
@@ -68,9 +69,38 @@ export function abreTapLimpio(e: EventoDeModificador): boolean {
 }
 
 /**
+ * Si una letra ya en mayúscula nombra un pentominó.
+ *
+ * Es un type predicate y no un `in` a secas porque el `in` **no estrecha el lado
+ * izquierdo**: narra sobre el objeto, no sobre la clave, así que `k in SHAPES` deja a `k`
+ * en `string` y el `return` no compila (medido en `research.md` §8). La alternativa era un
+ * `as PieceKey`, que es la aserción que este repo no escribe: el predicado dice la misma
+ * cosa pero deja la comprobación adentro, donde el compilador la puede ver.
+ */
+function esPieza(k: string): k is PieceKey {
+  return k in SHAPES;
+}
+
+/**
+ * La pieza que nombra una tecla, o `null` si esa tecla no nombra ninguna.
+ *
+ * `toUpperCase` y no dos listas: `f` y `F` son la misma pieza (AC2), y con `Shift` abajo el
+ * navegador entrega la mayúscula.
+ *
+ * Valida contra `SHAPES` y no contra una lista propia de doce letras a propósito: una lista
+ * acá sería una segunda fuente de verdad sobre cuáles son las piezas, y el día que
+ * `SHAPES` gane o pierda una entrada las dos discreparían sin que nada falle. `SHAPES` ya
+ * ES la tabla de las doce, y `PieceKey` se deriva de sus claves.
+ */
+export function piezaDeTecla(key: string): PieceKey | null {
+  const letra = key.toUpperCase();
+  return esPieza(letra) ? letra : null;
+}
+
+/**
  * Qué acción pide una tecla, o `null` si el evento no es nuestro.
  *
- * Las cinco guardas, en orden y con su motivo:
+ * Las seis guardas, en orden y con su motivo:
  *
  * 1. **`targetEsControl`** — con el foco sobre un `<button>` o un `<input>` el navegador
  *    ya tiene un significado para la barra: activar el control. Si además contestáramos
@@ -96,10 +126,18 @@ export function abreTapLimpio(e: EventoDeModificador): boolean {
  *    `Ctrl` tienen que seguir rotando y reflejando. Ensanchar la guarda 1 para que
  *    matcheara la celda —que es lo tentador, porque es una línea— apagaría los tres
  *    atajos del 013 para arreglar uno.
+ * 6. **`Ctrl`, `Meta` o `Alt` vetan la letra, y sólo la letra** — `Ctrl`+`F` no es una
+ *    selección que haya que rechazar: es un evento que nunca fue nuestro, y el navegador
+ *    se queda el atajo entero. La guarda vive ADENTRO de la rama de las letras y no como
+ *    un `return` al tope de la función, que es donde parece que va: ahí también alcanzaría
+ *    a la barra, que hoy alterna el transporte con cualquier modificador abajo (AC11 del
+ *    018), y a los dos modificadores. Ningún AC pide ese cambio y ningún test lo pediría
+ *    de vuelta.
  *
  * Lo que esta función NO contesta es si hay que hacer `preventDefault`: son dos
- * preguntas distintas, y ahora las separan DOS casos —el auto-repeat de la guarda 2 y la
- * celda enfocada de la 5—. Ver `frenaElDefault`.
+ * preguntas distintas, y ahora las separan TRES casos —el auto-repeat de la guarda 2, la
+ * celda enfocada de la 5 y las doce letras, que sí son una acción y no tienen ningún
+ * default que frenar—. Ver `frenaElDefault`.
  */
 export function accionDeTecla(e: EventoDeTecla): Accion | null {
   if (e.targetEsControl) return null;
@@ -109,14 +147,26 @@ export function accionDeTecla(e: EventoDeTecla): Accion | null {
   if (e.key === 'Control') return e.tipo === 'keyup' && e.tapLimpio ? ACCION.reflejar : null;
   if (e.key === ' ') return e.tipo === 'keydown' && !e.targetEsCelda ? ACCION.transporte : null;
 
-  return null;
+  if (e.ctrlKey || e.metaKey || e.altKey) return null;
+  // La decisión es del `keydown` y no del `keyup`, y eso cierra el agujero de AC4: en un
+  // `Ctrl`+`V` que suelte el `Ctrl` primero, el `keyup` de la `V` llega con
+  // `ctrlKey: false` y pasaría la guarda de arriba. `despachar` llama a esta pura en los
+  // dos eventos, así que sin esta línea pegar un texto dejaría la pieza `V` en la mano.
+  //
+  // `targetEsCelda` NO aparece: es la guarda 5 y apaga la barra y sólo la barra. Con una
+  // celda enfocada la letra sigue seleccionando (AC13) — el `switch` del `onKeyDown` de la
+  // celda cierra con `default: return`, así que no hay doble disparo que evitar, y vetarla
+  // ahí apagaría el atajo justo donde más sirve: con la mano puesta en el tablero.
+  if (e.tipo !== 'keydown') return null;
+  return piezaDeTecla(e.key) === null ? null : ACCION.seleccionar;
 }
 
 /**
  * Si el navegador **no** puede quedarse el evento entero.
  *
- * Es una pregunta distinta de la de `accionDeTecla` aunque parezca la misma, y las
- * separa un solo caso: la barra con auto-repeat. Ahí `accionDeTecla` devuelve `null`
+ * Es una pregunta distinta de la de `accionDeTecla` aunque parezca la misma, y hoy las
+ * separan los TRES casos que enumera el docblock de aquélla. El que la hizo nacer es la
+ * barra con auto-repeat. Ahí `accionDeTecla` devuelve `null`
  * —mantenerla apretada no tiene que alternar el transporte treinta veces por segundo—
  * pero el default sigue vivo, porque **cada `keydown` repetido trae el suyo** y el de
  * la barra es scrollear. Fundidas en una sola pregunta, un tap un poco largo arrancaba
@@ -137,7 +187,10 @@ export function accionDeTecla(e: EventoDeTecla): Accion | null {
  * es un efecto que nadie pidió.
  *
  * Los modificadores no aparecen acá: `Shift` y `Control` sueltos no tienen ningún
- * default que frenar, ni al bajar ni al soltar.
+ * default que frenar, ni al bajar ni al soltar. Y las doce letras del spec 018 tampoco: son
+ * el tercer caso y el primero del lado inverso —hay acción y NO hay que frenar nada—, que
+ * es todo AC6 del 018: una letra suelta no tiene default que frenar, y frenarlo igual sería
+ * quitarle al navegador un evento que no es nuestro.
  */
 export function frenaElDefault(e: EventoDeTecla): boolean {
   return !e.targetEsControl && e.key === ' ' && e.tipo === 'keydown';

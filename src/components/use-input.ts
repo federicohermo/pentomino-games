@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import type { RefObject } from 'react';
-import { accionDeTecla, frenaElDefault, abreTapLimpio } from './input.ts';
+import { accionDeTecla, frenaElDefault, abreTapLimpio, piezaDeTecla } from './input.ts';
 import { ACCION } from './constants/input.constants.ts';
+import type { PieceKey } from '../domain/types/pieces.types.ts';
 
 /**
  * Los dos efectos de entrada directa del spec 013: el teclado sobre `window` y la rueda
@@ -10,8 +11,10 @@ import { ACCION } from './constants/input.constants.ts';
  * Van en un archivo y como dos funciones: comparten `tapLimpio`, pero siguen sin
  * compartir target ni dependencias. Estaban en `App.tsx` hasta el spec 022.
  *
- * Los tres gestos que gobiernan la pieza POR COLOCAR se atan a la mano que ya está sobre
- * el tablero, para no pagar un viaje al panel por cada cambio de orientación. La DECISIÓN
+ * Los gestos que gobiernan la pieza POR COLOCAR se atan a la mano que ya está sobre el
+ * tablero, para no pagar un viaje al panel por cada cambio de orientación — y desde el
+ * spec 018 tampoco por cada cambio de PIEZA, que era el último control que obligaba a
+ * soltar el tablero. La DECISIÓN
  * de cada uno sigue viviendo en `components/input.ts` —donde se puede testear sin jsdom—
  * y acá queda solo el cableado: estos dos hooks no toman ninguna decisión propia.
  *
@@ -32,19 +35,27 @@ import { ACCION } from './constants/input.constants.ts';
  * en las dos firmas, que es la mitad buena de la mudanza.
  */
 
-/** Los tres gestos del teclado, ya resueltos por el shell. */
+/** Los cuatro gestos del teclado, ya resueltos por el shell. */
 interface Acciones {
   rotar: () => void;
   reflejar: () => void;
   transporte: () => void;
+  /**
+   * La letra elige la pieza (spec 018). Recibe la pieza y no la tecla: traducir de una a
+   * otra es una decisión, y las decisiones viven en `input.ts`, donde tienen test.
+   */
+  seleccionar: (pieza: PieceKey) => void;
 }
 
 /**
- * `Shift` rota, `Ctrl` refleja, la barra espaciadora es el transporte.
+ * `Shift` rota, `Ctrl` refleja, la barra espaciadora es el transporte, la letra elige.
  *
- * Las dependencias son las REALES —las identidades de los tres callbacks, que del lado
- * del shell dependen de `rotation`, `mirror` y `playing`— y el efecto se re-suscribe
- * cuando cambian. La alternativa es un ref con el estado para suscribir una sola vez, que
+ * Las dependencias son las REALES —las identidades de los cuatro callbacks: tres dependen
+ * del lado del shell de `rotation`, `mirror` y `playing`, y `seleccionar` no depende de
+ * nada porque envuelve un setter— y el efecto se re-suscribe cuando cambian. Que uno de
+ * los cuatro sea estable no lo saca del array: sacarlo escondería que su identidad importa
+ * igual, y el día que deje de serlo el efecto se quedaría con el callback viejo.
+ * La alternativa es un ref con el estado para suscribir una sola vez, que
  * es la optimización que este repo no necesita: son dos `addEventListener` sobre
  * `window`, no un costo, y el ref escondería de dónde sale cada valor.
  *
@@ -54,13 +65,14 @@ interface Acciones {
  * este hook es que se corra: `targetEsCelda` le devuelve la barra al tablero sin tocar
  * `Shift` ni `Ctrl`, que con una celda enfocada siguen rotando y reflejando.
  *
- * Los tres campos van a las dependencias por SEPARADO y el objeto `acciones` NO entra
- * crudo: un literal `{ rotar, reflejar, transporte }` armado en el shell tiene identidad
- * nueva en cada render, así que con el objeto en el array el efecto se re-suscribiría por
- * render en vez de por cambio de la orientación — peor que hoy, y sin que nada falle.
+ * Los cuatro campos van a las dependencias por SEPARADO y el objeto `acciones` NO entra
+ * crudo: un literal `{ rotar, reflejar, transporte, seleccionar }` armado en el shell tiene
+ * identidad nueva en cada render, así que con el objeto en el array el efecto se
+ * re-suscribiría por render en vez de por cambio de la orientación — peor que hoy, y sin
+ * que nada falle.
  */
 export function useAtajosDeTeclado(acciones: Acciones, tapLimpio: RefObject<boolean>): void {
-  const { rotar, reflejar, transporte } = acciones;
+  const { rotar, reflejar, transporte, seleccionar } = acciones;
 
   useEffect(()=>{
     // El `target` interactivo se mira acá y no en la pura: `HTMLButtonElement` es un
@@ -81,6 +93,10 @@ export function useAtajosDeTeclado(acciones: Acciones, tapLimpio: RefObject<bool
     const despachar = (e: KeyboardEvent, tipo: 'keydown' | 'keyup') => {
       const evento = {
         key: e.key, tipo, repeat: e.repeat,
+        // Los tres modificadores salen del `KeyboardEvent` que los dos handlers ya
+        // reciben: no hay información nueva que sacar del DOM, sólo campos que hasta el
+        // spec 018 nadie miraba.
+        ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey,
         targetEsControl: esControl(e.target),
         targetEsCelda: esCelda(e.target),
         tapLimpio: tapLimpio.current,
@@ -93,8 +109,20 @@ export function useAtajosDeTeclado(acciones: Acciones, tapLimpio: RefObject<bool
       if (frenaElDefault(evento)) e.preventDefault();
       const accion = accionDeTecla(evento);
       if (accion === null) return;
+      // La pieza se vuelve a pedir en vez de venir dentro de la acción: `Accion` es una
+      // union de strings y meterle una carga la volvería un objeto, que es un cambio de
+      // forma para las cuatro por culpa de una. Preguntar de nuevo cuesta un `in`.
+      const pieza = piezaDeTecla(e.key);
       if (accion === ACCION.rotar) rotar();
       else if (accion === ACCION.reflejar) reflejar();
+      // La rama de la letra va ANTES del `else transporte()` y no como un `if` suelto
+      // después de la cadena: ahí la letra ademas arrancaría el transporte, y eso pasa
+      // typecheck y lint sin que nada se queje. El discriminante es `pieza` y no
+      // `accion === ACCION.seleccionar` porque son la misma pregunta —la pura devuelve
+      // `seleccionar` exactamente cuando la tecla nombra un pentominó— y preguntando por
+      // la pieza el `else` queda alcanzable, así que no hace falta ni un `!` ni una rama
+      // muerta que ningún test pueda ejercer.
+      else if (pieza !== null) seleccionar(pieza);
       // El transporte pasa por el callback del shell y no por `startClock`/`stopClock`
       // sueltos: ahí vive la consulta a `clockRunning()` que `.claude/rules/audio.md`
       // obliga a hacer en todo llamador, y abrir una segunda puerta la saltearía.
@@ -116,7 +144,7 @@ export function useAtajosDeTeclado(acciones: Acciones, tapLimpio: RefObject<bool
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [rotar, reflejar, transporte, tapLimpio]);
+  }, [rotar, reflejar, transporte, seleccionar, tapLimpio]);
 }
 
 /**

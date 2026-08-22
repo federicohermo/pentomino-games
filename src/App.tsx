@@ -249,6 +249,15 @@ export default function App(){
   const rotarConTecla = useCallback(()=> setRotation((rotation + 1) % 4), [rotation]);
   const reflejarConTecla = useCallback(()=> setMirror(!mirror), [mirror]);
 
+  // La letra elige la pieza (spec 018). Dependencias VACÍAS porque `setSelected` es un
+  // setter de `useState`, cuya identidad React garantiza estable.
+  //
+  // Y va envuelto en un callback aunque `setSelected` sea asignable a la firma tal cual:
+  // el reparto que fijó el spec 022 es que el hook recibe callbacks, para que el día en
+  // que la ranura de estado cambie de forma —que es exactamente lo que el 020 le va a
+  // hacer a `rotation` y `mirror`— el cambio caiga acá y no adentro del hook.
+  const seleccionarConTecla = useCallback((pieza: PieceKey)=> setSelected(pieza), []);
+
   // `useCallback` de dependencias VACÍAS, y no es cosmética: es lo que deja que el
   // listener de `wheel` se registre una sola vez por montaje. Es posible porque el cuerpo
   // usa el setter funcional y no lee `rotation`. Si alguna vez gana una dependencia, el
@@ -256,7 +265,12 @@ export default function App(){
   const alRotar = useCallback((deltaY: number)=> setRotation(r => rotacionPorRueda(r, deltaY)), []);
 
   useAtajosDeTeclado(
-    { rotar: rotarConTecla, reflejar: reflejarConTecla, transporte: togglePlay },
+    {
+      rotar: rotarConTecla,
+      reflejar: reflejarConTecla,
+      transporte: togglePlay,
+      seleccionar: seleccionarConTecla,
+    },
     tapLimpio,
   );
   useRuedaRota(boardRef, alRotar, tapLimpio);
@@ -435,7 +449,8 @@ export default function App(){
         {' '}Click en tablero para colocar y escuchar.
         {' '}<span className="whitespace-nowrap">Rueda sobre el tablero o <kbd>Shift</kbd> rota</span>;
         {' '}<span className="whitespace-nowrap">botón derecho o <kbd>Ctrl</kbd> refleja</span>;
-        {' '}<span className="whitespace-nowrap"><kbd>Espacio</kbd> arranca y para</span>.
+        {' '}<span className="whitespace-nowrap"><kbd>Espacio</kbd> arranca y para</span>;
+        {' '}<span className="whitespace-nowrap">la <kbd>letra</kbd> de una pieza la elige</span>.
       </footer>
     </div>
   );

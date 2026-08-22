@@ -70,7 +70,7 @@ pnpm exec tsc -b --noEmit
 
 ## Cómo se toca
 
-Los tres gestos que gobiernan la pieza **por colocar** tienen una segunda vía, más corta que ir al
+Los cuatro gestos que gobiernan la pieza **por colocar** tienen una segunda vía, más corta que ir al
 panel: el panel se queda y sigue siendo quien **muestra** el estado, así que los atajos se descubren
 solos —se rota con la rueda y se ve iluminarse `180°` en la paleta—.
 
@@ -81,6 +81,7 @@ solos —se rota con la rueda y se ve iluminarse `180°` en la paleta—.
 | Botón derecho | Alterna la reflexión | Solo sobre el tablero |
 | `Ctrl` (tap) | Alterna la reflexión | Toda la ventana, al **soltar** |
 | Barra espaciadora | Play / pausa | Toda la ventana |
+| `F I L N P T U V W X Y Z` | Selecciona esa pieza | Toda la ventana, al **apretar** |
 | Click en una celda | Coloca la pieza y la escucha | El tablero |
 
 Tres cosas que parecen bugs y no lo son:

@@ -859,3 +859,41 @@ parte hay que releerla contra el `main` del día de implementarlo, no contra el 
 La parte que envejece bien es la que argumenta un *porqué*: la decisión de correr el script y no la
 lista de nodos sobrevivió intacta a los dos merges, y encima salió reforzada — el 029 le cambió `test`
 por `suite` y un workflow con la lista habría seguido en verde sin el gate de coverage.
+
+---
+
+## 2026-08-21 — El spec 018: la tarea pedía una rama que el gate de coverage no deja escribir
+
+T014 describía la rama nueva de `despachar` con precisión: preguntar `accion === ACCION.seleccionar`,
+después pedir la pieza con `piezaDeTecla` y **salir si es `null`, sin `!`**. Está bien argumentada —el
+`!` es un `any` chiquito y este repo no lo escribe en producción— y aun así, escrita así, `pnpm verify`
+da rojo.
+
+El motivo es que ese `null` **no puede pasar nunca**: `accionDeTecla` devuelve `ACCION.seleccionar`
+exactamente cuando `piezaDeTecla` no es `null`, así que el `else` implícito del `if` no lo ejerce
+ningún test posible. Con el umbral en 100 en las cuatro métricas y **cero `/* v8 ignore */`**, una rama
+inalcanzable no es una imperfección: es un nodo rojo.
+
+La salida es la que `CLAUDE.md` ya nombra para este caso —«si una rama parece inalcanzable, se borra o
+se vuelve alcanzable»— y acá se borró preguntando por lo que de verdad decide:
+
+```ts
+const pieza = piezaDeTecla(e.key);
+if (accion === ACCION.rotar) rotar();
+else if (accion === ACCION.reflejar) reflejar();
+else if (pieza !== null) seleccionar(pieza);
+else transporte();
+```
+
+Las dos ramas del último `else if` son alcanzables —una letra entra por la primera, la barra por la
+segunda— y el `!` sigue sin aparecer. La condición cambió de forma pero no de significado: en ese punto
+de la cadena `pieza !== null` y `accion === ACCION.seleccionar` son la misma pregunta.
+
+### La lección: «sin `!`» y «sin rama muerta» son la misma exigencia, y una tarea puede pedir sólo la mitad
+
+El `!` y el `/* v8 ignore */` tapan el mismo agujero por dos vías —uno le dice al compilador que se
+calle, el otro al medidor— y una tarea que prohíbe uno sin mirar el otro empuja al segundo. Lo que
+resuelve los dos a la vez no es una anotación sino mover la pregunta: **preguntar por el valor que se
+va a usar, y no por el veredicto que ya lo implica.** Es barato de aplicar y se nota temprano —el gate
+lo grita—, pero sólo si el spec se implementa con el gate puesto: T032, T033 y T034 no estaban en la
+primera pasada del 018 justamente porque se escribió antes del 029.
