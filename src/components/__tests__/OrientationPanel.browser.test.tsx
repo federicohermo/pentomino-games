@@ -30,8 +30,11 @@ const orientacion = (over: Partial<PropsDeOrientacion> = {}): PropsDeOrientacion
   regimen: REGIMEN.escala,
   noteSet: [60, 62, 64, 67, 69],
   onSelect: vi.fn(),
-  onRotate: vi.fn(),
-  onMirror: vi.fn(),
+  // `onRotate` y `onMirror` salieron de `PropsDeOrientacion` con el spec 019, que borro
+  // los botones que los llamaban. Es lo unico que cambio en este archivo, y a proposito:
+  // las cinco aserciones de nombre —`F, rotación 90°, reflejada` y `Z, rotación 180°`—
+  // siguen intactas, que es lo que verifica que hacer al `aria-label` consumir la pura de
+  // `orientation-text.ts` no lo degrado al formato visible.
   onRegimen: vi.fn(),
   ...over,
 });

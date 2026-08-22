@@ -40,7 +40,8 @@ esta lista y entra como fila en [log.md](./log.md).
   operación destructiva sin vuelta atrás; el 026 le agrega la segunda vía —una tecla sobre la celda
   enfocada— y con eso la vuelve alcanzable **sin querer**: hasta ahora había que apuntarle a la pieza,
   y ahora alcanza con que el foco esté en el tablero. Cinco celdas se van y el tablero no tiene forma
-  de traerlas. «Reset» es el mismo agujero en grande, y también lo es el `submit` accidental que
+  de traerlas. El reset —que desde el spec 019 se llama `↺` y no «Reset», sin que eso cambie lo que
+  hace ni le agregue una vuelta atrás— es el mismo agujero en grande, y también lo es el `submit` accidental que
   `.claude/rules/ui.md` evita pidiendo `type="button"` en todo `<button>`: los tres pierden el tablero
   entero y ninguno pregunta. Necesita spec propio — un historial de estados del tablero toca dónde vive
   `placed`, o sea el shell.

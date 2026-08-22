@@ -19,9 +19,9 @@ import type { PropsDeTransporte } from '../types/panel.types.ts';
 const transporte = (over: Partial<PropsDeTransporte> = {}): PropsDeTransporte => ({
   tempo: 110,
   playing: false,
-  // `clicks` y `onToggleClicks` estan en el tipo y `TransportPanel` no los lee: el
-  // interruptor de clicks vive en otro panel. Se completan igual porque el tipo los
-  // exige, y quedan anotados: son dos campos que el componente recibe y descarta.
+  // Desde el spec 019 `clicks` y `onToggleClicks` SI los lee este componente: el
+  // interruptor del recorrido dejo de vivir en la tarjeta y bajo a esta fila, como
+  // metronomo solo-icono. Hasta entonces eran dos campos que llegaban y se descartaban.
   clicks: false,
   onToggleClicks: vi.fn(),
   onTempo: vi.fn(),
@@ -82,14 +82,57 @@ describe('TransportPanel', () => {
     expect(container.textContent).toContain('bpm');
   });
 
-  it('Reset es su propio boton y no dispara el transporte', async () => {
+  it('el reset dice `↺` y su nombre accesible dice las DOS cosas que hace', async () => {
+    // Con el spec 019 el boton perdio la palabra `Reset`, que era todo su nombre
+    // accesible: un glifo no lo es. El nombre nuevo nombra las dos mitades porque las dos
+    // pasan —vacia el tablero y frena el transporte—, y el `title` dice exactamente lo
+    // mismo: el puntero y el lector no pueden contar dos historias del mismo boton.
     const onReset = vi.fn();
     const onTogglePlay = vi.fn();
     await render(<TransportPanel transporte={transporte({ onReset, onTogglePlay })} />);
 
-    await page.getByRole('button', { name: 'Reset' }).click();
+    const boton = page.getByRole('button', { name: /^Vaciar el tablero y frenar el transporte$/ });
+    await expect.element(boton).toHaveTextContent('↺');
+    expect(boton.element().getAttribute('title')).toBe('Vaciar el tablero y frenar el transporte');
+    // Y el nombre viejo ya no encuentra nada: es la contraparte falsable del renombre.
+    expect(page.getByRole('button', { name: /^Reset$/ }).elements()).toHaveLength(0);
+
+    await boton.click();
     expect(onReset).toHaveBeenCalledTimes(1);
     expect(onTogglePlay).not.toHaveBeenCalled();
+  });
+
+  it('el metronomo es solo-icono, se llama por lo que alterna y lo anuncia con aria-pressed', async () => {
+    // La asercion que el 019 le saca a `PiecePalette` y que llega ACA en vez de
+    // desaparecer. El componente es presentacional, asi que `aria-pressed` sigue a la
+    // prop: se compara entre dos renders y no clickeando y esperando que se actualice
+    // solo, que pasaria siempre.
+    const onToggleClicks = vi.fn();
+    const apagado = await render(
+      <TransportPanel transporte={transporte({ clicks: false, onToggleClicks })} />,
+    );
+    const boton = page.getByRole('button', { name: /^Recorrido en el vacío$/, pressed: false });
+    await expect.element(boton).toBeInTheDocument();
+    // Explicito, y no solo por `pressed: false`: un boton SIN `aria-pressed` tambien
+    // empareja con `pressed: false`, asi que esa consulta sola pasaria con el atributo
+    // borrado — y el estado quedaria dicho por el color y por nada mas.
+    expect(boton.element().getAttribute('aria-pressed')).toBe('false');
+    expect(boton.element().getAttribute('title')).toBe('Recorrido en el vacío');
+    // Solo-icono de verdad: el nombre sale del `aria-label` porque el boton no tiene
+    // texto, y el SVG esta oculto al arbol para que no se anuncie ademas de la etiqueta.
+    expect(boton.element().textContent).toBe('');
+    expect(boton.element().querySelector('svg')!.getAttribute('aria-hidden')).toBe('true');
+
+    await boton.click();
+    expect(onToggleClicks).toHaveBeenCalledTimes(1);
+    await apagado.unmount();
+
+    await render(<TransportPanel transporte={transporte({ clicks: true })} />);
+    const encendido = page.getByRole('button', { name: /^Recorrido en el vacío$/, pressed: true });
+    await expect.element(encendido).toBeInTheDocument();
+    // Encendido usa el `bg-slate-900` con el que la tarjeta marca lo activo: es el mismo
+    // idioma que usaban las dos filas que este spec borro.
+    await expect.element(encendido).toHaveClass(/bg-slate-900/);
   });
 
   // Primer test del repo que pregunta por el arbol de accesibilidad en vez de por la

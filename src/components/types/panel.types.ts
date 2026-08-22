@@ -26,12 +26,14 @@ export interface PropsDeOrientacion {
   selected: PieceKey;
   rotation: number;
   mirror: boolean;
-  /** Que hace la rotacion (spec 017): completa la frase de su propia fila. */
+  /**
+   * Que hace la rotacion (spec 017). Hasta el 019 completaba la frase de su propia fila
+   * —«Rotacion … cambia escala / orden»—; al borrarse los cuatro botones de grados la
+   * frase se quedo sin sujeto y el regimen paso a ser la fila.
+   */
   regimen: RegimenDeRotacion;
   noteSet: readonly number[];
   onSelect: (piece: PieceKey) => void;
-  onRotate: (rotation: number) => void;
-  onMirror: () => void;
   onRegimen: (regimen: RegimenDeRotacion) => void;
 }
 
