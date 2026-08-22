@@ -6,14 +6,19 @@ import { REGIMEN } from '../../domain/constants/music.constants.ts';
 import type { PropsDeOrientacion, PropsDeTransporte } from '../types/panel.types.ts';
 
 /**
- * La tarjeta de piezas: las doce miniaturas, los dos bloques de orientacion, el
- * interruptor del recorrido y el transporte.
+ * La tarjeta de piezas despues del spec 019: las doce miniaturas, la fila del regimen, la
+ * orientacion en texto y el transporte.
  *
- * Lo que se verifica es la medicion que el archivo declara y que hasta hoy no revalidaba
- * nada: que la linea «Notas actuales» ocupe DOS renglones reservados y **no cambie de
- * alto** entre el mejor y el peor de los 48 casos. Es la que el docblock explica con el
- * bug entero — al envolver, movia 20 px hacia abajo todo lo que tiene debajo, o sea
- * Tempo, el transporte y Reset, «justo cuando vas a apretarlo».
+ * Este archivo se reescribio con el 019 y la mitad de lo que verifica es un BORRADO. Eso
+ * cambia la forma de la asercion: «los cuatro botones de grados no existen mas» solo es
+ * falsable con un `queryByRole` anclado que da vacio — leer el diff no lo verifica, y un
+ * test que renderiza y no pregunta nada tampoco.
+ *
+ * Lo que sobrevive de la version anterior es la medicion que el archivo declara y que hasta
+ * el 025 no revalidaba nada: que la linea «Notas actuales» ocupe DOS renglones reservados y
+ * no cambie de alto entre el mejor y el peor de los 48 casos. Es la que el docblock explica
+ * con el bug entero — al envolver movia 20 px hacia abajo todo lo que tiene debajo, «justo
+ * cuando vas a apretarlo».
  *
  * Necesita layout: se mide con `getBoundingClientRect`, que en jsdom da cero.
  */
@@ -24,8 +29,6 @@ const orientacion = (over: Partial<PropsDeOrientacion> = {}): PropsDeOrientacion
   regimen: REGIMEN.escala,
   noteSet: [60, 62, 64, 67, 69],
   onSelect: vi.fn(),
-  onRotate: vi.fn(),
-  onMirror: vi.fn(),
   onRegimen: vi.fn(),
   ...over,
 });
@@ -85,163 +88,120 @@ describe('PiecePalette', () => {
     expect(container.textContent).toContain('tónica C');
   });
 
-  it('las cuatro rotaciones son botones, y el activo se marca en oscuro', async () => {
-    const onRotate = vi.fn();
-    await render(
-      <PiecePalette orientacion={orientacion({ rotation: 2, onRotate })} transporte={transporte()} />,
+  it('los seis botones que el 019 borra NO estan en el DOM', async () => {
+    // La contraparte falsable de AC1. Los nombres van ANCLADOS: `getByRole` empareja por
+    // subcadena, y el `aria-label` de las doce miniaturas dice «rotación 180°», asi que un
+    // `/180°/` suelto encontraria la miniatura y este test no fallaria nunca.
+    const { container } = await render(
+      <PiecePalette orientacion={orientacion({ rotation: 2, mirror: true })} transporte={transporte()} />,
     );
-    // Los nombres van anclados: `getByRole` empareja por SUBCADENA, y el
-    // `aria-label` de las doce miniaturas tambien dice «rotacion 180°».
-    await expect.element(page.getByRole('button', { name: /^180°$/ })).toHaveClass(/bg-slate-900/);
-    await expect.element(page.getByRole('button', { name: /^90°$/ })).not.toHaveClass(/bg-slate-900/);
-
-    await page.getByRole('button', { name: /^270°$/ }).click();
-    expect(onRotate).toHaveBeenCalledWith(3);
+    for (const grados of ['0°', '90°', '180°', '270°']) {
+      expect(page.getByRole('button', { name: new RegExp(`^${grados}$`) }).elements(), grados)
+        .toHaveLength(0);
+    }
+    expect(page.getByRole('button', { name: /^Reflexión$/ }).elements()).toHaveLength(0);
+    // El del recorrido NO se borro: se MUDO, y sigue estando dentro de esta tarjeta porque
+    // `TransportPanel` es hijo suyo. Lo que se verifica es que ya no sea una fila con
+    // etiqueta visible sino un boton de la fila de transporte, abajo del `border-t`.
+    const recorrido = page.getByRole('button', { name: /^Recorrido en el vacío$/ }).element();
+    expect(recorrido.textContent).toBe('');
+    expect(recorrido.closest('div.border-t')).not.toBeNull();
+    // Y las dos etiquetas se fueron con sus controles: un `<span>` que nombra un grupo que
+    // ya no existe deja un `aria-labelledby` colgando o, peor, un texto en pantalla que no
+    // corresponde a nada.
+    expect(container.querySelector('#reflexion-etiqueta')).toBeNull();
+    expect(container.querySelector('#recorrido-etiqueta')).toBeNull();
+    // Ningun boton de la tarjeta dice ON ni OFF: los dos que lo hacian eran los borrados.
+    expect([...container.querySelectorAll('button')].map(b => b.textContent))
+      .not.toContain('OFF');
   });
 
-  it('el regimen son DOS botones simetricos, no un ON/OFF', async () => {
-    // Ninguno de los dos es la ausencia del otro: un ON/OFF diria que hay un regimen y
-    // una desviacion, que es la lectura que D4 del 017 rechaza.
+  it('el regimen es la fila `Rotación`, con sus DOS botones simetricos', async () => {
+    // Asciende de segunda linea a fila propia: la frase que completaba —«Rotación … cambia
+    // escala / orden»— se quedo sin sujeto al borrarse los cuatro grados. Sigue siendo un
+    // `role="group"` con nombre, y sigue sin ser un ON/OFF: ninguno de los dos valores es
+    // la ausencia del otro, que es la lectura que D4 del 017 rechaza.
     const onRegimen = vi.fn();
-    await render(
-      <PiecePalette orientacion={orientacion({ regimen: REGIMEN.escala, onRegimen })} transporte={transporte()} />,
+    const { container } = await render(
+      <PiecePalette
+        orientacion={orientacion({ regimen: REGIMEN.escala, onRegimen })}
+        transporte={transporte()}
+      />,
     );
+    await expect.element(page.getByRole('group', { name: /^Rotación$/ })).toBeInTheDocument();
+    // Y el grupo que se llamaba `cambia` no quedo ademas: es el MISMO grupo renombrado.
+    expect(page.getByRole('group', { name: /^cambia$/ }).elements()).toHaveLength(0);
+    expect(container.querySelectorAll('[role="group"]')).toHaveLength(1);
+
+    const botones = [...container.querySelectorAll('[role="group"] button')];
+    expect(botones).toHaveLength(2);
+    // Los dos declaran `aria-pressed` —ninguno queda en `null`— y exactamente uno esta en
+    // `true`: el estado que la fila pinta en oscuro es el mismo que anuncia el arbol.
+    expect(botones.map(b => b.getAttribute('aria-pressed'))).toEqual(['true', 'false']);
     await expect.element(page.getByRole('button', { name: REGIMEN.escala })).toHaveClass(/bg-slate-900/);
-    await expect.element(page.getByRole('button', { name: REGIMEN.orden })).not.toHaveClass(/bg-slate-900/);
 
     await page.getByRole('button', { name: REGIMEN.orden }).click();
     expect(onRegimen).toHaveBeenCalledWith(REGIMEN.orden);
   });
 
-  it('Reflexion y Recorrido son ON/OFF, y cada uno llama al suyo', async () => {
-    const onMirror = vi.fn();
-    const onToggleClicks = vi.fn();
+  it('la palabra que unia la frase no se pierde: la dice el `title` del grupo', async () => {
+    // `cambia` desaparecio de la pantalla con la fila de arriba, y sin ella
+    // `Rotación | escala orden` se puede leer como si la rotacion tuviera dos valores.
     const { container } = await render(
-      <PiecePalette
-        orientacion={orientacion({ mirror: true, onMirror })}
-        transporte={transporte({ clicks: false, onToggleClicks })}
-      />,
+      <PiecePalette orientacion={orientacion()} transporte={transporte()} />,
     );
-
-    const filaDe = (etiqueta: string) =>
-      [...container.querySelectorAll('div.flex.items-center.justify-between')]
-        .find(d => d.textContent!.startsWith(etiqueta))!;
-
-    const reflexion = filaDe('Reflexión').querySelector('button')!;
-    const recorrido = filaDe('Recorrido en el vacío').querySelector('button')!;
-
-    expect(reflexion.textContent).toBe('ON');
-    expect(recorrido.textContent).toBe('OFF');
-
-    reflexion.click();
-    expect(onMirror).toHaveBeenCalledTimes(1);
-    recorrido.click();
-    expect(onToggleClicks).toHaveBeenCalledTimes(1);
-    // Y no se cruzan: son dos interruptores distintos en filas contiguas.
-    expect(onMirror).toHaveBeenCalledTimes(1);
+    const grupo = container.querySelector('[role="group"]')!;
+    expect(grupo.getAttribute('title')).toContain('rotación cambia');
   });
 
-  it('Reflexión se nombra por su fila y anuncia su estado con aria-pressed', async () => {
-    // El nombre accesible sale del `<span>Reflexión</span>` por `aria-labelledby` y NO de
-    // un `aria-label` que repita la misma cadena (D3): un `aria-label` duplicaria un texto
-    // que ya esta en pantalla y las dos copias se despegarian sin que nada falle. Por eso
-    // se afirma tambien que el boton NO declara `aria-label`.
-    //
-    // El componente es presentacional —no tiene estado propio—, asi que `aria-pressed`
-    // sigue a la prop. Se verifica renderizando con `mirror: false` y con `mirror: true`,
-    // no clickeando y esperando que se actualice solo: eso ultimo pasaria siempre.
-    const apagado = await render(
-      <PiecePalette orientacion={orientacion({ mirror: false })} transporte={transporte()} />,
+  it('la orientacion se lee en texto, que es lo que la miniatura no puede decir', async () => {
+    // Las seis piezas ciegas —`I T U V W X`— suenan distinto sin verse distinto en 29 de
+    // las 96 combinaciones. Se verifica por TEXTO y nunca por `className`.
+    const sinReflejar = await render(
+      <PiecePalette orientacion={orientacion({ rotation: 3 })} transporte={transporte()} />,
     );
-    // Anclado, por lo mismo que las rotaciones: `getByRole` empareja por SUBCADENA.
-    await expect
-      .element(page.getByRole('button', { name: /^Reflexión$/, pressed: false }))
-      .toBeInTheDocument();
-    const boton = apagado.container.querySelector('button[aria-labelledby="reflexion-etiqueta"]')!;
-    expect(boton.hasAttribute('aria-label')).toBe(false);
-    // Explicito, y no solo por `pressed: false`: un boton SIN `aria-pressed` tambien
-    // empareja con `pressed: false`, asi que esa consulta sola pasaria con el atributo
-    // borrado. Lo que verifica que el atributo existe es esta linea y el render de abajo.
-    expect(boton.getAttribute('aria-pressed')).toBe('false');
-    // Y el texto visible sigue siendo el ON/OFF de siempre: el nombre accesible lo tapa
-    // para el lector de pantalla, no para el ojo.
-    expect(boton.textContent).toBe('OFF');
-    await apagado.unmount();
+    expect(sinReflejar.container.textContent).toContain('270°');
+    expect(sinReflejar.container.textContent).not.toContain('reflejada');
+    await sinReflejar.unmount();
 
-    await render(
-      <PiecePalette orientacion={orientacion({ mirror: true })} transporte={transporte()} />,
-    );
-    await expect
-      .element(page.getByRole('button', { name: /^Reflexión$/, pressed: true }))
-      .toBeInTheDocument();
-  });
-
-  it('Recorrido en el vacío se nombra por su fila y anuncia su estado con aria-pressed', async () => {
-    // Mismo razonamiento que Reflexión: el estado viene por la prop `clicks`, asi que los
-    // dos valores se comparan entre dos renders y no despues de un click.
-    const apagado = await render(
-      <PiecePalette orientacion={orientacion()} transporte={transporte({ clicks: false })} />,
-    );
-    await expect
-      .element(page.getByRole('button', { name: /^Recorrido en el vacío$/, pressed: false }))
-      .toBeInTheDocument();
-    const boton = apagado.container.querySelector('button[aria-labelledby="recorrido-etiqueta"]')!;
-    expect(boton.hasAttribute('aria-label')).toBe(false);
-    // Explicito, y no solo por `pressed: false`: un boton SIN `aria-pressed` tambien
-    // empareja con `pressed: false`, asi que esa consulta sola pasaria con el atributo
-    // borrado. Lo que verifica que el atributo existe es esta linea y el render de abajo.
-    expect(boton.getAttribute('aria-pressed')).toBe('false');
-    expect(boton.textContent).toBe('OFF');
-    await apagado.unmount();
-
-    await render(
-      <PiecePalette orientacion={orientacion()} transporte={transporte({ clicks: true })} />,
-    );
-    await expect
-      .element(page.getByRole('button', { name: /^Recorrido en el vacío$/, pressed: true }))
-      .toBeInTheDocument();
-  });
-
-  it('los dos grupos son un role="group" con nombre, y sus seis botones declaran aria-pressed', async () => {
-    // El grupo se nombra con el `<span>` que ya estaba en la fila, sin agregar un nodo:
-    // un envoltorio nuevo se comeria un margen del `space-y-2`, que es un selector de
-    // hijo directo. El nombre del segundo grupo es «cambia» —un verbo suelto— a proposito:
-    // ese texto es la segunda linea de una oracion que empieza arriba.
     const { container } = await render(
-      <PiecePalette
-        orientacion={orientacion({ rotation: 2, regimen: REGIMEN.orden })}
-        transporte={transporte()}
-      />,
+      <PiecePalette orientacion={orientacion({ rotation: 2, mirror: true })} transporte={transporte()} />,
     );
-    await expect.element(page.getByRole('group', { name: /^Rotación$/ })).toBeInTheDocument();
-    await expect.element(page.getByRole('group', { name: /^cambia$/ })).toBeInTheDocument();
-
-    const botonesDe = (etiqueta: string) => [
-      ...container.querySelectorAll(`[role="group"][aria-labelledby="${etiqueta}"] button`),
-    ];
-    const rotaciones = botonesDe('rotacion-etiqueta');
-    const regimenes = botonesDe('regimen-etiqueta');
-    expect(rotaciones).toHaveLength(4);
-    expect(regimenes).toHaveLength(2);
-
-    // Los seis lo declaran —ninguno queda en `null`— y exactamente UNO de los cuatro de
-    // rotacion esta en `true`: el estado que la tarjeta pinta en oscuro es el mismo que
-    // anuncia el arbol de accesibilidad.
-    const pressed = (b: Element) => b.getAttribute('aria-pressed');
-    expect(rotaciones.map(pressed)).toEqual(['false', 'false', 'true', 'false']);
-    expect(regimenes.map(pressed)).toEqual(['false', 'true']);
-    expect(rotaciones.filter(b => pressed(b) === 'true')).toHaveLength(1);
+    expect(container.textContent).toContain('180° · reflejada');
   });
 
-  it('el interruptor del recorrido es del transporte pero lo renderiza esta tarjeta', async () => {
-    // Cae ENTRE dos bloques de orientacion, asi que llevarselo a `TransportPanel`
-    // reordenaria el DOM. Se afirma la posicion, que es la razon de que este aca.
+  it('la linea de orientacion reserva su renglon y no salta con el peor caso', async () => {
+    // Mismo bug que la linea de notas: si envuelve, mueve todo lo que tiene debajo justo
+    // cuando lo estas tocando. El peor caso de largo es `270° · reflejada`.
+    const alto = async (over: Partial<PropsDeOrientacion>) => {
+      const { container, unmount } = await render(
+        <PiecePalette orientacion={orientacion(over)} transporte={transporte()} />,
+      );
+      const linea = [...container.querySelectorAll('p')]
+        .find(p => /^\d+°/.test(p.textContent!))!;
+      const h = Math.round(linea.getBoundingClientRect().height);
+      const interlineado = parseFloat(getComputedStyle(linea).lineHeight);
+      await unmount();
+      return { h, interlineado };
+    };
+
+    const corto = await alto({ rotation: 0, mirror: false });
+    const largo = await alto({ rotation: 3, mirror: true });
+    expect(corto.h).toBeGreaterThan(0);
+    expect(largo.h).toBe(corto.h);
+    // Y UN renglon, no dos: el peor caso entra sin envolver.
+    expect(corto.h).toBe(Math.round(corto.interlineado));
+  });
+
+  it('el orden de la tarjeta, de arriba abajo', async () => {
+    // Con el recorrido mudado al transporte, lo que queda entre las miniaturas y el
+    // `border-t` son dos filas y ninguna es de otro panel.
     const { container } = await render(
       <PiecePalette orientacion={orientacion()} transporte={transporte()} />,
     );
     const texto = container.textContent!;
-    expect(texto.indexOf('Reflexión')).toBeLessThan(texto.indexOf('Recorrido en el vacío'));
-    expect(texto.indexOf('Recorrido en el vacío')).toBeLessThan(texto.indexOf('Notas actuales'));
+    expect(texto.indexOf('Rotación')).toBeLessThan(texto.indexOf('tónica'));
+    expect(texto.indexOf('tónica')).toBeLessThan(texto.indexOf('Notas actuales'));
     expect(texto.indexOf('Notas actuales')).toBeLessThan(texto.indexOf('Tempo'));
   });
 });

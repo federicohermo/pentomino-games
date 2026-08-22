@@ -4,6 +4,7 @@ import type { PieceKey } from '../domain/types/pieces.types.ts';
 import { MINI_BOX, MINI_CELL_PX } from './constants/layout.constants.ts';
 import { PIECE_COLOR } from './constants/palette.constants.ts';
 import { miniCells } from './piece-mini.ts';
+import { textoDeOrientacion } from './orientation-text.ts';
 import type { PropsDeOrientacion } from './types/panel.types.ts';
 
 /**
@@ -30,6 +31,13 @@ import type { PropsDeOrientacion } from './types/panel.types.ts';
  */
 export default memo(function OrientationPanel({ orientacion }: { orientacion: PropsDeOrientacion }) {
   const { selected, rotation, mirror, onSelect } = orientacion;
+  // La MISMA derivacion que la linea visible del panel, en el otro formato (spec 019). Los
+  // dos textos no se pueden unificar —bajar este al visible le saca el sustantivo
+  // "rotación" y le mete un separador que el lector de pantalla deletrea— pero el CALCULO
+  // si, que era lo que estaba escrito dos veces y desde el 022 ni siquiera en el mismo
+  // archivo. Se compone una vez y no doce: no depende de la pieza.
+  const { grados, reflejada } = textoDeOrientacion(rotation, mirror);
+  const orientacionHablada = `rotación ${grados}${reflejada === null ? '' : `, ${reflejada}`}`;
   return (
     /* El ancho lo gobierna la caja de la miniatura, que mide 5 × `MINI_CELL_PX` = 40 px
        y **no depende ni de la pieza ni de la orientacion**: el peor caso es el mismo
@@ -89,8 +97,9 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
         // el borde de la miniatura y el `aria-pressed`, y tienen que invertirse en el
         // mismo momento.
         const activo = selected === key;
-        // `type="button"` y no el default, aca y en los otros seis sitios de JSX que
-        // renderizan los 22 botones de la app: hoy no hay un solo `<form>` en el arbol,
+        // `type="button"` y no el default, aca y en los otros cuatro sitios de JSX que
+        // renderizan los 17 botones de la app —eran siete sitios y 22 botones hasta que el
+        // 019 borro los cuatro grados y el ON/OFF de Reflexion—: hoy no hay un `<form>`,
         // asi que no hay bug. Pero el default de un `<button>` DENTRO de un formulario es
         // `submit`, y en esta app eso significa recargar la pagina perdiendo el tablero
         // entero, y no hay deshacer (`specs/deuda.md`). Va sin excepcion y sin discutir
@@ -100,7 +109,7 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
             key={key}
             type="button"
             onClick={()=> onSelect(key)}
-            aria-label={`${key}, rotación ${rotation * 90}°${mirror ? ', reflejada' : ''}`}
+            aria-label={`${key}, ${orientacionHablada}`}
             aria-pressed={activo}
             className={`px-2 py-1 rounded-lg border text-sm flex flex-col items-center justify-center gap-1 ${activo? 'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}
           >

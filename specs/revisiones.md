@@ -897,3 +897,54 @@ resuelve los dos a la vez no es una anotación sino mover la pregunta: **pregunt
 va a usar, y no por el veredicto que ya lo implica.** Es barato de aplicar y se nota temprano —el gate
 lo grita—, pero sólo si el spec se implementa con el gate puesto: T032, T033 y T034 no estaban en la
 primera pasada del 018 justamente porque se escribió antes del 029.
+
+---
+
+## 2026-08-21 — El spec 019: la paleta no dejó colchón, se cayó del podio
+
+El `research.md` predijo que borrar las tres filas bajaría la paleta de 520 a 470 px de caja, que la
+línea de AC4 devolvería ~20 de esos y que el colchón de alto pasaría de 26 a ~30 px, con `CELL_PX`
+quieto en 73 y el **ancho** mandando de las dos formas. La medición de T022, tomada en el DOM con el
+paso 2 puesto, confirma el 73 y **cambia lo que significa**.
+
+Los números, medidos con `align-items: start` sobre la grilla —que es la única forma de ver el alto
+natural de las dos tarjetas con el estiramiento apagado—:
+
+```
+paleta   496 → 428 px de caja natural      (el spec predecía ~490)
+tablero  470 px de caja natural            (6 × 73 + el p-4)
+CELL_PX  73   por ancho: 730,7 / 10 = 73,1
+```
+
+**La paleta dejó de ser la tarjeta más alta de la fila.** Hasta acá el alto disponible del tablero lo
+fijaba ella —el tablero se estiraba a su altura— y por eso «el alto sobra» quería decir «sobran 26
+px». Con 428 contra 470, la que fija la altura de la fila pasa a ser la tarjeta del tablero, o sea que
+el alto **salió de la ecuación**: no quedó un colchón más grande, quedó una restricción menos. Lo que
+hay ahora es al revés: 42 px de margen antes de que la paleta vuelva a mandar.
+
+### La lección: un colchón que se agranda lo suficiente cambia de signo
+
+«Sobran 26 px» y «sobran 42 px» se leen como el mismo hecho con distinta magnitud, y no lo son: en el
+medio hay un cruce donde la tarjeta que manda cambia, y con ella cambia **qué medición hay que
+rehacer** la próxima vez. Un docblock que dijera «ahora sobran ~30» habría seguido siendo verdadero de
+número y falso de modelo — y el modelo es lo que se lee para decidir el próximo cambio. El 020 le
+devuelve un botón `0°` inline a esa misma línea: con el modelo viejo eso era «gastar 10 de los 30»; con
+el medido es «gastar 10 de los 42 que faltan para volver a mandar».
+
+Es la misma familia que la trampa que este docblock ya se comió dos veces —el 014 y el 016 lo dejaron
+afirmando la restricción equivocada— y por eso el `tasks.md` puso el paso 4 **después** de la medición
+en vez de antes.
+
+### Dos tareas salieron distinto, y las dos por el gate del 029
+
+- **T043 decía «no se toca, y eso es la verificación»** sobre `OrientationPanel.browser.test.tsx`. Hubo
+  que tocarlo: T005 borra `onRotate` y `onMirror` de `PropsDeOrientacion`, y el factory del archivo los
+  llenaba, así que sin ese borrado no typechequea. Lo que la tarea protege sí quedó intacto —las cinco
+  aserciones de nombre, `F, rotación 90°, reflejada` y `Z, rotación 180°`—, que es lo que verifica que
+  hacer al `aria-label` consumir la pura no lo degradó al formato visible. La forma correcta de la
+  tarea era «ninguna aserción se toca», no «ningún byte».
+- **`App.browser.test.tsx` no estaba en el paso 6 y también rompía**, en seis tests: clickeaba `90°`,
+  buscaba el botón por el nombre `Reset`, encontraba la fila de «Recorrido en el vacío» por su
+  `className` y contaba 22 botones. El paso 6 enumeró los tres archivos de la tarjeta y se olvidó del
+  shell, que es el único que los renderiza juntos. Con el umbral en 100 eso no es un detalle: `verify`
+  no da verde hasta arreglarlo.

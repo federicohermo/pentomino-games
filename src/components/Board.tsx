@@ -258,12 +258,17 @@ export default function Board({
   // que la incluyen dan 71. Por eso la segunda columna va a la paleta, que la necesita
   // para el spec 016 — su interior pasa de 252 a 349,3 px.
   //
-  // El alto de la tarjeta lo fija la PALETA, que es la mas alta de la fila; el tablero se
-  // estira con ella — y el spec 016 lo EJERCIO. Con las doce miniaturas la paleta paso de
-  // 461,6 a 496 px de caja, el interior del tablero a 730,7 × 464 y `CELL_PX` a **73**,
-  // que es el techo por ancho de este reparto (730,7 / 10). Ahi se detiene: pasado ese
-  // punto lo que la paleta crezca ya no agranda el tablero, le deja aire muerto. El
-  // detalle de la cadena entera esta en el docblock de `CELL_PX`.
+  // El alto de la tarjeta lo fijaba la PALETA, que era la mas alta de la fila, y el
+  // tablero se estiraba con ella — el spec 016 lo EJERCIO: con las doce miniaturas la
+  // paleta paso de 461,6 a 496 px de caja y `CELL_PX` llego a **73**, que es el techo por
+  // ancho de este reparto (730,7 / 10). Ahi se detuvo, porque pasado ese punto lo que la
+  // paleta crezca ya no agranda el tablero.
+  //
+  // El spec 019 dio vuelta la relacion: al borrar tres filas la paleta cayo a **428** px
+  // contra los 470 del tablero, o sea que la tarjeta mas alta de la fila pasa a ser ESTA.
+  // El interior queda en 730,7 × 438 = 6 × 73 exactos, y `CELL_PX` no se movio porque el
+  // 73 ya lo decidia el ancho. El detalle de la cadena entera esta en el docblock de
+  // `CELL_PX`.
   return (
     <div className="col-span-12 md:col-span-8 bg-white rounded-2xl shadow p-4">
       {/* `overflow-x-auto` y no un `CELL_PX` mas chico: la grilla mide 10 × 73 =

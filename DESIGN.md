@@ -293,9 +293,11 @@ nada más. Los valores viven en `src/components/constants/playhead.constants.ts`
 Nota fuerte, cruce intermedio, click tenue: si se vieran igual, el recorrido parecería tener piezas
 donde no hay, o confundiría un turno con un roce.
 
-**Los tres escalones se ven aunque el click no se oiga.** Desde el spec 015 el click nace apagado y el
-panel lo enciende con «Recorrido en el vacío» —que es como se llama esa clase de evento de cara al
-usuario; «click» es la palabra del código—. El borde de 2 px se dibuja igual: el recorrido es el mismo
+**Los tres escalones se ven aunque el click no se oiga.** Desde el spec 015 el click nace apagado y se
+enciende con «Recorrido en el vacío» —que es como se llama esa clase de evento de cara al usuario;
+«click» es la palabra del código—. El nombre **no cambió** con el spec 019; cambió dónde se lee: el
+interruptor bajó a la fila de transporte como un metrónomo solo-icono, así que la etiqueta vive en su
+`aria-label` y su `title` en vez de en un `<span>` al lado. El borde de 2 px se dibuja igual: el recorrido es el mismo
 con el sonido apagado, y el interruptor es de mezcla y no del modelo.
 
 **La cabeza salta, no se desliza.** El instrumento está cuantizado a la grilla de intervalos, y un
