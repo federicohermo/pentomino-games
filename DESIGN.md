@@ -155,8 +155,10 @@ donde una es estrictamente mejor no es lenguaje visual, es alto de pantalla gast
 
 ### El botón de la paleta muestra la forma, no la letra
 
-Desde el spec 016 cada botón dibuja **la pieza**, pintada con su color y **en la orientación que está
-seleccionada ahora mismo**, con la letra chica debajo. Antes decía sólo la letra, con un punto de 8 px al
+Desde el spec 016 cada botón dibuja **la pieza**, pintada con su color y **en su propia orientación**,
+con la letra chica debajo. Hasta el 020 los doce se dibujaban en la orientación de la pieza en la mano,
+que es lo mismo que decir que la orientación era del instrumento: rotar para acomodar una `F` movía 11
+de las 12 miniaturas. Antes decía sólo la letra, con un punto de 8 px al
 costado para la identidad — y esas doce letras son nombres arbitrarios: la `N` no se parece a una N, y
 la `V` y la `L` son la misma forma con un brazo de distinto largo.
 
@@ -165,7 +167,9 @@ Tres cosas que hacen que eso sea posible sin romper nada de lo de arriba:
 - **La caja es fija, de 5×5 celdas.** Es la más chica que contiene cualquier pentominó en cualquiera de
   sus 8 orientaciones. Sin ella, la `I` —que pasa de 5×1 a 1×5— haría reflowear los doce botones en cada
   rotación, que es el mismo bug que la línea de notas de esa tarjeta ya tenía documentado: *un panel de
-  control que se acomoda solo cuando lo tocás mueve el botón justo cuando vas a apretarlo.*
+  control que se acomoda solo cuando lo tocás mueve el botón justo cuando vas a apretarlo.* Con el spec
+  020 la caja fija pasa a ser **más** necesaria y no menos: las doce formas ya no cambian juntas, así
+  que cualquier ajuste al contenido puede mover una sola miniatura y descuadrar la fila entera.
 - **El fondo del botón sigue sin tocarse**, porque sigue siendo el único canal de «seleccionada».
 - **El punto de color se fue** y su borde se quedó, en cada celda de la miniatura: varios de los 12
   colores (el amarillo de `V`, el lima de `F`) casi no se ven contra el gris claro del botón sin

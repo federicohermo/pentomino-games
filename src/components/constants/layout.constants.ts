@@ -107,6 +107,13 @@ export const CELL_PX = 73;
  * orientaciones: el maximo en un eje lo pone sola la `I` —5×1 acostada, 1×5 parada— y
  * ninguna otra pieza pasa de 4×2 ni de 3×3. Con 4 la `I` no entra.
  *
+ * **Con el spec 020 la caja fija pasa a ser MAS necesaria, no menos.** Hasta ahi las doce
+ * miniaturas se dibujaban en la misma orientacion, asi que si una fila se descuadraba al
+ * rotar se descuadraba entera y de una vez. Hoy cada pieza recuerda la suya y las doce
+ * cambian por separado: sin la caja fija, rotar la `I` sola movería a sus once vecinas de
+ * la grilla. El argumento esta duplicado en `piece-mini.ts` y en `DESIGN.md`, y los tres
+ * tienen que decir lo mismo.
+ *
  * **No se toma `CELLS_PER_PIECE` de `domain/`**, aunque valga 5 tambien. Son dos
  * numeros distintos que coinciden por casualidad: aquel dice cuantas celdas tiene una
  * pieza —una propiedad del modelo— y este cuantas casillas mide la caja donde se

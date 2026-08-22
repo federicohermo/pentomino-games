@@ -21,7 +21,7 @@ expresivo, no más difícil.
 ┌──────────────────────────▼──────────────────────────────┐
 │  src/App.tsx — el shell, sin un solo efecto             │
 │   estado · derivados · handlers · composición           │
-│   selected · rotation · mirror · tempo                  │
+│   selected · orientaciones · tempo · regimen            │
 │   playing · placed[] · hover                            │
 └───────┬─────────────────────────────┬───────────────────┘
         │ compone                     │ playNow (el resto pasa por use-engine.ts)
@@ -119,8 +119,7 @@ esta escala no hace falta, y agregarlo sería la clase de complejidad que un pro
 | Estado | Tipo | Qué representa |
 |---|---|---|
 | `selected` | `PieceKey` | Pieza activa en la paleta |
-| `rotation` | `0..3` | Cuartos de vuelta |
-| `mirror` | `boolean` | Reflexión activa |
+| `orientaciones` | `Record<PieceKey, Orientacion>` | La orientación de **cada una** de las doce, desde el spec 020. Hasta ahí eran dos escalares sueltos —un `rotation` y un `mirror` para las doce— y rotar la pieza en la mano reorientaba las otras once. `Orientacion.rotation` es el union `Rotacion`, no un `number` |
 | `tempo` | `number` | BPM del reloj del motor |
 | `playing` | `boolean` | Si el transporte está corriendo. Lo escribe `togglePlay` con lo que devuelve `clockRunning()`, no con la negación del valor anterior: `startClock()` es un no-op silencioso sin Web Audio |
 | `placed` | `PlacedPiece[]` | Piezas en el tablero |

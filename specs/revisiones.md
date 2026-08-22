@@ -948,3 +948,54 @@ en vez de antes.
   `className` y contaba 22 botones. El paso 6 enumeró los tres archivos de la tarjeta y se olvidó del
   shell, que es el único que los renderiza juntos. Con el umbral en 100 eso no es un detalle: `verify`
   no da verde hasta arreglarlo.
+
+---
+
+## 2026-08-21 — El spec 020: el `ref` que el spec pedía, el linter lo prohíbe
+
+T010 y T011 dejaron escrita la salida para un problema real: `alRotar` —el callback de la rueda— tiene
+dependencias vacías a propósito desde el 022, porque es lo que hace que `useRuedaRota` registre el
+listener de `wheel` una sola vez por montaje (AC16 del 022). Con la orientación global su cuerpo no
+leía nada; con la memoria por pieza necesita saber **cuál** ranura rotar, y agregarle `selected` a las
+dependencias rompe esa cardinalidad. La tarea proponía un `ref` que siguiera a `selected`, y hasta ahí
+todo bien.
+
+Lo que la tarea no podía saber es **dónde** se escribe ese ref. La forma obvia —y la que la tarea
+sugiere al decir «un `ref` que lo siga»— es una línea en el cuerpo del render:
+
+```ts
+const selectedRef = useRef<PieceKey>(selected);
+selectedRef.current = selected;   // ← `pnpm lint` en rojo
+```
+
+`react-hooks` la rechaza con «Cannot access refs during render», y tiene razón: un ref leído o escrito
+durante el render es estado que React no ve, y en un render abortado o repetido queda apuntando a algo
+que nunca se pintó. El otro camino habitual es un `useEffect`, y **este shell no tiene ninguno** desde
+el 022.
+
+La salida fue mover la escritura a donde ya se escribía el estado: un `elegirPieza` que es el **único**
+escritor de `selected`, y que actualiza el ref y el `useState` en la misma línea. Los dos consumidores
+que había —el `onSelect` de la paleta y el `seleccionarConTecla` del 018— pasan a llamarlo a él, así
+que el ref no se puede desincronizar por construcción y no por disciplina.
+
+### La lección: «un ref que lo siga» no dice dónde se escribe, y ahí está la regla
+
+Es la misma familia que el hallazgo del 018 —una tarea que prohíbe el `!` sin mirar la rama muerta que
+empuja—: el spec nombra el mecanismo y el linter tiene una opinión sobre la **forma** del mecanismo. La
+pregunta que hay que hacerle a cualquier `ref` de este repo no es «¿qué guarda?» sino «¿quién lo
+escribe, y en qué fase». Cuando la respuesta es «el render», hay que buscar el escritor real del dato.
+
+## Y una medición que salió mejor de lo previsto
+
+AC15 pedía remedir `CELL_PX` **con el botón `0°` puesto**, porque el 019 acababa de medir esa fila y el
+spec estimaba el colchón de alto en ~30 px. Medido en el DOM: la paleta sigue en **428 px de caja
+natural**, exactamente lo mismo que sin el botón, y `CELL_PX` sigue en **73**.
+
+El botón costó **cero** píxeles de alto, y no por suerte: entra *inline* en la línea de orientación, y
+mide 16 px contra los 20 del renglón que esa línea ya reservaba con su `min-h-[1lh]`. La reserva que el
+019 puso para que la línea no envolviera terminó pagando el botón del 020.
+
+Vale anotarlo junto con lo que el 019 midió, porque juntos corrigen el modelo con el que el spec
+razonaba: no es que quedaban ~30 px de colchón y este spec gastó ~10, es que la paleta dejó de ser la
+tarjeta más alta y el alto salió de la ecuación. Hay **42 px** antes de que vuelva a mandar (470 − 428),
+y este spec no gastó ninguno.
