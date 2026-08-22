@@ -77,8 +77,20 @@ export const BORDE_POR_KIND = { [MARCA.nota]: NOTA, [MARCA.cruce]: CRUCE, [MARCA
 /**
  * Las clases del velo van como literales enteros y no armadas por concatenacion:
  * Tailwind escanea el fuente, asi que solo genera lo que aparece escrito completo.
- * Repiten el `p-[2px]` y el `rounded-lg` de la baldosa de `Board.tsx` a proposito — es
- * la misma caja, y poner los numeros a mano seria un segundo lugar donde mantenerlos.
+ *
+ * **Lo que ya NO esta aca es la geometria**, y ese es el cambio del spec 021. Hasta ahi
+ * estas dos clases repetian el `p-[2px]` y el `rounded-lg` de la baldosa de `Board.tsx` a
+ * proposito —es la misma caja, y poner los numeros a mano seria un segundo lugar donde
+ * mantenerlos—. Con el 021 ese aire y ese radio pasaron a ser razones de `--cell`, y una
+ * clase de Tailwind no puede interpolar una custom property: si se quedaran escritos aca,
+ * a celda 180 el velo cubriria una baldosa de 4,93 px de aire con un margen de 2 y dejaria
+ * un halo. El aire y el radio los escribe ahora `rearmar`, en `playhead-loop.ts`, al lado
+ * de las cuatro coordenadas — que es el unico lugar donde ya se hablaba en pixeles.
+ *
+ * Lo que queda en la clase es lo que NO depende del tamano: el posicionamiento, el
+ * relleno, el color y el filete. El `border-2 border-dashed` se queda fijo por el mismo
+ * argumento que el borde de 1 px de la baldosa, escrito en `Board.tsx`: es un delimitador
+ * y no un elemento tipografico, y su grosor es un ESCALON medido contra ese filete base.
  */
-export const VELO_CAJA = 'absolute p-[2px]';
-export const VELO_TAPA = 'w-full h-full rounded-lg border-2 border-dashed border-slate-900/50 bg-white/60';
+export const VELO_CAJA = 'absolute';
+export const VELO_TAPA = 'w-full h-full border-2 border-dashed border-slate-900/50 bg-white/60';

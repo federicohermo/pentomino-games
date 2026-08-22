@@ -95,10 +95,12 @@ src/
 │       ├── playhead.test.ts      #   offsetAt: borde de ciclo, t < origin y los degradados (AC2)
 │       └── test-context.ts       #   helpers de render y medición (no es un test)
 └── components/                   # un componente por archivo, presentacionales
-    ├── PiecePalette.tsx          # la tarjeta y la composición de los dos paneles, más las
-    │                             #   filas que quedan interpoladas entre ellos (spec 022)
-    ├── OrientationPanel.tsx      # las doce miniaturas en la orientación actual (spec 016)
-    ├── TransportPanel.tsx        # tempo, play/pausa y reset
+    ├── PiecePalette.tsx          # el dock flotante y la composición de los dos paneles, más las
+    │                             #   dos filas que quedan entre ellos (specs 022 y 019). Dejó de
+    │                             #   ser una tarjeta en columna con el spec 021
+    ├── OrientationPanel.tsx      # las doce miniaturas, cada una en SU orientación recordada
+    │                             #   (spec 016 la forma, spec 020 la orientación por pieza)
+    ├── TransportPanel.tsx        # tempo, play/pausa, el recorrido en el vacío y el reset
     ├── Board.tsx                 # grilla 10×6: color por pieza, nota por celda, y el fantasma
     │                             #   diciendo lo mismo antes de colocar
     ├── Spectrum.tsx              # canvas del espectro: rAF + HiDPI, sin props
@@ -115,6 +117,9 @@ src/
     │                             #   del .tsx por lo mismo que cell-text.ts
     ├── piece-mini.ts             # la forma de una pieza centrada en la caja de 5×5 de la paleta,
     │                             #   ya rotada y reflejada (spec 016). Fuera del .tsx por lo mismo
+    ├── orientation-text.ts       # la orientación en palabras, en dos fragmentos: la línea visible
+    │                             #   del panel y el aria-label de las miniaturas la componen cada
+    │                             #   uno a su formato (spec 019). Fuera del .tsx por lo mismo
     ├── input.ts                  # la decisión de cada gesto de entrada: rueda, tecla, menú
     │                             #   contextual y click sobre una celda (specs 013 y 014)
     ├── engine-bridge.ts          # las dos puras del puente con el motor: proyectarAlMotor
@@ -124,12 +129,21 @@ src/
     │                             #   clicks, la secuencia contra el tablero y el desmontaje
     ├── use-input.ts              # los dos efectos de entrada del 013: teclado y rueda. Reciben
     │                             #   callbacks, no setters, y el tapLimpio del shell
+    ├── cell-px.ts                # la fórmula del tamaño de celda contra el viewport (spec 021):
+    │                             #   max(CELL_PX_MIN, min(vw/10, vh/6)). Pura, fuera del hook
+    │                             #   para poder testearla sin navegador
+    ├── use-cell-px.ts            # el tercer hook de entrada: mide el contenedor raíz y escribe
+    │                             #   el resultado en la custom property --cell (spec 021)
     ├── constants/
-    │   ├── layout.constants.ts   # CELL_PX · MINI_BOX · MINI_CELL_PX · TEMPO_MIN · TEMPO_MAX ·
-    │   │                         #   los dos anchos del anillo de foco de la celda (spec 026)
+    │   ├── layout.constants.ts   # CELL_PX_MIN —el PISO, no el tamaño, desde el spec 021— y las
+    │   │                         #   razones que vuelven proporcional la baldosa · MINI_BOX ·
+    │   │                         #   MINI_CELL_PX · MINI_PISTA_PX · TEMPO_MIN · TEMPO_MAX · las
+    │   │                         #   dos razones del anillo de foco de la celda (spec 026)
     │   ├── palette.constants.ts  # los 12 colores y su color de texto (ver DESIGN.md)
     │   ├── route.constants.ts    # MARCA: los estados de una celda bajo la cabeza lectora
     │   ├── input.constants.ts    # ACCION y EDICION: lo que puede pedir un gesto
+    │   ├── orientation.constants.ts # ROTACION, la orientación inicial y las doce ranuras
+    │   │                         #   derivadas de SHAPES (spec 020)
     │   ├── playhead.constants.ts # los tres grosores de borde, su tabla por MarcaKind y las
     │   │                         #   clases del velo (spec 029, al salir del .tsx)
     │   └── spectrum.constants.ts # BAR_COUNT · GAP · MIN_BAR · IDLE_TEXT
@@ -137,6 +151,7 @@ src/
     │   ├── cell-text.types.ts    # CellText: lo que una celda muestra
     │   ├── route.types.ts        # Marca · CeldaPorEstrenar
     │   ├── engine.types.ts       # MotorDeTransporte · SequenceDelMotor
+    │   ├── orientation.types.ts  # Rotacion · Orientacion · MemoriaDeOrientacion (spec 020)
     │   ├── panel.types.ts        # PropsDeOrientacion · PropsDeTransporte
     │   └── input.types.ts        # Accion · Edicion · los campos de evento que las puras miran
     └── __tests__/
@@ -146,7 +161,13 @@ src/
         ├── input.test.ts         # la decisión de cada gesto: rueda, teclas y click (013 y 014)
         ├── engine-bridge.test.ts # los tres estados de Click.note al proyectar, y las dos ramas
         │                         #   de alternarTransporte — AC10 del 008, sin jsdom
-        └── piece-mini.test.ts    # la forma entra y queda centrada en la caja, en las 96
+        ├── piece-mini.test.ts    # la forma entra y queda centrada en la caja, en las 96
+        ├── orientation-text.test.ts # las ocho combinaciones, y que las 29 orientaciones que la
+        │                         #   miniatura no distingue den textos distintos (AC5 del 019)
+        ├── orientation-constants.test.ts # las doce ranuras salen de SHAPES y arrancan en 0°
+        │                         #   sin reflejar (spec 020)
+        └── cell-px.test.ts       # el piso, los dos techos y el empate de max(min(vw/10, vh/6))
+                                  #   (spec 021)
 ```
 
 ## La dirección de dependencia
@@ -181,13 +202,14 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 por lo que el test necesita:
 
 - **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre `src/**/__tests__/*.test.ts`.
-  Son 17 archivos. El dominio es puro y el audio tiene una implementación nativa de Web Audio, así que
+  Son 22 archivos. El dominio es puro y el audio tiene una implementación nativa de Web Audio, así que
   corren ahí sin adaptación. El único que no es el test de un módulo es
   `src/__tests__/documento.test.ts`, del spec 025: lee `index.html` **del disco** porque el proyecto de
   navegador sirve su propio documento y nunca carga ese archivo, así que el `lang` de la página era lo
   único del repo que ningún test podía falsear.
 - **`browser`** — Chromium de verdad, por Playwright, sobre `src/**/__tests__/*.browser.test.tsx`. Son
-  10: los seis componentes, `App.tsx`, los dos hooks y `audio/engine.ts`. Renderizan con
+  11: los seis componentes, `App.tsx`, los tres hooks —el tercero es `use-cell-px.ts`, del spec
+  021— y `audio/engine.ts`. Renderizan con
   `vitest-browser-react`, y el `setupFiles` (`browser-setup.ts`) importa la hoja de estilos **una** vez:
   sin ella `z-10` está en el `className` y `getComputedStyle` devuelve `auto`, o sea que un test de
   layout pasa o falla por el motivo equivocado y en silencio.

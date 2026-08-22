@@ -17,6 +17,7 @@ import Spectrum from "./components/Spectrum.tsx";
 import { alternarTransporte } from "./components/engine-bridge.ts";
 import { MOTOR, frenarTransporte, reiniciarRecorrido, useMotorSincronizado } from "./components/use-engine.ts";
 import { useAtajosDeTeclado, useRuedaRota } from "./components/use-input.ts";
+import { useCellPx } from "./components/use-cell-px.ts";
 import {
   rotacionPorRueda, siguienteRotacion, reflejaElContextMenu, accionDeClick, esLaPiezaEnLaMano,
 } from "./components/input.ts";
@@ -171,6 +172,26 @@ export default function App(){
   // El nodo del tablero, para colgarle la rueda. Se crea ACA y viaja a `Board` como una
   // prop mas: asi el componente no gana ni estado ni efectos (AC11 del spec 013).
   const boardRef = useRef<HTMLDivElement | null>(null);
+
+  // El contenedor RAIZ, para colgarle `--cell`. No es `boardRef`, y la diferencia es la
+  // herencia: una custom property baja por el arbol, y los dos flotantes del spec 021 son
+  // `fixed` fuera de `Board`, asi que colgada del tablero sus cajas —medidas en celdas— no
+  // resolverian `var(--cell)`.
+  //
+  // El efecto que la escribe vive en `components/use-cell-px.ts` y no aca: desde el spec
+  // 022 este shell **no declara un solo `useEffect`**, y un listener de `resize` es
+  // exactamente el caso que `.claude/rules/ui.md` ya resuelve —el listener global vive en
+  // un hook de `components/`, con el `ref` creado en el shell—. El precedente literal es
+  // `useRuedaRota` recibiendo `boardRef`.
+  const raizRef = useRef<HTMLDivElement | null>(null);
+  useCellPx(raizRef);
+
+  // Los dos flotantes arrancan ABIERTOS: un instrumento que arranca con los controles
+  // escondidos no se descubre. Plegado, cada panel deja solo su encabezado, y cualquier
+  // celda tapada queda a un click. No persiste: recargar los abre, como recargar vacia el
+  // tablero.
+  const [piezasAbierto, setPiezasAbierto] = useState<boolean>(true);
+  const [senalAbierta, setSenalAbierta] = useState<boolean>(true);
 
   // Si el tap del modificador que esta abajo sigue siendo limpio. Va en un ref y no en
   // `useState` porque cambia varias veces por gesto y no lo dibuja nadie: meterlo al
@@ -426,9 +447,21 @@ export default function App(){
     onResetOrientacion: resetearOrientacion,
   }), [selected, orientaciones, regimen, noteSet, elegirPieza, resetearOrientacion]);
 
+  // El tablero ES la pantalla (spec 021). Murieron el `min-h-screen … p-4` y el
+  // `max-w-6xl mx-auto grid grid-cols-12 gap-4`: no hay fila de tarjetas que repartir
+  // porque no hay tarjetas. Lo que queda es una caja del tamano exacto del viewport, con
+  // el tablero centrado adentro y los dos paneles flotando encima.
+  //
+  // `100dvh` y no `100vh`: en iOS `100vh` incluye la barra del navegador, asi que el
+  // tablero salta al aparecer y desaparecer. `overflow-hidden` es lo que hace cierta la
+  // primera mitad de AC1 —cero scroll vertical de pagina—; el desborde del tablero lo
+  // absorbe su propio `overflow-x-auto`, que es adonde tiene que ir.
+  //
+  // `bg-fondo text-slate-900` SOBREVIVEN: desde el spec 028 este `div` es uno de los cuatro
+  // lugares donde vive el color de fondo, y `src/__tests__/fondo-sincronizado.test.ts`
+  // existe para que los cuatro no se desincronicen.
   return (
-    <div className="min-h-screen bg-fondo text-slate-900 p-4">
-      <div className="max-w-6xl mx-auto grid grid-cols-12 gap-4">
+    <div ref={raizRef} className="h-[100dvh] w-full overflow-hidden bg-fondo text-slate-900">
         {/* Hasta el spec 027 aca decia que los dos objetos se armaban INLINE porque
             memoizarlos "no compra nada": `PiecePalette` no esta memoizado, asi que
             re-renderiza igual. Era cierto y CIRCULAR —no memoizamos las props porque el
@@ -487,6 +520,8 @@ export default function App(){
             onToggleClicks: ()=> setClicks(c=>!c),
             onReset: resetBoard,
           }}
+          abierto={piezasAbierto}
+          onToggle={()=> setPiezasAbierto(v=>!v)}
         />
 
         <Board
@@ -508,13 +543,38 @@ export default function App(){
           boardRef={boardRef}
         />
 
-        {/* Bottom: señal que sale por el master. No recibe props: lee del motor
-            por su cuenta, para que dibujar a 60 fps no re-renderice nada de acá. */}
-        <div className="col-span-12 bg-white rounded-2xl shadow p-3">
-          <h2 className="text-lg font-semibold mb-2">Señal</h2>
-          <Spectrum />
-        </div>
-      </div>
+        {/* La señal que sale por el master, como franja flotante abajo a la izquierda desde
+            el spec 021. No recibe props: lee del motor por su cuenta, para que dibujar a 60
+            fps no re-renderice nada de acá.
+
+            La posición sale de la medición igual que la del dock: `3 × 1` celdas en la
+            esquina inferior izquierda tapan `(0,5)`, `(1,5)` y `(2,5)` y dejan libre
+            `(9,5)`, que es donde arranca la cabeza lectora. Y `(0,0)` queda libre porque la
+            franja está abajo — es la celda donde el circuito cierra (spec 009).
+
+            El alto es UNA celda y el contenido se acomoda adentro con `flex-col`: el canvas
+            toma lo que queda después del encabezado. Con el `h-24` de 96 px que `Spectrum`
+            tenía, al piso el contenido pedía 132 px contra los 73 de la caja y la franja se
+            comía una segunda fila del tablero. */}
+        <aside
+          className="fixed left-0 bottom-0 z-20 flex flex-col rounded-tr-2xl shadow-lg bg-white/85 backdrop-blur p-2"
+          style={{ width: `calc(var(--cell) * 3)`, height: senalAbierta ? `calc(var(--cell) * 1)` : undefined }}
+        >
+          <button
+            type="button"
+            onClick={()=> setSenalAbierta(v=>!v)}
+            aria-expanded={senalAbierta}
+            aria-controls="franja-senal"
+            className="shrink-0 text-left text-sm font-semibold mb-1"
+          >Señal</button>
+          {/* `hidden` y no desmontar: el `ResizeObserver` de `spectrum-loop.ts` redibuja
+              porque su contenedor cambia de TAMAÑO, y si plegar desmontara el `<canvas>` no
+              habría observador que se dispare — se ejecutaría la limpieza de
+              `iniciarEspectro` y al desplegar se montaría un loop nuevo. */}
+          <div id="franja-senal" hidden={!senalAbierta} className="min-h-0 flex-1">
+            <Spectrum />
+          </div>
+        </aside>
 
       {/* La primera región `aria-live` de `src/`: hasta el spec 026 no había ninguna.
           Anuncia el resultado de las TRES ediciones —colocar, quitar y mutear— porque son
@@ -534,17 +594,6 @@ export default function App(){
           escuche: una región recién insertada en el DOM no se anuncia. */}
       <div aria-live="polite" className="sr-only">{anuncio}</div>
 
-      {/* El footer explicaba el modelo y no mencionaba un solo gesto, que es lo que hacía
-          invisibles a los atajos del spec 013. Ahora dice las dos cosas: qué cambia cada
-          transformación, y con qué mano se llega a ella sin soltar el tablero. */}
-      <footer className="text-center text-xs text-slate-500 pt-4">
-        Pentomino Music — prototipo. Rotación cambia la fórmula de escala o el arranque del arpegio, según el régimen; Reflexión invierte el orden (retrógrado).
-        {' '}Click en tablero para colocar y escuchar.
-        {' '}<span className="whitespace-nowrap">Rueda sobre el tablero o <kbd>Shift</kbd> rota</span>;
-        {' '}<span className="whitespace-nowrap">botón derecho o <kbd>Ctrl</kbd> refleja</span>;
-        {' '}<span className="whitespace-nowrap"><kbd>Espacio</kbd> arranca y para</span>;
-        {' '}<span className="whitespace-nowrap">la <kbd>letra</kbd> de una pieza la elige</span>.
-      </footer>
     </div>
   );
 }

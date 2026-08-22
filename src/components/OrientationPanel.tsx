@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { SHAPES } from '../domain/constants/pieces.constants.ts';
 import type { PieceKey } from '../domain/types/pieces.types.ts';
-import { MINI_BOX, MINI_CELL_PX } from './constants/layout.constants.ts';
+import { MINI_BOX, MINI_CELL_PX, MINI_PISTA_PX } from './constants/layout.constants.ts';
 import { PIECE_COLOR } from './constants/palette.constants.ts';
 import { miniCells } from './piece-mini.ts';
 import { textoDeOrientacion } from './orientation-text.ts';
@@ -58,28 +58,28 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
        del esquema anterior; la cronica esta en `specs/revisiones.md`, pase de
        comentarios del 022.
 
-       La premisa de la tabla es el INTERIOR de la tarjeta, que lo fija su
-       `md:col-span-4` — el reparto de columnas esta argumentado en `PiecePalette.tsx`,
-       y sin ese dato las cuatro filas de abajo no se pueden re-derivar. Medido en el DOM
-       sobre todo el rango:
+       **La tabla de columnas la resuelve el navegador y no un breakpoint**, y ese es el
+       cambio del spec 021. Hasta ahi eran cuatro escalones
+       —`grid-cols-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6`— atados al ancho del
+       VIEWPORT, que era una buena aproximacion del ancho de esta caja mientras la caja era
+       una tarjeta de `md:col-span-4`. Con el dock del 021 dejaron de ser la misma variable:
+       el dock mide `calc(var(--cell) * 2)` —entre 146 y 360 px— y el viewport puede estar
+       en `xl` igual. Medido: a 1366 x 768 el breakpoint pedia SEIS columnas adentro de una
+       caja de 256 px, y al piso pedia tres adentro de 146.
 
-         viewport   tarjeta   interior   columnas   pista    padding
-         375        12/12      319,0        6        46,5      2,3
-         768         4/12      210,7        3        64,9     11,4
-         1024        4/12      296,0        4        68,0     13,0
-         1280+       4/12      349,3        6        51,5      4,8
+       `repeat(auto-fill, minmax(MINI_PISTA_PX, 1fr))` hace la cuenta contra la caja real.
+       `MINI_PISTA_PX` sale de la caja del mini mas el `px-2` del boton mas su borde, o sea
+       de los mismos numeros que dibujan la miniatura y no de uno tipeado al lado. Y el
+       `1fr` reparte lo que sobra, que es lo que deja el padding efectivo simetrico sin
+       tener que calcularlo.
 
-       **Seis columnas NO andan a `md`**: ahi la tarjeta cae a 210,7 px de interior
-       —el punto mas apretado de todo el rango— y la pista queda en 28,4, o sea
-       **-6,8 px de padding efectivo**. Por eso el esquema es escalonado, con el
-       ultimo escalon en `xl` y no en `lg`: a 1024 la tarjeta todavia mide 296 y seis
-       columnas dejarian 0,35 px, que es positivo por casualidad y no por margen.
-
-       Y seis arriba de todo tambien por el ALTO, que es lo que decide el layout de
-       la fila entera: seis columnas son dos filas de botones en vez de tres, y la
-       paleta es la tarjeta mas alta — lo que crezca de mas no agranda el tablero,
-       le deja aire muerto. Ver el docblock de `MINI_CELL_PX`. */
-    <div className="grid grid-cols-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
+       La METRICA a mirar sigue siendo el padding efectivo y no el scroll, por lo que dice
+       el parrafo de arriba. Lo que cambio es quien la garantiza: antes una tabla medida a
+       mano contra cuatro anchos, ahora el `minmax`. */
+    <div
+      className="grid gap-2"
+      style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${MINI_PISTA_PX}px, 1fr))` }}
+    >
       {/* El fondo del boton NO toma el color de pieza: ese fondo es el canal de
           "seleccionada" y pintarlo dejaria a la paleta sin decir cual esta activa. La
           identidad entra por la FORMA, pintada del color de la pieza.

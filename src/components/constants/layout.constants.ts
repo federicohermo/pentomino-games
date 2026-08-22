@@ -1,92 +1,92 @@
 /**
- * Tamano de celda del tablero, en px.
+ * El PISO del tamano de celda, en px. Desde el spec 021 el tamano real no es una
+ * constante: se calcula contra el viewport y viaja por la custom property `--cell`.
  *
- * Gobierna el `gridTemplateColumns` **y** el ancho/alto de cada celda. Las celdas
- * se dimensionan con estilo inline y no con `w-7 h-7`: Tailwind escanea el fuente,
- * asi que una clase interpolada (`w-[${CELL_PX}px]`) no se generaria y el numero
- * volveria a estar escrito dos veces. `w-7` era exactamente 1.75rem = 28px.
+ * ```
+ * CELL_PX = max(CELL_PX_MIN, min(vw / GRID_W, vh / GRID_H))
+ * ```
  *
- * 28 → 63 en el spec 007: en 28 px no entra un nombre de nota. La celda dejo de
- * mostrar la letra de la pieza —eso ahora lo dice el color— y pasa a mostrar SU
- * nota. **63 → 71 en el spec 014**, al morir `PlacedList` y liberar dos columnas.
- * **71 → 73 en el spec 016**, cuando las miniaturas hicieron mas alta la paleta.
- * **El 019 lo dejo en 73**, achicando la paleta: no lo movio porque el 73 ya no
- * dependia de ella.
+ * La formula vive en `components/cell-px.ts` —donde tiene test— y quien la escribe en el
+ * DOM es `components/use-cell-px.ts`. Todo lo que dependa del tamano de celda lee
+ * `var(--cell)` y no este numero: una custom property la resuelve el navegador en cada
+ * elemento, asi que redimensionar la ventana reposiciona 60 celdas, el velo y la cabeza
+ * lectora **sin un solo re-render de React**.
  *
- * ## Cual es la restriccion que manda HOY
+ * Medido sobre los viewports reales:
  *
- * **El ANCHO.** Y hay que decirlo porque cambio de lado dos veces en dos specs, asi
- * que el proximo que quiera un tablero mas grande va a mirar la tarjeta equivocada:
+ * ```
+ * viewport      por ancho   por alto   CELL_PX   nota      scroll-x
+ * 1920 x 1080     192,0      180,0      180,0    46,8 px
+ * 1512 x  982     151,2      163,7      151,2    39,4 px
+ * 1440 x  900     144,0      150,0      144,0    37,5 px
+ * 1366 x  768     136,6      128,0      128,0    33,3 px
+ * 1280 x  720     128,0      120,0      120,0    31,2 px
+ *  834 x 1112      83,4      185,3       83,4    21,7 px
+ *  430 x  932      43,0      155,3       73,0    19,0 px    si
+ *  375 x  667      37,5      111,2       73,0    19,0 px    si
+ * ```
  *
- * | | `CELL_PX` | Manda | Por que |
- * |---|---|---|---|
- * | antes del 014 | 63 | ancho | `col-span-7`: 633,3 de interior contra 429,6 de alto |
- * | con el 014 | 71 | **alto** | `col-span-8` da 73,1 por ancho contra 71,6 por alto |
- * | con el 016 | 73 | ancho | la paleta subio a 496 px de caja y solto el alto: 77,3 por alto contra los mismos 73,1 por ancho |
- * | con el 019 | **73** | ancho | la paleta bajo a **428** px y dejo de ser la tarjeta mas alta: el alto salio de la ecuacion |
+ * ## Por que el piso es 73 y no 60
  *
- * La ultima fila es un cambio de CLASE y no de numero, y por eso vale la pena leerla
- * despacio. Hasta el 016 el alto disponible lo fijaba la paleta —la tarjeta mas alta de
- * la fila, con el tablero estirandose a su altura— asi que «el alto sobra» queria decir
- * «sobran 26 px». El 019 le saco tres filas y la dejo en 428 px de caja natural, contra
- * los 470 que mide el tablero con sus seis celdas de 73: **la paleta paso a ser la mas
- * baja**, o sea que la que fija la altura de la fila ahora es la tarjeta del tablero.
- * Medido en el DOM con `align-items: start` sobre la grilla, que es la unica forma de
- * ver la altura natural de las dos con el estiramiento apagado.
+ * El piso viejo era **60**, y estaba medido con un `Range` sobre el nodo de texto a la
+ * fuente que se renderiza: los nombres con sostenido —`D#4`, `D#5`, todos iguales porque
+ * `tabular-nums` iguala los digitos— ocupan **35,4 px a los 19 px** que la celda usaba, y
+ * abajo de 60 px de celda ese nombre deja de entrar.
  *
- * O sea que **agrandar el tablero pide mas ANCHO de tarjeta**, y ahora es lo unico que
- * pide: el alto dejo de ser un techo, no dejo un colchon. No hay ancho que ganar sin
- * sacarselo a la paleta, que es la otra mitad del `max-w-6xl`.
+ * Ese 60 valia **con la fuente clavada en 19 px**. Este spec vuelve la tipografia
+ * proporcional a la celda —si no, una nota de 19 px en una baldosa de 180 se ve como una
+ * mosca— y con eso el 60 deja de significar lo que significaba: a 60 de celda la nota
+ * renderiza a **15,6 px**, o sea *por debajo* del tamano que el repo midio como necesario.
  *
- * Los dos numeros que ACOTAN el 73 son distintos y conviene no confundirlos:
+ * El piso coherente con la fuente proporcional es **73**: es la celda donde la nota vale
+ * exactamente los 19 px medidos. Y tiene una segunda virtud, que es la promesa que deja:
+ * **el tablero nunca es mas chico que hoy, solo mas grande.** Abajo de 730 px de viewport
+ * el tablero scrollea horizontalmente, que es lo que ya hacia debajo de `md`.
  *
- * - **60 es el PISO**, medido con un `Range` sobre el nodo de texto a la fuente
- *   que se renderiza: los nombres con sostenido —`D#4`, `D#5`, todos iguales
- *   porque `tabular-nums` iguala los digitos— ocupan **35,4 px a los 19 px de
- *   `text-[19px]`**, que es lo que usa la celda en `Board.tsx`. Los ~24 px de
- *   aire alrededor del texto son los mismos de siempre: daban 44 cuando la celda
- *   renderizaba a 11 px y el nombre media 20,5, y 52 cuando paso a 15 px y 28.
- *   El piso sube con la fuente, y por eso este numero hay que remedirlo cada vez
- *   que se toca `text-[…]` en `Board.tsx` — es la trampa que ya se piso dos veces.
- *   **No lo movieron ni el 014 ni el 016**: depende de la fuente, no del layout.
+ * **El 73 no se hereda de las mediciones del 019 ni del 020**, aunque el numero coincida.
+ * Aquellas dos salen de dividir el interior de una tarjeta que este spec borra: son
+ * no-regresiones de un layout que deja de existir. El de aca es **tipografico**, y si
+ * cualquiera de las dos hubiera dado 72 o 74 este seguiria siendo 73.
  *
- *   Lo que limita el tamano de la NOTA, en cambio, no es este ancho: sobran 10,8
- *   px de aire por lado. Es el `#N` de la esquina, que compite por el alto. Esta
- *   explicado en `Board.tsx`.
- * - **73 es el TECHO util**, y sale de la tarjeta, medida en el DOM con el reparto
- *   `md:col-span-4` (paleta) / `md:col-span-8` (tablero) de un `max-w-6xl`:
- *   **730,7 px** de interior de ancho descontando el `gap-4` y el `p-4`. Da 73,1, y
- *   no se mueve con nada que pase adentro de las tarjetas: es `730,7 / 10` y solo
- *   cambia con el `col-span`.
- *
- *   El alto SI se movio dos veces, y la segunda lo saco de la competencia. El alto de
- *   la fila lo fijaba la PALETA, que era la tarjeta mas alta: con el 014 solo el
- *   interior del tablero media 730,7 × 429,6 y mandaba el alto con 71,6; el 016 llevo
- *   la paleta de 461,6 a 496 px y el alto paso a dar 77,3. El 019 le saco tres filas y
- *   la dejo en **428**, debajo de los 470 del tablero, asi que hoy la fila la fija el
- *   tablero y su interior es **730,7 × 438**, o sea 6 × 73 exactos.
- *
- * Se usa el techo y no el piso porque la nota es lo que hay que leer.
- *
- * **Inflar la paleta ya no compra nada**, y es lo que fija su tamano: pasado el
- * techo por ancho, todo lo que la paleta crezca es aire muerto en la tarjeta del
- * tablero. Con el 016 eso se medía como colchon —a 496 px de paleta sobraban 26 px de
- * alto, y a 660 sobrarian 190—; despues del 019 no hay colchon que medir, porque la
- * paleta ni siquiera llega al alto del tablero. Lo que hay es **al reves**: 42 px de
- * margen antes de que la paleta vuelva a mandar (470 − 428).
- *
- * Ese margen tiene dueno anunciado: el spec 020 le devuelve a la paleta un boton `0°`,
- * INLINE en la linea de orientacion y no como fila nueva, o sea unos 10 px de los 42.
- * El aire que el 019 dejo en la tarjeta se lo lleva entero el 021, que la convierte en
- * un dock — y con el, este docblock entero.
- *
- * **Debajo de `md` no entra**, y eso es lo que la primera version de este
- * comentario decia mal: a 375 px de viewport el panel queda en 343 px y su interior
- * util en 311, contra las pistas fijas. Lo absorbe el `overflow-x-auto` del
- * contenedor de la grilla en `Board.tsx`, no un `CELL_PX` mas chico: achicar la
- * celda devuelve el problema que este numero existe para resolver.
+ * El piso sube con la fuente, asi que hay que remedirlo cada vez que cambien las razones
+ * de abajo — es la trampa que este docblock ya se comio dos veces con el layout viejo.
  */
-export const CELL_PX = 73;
+export const CELL_PX_MIN = 73;
+
+/**
+ * Las razones que vuelven proporcional todo lo que la baldosa media en px fijos.
+ *
+ * Cada una es `medida_de_hoy / CELL_PX_MIN`, con el denominador tomado del SIMBOLO y no
+ * escrito a mano: asi el 73 vive en un solo lugar. A `--cell = 73` las seis dan de vuelta
+ * el numero exacto que la baldosa tenia antes del spec 021, que es lo que sostiene que al
+ * piso el tablero se vea **identico** a como se veia — y lo que evita tener que remedir el
+ * aire alrededor del texto, la trampa que el docblock de arriba nombra.
+ *
+ * Se consumen como `calc(var(--cell) * RAZON)` y por estilo inline, nunca como clase:
+ * Tailwind escanea el fuente y una clase interpolada no se genera.
+ *
+ * La lista, con la medida que la origino:
+ *
+ * ```
+ * NOTA_RAZON      19 px   el `text-[19px]` de la nota
+ * PASO_RAZON      13 px   el `text-[13px]` del `#N`
+ * AIRE_RAZON       2 px   el `p-0.5` entre la caja de la celda y la baldosa
+ * RADIO_RAZON      8 px   el `rounded-lg`, dicho DOS veces sobre el mismo objeto
+ * RESERVA_RAZON    8 px   el `pb-2` que le deja alto a la nota sobre el `#N`
+ * PASO_ABAJO_RAZON     2 px   el `bottom-0.5` del `#N`
+ * PASO_DERECHA_RAZON   6 px   el `right-1.5` del `#N`
+ * ```
+ *
+ * **El borde de 1 px NO esta en esta lista, y es a proposito** — ver el comentario junto
+ * al `border` de `Board.tsx`.
+ */
+export const NOTA_RAZON = 19 / CELL_PX_MIN;
+export const PASO_RAZON = 13 / CELL_PX_MIN;
+export const AIRE_RAZON = 2 / CELL_PX_MIN;
+export const RADIO_RAZON = 8 / CELL_PX_MIN;
+export const RESERVA_RAZON = 8 / CELL_PX_MIN;
+export const PASO_ABAJO_RAZON = 2 / CELL_PX_MIN;
+export const PASO_DERECHA_RAZON = 6 / CELL_PX_MIN;
 
 /* `PREVIEW_CELL_PX` (20) se fue con `PiecePreview.tsx`: la previsualizacion aparte
    dejo de existir cuando el fantasma del tablero paso a mostrar la nota de cada
@@ -125,31 +125,51 @@ export const MINI_BOX = 5;
 /**
  * El lado de una celda de la miniatura, en px.
  *
- * El numero no sale de una preferencia sino de dos restricciones medidas, y la segunda
- * es la que sorprende: **la paleta manda el alto de toda la fila**, asi que inflarla no
- * agranda el tablero, le deja aire muerto. El techo por ancho del tablero a
- * `md:col-span-8` es 73,1 px, o sea que en cuanto la paleta pasa de ~470 px de caja el
- * tablero ya no puede aprovechar el alto extra y `CELL_PX` se clava en 73.
+ * **El argumento con el que este numero se eligio ya no existe**, y conviene decirlo antes
+ * que nada porque era el argumento entero. Hasta el spec 021 la paleta era una tarjeta en
+ * una fila de dos, asi que su alto fijaba el alto de la fila y `CELL_PX` salia de ahi: seis
+ * columnas de 8 px eran las que dejaban la paleta lo bastante compacta como para no
+ * robarle alto al tablero. Con el 021 no hay fila, no hay tarjeta y `CELL_PX` sale del
+ * viewport; la paleta es un dock `fixed` que flota encima y no le quita un pixel a nadie.
  *
- * De ahi el objetivo de 470–520 px de caja para la paleta, y de ahi 6 columnas × 8 px:
- * con seis columnas son dos filas de botones en vez de tres, que es lo que la hace mas
- * compacta que cualquier variante de cuatro. Medido con este commit puesto — ver
- * `CELL_PX` para el resto de la cadena.
+ * Lo que decide el numero ahora es la CAJA DEL DOCK, que mide `calc(var(--cell) * 2)` de
+ * ancho — 146 px en el peor caso, que es el piso. Ahi adentro tienen que entrar las doce
+ * miniaturas con su letra, y la tabla de columnas se resuelve contra el ancho real del
+ * contenedor (`OrientationPanel.tsx`) y no contra el breakpoint del viewport, que despues
+ * del 021 ya no dice nada sobre cuanto mide esta caja.
  *
- * El **umbral** de los ~470 sigue siendo cierto y por eso el numero no se toca; lo que
- * el spec 019 falsifico es el OBJETIVO: al borrar tres filas la paleta cayo a 428 px,
- * debajo de la banda, y con eso el alto dejo de acotar `CELL_PX`. Seis columnas siguen
- * siendo lo correcto por lo que dice el parrafo de arriba —dos filas de botones y no
- * tres—, no por llegar a una banda que ya no aplica.
+ * 8 px se queda porque sigue siendo el mas chico que deja leer la FORMA: con `MINI_BOX = 5`
+ * la caja mide 40 px de lado, y a menos que eso las piezas de tres celdas de ancho dejan de
+ * distinguirse entre si. No se remidio con el dock puesto — si el dock cambia de ancho, este
+ * es el numero a remedir.
  */
 export const MINI_CELL_PX = 8;
+
+/**
+ * El ancho minimo de una columna de la grilla de miniaturas, en px.
+ *
+ * Derivado y no tipeado: es la caja del mini (`MINI_BOX x MINI_CELL_PX` = 40) mas el
+ * `px-2` del boton que la contiene (8 por lado) mas su borde (1 por lado). Si alguno de
+ * los dos numeros de arriba cambia, este lo sigue solo.
+ *
+ * Existe desde el spec 021 y reemplaza a la tabla de breakpoints que `OrientationPanel`
+ * tenia: hasta ahi las columnas salian del ancho del VIEWPORT, que era una buena
+ * aproximacion del ancho de la tarjeta mientras la tarjeta ocupaba una columna del grid.
+ * Con el dock son dos variables distintas —el dock mide `calc(var(--cell) * 2)`, o sea
+ * entre 146 y 360 px, mientras el viewport puede estar en `xl`— y la aproximacion se cae:
+ * a 1366 x 768 el breakpoint pedia SEIS columnas adentro de una caja de 256 px. Con
+ * `repeat(auto-fill, minmax(MINI_PISTA_PX, 1fr))` la cuenta la hace el navegador contra la
+ * caja real, que es la misma decision de una sola fuente del numero que `--cell`.
+ */
+export const MINI_PISTA_PX = MINI_BOX * MINI_CELL_PX + 16 + 2;
 
 /** Extremos del slider de tempo, en bpm. El valor inicial es DEFAULT_BPM del motor. */
 export const TEMPO_MIN = 60;
 export const TEMPO_MAX = 160;
 
 /**
- * Los dos anchos del anillo de foco de la celda, en px — el spec 026.
+ * Los dos anchos del anillo de foco de la celda, **como razon de la celda** — el spec 026,
+ * vuelto proporcional por el 021.
  *
  * ## Por que son DOS y no uno
  *
@@ -160,19 +180,27 @@ export const TEMPO_MAX = 160;
  *
  * ## Donde cae cada banda, que es lo que decide los numeros
  *
- * Una celda son dos cajas: la de `CELL_PX` y la baldosa redondeada de adentro, con 2 px
- * de aire entre las dos (el `p-0.5` de `Board.tsx`). Las dos bandas se reparten ese aire
- * y el borde de la baldosa, y las dos se dibujan HACIA ADENTRO de la caja de afuera:
+ * Una celda son dos cajas: la de `--cell` y la baldosa redondeada de adentro, con el aire
+ * de `AIRE_RAZON` entre las dos (el padding de `Board.tsx`). Las dos bandas se reparten ese
+ * aire y el borde de la baldosa, y las dos se dibujan HACIA ADENTRO de la caja de afuera:
  *
  * ```
- *   0 → 2 px  banda OSCURA   sobre el aire, o sea sobre el blanco del panel
- *   2 → 4 px  banda CLARA    sobre el borde negro de la baldosa y el arranque de su color
+ *   0 → 1 aire   banda OSCURA   sobre el aire, o sea sobre el blanco del panel
+ *   1 → 2 aires  banda CLARA    sobre el borde negro de la baldosa y el arranque de su color
  * ```
  *
- * De ahi que los dos valgan 2: el aire mide 2 px, y la banda clara tiene que pisar la
- * baldosa para quedar sobre el color de la pieza, que es contra lo que se la eligio. Con
- * ese reparto el anillo se ve SIEMPRE: sobre `#FFFF00` la clara desaparece pero la oscura
- * esta sobre blanco, y sobre `#0000FF` pasa lo contrario.
+ * **Y por eso son razones y no dos numeros de 2 px**, que es lo que eran hasta el spec 021.
+ * El reparto de arriba no dice «2 px»: dice «una banda sobre el aire y la siguiente sobre la
+ * baldosa», o sea que los dos numeros son el aire dicho dos veces. Con el aire vuelto
+ * proporcional y estos dos clavados en 2, a celda 180 el aire mide 4,93 px y las DOS bandas
+ * caen enteras adentro de el: la clara deja de pisar la baldosa, queda sobre el mismo blanco
+ * que la oscura y el anillo se vuelve de un solo tono — que es exactamente el modo de falla
+ * que estos dos numeros existen para evitar.
+ *
+ * Valen lo mismo que el aire porque el aire es la unidad del reparto: la banda clara tiene
+ * que pisar la baldosa para quedar sobre el color de la pieza, que es contra lo que se la
+ * eligio. Con ese reparto el anillo se ve SIEMPRE: sobre `#FFFF00` la clara desaparece pero
+ * la oscura esta sobre blanco, y sobre `#0000FF` pasa lo contrario.
  *
  * ## Por que hacia adentro y no hacia afuera, que es lo obvio
  *
@@ -188,5 +216,5 @@ export const TEMPO_MAX = 160;
  * asoma ni un pixel fuera de la caja, asi que no puede agrandar la region scrolleable ni
  * quedar recortado por el `overflow-x-auto` en las celdas del borde.
  */
-export const ANILLO_FOCO_OSCURO = 2;
-export const ANILLO_FOCO_CLARO = 2;
+export const ANILLO_FOCO_OSCURO_RAZON = AIRE_RAZON;
+export const ANILLO_FOCO_CLARO_RAZON = AIRE_RAZON;

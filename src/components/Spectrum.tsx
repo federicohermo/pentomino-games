@@ -22,8 +22,21 @@ export default function Spectrum() {
   // re-renderiza.
   useEffect(() => iniciarEspectro(ref.current), []);
 
+  // `h-full` y no `h-24`: desde el spec 021 el espectro vive en una franja flotante que
+  // mide UNA celda de alto, o sea entre 73 y 180 px segun el viewport. Con los 96 px
+  // clavados que tenia, al piso el canvas mas el encabezado pedian 132 contra los 73 de la
+  // caja y la franja se comia una segunda fila del tablero — que es justo lo que la cuenta
+  // de «que celdas tapa cada flotante» no puede permitirse.
+  //
+  // El `min-h-0` no es decorativo: este div es hijo de un `flex-col` y un item de flex no
+  // se encoge por debajo de su contenido salvo que se lo digan. Sin el, el canvas empuja la
+  // franja y la deja mas alta que su celda.
+  //
+  // Quien redibuja al cambiar de tamano es el `ResizeObserver` de `spectrum-loop.ts`, que
+  // observa justamente a este nodo: derivar el alto de la caja es lo que hace que plegar,
+  // desplegar y redimensionar la ventana disparen el redibujo sin una linea nueva.
   return (
-    <div className="h-24 w-full">
+    <div className="h-full min-h-0 w-full">
       <canvas ref={ref} className="block h-full w-full rounded-xl bg-slate-900" />
     </div>
   );

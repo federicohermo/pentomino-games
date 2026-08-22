@@ -76,11 +76,11 @@ texto blanco **sin oscurecer ni un color de la lámina** — bajo 2.1 las dos co
 
 | Medida | Valor | Por qué |
 |---|---|---|
-| `CELL_PX` | **73** (era 71, y 63 y 28 antes) | el piso son 60 —`D#5` mide 35,4 px medidos a `text-[19px]`— y 73 es lo que la tarjeta deja hoy: 63 → 71 al morir `PlacedList` (014) y 71 → 73 cuando las miniaturas hicieron más alta la paleta (016). Cuál de las dos dimensiones manda cambió de lado dos veces, y está escrito en el docblock de la constante |
-| Tablero | **730 × 438 px** (era 710 × 426) | 10 × 6 × `CELL_PX` en una tarjeta de 730,7 × 464: llena el ancho, y los 26 px de alto que sobran son el precio de que la paleta muestre las doce formas |
-| Tarjeta del tablero | **`md:col-span-8`** (era 7, y 6 antes) | el 014 borró `PlacedList` y liberó dos columnas; la novena no le compraría un píxel al tablero y va a la paleta |
-| Aire de la baldosa | **2 px** por lado | separa las fichas sin sumar un segundo número al ancho |
-| Borde de la baldosa | **1 px `slate-900`** | el tablero se define reforzando la celda, no rellenando el fondo |
+| Celda | **`max(73, min(vw/10, vh/6))`**, en `--cell` | desde el spec 021 no es una constante: el tablero **es** la pantalla, así que la celda sale del viewport. Entre 120 y 180 px en un escritorio, contra los 73 fijos de antes — el tablero crece entre 2,7 y 6 veces en área |
+| Piso de la celda | **73** (era 60) | el piso es **tipográfico**: es la celda donde la nota vale los 19 px que el repo midió con un `Range` (`D#5` ocupa 35,4). Era 60 mientras la fuente estaba clavada en 19; al volverse proporcional, a celda 60 la nota renderiza a 15,6 y queda por debajo de lo medido. Y deja una promesa: **el tablero nunca es más chico que antes del 021, sólo más grande** |
+| Tablero | **10 × 6 celdas**, centrado en el viewport | sin tarjeta, sin `max-w-6xl` y sin scroll de página. Abajo de 730 px de ancho gana el piso y scrollea **el tablero**, no la página |
+| Aire de la baldosa | **`2/73` de la celda** | separa las fichas sin sumar un segundo número al ancho. Proporcional desde el 021: fijo, a celda 180 la nota quedaría apretada contra 2 px de aire |
+| Borde de la baldosa | **1 px `slate-900`, y NO escala** | es el único número fijo que sobrevive al 021: un filete es un delimitador y no un elemento tipográfico, y en `calc()` daría fracciones que el navegador redondea distinto por arista — sobre 60 celdas adyacentes, un enrejado irregular |
 
 Una celda ocupada muestra **el nombre de su nota** como contenido principal (`C4`, `D#5`, …) y **su paso
 como número chico en la esquina inferior derecha**, con `#`. Son dos lecturas del mismo dato: la nota es
@@ -96,10 +96,17 @@ hacia atrás. El número que se ve tiene que seguir a lo que se ve moverse. La t
 celda de grado 0, pero eso ya no se lee del número: se lee de la nota, que es el dato que la reflexión
 no mueve.
 
-**Cada celda es una baldosa redondeada, no un casillero.** Los `CELL_PX` de la pista son la caja externa; adentro va una ficha
-`rounded-lg` con 2 px de aire alrededor. Es el lenguaje de la lámina: una pieza colocada se lee como
-cinco fichas apoyadas sobre la grilla, no como cinco celdas de una tabla. El aire lo hace el padding de
-la pista y no un `gap` de la grilla, así que el ancho del tablero sigue siendo exactamente 10 × `CELL_PX`.
+**Cada celda es una baldosa redondeada, no un casillero.** La celda es la caja externa; adentro va una
+ficha redondeada con un aire proporcional alrededor. Es el lenguaje de la lámina: una pieza colocada se
+lee como cinco fichas apoyadas sobre la grilla, no como cinco celdas de una tabla. El aire lo hace el
+padding de la pista y no un `gap` de la grilla, así que el ancho del tablero sigue siendo exactamente
+10 celdas.
+
+**Y las seis medidas de la baldosa escalan con la celda, no sólo las dos fuentes.** El aire, el
+redondeo, la reserva de abajo y la posición del `#N` son razones sobre 73 —los px que tenían antes del
+spec 021— y a esa celda dan exactamente los mismos números de siempre. Si crecieran sólo las letras, a
+celda 180 la nota quedaría apretada contra 2 px de aire y 8 de redondeo, y la baldosa dejaría de leerse
+como una ficha para leerse como un casillero, que es justo lo que estos números existen para evitar.
 
 **El tablero se define reforzando la celda, no rellenando el fondo.** Con borde `slate-200` sobre el
 panel blanco, sesenta casilleros blancos casi no se veían. Se probó pintar la superficie de la grilla
@@ -107,11 +114,12 @@ panel blanco, sesenta casilleros blancos casi no se veían. Se probó pintar la 
 colores, que es lo único que este tablero está para comunicar. Queda **un borde negro de 1 px en cada
 baldosa**, ocupada o vacía: la grilla se dibuja sola y el resto del panel sigue blanco.
 
-**Debajo del breakpoint `md` el tablero no entra y scrollea en horizontal.** A 375 px de viewport el
-panel deja 311 px útiles contra 730 px de pistas fijas. Lo absorbe un `overflow-x-auto` en el contenedor
-de la grilla —scrollea el tablero, no la página— y deliberadamente **no** un `CELL_PX` menor: el nombre
-de nota es lo que hay que poder leer, así que achicar la celda debajo de `md` devuelve el problema que
-el número existe para resolver.
+**Abajo de 730 px de viewport el tablero no entra y scrollea en horizontal.** Ahí gana el piso: la
+celda se queda en 73 y la grilla mide 730 px contra un viewport más chico. Lo absorbe un
+`overflow-x-auto` en el contenedor de la grilla —scrollea el tablero, no la página— y deliberadamente
+**no** una celda menor: el nombre de nota es lo que hay que poder leer, así que achicar la celda
+devuelve el problema que el piso existe para resolver. El mismo contenedor absorbe el desborde vertical
+cuando la ventana es apaisada y baja.
 
 Cada celda es dueña de **su** nota, no de la letra de la pieza repetida cinco veces: de dónde sale ese
 mapeo está en
@@ -153,6 +161,26 @@ se edita en el tablero.)*
 fantasma la muestra en el lugar donde va a caer y con la nota de cada celda. Dos vistas del mismo objeto
 donde una es estrictamente mejor no es lenguaje visual, es alto de pantalla gastado.)*
 
+### Los dos paneles flotan sobre el tablero
+
+Desde el spec 021 no hay fila de tarjetas: el tablero ocupa el viewport y los controles flotan encima,
+en una capa superior que **no empuja la grilla**. El de piezas es un dock de `2 × 4` celdas pegado al
+borde derecho; la señal es una franja de `3 × 1` en la esquina inferior izquierda.
+
+**Las dos cajas se miden en celdas y no en píxeles**, y eso no es coherencia decorativa: es lo que hace
+que la cuenta de qué celdas tapan valga en cualquier viewport. Con medidas fijas, un dock de 640 px de
+alto centrado entra en la fila 5 a 1366 × 768 y tapa `(9,5)`.
+
+`(0,0)` y `(9,5)` no se tapan nunca, y ésa es la regla que decidió las dos posiciones: ahí es donde el
+circuito cierra (spec 009) y donde arranca la cabeza lectora (spec 010). Arriba se descartó por lo
+mismo — una barra superior tapa el borde de arriba entero, `(0,0)` incluida.
+
+Los dos se pliegan con un click en su encabezado y arrancan **desplegados**: un instrumento que arranca
+con los controles escondidos no se descubre. Plegado, cada panel deja sólo su encabezado —sigue
+diciendo qué es, en vez de volverse un icono suelto— y las once celdas que tapaba quedan libres. El
+fondo va semiopaco con desenfoque y no opaco: abajo hay celdas con nota, y un panel opaco las esconde
+mientras uno translúcido dice que están ahí.
+
 ### El botón de la paleta muestra la forma, no la letra
 
 Desde el spec 016 cada botón dibuja **la pieza**, pintada con su color y **en su propia orientación**,
@@ -164,9 +192,10 @@ la `V` y la `L` son la misma forma con un brazo de distinto largo.
 
 Tres cosas que hacen que eso sea posible sin romper nada de lo de arriba:
 
-- **La caja es fija, de 5×5 celdas.** Es la más chica que contiene cualquier pentominó en cualquiera de
-  sus 8 orientaciones. Sin ella, la `I` —que pasa de 5×1 a 1×5— haría reflowear los doce botones en cada
-  rotación, que es el mismo bug que la línea de notas de esa tarjeta ya tenía documentado: *un panel de
+- **La caja es fija, de 5×5 celdas** —y son celdas de la MINIATURA, que no escalan con `--cell`: el dock
+  se mide en celdas del tablero, pero lo que va adentro conserva su tamaño y usa el scroll interno—. Es
+  la más chica que contiene cualquier pentominó en cualquiera de sus 8 orientaciones. Sin ella, la `I`
+  —que pasa de 5×1 a 1×5— haría reflowear los doce botones en cada rotación, que es el mismo bug que la línea de notas de esa tarjeta ya tenía documentado: *un panel de
   control que se acomoda solo cuando lo tocás mueve el botón justo cuando vas a apretarlo.* Con el spec
   020 la caja fija pasa a ser **más** necesaria y no menos: las doce formas ya no cambian juntas, así
   que cualquier ajuste al contenido puede mover una sola miniatura y descuadrar la fila entera.
@@ -238,8 +267,8 @@ Esa frase —«el canal disponible es el borde, la opacidad o la superposición�
 | Grosor de borde (`box-shadow` interior y exterior) | cabeza lectora: nota / cruce / click (specs 010, 011) |
 | Opacidad + borde punteado | velo de «no se estrenó» (spec 010) |
 
-Lo que quedaba libre es **la otra caja**. Cada celda son dos: la de `CELL_PX` y la baldosa redondeada
-de adentro, con 2 px de aire entre las dos — y la de afuera no pinta nada. Ahí va el **anillo de foco**
+Lo que quedaba libre es **la otra caja**. Cada celda son dos: la de `--cell` y la baldosa redondeada
+de adentro, con un aire de `2/73` de la celda entre las dos — y la de afuera no pinta nada. Ahí va el **anillo de foco**
 del teclado (spec 026), y con eso **se acabaron**: el próximo estado que aparezca no tiene canal que
 tomar, va a tener que sacárselo a otro y escribir cuál.
 

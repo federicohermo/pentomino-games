@@ -56,6 +56,25 @@ esta lista y entra como fila en [log.md](./log.md).
   rectángulo para las piezas, y esa asimetría no está justificada por nada — es sólo lo que quedó.
   Necesita spec propio: cambia `cellsAt`, `isValid` y el fantasma, y hay que decidir qué muestra el
   tablero de una pieza partida en dos bordes. Venía del seguimiento del 009.
+- **Los dos flotantes del spec 021 agrandan la deuda de accesibilidad del tablero, y en tres puntos.**
+  Ninguno es «los paneles sólo se alcanzan con el mouse»: sus encabezados son `<button>` con
+  `aria-expanded`, así que ésa sería falsa.
+  1. **Once celdas dejan de ser alcanzables sin plegar un panel, y para el teclado es PEOR que para el
+     mouse.** La premisa vieja de este ítem —«las celdas siguen sin recibir foco»— es falsa desde el
+     026: la celda es un `role="gridcell"` con `tabIndex` roving, `aria-label` y anillo de foco. Lo que
+     el 021 agrega no es «no llegan», es **«llegan y no se ven»**: el `.focus()` de `Board.tsx` mueve el
+     foco a una celda que un panel `fixed` está tapando, y un `fixed` **no participa del scroller del
+     tablero**, así que no hay `scrollIntoView` que la destape. El cursor de teclado queda invisible
+     debajo del panel; el mouse al menos ve el panel que tapa.
+  2. **El orden de tabulación deja de seguir al orden visual.** Dos paneles `position: fixed` se pintan
+     donde el `fixed` los pone y se tabulan donde el DOM los tiene, y eso no lo arregla el
+     `aria-controls`. Pesa más desde el 026, cuando el tablero pasó a ser una parada de tabulación de
+     verdad.
+  3. **La operación destructiva puede quedar debajo de un panel.** Ya no es «sólo de mouse» —el 026 le
+     dio `Enter` y barra— pero sigue sin deshacer, y este spec le suma que el gesto puede caer tapado.
+  Lo que lo achica sin cerrarlo es que plegar es **un click y un `Tab`**, y que plegado no queda ni una
+  celda tapada — medido en el DOM. Necesita spec propio: la salida probablemente sea que el foco
+  entrando a una celda tapada pliegue el panel que la tapa, y eso es una decisión de producto.
 - **`Orientacion` y `PlacedPiece` repiten los mismos dos campos.** Los dos llevan `rotation` y `mirror`,
   y la tentación es compartir un tipo de `domain/`. No se hizo en el spec 020 y no es un olvido: son dos
   cosas distintas que coinciden de forma. `PlacedPiece` guarda **cómo se colocó** una pieza —un hecho del

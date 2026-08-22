@@ -1,6 +1,6 @@
 import { playheadOffset } from '../audio/engine.ts';
 import { rutaActiva, velo } from './route-source.ts';
-import { CELL_PX } from './constants/layout.constants.ts';
+import { AIRE_RAZON, RADIO_RAZON } from './constants/layout.constants.ts';
 import { BORDE_COLOR, BORDE_POR_KIND, VELO_CAJA, VELO_TAPA } from './constants/playhead.constants.ts';
 import type { CeldaPorEstrenar } from './types/route.types.ts';
 
@@ -20,6 +20,17 @@ import type { CeldaPorEstrenar } from './types/route.types.ts';
  * pasar sus nodos. No hay cambio de comportamiento — el codigo es el mismo, y lo que se
  * mueve son 100 lineas de las que el 60 % son comentario.
  */
+
+/**
+ * Lo que mide `n` celdas, en CSS — la misma funcion que `Board.tsx`, escrita dos veces a
+ * proposito: son dos archivos que no se importan entre si y el string es de una linea.
+ * Compartirla obligaria a un modulo mas para ahorrar veinte caracteres.
+ *
+ * El numero vive en la custom property `--cell`, que escribe `use-cell-px.ts` sobre el
+ * contenedor raiz. Escribir `calc()` y no el producto en pixeles es lo que hace que
+ * redimensionar la ventana reubique la cabeza y el velo sin que este bucle escriba nada.
+ */
+const celdas = (n: number) => `calc(var(--cell) * ${n})`;
 
 /** Lo que devuelve `iniciarCabeza` cuando no hay nodos: una limpieza que no limpia nada. */
 const SIN_CABEZA = (): void => {};
@@ -69,13 +80,19 @@ export function iniciarCabeza(
     tapas = v.map((entrada) => {
       const nodo = document.createElement('div');
       nodo.className = VELO_CAJA;
-      nodo.style.left = `${entrada.cell[0] * CELL_PX}px`;
-      nodo.style.top = `${entrada.cell[1] * CELL_PX}px`;
-      nodo.style.width = `${CELL_PX}px`;
-      nodo.style.height = `${CELL_PX}px`;
+      nodo.style.left = celdas(entrada.cell[0]);
+      nodo.style.top = celdas(entrada.cell[1]);
+      nodo.style.width = celdas(1);
+      nodo.style.height = celdas(1);
+      // El aire y el radio de la baldosa, que hasta el spec 021 eran el `p-[2px]` y el
+      // `rounded-lg` de `VELO_CAJA`/`VELO_TAPA`. Bajaron aca porque pasaron a depender de
+      // `--cell` y una clase de Tailwind no puede interpolarla: son la MISMA caja que la
+      // baldosa de `Board.tsx`, y desalinearlos deja el velo cubriendo medio pixel afuera.
+      nodo.style.padding = celdas(AIRE_RAZON);
       if (estrenadas.has(claveDe(entrada))) nodo.style.display = 'none';
       const tapa = document.createElement('div');
       tapa.className = VELO_TAPA;
+      tapa.style.borderRadius = celdas(RADIO_RAZON);
       nodo.appendChild(tapa);
       capa.appendChild(nodo);
       return { entrada, nodo };
@@ -133,11 +150,15 @@ export function iniciarCabeza(
       if (!marca) {
         el.style.display = 'none';
       } else {
-        // Inline y no clases de Tailwind: las coordenadas salen de `CELL_PX`, que es
-        // una constante, y Tailwind escanea el fuente — una clase interpolada no se
-        // generaria. Es la misma regla que ya rige en `Board.tsx`.
+        // Inline y no clases de Tailwind, y desde el spec 021 el sujeto cambio: las
+        // coordenadas ya no salen de una constante sino de `var(--cell)`, que es una
+        // custom property que el navegador resuelve en cada elemento. La razon de fondo es
+        // la misma —Tailwind escanea el fuente, una clase interpolada no se generaria— y
+        // se le suma una: con la posicion escrita en `calc()`, redimensionar la ventana
+        // reubica la cabeza sin que este bucle vuelva a escribir nada. Es lo que hace que
+        // siga alineada mientras se arrastra el borde con el transporte corriendo.
         el.style.display = 'block';
-        el.style.transform = `translate(${marca.cell[0] * CELL_PX}px, ${marca.cell[1] * CELL_PX}px)`;
+        el.style.transform = `translate(${celdas(marca.cell[0])}, ${celdas(marca.cell[1])})`;
         resalte.style.boxShadow = borde(BORDE_POR_KIND[marca.kind]);
       }
     }

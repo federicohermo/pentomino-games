@@ -74,7 +74,8 @@ podían montar ni testear. Lo que queda en `App.tsx` es el shell: estado, deriva
 composición de los componentes, con **cero `useEffect`**. Ninguna función pura y ningún literal de
 dominio.
 
-Los que había son ahora **dos archivos** de `components/`, y el corte es el que la lista ya dibujaba:
+Los que había son ahora **dos archivos** de `components/`, y el corte es el que la lista ya dibujaba
+(el spec 021 suma un tercero, `use-cell-px.ts`, por la misma regla y sin tocar el shell: sigue en cero):
 
 - `use-engine.ts` — los **cuatro de reconciliación**: tempo, clicks, la secuencia contra el tablero, y la
   limpieza al desmontar. `useMotorSincronizado` los declara en ese orden y recibe la `secuencia` ya
@@ -124,6 +125,8 @@ esta escala no hace falta, y agregarlo sería la clase de complejidad que un pro
 | `playing` | `boolean` | Si el transporte está corriendo. Lo escribe `togglePlay` con lo que devuelve `clockRunning()`, no con la negación del valor anterior: `startClock()` es un no-op silencioso sin Web Audio |
 | `placed` | `PlacedPiece[]` | Piezas en el tablero |
 | `hover` | `Cell \| null` | Celda bajo el cursor, para el fantasma |
+| `piezasAbierto` | `boolean` | Si el dock de piezas está desplegado, desde el spec 021. Arranca en `true` —un instrumento que arranca con los controles escondidos no se descubre— y **no persiste**: recargar lo abre, como recargar vacía el tablero |
+| `senalAbierta` | `boolean` | Ídem para la franja de Señal. Son dos y no uno: se pliegan por separado, que es lo que deja destapar sólo las celdas que hagan falta |
 
 Derivados con `useMemo`: `transformedShape`, `secuencia`, `noteSet` y —desde el spec 027— el objeto
 `orientacion`. Ese cuarto no es una derivación cara sino **la otra mitad del `memo()` de
@@ -176,7 +179,8 @@ Los loops de audio no se agendan ni cancelan desde los handlers. Un único `useE
 está en las dependencias: la secuencia es función del tablero y no del transporte.
 
 Ese efecto **no vive en el shell**: desde el spec 022 está en `components/use-engine.ts` con los otros
-tres de reconciliación, y `App.tsx` no declara un solo `useEffect` (ver [Qué vive dónde](#qué-vive-dónde)). Lo
+tres de reconciliación, y `App.tsx` sigue sin declarar un solo `useEffect` —el 021 le agregó un hook más,
+`use-cell-px.ts`, y lo puso donde van todos: en `components/`— (ver [Qué vive dónde](#qué-vive-dónde)). Lo
 que se queda en el shell es la **derivación** —`secuencia` es un `useMemo` sobre `[placed, regimen]`— y
 el hook recibe el resultado, para que el dibujo y el sonido no puedan mirar circuitos distintos.
 
