@@ -70,9 +70,13 @@ pnpm exec tsc -b --noEmit
 
 ## Cómo se toca
 
-Los cuatro gestos que gobiernan la pieza **por colocar** tienen una segunda vía, más corta que ir al
-panel: el panel se queda y sigue siendo quien **muestra** el estado, así que los atajos se descubren
-solos —se rota con la rueda y se ve iluminarse `180°` en la paleta—.
+Los cuatro gestos que gobiernan la pieza **por colocar** son la única vía: desde el spec 019 rotar y
+reflejar **no tienen botón**, porque los que había eran el camino lento al mismo lugar. El panel se
+queda como quien **muestra** el estado, y por eso los atajos siguen descubriéndose solos: se rota con
+la rueda y la línea de orientación de la paleta pasa de `0°` a `90°`. Ese lector no es decorativo —es
+la mitad del trabajo que hacían los botones—: la miniatura no puede decir la orientación entera, y en
+29 de las 96 combinaciones dos orientaciones se ven idénticas y suenan distinto (la `X` rotada cuatro
+veces es el caso extremo: cuatro arpegios, una sola forma).
 
 | Gesto | Qué hace | Dónde escucha |
 |---|---|---|
@@ -92,8 +96,8 @@ Tres cosas que parecen bugs y no lo son:
 - **`Ctrl`+rueda hace el zoom del navegador y no rota**, y `Ctrl`+C no da vuelta la reflexión. Los
   modificadores actúan al **soltar** y solo si mientras estuvieron abajo no llegó otra tecla ni la
   rueda: un gesto del sistema le gana a uno nuestro.
-- **Con el botón de Play enfocado, la barra activa ese botón** — y con el foco sobre `Reset`, activa
-  `Reset`. Es el comportamiento nativo, y es el correcto: el foco dice qué control está armado.
+- **Con el botón de Play enfocado, la barra activa ese botón** — y con el foco sobre `↺`, vacía el
+  tablero. Es el comportamiento nativo, y es el correcto: el foco dice qué control está armado.
 
 Desde el spec 026 **el tablero también se toca con el teclado**, y es **una** parada de tabulación:
 un `Tab` entra y otro lo pasa de largo. Adentro se mueve con las flechas —`Home` y `End` van a los

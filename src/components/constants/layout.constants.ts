@@ -10,6 +10,8 @@
  * mostrar la letra de la pieza —eso ahora lo dice el color— y pasa a mostrar SU
  * nota. **63 → 71 en el spec 014**, al morir `PlacedList` y liberar dos columnas.
  * **71 → 73 en el spec 016**, cuando las miniaturas hicieron mas alta la paleta.
+ * **El 019 lo dejo en 73**, achicando la paleta: no lo movio porque el 73 ya no
+ * dependia de ella.
  *
  * ## Cual es la restriccion que manda HOY
  *
@@ -20,11 +22,21 @@
  * |---|---|---|---|
  * | antes del 014 | 63 | ancho | `col-span-7`: 633,3 de interior contra 429,6 de alto |
  * | con el 014 | 71 | **alto** | `col-span-8` da 73,1 por ancho contra 71,6 por alto |
- * | con el 016 | **73** | ancho | la paleta subio a 496 px de caja y solto el alto: 77,3 por alto contra los mismos 73,1 por ancho |
+ * | con el 016 | 73 | ancho | la paleta subio a 496 px de caja y solto el alto: 77,3 por alto contra los mismos 73,1 por ancho |
+ * | con el 019 | **73** | ancho | la paleta bajo a **428** px y dejo de ser la tarjeta mas alta: el alto salio de la ecuacion |
  *
- * O sea que **agrandar el tablero hoy pide mas ANCHO de tarjeta**, no mas alto de
- * paleta: el alto ya sobra. Y no hay ancho que ganar sin sacarselo a la paleta, que
- * es la otra mitad del `max-w-6xl`.
+ * La ultima fila es un cambio de CLASE y no de numero, y por eso vale la pena leerla
+ * despacio. Hasta el 016 el alto disponible lo fijaba la paleta —la tarjeta mas alta de
+ * la fila, con el tablero estirandose a su altura— asi que «el alto sobra» queria decir
+ * «sobran 26 px». El 019 le saco tres filas y la dejo en 428 px de caja natural, contra
+ * los 470 que mide el tablero con sus seis celdas de 73: **la paleta paso a ser la mas
+ * baja**, o sea que la que fija la altura de la fila ahora es la tarjeta del tablero.
+ * Medido en el DOM con `align-items: start` sobre la grilla, que es la unica forma de
+ * ver la altura natural de las dos con el estiramiento apagado.
+ *
+ * O sea que **agrandar el tablero pide mas ANCHO de tarjeta**, y ahora es lo unico que
+ * pide: el alto dejo de ser un techo, no dejo un colchon. No hay ancho que ganar sin
+ * sacarselo a la paleta, que es la otra mitad del `max-w-6xl`.
  *
  * Los dos numeros que ACOTAN el 73 son distintos y conviene no confundirlos:
  *
@@ -43,22 +55,30 @@
  *   explicado en `Board.tsx`.
  * - **73 es el TECHO util**, y sale de la tarjeta, medida en el DOM con el reparto
  *   `md:col-span-4` (paleta) / `md:col-span-8` (tablero) de un `max-w-6xl`:
- *   **730,7 × 464 px** de interior descontando el `gap-4` y el `p-4`. Por ancho da
- *   73,1 y por alto 77,3, asi que manda el ancho. El 73,1 no se mueve con nada que
- *   pase adentro de las tarjetas: es `730,7 / 10` y solo cambia con el `col-span`.
+ *   **730,7 px** de interior de ancho descontando el `gap-4` y el `p-4`. Da 73,1, y
+ *   no se mueve con nada que pase adentro de las tarjetas: es `730,7 / 10` y solo
+ *   cambia con el `col-span`.
  *
- *   El alto SI se movio, y por eso el numero subio: el alto de la fila lo fija la
- *   PALETA, que es la tarjeta mas alta, y el spec 016 la llevo de 461,6 a 496 px de
- *   caja al meterle las doce miniaturas. Con el 014 solo, el interior del tablero
- *   media 730,7 × 429,6 y el alto mandaba con 71,6.
+ *   El alto SI se movio dos veces, y la segunda lo saco de la competencia. El alto de
+ *   la fila lo fijaba la PALETA, que era la tarjeta mas alta: con el 014 solo el
+ *   interior del tablero media 730,7 × 429,6 y mandaba el alto con 71,6; el 016 llevo
+ *   la paleta de 461,6 a 496 px y el alto paso a dar 77,3. El 019 le saco tres filas y
+ *   la dejo en **428**, debajo de los 470 del tablero, asi que hoy la fila la fija el
+ *   tablero y su interior es **730,7 × 438**, o sea 6 × 73 exactos.
  *
  * Se usa el techo y no el piso porque la nota es lo que hay que leer.
  *
  * **Inflar la paleta ya no compra nada**, y es lo que fija su tamano: pasado el
  * techo por ancho, todo lo que la paleta crezca es aire muerto en la tarjeta del
- * tablero. Medido: a 496 px de paleta sobran 26 px de alto (464 contra los 438 que
- * usan seis celdas de 73), y a 660 px de paleta sobrarian 190. Ver el docblock de
- * `MINI_CELL_PX`, que es donde esa decision se toma.
+ * tablero. Con el 016 eso se medía como colchon —a 496 px de paleta sobraban 26 px de
+ * alto, y a 660 sobrarian 190—; despues del 019 no hay colchon que medir, porque la
+ * paleta ni siquiera llega al alto del tablero. Lo que hay es **al reves**: 42 px de
+ * margen antes de que la paleta vuelva a mandar (470 − 428).
+ *
+ * Ese margen tiene dueno anunciado: el spec 020 le devuelve a la paleta un boton `0°`,
+ * INLINE en la linea de orientacion y no como fila nueva, o sea unos 10 px de los 42.
+ * El aire que el 019 dejo en la tarjeta se lo lleva entero el 021, que la convierte en
+ * un dock — y con el, este docblock entero.
  *
  * **Debajo de `md` no entra**, y eso es lo que la primera version de este
  * comentario decia mal: a 375 px de viewport el panel queda en 343 px y su interior
@@ -108,6 +128,12 @@ export const MINI_BOX = 5;
  * con seis columnas son dos filas de botones en vez de tres, que es lo que la hace mas
  * compacta que cualquier variante de cuatro. Medido con este commit puesto — ver
  * `CELL_PX` para el resto de la cadena.
+ *
+ * El **umbral** de los ~470 sigue siendo cierto y por eso el numero no se toca; lo que
+ * el spec 019 falsifico es el OBJETIVO: al borrar tres filas la paleta cayo a 428 px,
+ * debajo de la banda, y con eso el alto dejo de acotar `CELL_PX`. Seis columnas siguen
+ * siendo lo correcto por lo que dice el parrafo de arriba —dos filas de botones y no
+ * tres—, no por llegar a una banda que ya no aplica.
  */
 export const MINI_CELL_PX = 8;
 

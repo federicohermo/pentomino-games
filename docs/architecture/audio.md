@@ -244,7 +244,8 @@ hace falta una función nueva. Con 8 piezas un ciclo tiene ~15 eventos intermedi
 segundo, y el recorrido —que es todo el modelo— se vuelve inaudible.
 
 **Solo el click mudo se puede apagar; el interruptor es de mezcla y no del modelo.**
-`setClicksAudible(false)` —el toggle «Recorrido en el vacío» de la paleta— deja de cablear a sonido
+`setClicksAudible(false)` —el botón de metrónomo de la fila de transporte, que desde el spec 019 lleva
+«Recorrido en el vacío» en su `aria-label` y su `title` en vez de como etiqueta visible— deja de cablear a sonido
 los clicks **sin nota** en `tick()`; la `Sequence` sigue teniendo sus clicks y `collectWindow` los sigue emitiendo.
 Filtrarlos antes obligaría a reconstruir la secuencia por algo que no es una decisión del tablero, y
 haría que el ciclo pareciera distinto según el volumen. El cruce con altura **no** se apaga con este
