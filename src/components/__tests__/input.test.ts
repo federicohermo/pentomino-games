@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
-  rotacionPorRueda, accionDeTecla, frenaElDefault, abreTapLimpio, reflejaElContextMenu,
-  accionDeClick, esLaPiezaEnLaMano, piezaDeTecla,
+  rotacionPorRueda, siguienteRotacion, accionDeTecla, frenaElDefault, abreTapLimpio,
+  reflejaElContextMenu, accionDeClick, esLaPiezaEnLaMano, piezaDeTecla,
 } from '../input.ts';
+import { ROTACION } from '../constants/orientation.constants.ts';
+import type { Rotacion } from '../types/orientation.types.ts';
 import { ACCION, EDICION } from '../constants/input.constants.ts';
 import { SHAPES } from '../../domain/constants/pieces.constants.ts';
 import type { EventoDeTecla } from '../types/input.types.ts';
@@ -46,9 +48,18 @@ describe('AC1 — la rueda rota en los dos sentidos, con vuelta cíclica', () =>
   });
 
   it('recorre el ciclo de cuatro y vuelve al punto de partida', () => {
-    let r = 0;
+    // El acumulador va tipado como `Rotacion` desde el spec 020: si la pura dejara de
+    // garantizar el rango, esta linea deja de compilar antes de que el test corra.
+    let r: Rotacion = ROTACION.cero;
     for (let i = 0; i < 4; i++) r = rotacionPorRueda(r, 120);
-    expect(r).toBe(0);
+    expect(r).toBe(ROTACION.cero);
+  });
+
+  it('020 — `siguienteRotacion` es la rueda hacia abajo, y da la vuelta en el borde', () => {
+    // El gesto de `Shift` del 013. Delega en `rotacionPorRueda` en vez de repetir el
+    // `% 4`, que es la aritmetica que hasta el 020 vivia ademas inline en `App.tsx` — la
+    // copia de alla no tenia el `+ 4` que evita el resto negativo.
+    expect([0, 1, 2, 3].map(r => siguienteRotacion(r as Rotacion))).toEqual([1, 2, 3, 0]);
   });
 });
 

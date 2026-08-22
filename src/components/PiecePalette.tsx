@@ -39,7 +39,11 @@ interface Props {
 }
 
 export default function PiecePalette({ orientacion, transporte }: Props) {
-  const { selected, rotation, mirror, regimen, noteSet, onRegimen } = orientacion;
+  const { selected, orientaciones, regimen, noteSet, onRegimen, onResetOrientacion } = orientacion;
+  // La de la pieza en la mano, derivada del `Record` y no recibida como dos props sueltas:
+  // dos fuentes de la misma verdad son dos formas de que la linea diga una orientacion y
+  // la miniatura dibuje otra.
+  const { rotation, mirror } = orientaciones[selected];
   const { grados, reflejada } = textoDeOrientacion(rotation, mirror);
   // `md:col-span-4` desde el spec 014: al morir `PlacedList` quedaron dos columnas libres
   // y esta es una de las dos. La otra va al tablero, y el reparto sale MEDIDO y no
@@ -115,8 +119,39 @@ export default function PiecePalette({ orientacion, transporte }: Props) {
               `min-h-[1lh]` por lo mismo que el `2lh` de la línea de abajo: el peor caso
               (`270° · reflejada`) tiene que tener su alto reservado, para que la línea no
               mueva todo lo que tiene debajo al cambiar de orientación. Uno y no dos porque
-              entra en un renglón en todo el rango de anchos — medido en el DOM. */}
-          <p className="min-h-[1lh]">{grados}{reflejada !== null && ` · ${reflejada}`}</p>
+              entra en un renglón en todo el rango de anchos — medido en el DOM.
+
+              Desde el spec 020 dice la de la PIEZA EN LA MANO y cambia al elegir otra, que
+              es lo que hace visible la memoria: volver a la `F` que dejaste a 180° tiene
+              que decir `180°`, o la memoria existe y no se ve. */}
+          {/* El botón `0°` y no un icono: en la misma tarjeta hay un `↺` —en
+              `TransportPanel.tsx`, un componente hermano, así que ni siquiera están en el
+              mismo archivo para compararlos de un vistazo— y dos «volver atrás» tienen que
+              decir cosas distintas. `0°` dice literalmente adónde lleva, recupera el
+              vocabulario de los botones de grados que el 019 borró, y es tipográficamente
+              incompatible con un glifo.
+
+              Resetea la orientación ENTERA —rotación y reflexión—, no sólo los grados: una
+              `X` reflejada suena distinto y no se ve (29 de las 96 orientaciones, spec
+              019), así que un botón que la dejara «a 0° pero reflejada» dejaría vivo justo
+              el estado invisible. Que la etiqueta diga sólo los grados no engaña, porque la
+              línea de al lado dice las dos cosas y cambia junto con el botón — y el
+              `aria-label`, que es el nombre para quien no la ve, las dice enteras.
+
+              Y resetea UNA pieza y no las doce: lo que dejaba las doce mal de golpe era
+              precisamente la rotación global que este spec borra. Con memoria por pieza, si
+              la `T` está a 90° es porque rotaste la `T`. Un «resetear las doce» perdió su
+              caso de uso en el mismo movimiento que lo haría posible. */}
+          <p className="min-h-[1lh] flex items-center gap-2">
+            <span>{grados}{reflejada !== null && ` · ${reflejada}`}</span>
+            <button
+              type="button"
+              onClick={onResetOrientacion}
+              aria-label="Volver esta pieza a 0° sin reflejar"
+              title="Volver esta pieza a 0° sin reflejar"
+              className="px-1.5 rounded text-xs bg-slate-100 hover:bg-slate-200"
+            >0°</button>
+          </p>
           {/* Las dos lineas van RESERVADAS, no dejadas al contenido: el largo de esta
               linea depende de cuantos sostenidos tenga la escala, que va de 0 a 5
               sobre las 48 combinaciones de pieza x rotacion, y al envolver movia

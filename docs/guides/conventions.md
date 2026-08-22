@@ -178,12 +178,17 @@ el código sea *type-strippable*, o sea lo que permite que node cargue `src/doma
 
 El reemplazo para cualquier conjunto cerrado reparte sus dos mitades en las carpetas de rol:
 
+El ejemplo no es hipotético: es el conjunto cerrado que el spec 020 estrenó para la rotación.
+
 ```ts
-// constants/rotation.constants.ts  — el valor
-export const ROTATION = { DEG_0: 0, DEG_90: 1, DEG_180: 2, DEG_270: 3 } as const;
-// types/rotation.types.ts          — el tipo
-export type Rotation = (typeof ROTATION)[keyof typeof ROTATION];
+// components/constants/orientation.constants.ts  — el valor
+export const ROTACION = { cero: 0, noventa: 1, ciento_ochenta: 2, doscientos_setenta: 3 } as const;
+// components/types/orientation.types.ts          — el tipo
+export type Rotacion = (typeof ROTACION)[keyof typeof ROTACION];
 ```
+
+Los otros tres del repo son `ACCION` y `EDICION` (`components/constants/input.constants.ts`), `MARCA`
+(`route.constants.ts`) y `REGIMEN` (`domain/constants/music.constants.ts`).
 
 ### El idioma de los identificadores
 

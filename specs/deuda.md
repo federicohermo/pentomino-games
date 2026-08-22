@@ -56,10 +56,27 @@ esta lista y entra como fila en [log.md](./log.md).
   rectángulo para las piezas, y esa asimetría no está justificada por nada — es sólo lo que quedó.
   Necesita spec propio: cambia `cellsAt`, `isValid` y el fantasma, y hay que decidir qué muestra el
   tablero de una pieza partida en dos bordes. Venía del seguimiento del 009.
-- **La rotación es un `number` sin acotar**, comparada contra `0|1|2|3` en cuatro lugares. El reemplazo
-  ya está decidido —const-object en `constants/` + union type derivado en `types/`, **nunca un `enum`**,
-  que el `erasableSyntaxOnly` del tsconfig rechaza— pero cambia firmas, así que quedó como seguimiento
-  del spec 005.
+- **`Orientacion` y `PlacedPiece` repiten los mismos dos campos.** Los dos llevan `rotation` y `mirror`,
+  y la tentación es compartir un tipo de `domain/`. No se hizo en el spec 020 y no es un olvido: son dos
+  cosas distintas que coinciden de forma. `PlacedPiece` guarda **cómo se colocó** una pieza —un hecho del
+  tablero, que no cambia porque después gires la que tenés en la mano— y `Orientacion` guarda una
+  preferencia de quien toca sobre la pieza **por colocar**. Unificarlos es un refactor de `domain/` que
+  cruza el borde de paquete hacia `mcp-server/`, con beneficio cero de comportamiento. Venía del
+  seguimiento del 020.
+- **La rotación es un `number` sin acotar EN `domain/`.** Era la deuda entera hasta el spec 020, que la
+  **achicó y no la cerró**, así que conviene leer las dos mitades por separado.
+  **Lo que se cerró:** la fuente. El 020 creó `ROTACION` en `components/constants/orientation.constants.ts`
+  y el union `Rotacion` en `components/types/orientation.types.ts` —const-object + union derivado,
+  **nunca un `enum`**, que el `erasableSyntaxOnly` del tsconfig rechaza—, y con él acotó
+  `Orientacion.rotation` y los dos extremos de `rotacionPorRueda`. La rotación entra al modelo **desde**
+  `Orientacion`, así que por esta vía `domain/` ya no puede recibir un valor fuera de `0..3`.
+  **Lo que queda:** el tramo de `domain/` —`rotateN`, `arpeggioFor`, `PlacedPiece.rotation`—, que sigue
+  tomando `number`. Ése es el que cruza el borde de paquete hacia `mcp-server/`, que importa 31 símbolos
+  del dominio, así que acotarlo cambia firmas de las dos partes y necesita spec propio.
+  La cuenta de «cuatro lugares» que este ítem traía desde el spec 005 ya iba por **siete**: el 013
+  declaró el quinto, el 016 el sexto y el 019 el séptimo (`textoDeOrientacion(rotation, mirror)`, con
+  `rotation: number` — su hogar terminó siendo `orientation.types.ts` y no ese módulo). De los siete, el
+  020 acotó los de `components/`.
   **El spec 017 le dio su argumento más fuerte hasta ahora**: el régimen `orden` usa la rotación como
   índice de corrimiento del arpegio, no sólo como discriminante de una cadena de `if`. Ahí un valor
   fuera de `0..3` no cae a ningún `else`: `base[j + rot]` daría `undefined`, y `midiName` de eso no

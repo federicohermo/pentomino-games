@@ -211,10 +211,17 @@ El spec 013 fue el primero que agregó uno —hasta ahí el único `addEventList
 - **Las dependencias del efecto son las reales.** Un `[]` con un ref del estado para suscribir una sola
   vez es la optimización que este repo no necesita —son dos `addEventListener` sobre `window`— y
   esconde de dónde sale cada valor. Si el handler no lee ningún valor (setter funcional), ahí sí `[]`.
+  La **única** excepción la abrió el spec 020, y sólo porque la cardinalidad de suscripción es un AC
+  ajeno: `alRotar` tiene que leer cuál es la pieza en la mano y el AC16 del 022 le prohíbe re-suscribir
+  el `wheel`, así que va por `selectedRef`. Lo que la vuelve legítima no es el ref sino su escritor —un
+  `elegirPieza` que es el **único** que toca `selected`, así que el ref no se puede desincronizar por
+  construcción— y que ese ref **no se escribe en el render**, que es la forma obvia y la que
+  `react-hooks` rechaza («Cannot access refs during render»). Ver `specs/revisiones.md`, 2026-08-21.
 - **Con callbacks, la cardinalidad de suscripción pasa a decidirse en el shell.** Los callbacks del
-  teclado se memoizan con sus dependencias reales (`[rotation]`, `[mirror]`) para que el efecto se
-  re-suscriba cuando cambia la orientación, y el de la rueda con `[]` para que su listener se registre
-  una sola vez por montaje. Y un objeto de acciones armado inline **no puede entrar crudo** al array de
+  teclado se memoizan con sus dependencias reales —desde el 020 es `[orientar, selected]`, porque el
+  cambio se calcula adentro del setter funcional sobre la ranura anterior y ya no hace falta leer la
+  orientación— para que el efecto se re-suscriba cuando cambia la pieza en la mano, y el de la rueda
+  con `[]` para que su listener se registre una sola vez por montaje. Y un objeto de acciones armado inline **no puede entrar crudo** al array de
   dependencias del efecto: tiene identidad nueva por render, así que el hook se re-suscribiría por
   render y no por cambio de estado — peor que antes, y sin que nada falle. El hook lo desarma y lista
   sus campos.

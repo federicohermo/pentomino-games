@@ -5,6 +5,7 @@ import { MINI_BOX, MINI_CELL_PX } from './constants/layout.constants.ts';
 import { PIECE_COLOR } from './constants/palette.constants.ts';
 import { miniCells } from './piece-mini.ts';
 import { textoDeOrientacion } from './orientation-text.ts';
+import type { Orientacion } from './types/orientation.types.ts';
 import type { PropsDeOrientacion } from './types/panel.types.ts';
 
 /**
@@ -30,14 +31,21 @@ import type { PropsDeOrientacion } from './types/panel.types.ts';
  * la decision contraria.
  */
 export default memo(function OrientationPanel({ orientacion }: { orientacion: PropsDeOrientacion }) {
-  const { selected, rotation, mirror, onSelect } = orientacion;
+  const { selected, orientaciones, onSelect } = orientacion;
   // La MISMA derivacion que la linea visible del panel, en el otro formato (spec 019). Los
   // dos textos no se pueden unificar —bajar este al visible le saca el sustantivo
   // "rotación" y le mete un separador que el lector de pantalla deletrea— pero el CALCULO
   // si, que era lo que estaba escrito dos veces y desde el 022 ni siquiera en el mismo
-  // archivo. Se compone una vez y no doce: no depende de la pieza.
-  const { grados, reflejada } = textoDeOrientacion(rotation, mirror);
-  const orientacionHablada = `rotación ${grados}${reflejada === null ? '' : `, ${reflejada}`}`;
+  // archivo.
+  //
+  // Se compone DOCE veces y no una, y eso es el spec 020: cada boton dice SU orientacion,
+  // no la de la pieza en la mano. Hasta el 019 las doce miniaturas se dibujaban con el
+  // mismo par —medido, 11 de 12 se movian en cada cuarto de vuelta— y el `aria-label`
+  // repetia esa mentira al oido.
+  const hablada = (o: Orientacion) => {
+    const { grados, reflejada } = textoDeOrientacion(o.rotation, o.mirror);
+    return `rotación ${grados}${reflejada === null ? '' : `, ${reflejada}`}`;
+  };
   return (
     /* El ancho lo gobierna la caja de la miniatura, que mide 5 × `MINI_CELL_PX` = 40 px
        y **no depende ni de la pieza ni de la orientacion**: el peor caso es el mismo
@@ -91,7 +99,11 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
           tambien la orientacion, para que el lector de pantalla diga lo que el ojo
           ve: la miniatura muestra la orientacion ACTUAL, no la canonica. */}
       {(Object.keys(SHAPES) as PieceKey[]).map(key=> {
-        const celdas = miniCells(key, rotation, mirror);
+        // La orientacion de ESTA pieza, no la de la que esta en la mano (spec 020). El
+        // `Record` tiene las doce ranuras garantizadas por su tipo, derivado de `SHAPES`,
+        // asi que este acceso no puede dar `undefined`.
+        const suya = orientaciones[key];
+        const celdas = miniCells(key, suya.rotation, suya.mirror);
         const ocupada = new Set(celdas.map(([x, y]) => `${x},${y}`));
         // Una sola copia de "es la que esta en la mano": la leen el fondo del boton,
         // el borde de la miniatura y el `aria-pressed`, y tienen que invertirse en el
@@ -109,7 +121,7 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
             key={key}
             type="button"
             onClick={()=> onSelect(key)}
-            aria-label={`${key}, ${orientacionHablada}`}
+            aria-label={`${key}, ${hablada(suya)}`}
             aria-pressed={activo}
             className={`px-2 py-1 rounded-lg border text-sm flex flex-col items-center justify-center gap-1 ${activo? 'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}
           >

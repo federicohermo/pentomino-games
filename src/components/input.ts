@@ -2,6 +2,7 @@ import { ACCION, EDICION } from './constants/input.constants.ts';
 import { SHAPES } from '../domain/constants/pieces.constants.ts';
 import type { Accion, Edicion, EventoDeTecla, EventoDeModificador } from './types/input.types.ts';
 import type { PieceKey } from '../domain/types/pieces.types.ts';
+import type { Rotacion } from './types/orientation.types.ts';
 import type { PlacedPiece } from '../domain/types/board.types.ts';
 
 /**
@@ -42,9 +43,30 @@ import type { PlacedPiece } from '../domain/types/board.types.ts';
  * grilla debajo de `md`, así que hacerle `preventDefault` a un gesto horizontal sería
  * dejar sin scroll al único elemento que lo tiene.
  */
-export function rotacionPorRueda(rotation: number, deltaY: number): number {
+export function rotacionPorRueda(rotation: Rotacion, deltaY: number): Rotacion {
   const delta = deltaY > 0 ? 1 : deltaY < 0 ? -1 : 0;
-  return (rotation + 4 + delta) % 4;
+  // La ASERCION a `Rotacion` va aca y una sola vez en todo el repo, porque este es el
+  // unico lugar donde una rotacion se calcula en vez de recibirse: la aritmetica modulo 4
+  // sobre un entero no negativo produce exactamente `0 | 1 | 2 | 3`, y el `+ 4` de arriba
+  // es lo que asegura el "no negativo". TypeScript no estrecha `%`: el tipo de `x % 4` es
+  // `number` sin importar lo que sepa de `x`. Es de la misma familia que el
+  // `Object.keys(SHAPES) as PieceKey[]` que el repo ya usa —el cuerpo garantiza lo que el
+  // tipo dice y el compilador no lo puede ver—, y como esa, viene con el motivo al lado.
+  return ((rotation + 4 + delta) % 4) as Rotacion;
+}
+
+/**
+ * El cuarto de vuelta siguiente: el gesto de `Shift` del spec 013.
+ *
+ * Delega en `rotacionPorRueda` con un `deltaY` positivo en vez de repetir el `+ 4` y el
+ * `% 4`, y no es un rodeo: hasta el spec 020 el shell escribía `(rotation + 1) % 4`
+ * inline, o sea que la misma aritmética modular vivía en dos lugares con **una sola** de
+ * las dos copias protegida contra el resto negativo. Acá el `Shift` es literalmente la
+ * rueda hacia abajo —que es lo que hace, y lo que los dos gestos del 013 prometen—, así
+ * que la aserción a `Rotacion` sigue existiendo una sola vez, en la función de al lado.
+ */
+export function siguienteRotacion(rotation: Rotacion): Rotacion {
+  return rotacionPorRueda(rotation, 1);
 }
 
 /**

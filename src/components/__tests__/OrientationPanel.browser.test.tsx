@@ -6,8 +6,10 @@ import { MINI_BOX, MINI_CELL_PX } from '../constants/layout.constants.ts';
 import { PIECE_COLOR } from '../constants/palette.constants.ts';
 import { SHAPES } from '../../domain/constants/pieces.constants.ts';
 import { REGIMEN } from '../../domain/constants/music.constants.ts';
+import { ORIENTACIONES_INICIALES } from '../constants/orientation.constants.ts';
 import type { PieceKey } from '../../domain/types/pieces.types.ts';
 import type { PropsDeOrientacion } from '../types/panel.types.ts';
+import type { MemoriaDeOrientacion, Orientacion } from '../types/orientation.types.ts';
 
 /**
  * Las doce miniaturas del spec 016.
@@ -23,19 +25,29 @@ import type { PropsDeOrientacion } from '../types/panel.types.ts';
  */
 const PIEZAS = Object.keys(SHAPES) as PieceKey[];
 
+/** Las doce en cero con las ranuras que el test quiera pisar (spec 020). */
+const memoria = (pisadas: Partial<MemoriaDeOrientacion> = {}): MemoriaDeOrientacion =>
+  ({ ...ORIENTACIONES_INICIALES, ...pisadas });
+
+/** Las doce en la MISMA orientacion, que es lo que el panel hacia hasta el spec 020. */
+const todas = (o: Orientacion): MemoriaDeOrientacion =>
+  Object.fromEntries(PIEZAS.map(p => [p, o])) as MemoriaDeOrientacion;
+
 const orientacion = (over: Partial<PropsDeOrientacion> = {}): PropsDeOrientacion => ({
   selected: 'F',
-  rotation: 0,
-  mirror: false,
+  // `rotation`/`mirror` sueltos salieron de `PropsDeOrientacion` con el spec 020: el panel
+  // necesita las DOCE, porque cada miniatura se dibuja en la suya. `onRotate` y `onMirror`
+  // se habian ido con el 019, que borro los botones que los llamaban.
+  //
+  // Lo que NO cambia son las aserciones de nombre —`F, rotación 90°, reflejada` y
+  // `Z, rotación 180°`—: siguen verificando que el `aria-label` no se degrado al formato
+  // visible cuando paso a consumir la pura de `orientation-text.ts`.
+  orientaciones: ORIENTACIONES_INICIALES,
   regimen: REGIMEN.escala,
   noteSet: [60, 62, 64, 67, 69],
   onSelect: vi.fn(),
-  // `onRotate` y `onMirror` salieron de `PropsDeOrientacion` con el spec 019, que borro
-  // los botones que los llamaban. Es lo unico que cambio en este archivo, y a proposito:
-  // las cinco aserciones de nombre —`F, rotación 90°, reflejada` y `Z, rotación 180°`—
-  // siguen intactas, que es lo que verifica que hacer al `aria-label` consumir la pura de
-  // `orientation-text.ts` no lo degrado al formato visible.
   onRegimen: vi.fn(),
+  onResetOrientacion: vi.fn(),
   ...over,
 });
 
@@ -52,20 +64,72 @@ describe('OrientationPanel', () => {
   it('el nombre accesible dice la orientacion ACTUAL, no la canonica', async () => {
     // La miniatura muestra como esta puesta la pieza, asi que el lector de pantalla
     // tiene que decir lo mismo que el ojo ve.
-    await render(<OrientationPanel orientacion={orientacion({ rotation: 1, mirror: true })} />);
+    const a = await render(<OrientationPanel orientacion={orientacion({
+      orientaciones: memoria({ F: { rotation: 1, mirror: true } }),
+    })} />);
     await expect.element(page.getByRole('button', { name: 'F, rotación 90°, reflejada' })).toBeVisible();
+    await a.unmount();
 
-    await render(<OrientationPanel orientacion={orientacion({ rotation: 2, mirror: false })} />);
+    await render(<OrientationPanel orientacion={orientacion({
+      orientaciones: memoria({ Z: { rotation: 2, mirror: false } }),
+    })} />);
     await expect.element(page.getByRole('button', { name: 'Z, rotación 180°' })).toBeVisible();
+  });
+
+  it('020 — cada miniatura dice y dibuja SU orientacion, no la de la pieza en la mano', async () => {
+    // AC4. Doce orientaciones distintas de una: si el panel siguiera leyendo un solo par
+    // para las doce, once de estos nombres saldrian mal.
+    const distintas = Object.fromEntries(
+      PIEZAS.map((p, i) => [p, { rotation: (i % 4) as 0 | 1 | 2 | 3, mirror: i % 2 === 1 }]),
+    ) as MemoriaDeOrientacion;
+    const { container } = await render(
+      <OrientationPanel orientacion={orientacion({ orientaciones: distintas })} />,
+    );
+    for (const [i, key] of PIEZAS.entries()) {
+      const boton = [...container.querySelectorAll('button')]
+        .find(b => b.getAttribute('aria-label')!.startsWith(`${key},`))!;
+      const grados = (i % 4) * 90;
+      const esperado = `${key}, rotación ${grados}°${i % 2 === 1 ? ', reflejada' : ''}`;
+      expect(boton.getAttribute('aria-label'), key).toBe(esperado);
+    }
+  });
+
+  it('020 — rotar UNA pieza deja las otras once exactamente como estaban', async () => {
+    // AC3, el criterio que le da nombre al spec: hasta el 019 rotar movia 11 de las 12
+    // miniaturas. Se comparan los nombres Y las celdas pintadas, que es lo que atrapa el
+    // caso «el `aria-label` sigue a su ranura pero el dibujo sigue a otra».
+    const huella = (c: HTMLElement) => [...c.querySelectorAll('button')].map(b => ({
+      nombre: b.getAttribute('aria-label'),
+      celdas: [...b.querySelectorAll('div.grid > div')]
+        .map((d, i) => ((d as HTMLElement).style.background !== '' ? i : -1))
+        .filter(i => i >= 0).join(','),
+    }));
+
+    const antes = await render(<OrientationPanel orientacion={orientacion()} />);
+    const base = huella(antes.container);
+    await antes.unmount();
+
+    const { container } = await render(<OrientationPanel orientacion={orientacion({
+      orientaciones: memoria({ L: { rotation: 3, mirror: true } }),
+    })} />);
+    const ahora = huella(container);
+
+    for (const [i, key] of PIEZAS.entries()) {
+      if (key === 'L') {
+        expect(ahora[i], 'la L tiene que haber cambiado').not.toEqual(base[i]);
+      } else {
+        expect(ahora[i], key).toEqual(base[i]);
+      }
+    }
   });
 
   it('rotar NO mueve un pixel de la grilla, que es para lo que la caja es fija', async () => {
     // El bug que la caja fija existe para evitar: con pistas automaticas la `I` sola
     // pasa de 5 celdas de ancho a 1 al rotar y hace saltar la fila entera. Se mide el
     // ancho de CADA boton en las cuatro rotaciones y los dos espejos.
-    const medir = async (rotation: number, mirror: boolean) => {
+    const medir = async (orientaciones: MemoriaDeOrientacion) => {
       const { container, unmount } = await render(
-        <OrientationPanel orientacion={orientacion({ rotation, mirror })} />,
+        <OrientationPanel orientacion={orientacion({ orientaciones })} />,
       );
       const anchos = [...container.querySelectorAll('button')]
         .map(b => Math.round(b.getBoundingClientRect().width));
@@ -75,17 +139,28 @@ describe('OrientationPanel', () => {
       return { anchos, altos };
     };
 
-    const base = await medir(0, false);
+    const base = await medir(todas({ rotation: 0, mirror: false }));
     // Que el layout exista de verdad: en jsdom esto seria 0 y el test pasaria vacio.
     expect(base.anchos[0]).toBeGreaterThan(0);
 
-    for (const rotation of [1, 2, 3]) {
+    for (const rotation of [1, 2, 3] as const) {
       for (const mirror of [false, true]) {
-        const { anchos, altos } = await medir(rotation, mirror);
+        const { anchos, altos } = await medir(todas({ rotation, mirror }));
         expect(anchos, `rot${rotation}${mirror ? ' mirror' : ''}`).toEqual(base.anchos);
         expect(altos, `rot${rotation}${mirror ? ' mirror' : ''}`).toEqual(base.altos);
       }
     }
+
+    // AC12 del spec 020: con las doce en orientaciones DISTINTAS tampoco se mueve, que es
+    // el caso que hasta este spec no podia existir. Las ocho combinaciones repartidas
+    // entre doce botones incluyen a la `I` acostada al lado de la `I` parada… salvo que
+    // hay una sola `I`, asi que el peor caso real es cada pieza en su peor forma a la vez.
+    const distintas = Object.fromEntries(
+      PIEZAS.map((p, i) => [p, { rotation: (i % 4) as 0 | 1 | 2 | 3, mirror: i % 2 === 1 }]),
+    ) as MemoriaDeOrientacion;
+    const mezcla = await medir(distintas);
+    expect(mezcla.anchos, 'doce orientaciones distintas').toEqual(base.anchos);
+    expect(mezcla.altos, 'doce orientaciones distintas').toEqual(base.altos);
   });
 
   it('la caja mide 5 × MINI_CELL_PX, y no lo que ocupe la pieza', async () => {

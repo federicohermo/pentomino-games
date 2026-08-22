@@ -18,10 +18,12 @@ import { alternarTransporte } from "./components/engine-bridge.ts";
 import { MOTOR, frenarTransporte, reiniciarRecorrido, useMotorSincronizado } from "./components/use-engine.ts";
 import { useAtajosDeTeclado, useRuedaRota } from "./components/use-input.ts";
 import {
-  rotacionPorRueda, reflejaElContextMenu, accionDeClick, esLaPiezaEnLaMano,
+  rotacionPorRueda, siguienteRotacion, reflejaElContextMenu, accionDeClick, esLaPiezaEnLaMano,
 } from "./components/input.ts";
 import { anuncioDeEdicion } from "./components/cell-name.ts";
 import { EDICION } from "./components/constants/input.constants.ts";
+import { ORIENTACION_INICIAL, ORIENTACIONES_INICIALES } from "./components/constants/orientation.constants.ts";
+import type { MemoriaDeOrientacion, Orientacion } from "./components/types/orientation.types.ts";
 
 /**
  * Pentomino Music — prototipo de instrumento, no un juego con reglas de resolucion.
@@ -50,8 +52,21 @@ import { EDICION } from "./components/constants/input.constants.ts";
 
 export default function App(){
   const [selected, setSelected] = useState<PieceKey>('F');
-  const [rotation, setRotation] = useState<number>(0); // 0..3
-  const [mirror, setMirror] = useState<boolean>(false);
+
+  // La orientacion es de la PIEZA y no del instrumento (spec 020). Hasta el 019 habia un
+  // `rotation` y un `mirror` para las doce, y eso hacia que girar la rueda para acomodar
+  // una `F` reorientara las otras once sin que nadie lo pidiera: medido, 11 de 12
+  // miniaturas se movian en cada cuarto de vuelta (la unica quieta era la `X`, que es
+  // simetrica). Peor todavia, la orientacion que te encontrabas al elegir otra pieza no
+  // era la que habias elegido para ELLA sino la que dejo la ultima que tocaste.
+  //
+  // Memoria y no "se resetea al elegir otra", que tambien arreglaba la queja: con memoria
+  // se pueden dejar preparadas doce orientaciones y alternar entre ellas sin volver a
+  // rotar, que es una forma de tocar; con reset, cada cambio de pieza borra trabajo.
+  //
+  // Las piezas YA COLOCADAS no dependen de esto: cada `PlacedPiece` guarda la suya desde
+  // siempre, asi que rotar la que esta en la mano no cambia una nota del tablero.
+  const [orientaciones, setOrientaciones] = useState<MemoriaDeOrientacion>(ORIENTACIONES_INICIALES);
   // Arranca del mismo numero que el motor: DEFAULT_BPM es una sola declaracion.
   const [tempo, setTempo] = useState<number>(DEFAULT_BPM);
   const [playing, setPlaying] = useState<boolean>(false);
@@ -106,7 +121,52 @@ export default function App(){
   // otro. El texto sale de `cell-name.ts` y no de una cadena armada acá.
   const [anuncio, setAnuncio] = useState<string>('');
 
+  // El par de la pieza en la mano, derivado y no duplicado: todo lo que antes leia los dos
+  // `useState` sigue leyendo estos dos nombres. La memoria tiene las doce ranuras
+  // garantizadas por su tipo —el `Record` se deriva de `SHAPES`— asi que esto no puede dar
+  // `undefined` y no hace falta un default.
+  const { rotation, mirror } = orientaciones[selected];
+
   const idRef = useRef(0);
+
+  // `selected`, leible sin ser dependencia. Existe por UN consumidor: `alRotar`, el
+  // callback de la rueda, que tiene dependencias vacias a proposito desde el spec 022
+  // —es lo que deja que `useRuedaRota` registre el listener de `wheel` una sola vez por
+  // montaje (AC16 del 022)—. Con la orientacion global su cuerpo no leia nada; con la
+  // memoria por pieza necesita saber CUAL ranura rotar, y agregarle `selected` a las
+  // dependencias romperia esa cardinalidad.
+  //
+  // El setter funcional no alcanza como salida: `setOrientaciones(prev => ...)` recibe el
+  // `Record` anterior y nada mas, asi que no hay forma de que sepa cual es la pieza en la
+  // mano sin cerrar sobre `selected` o sin leerlo de un ref.
+  //
+  // Se escribe DONDE se escribe `selected` y no en el cuerpo del render, que es lo obvio y
+  // lo que el linter rechaza («Cannot access refs during render»): un ref leido o escrito
+  // durante el render es estado invisible para React, y con `elegirPieza` como unico
+  // escritor de los dos el ref no se puede desincronizar. El otro camino era un
+  // `useEffect`, y este shell no tiene ninguno desde el spec 022.
+  //
+  // El valor inicial sale de `selected` y no de otra `'F'` escrita al lado: dos literales
+  // que tienen que coincidir es exactamente el par que este repo no deja suelto.
+  const selectedRef = useRef<PieceKey>(selected);
+
+  /** El unico escritor de la pieza en la mano: el estado que se pinta y el ref que lee la rueda. */
+  const elegirPieza = useCallback((pieza: PieceKey)=>{
+    selectedRef.current = pieza;
+    setSelected(pieza);
+  }, []);
+
+  /**
+   * Escribe la ranura de UNA pieza. Los cuatro gestos de orientacion pasan por aca.
+   *
+   * `Record` nuevo y objeto nuevo, nunca mutacion: `.claude/rules/ui.md` lo prohibe, y
+   * ademas es lo que hace que la barrera del `memo` de `OrientationPanel` siga midiendo
+   * lo que dice — la identidad del `Record` cambia cuando cambia una orientacion y no
+   * cuando se mueve el cursor.
+   */
+  const orientar = useCallback((pieza: PieceKey, cambio: (o: Orientacion) => Orientacion) => {
+    setOrientaciones(prev => ({ ...prev, [pieza]: cambio(prev[pieza]) }));
+  }, []);
 
   // El nodo del tablero, para colgarle la rueda. Se crea ACA y viaja a `Board` como una
   // prop mas: asi el componente no gana ni estado ni efectos (AC11 del spec 013).
@@ -216,6 +276,12 @@ export default function App(){
   // se seguía dibujando sobre un tablero vacío hasta el próximo Play (spec 027). Las
   // dos se reinician juntas o vuelve el bug, y las dos entran por `use-engine.ts`, que
   // es el único módulo por el que este shell le habla al motor.
+  // Y lo que NO toca, que desde el spec 020 hay que decirlo porque la constante está justo
+  // al lado: `↺` **no** vuelve las doce orientaciones a cero. Es una decisión con un costo
+  // escrito —se renuncia al invariante «después de `↺` la app queda como recién abierta»—
+  // y a cambio este botón conserva un alcance único y nombrable, las piezas COLOCADAS, en
+  // vez de hacer dos cosas de dominios distintos. El estado de orientación tiene su propio
+  // botón, el `0°` de la paleta, y ése resetea una sola pieza.
   function resetBoard(){
     frenarTransporte();
     reiniciarRecorrido();
@@ -243,26 +309,50 @@ export default function App(){
   // `tapLimpio` se queda ACÁ y viaja a los dos: lo lee el teclado y lo escriben los dos,
   // así que el ref es de quien los compone. Está argumentado en `use-input.ts`.
 
-  // Los dos del teclado se memoizan con sus dependencias REALES y no con `[]`: el efecto
-  // tiene que re-suscribirse cuando cambia la orientación, que es exactamente lo que hace
-  // hoy. Con arrows inline el hook se re-suscribiría por render — peor, y en silencio.
-  const rotarConTecla = useCallback(()=> setRotation((rotation + 1) % 4), [rotation]);
-  const reflejarConTecla = useCallback(()=> setMirror(!mirror), [mirror]);
+  // Los dos del teclado se memoizan con sus dependencias REALES y no con `[]`. Desde el
+  // spec 020 la dependencia real es UNA —`selected`— y ya no `rotation` o `mirror`: el
+  // cambio se calcula adentro del setter funcional sobre la ranura anterior, así que el
+  // callback no necesita leer la orientación actual. Con arrows inline el hook se
+  // re-suscribiría por render — peor, y en silencio.
+  const rotarConTecla = useCallback(
+    ()=> orientar(selected, o => ({ ...o, rotation: siguienteRotacion(o.rotation) })),
+    [orientar, selected],
+  );
+  const reflejarConTecla = useCallback(
+    ()=> orientar(selected, o => ({ ...o, mirror: !o.mirror })),
+    [orientar, selected],
+  );
 
-  // La letra elige la pieza (spec 018). Dependencias VACÍAS porque `setSelected` es un
-  // setter de `useState`, cuya identidad React garantiza estable.
+  // El botón `0°` de la paleta: devuelve la pieza en la mano —y sólo esa— al arranque.
+  const resetearOrientacion = useCallback(
+    ()=> orientar(selected, ()=> ORIENTACION_INICIAL),
+    [orientar, selected],
+  );
+
+  // La letra elige la pieza (spec 018). Es `elegirPieza` tal cual y no un callback nuevo:
+  // desde el 020 hay UN solo escritor de la pieza en la mano —el que actualiza el estado y
+  // el ref en la misma línea— y darle al hook otro envoltorio sería abrir la puerta a un
+  // segundo escritor que no toque el ref. Su identidad es estable por el `useCallback` de
+  // dependencias vacías de allá arriba, no porque `setSelected` lo sea.
   //
-  // Y va envuelto en un callback aunque `setSelected` sea asignable a la firma tal cual:
-  // el reparto que fijó el spec 022 es que el hook recibe callbacks, para que el día en
-  // que la ranura de estado cambie de forma —que es exactamente lo que el 020 le va a
-  // hacer a `rotation` y `mirror`— el cambio caiga acá y no adentro del hook.
-  const seleccionarConTecla = useCallback((pieza: PieceKey)=> setSelected(pieza), []);
+  // Que el hook reciba un callback y no el setter lo fijó el spec 022, y es lo que hizo que
+  // el cambio de forma de la ranura de estado —lo que el 020 le acaba de hacer a `rotation`
+  // y `mirror`— cayera acá y no adentro del hook.
+  const seleccionarConTecla = elegirPieza;
 
   // `useCallback` de dependencias VACÍAS, y no es cosmética: es lo que deja que el
-  // listener de `wheel` se registre una sola vez por montaje. Es posible porque el cuerpo
-  // usa el setter funcional y no lee `rotation`. Si alguna vez gana una dependencia, el
-  // listener pasa a re-suscribirse con ella.
-  const alRotar = useCallback((deltaY: number)=> setRotation(r => rotacionPorRueda(r, deltaY)), []);
+  // listener de `wheel` se registre una sola vez por montaje (AC16 del spec 022). Si
+  // alguna vez gana una dependencia, el listener pasa a re-suscribirse con ella.
+  //
+  // Hasta el 019 era posible porque el cuerpo usaba el setter funcional y no leía
+  // `rotation`. Con la memoria por pieza (020) el cuerpo SÍ necesita un dato del render
+  // —cuál es la pieza en la mano— y el setter funcional no se lo puede dar: recibe el
+  // `Record` anterior y nada más. La salida es `selectedRef`, que está argumentado arriba;
+  // agregar `selected` a las dependencias era la otra, y rompe la suscripción única.
+  const alRotar = useCallback((deltaY: number)=> {
+    const pieza = selectedRef.current;
+    orientar(pieza, o => ({ ...o, rotation: rotacionPorRueda(o.rotation, deltaY) }));
+  }, [orientar]);
 
   useAtajosDeTeclado(
     {
@@ -281,7 +371,11 @@ export default function App(){
   // neto cero y la reflexión no respondería nunca en una laptop de Apple sin mouse.
   function handleContextMenu(e: { preventDefault: () => void; ctrlKey: boolean }){
     e.preventDefault();
-    if (reflejaElContextMenu(e)) setMirror(m=>!m);
+    // Una sola ranura, como los otros tres gestos de orientación: el botón derecho es el
+    // octavo consumidor de la orientación y el único que no pasa por un efecto ni por un
+    // `useMemo`, así que es el que se escapa si se los busca a mano en vez de dejar que
+    // el typecheck los enumere.
+    if (reflejaElContextMenu(e)) orientar(selected, o => ({ ...o, mirror: !o.mirror }));
   }
 
   // El foco entró a una celda del tablero, o se fue de él (`null`). Las dos mitades en una
@@ -326,10 +420,11 @@ export default function App(){
   // El porque de este `useMemo` —y el numero que lo justifica— esta abajo, al lado del
   // `<PiecePalette>` que lo consume: es donde estaba escrita la decision contraria.
   const orientacion = useMemo(()=> ({
-    selected, rotation, mirror, regimen, noteSet,
-    onSelect: setSelected,
+    selected, orientaciones, regimen, noteSet,
+    onSelect: elegirPieza,
     onRegimen: setRegimen,
-  }), [selected, rotation, mirror, regimen, noteSet]);
+    onResetOrientacion: resetearOrientacion,
+  }), [selected, orientaciones, regimen, noteSet, elegirPieza, resetearOrientacion]);
 
   return (
     <div className="min-h-screen bg-fondo text-slate-900 p-4">

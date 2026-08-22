@@ -21,6 +21,10 @@ import type { PieceKey } from '../domain/types/pieces.types.ts';
  * bug que `PiecePalette.tsx` ya documenta para su línea de notas — un panel de control
  * que se acomoda solo cuando lo tocás mueve el botón justo cuando vas a apretarlo.
  *
+ * Desde el spec 020 cada pieza recuerda **su** orientación, así que las doce cambian por
+ * separado: rotar la `I` sola alcanzaría para descuadrar a sus once vecinas. La caja fija
+ * es lo que hace que esa independencia no cueste layout.
+ *
  * 5 es la caja más chica que contiene cualquier pentominó en cualquiera de sus 8
  * orientaciones: el máximo en un eje es 5 y lo pone sola la `I`; ninguna otra pieza pasa
  * de 4×2 ni de 3×3. Con 4×4 la `I` no entra.

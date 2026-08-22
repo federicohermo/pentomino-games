@@ -370,13 +370,85 @@ describe('App — la orientacion, por panel y por gesto', () => {
     }
     expect(page.getByRole('button', { name: /^Reflexión$/ }).elements()).toHaveLength(0);
 
-    const linea = () => [...container.querySelectorAll('p')].find(e => /^\d+°/.test(e.textContent!))!;
+    // El `<span>` de adentro y no el `<p>`: desde el spec 020 la linea comparte parrafo con
+    // el boton `0°`, asi que el `textContent` del `<p>` dice `0°0°`.
+    const linea = () => [...container.querySelectorAll('p > span')].find(e => /^\d+°/.test(e.textContent!))!;
     expect(linea().textContent).toBe('0°');
 
     tapDeModificador(window, 'Shift');
     await vi.waitFor(() => expect(linea().textContent).toBe('90°'));
     tapDeModificador(window, 'Control');
     await vi.waitFor(() => expect(linea().textContent).toBe('90° · reflejada'));
+  });
+
+  it('020 — la orientacion es de la PIEZA: se recuerda, y el `0°` resetea una sola', async () => {
+    // Los cuatro criterios que sólo el shell puede verificar, porque la memoria vive acá:
+    // AC1/AC2 (el gesto toca una ranura), AC5 (volver a una pieza la trae como la
+    // dejaste), AC7 (el `0°` no toca las otras once) y AC9 (la línea sigue a la pieza).
+    const { container } = await render(<App />);
+    const linea = () => [...container.querySelectorAll('p > span')].find(e => /^\d+°/.test(e.textContent!))!;
+    const nombreDe = (key: string) => [...container.querySelectorAll('button')]
+      .find(b => b.getAttribute('aria-label')!.startsWith(`${key},`))!.getAttribute('aria-label');
+
+    // La `F` a 180° y reflejada, con los dos gestos de teclado.
+    tapDeModificador(window, 'Shift');
+    tapDeModificador(window, 'Shift');
+    tapDeModificador(window, 'Control');
+    await vi.waitFor(() => expect(linea().textContent).toBe('180° · reflejada'));
+    // Y las otras once no se movieron: es el criterio que le da nombre al spec.
+    expect(nombreDe('T')).toBe('T, rotación 0°');
+    expect(nombreDe('F')).toBe('F, rotación 180°, reflejada');
+
+    // Ir a la `T` y volver: la `F` sigue como la dejaste (AC5), y la línea la sigue (AC9).
+    await page.getByRole('button', { name: 'T, rotación 0°' }).click();
+    await vi.waitFor(() => expect(linea().textContent).toBe('0°'));
+    await page.getByRole('button', { name: 'F, rotación 180°, reflejada' }).click();
+    await vi.waitFor(() => expect(linea().textContent).toBe('180° · reflejada'));
+
+    // El `0°` devuelve la `F` al arranque —los grados Y la reflexión— y no toca a nadie más.
+    await page.getByRole('button', { name: /^Volver esta pieza a 0° sin reflejar$/ }).click();
+    await vi.waitFor(() => expect(linea().textContent).toBe('0°'));
+    expect(nombreDe('F')).toBe('F, rotación 0°');
+    expect(nombreDe('T')).toBe('T, rotación 0°');
+  });
+
+  it('020 — `↺` vacia el tablero y NO toca las orientaciones recordadas', async () => {
+    // AC8, con su costo escrito: se renuncia al invariante «después de `↺` la app queda
+    // como recién abierta» para que este botón conserve un alcance único y nombrable.
+    const { container } = await render(<App />);
+    tapDeModificador(window, 'Shift');
+    await vi.waitFor(() => expect(container.textContent).toContain('90°'));
+    click(celda(container, 3, 2));
+    await vi.waitFor(() => expect(conNota(container)).toBeGreaterThan(0));
+
+    await page.getByRole('button', { name: 'Vaciar el tablero y frenar el transporte' }).click();
+    await vi.waitFor(() => expect(conNota(container)).toBe(0));
+    const nombre = [...container.querySelectorAll('button')]
+      .find(b => b.getAttribute('aria-label')!.startsWith('F,'))!.getAttribute('aria-label');
+    expect(nombre).toBe('F, rotación 90°');
+  });
+
+  it('020 — rotar la pieza en la mano no cambia una nota de la que ya esta puesta', async () => {
+    // AC11, que hasta este review solo tenia la confirmacion a ojo de T025 `[M]`. Es la
+    // promesa central del spec —«no cambia una nota»— y la que se rompe sola si algun dia
+    // la memoria del shell pasa a ser la fuente de lo que ya esta en el tablero: hoy cada
+    // `PlacedPiece` guarda la suya y por eso el `title` de sus cinco celdas —nota y `#N`,
+    // o sea sonido Y orden— no se mueve. Se lee del DOM y no del estado porque lo que hay
+    // que verificar es que el tablero no cambio, no que el shell no lo escribio.
+    const { container } = await render(<App />);
+    click(celda(container, 3, 2));
+    await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length));
+    const puesta = () => donde('F', 3, 2)
+      .map(([x, y]) => `${baldosa(celda(container, x, y)).textContent}@${celda(container, x, y).getAttribute('title')}`);
+    const antes = puesta();
+
+    // La `F` de la mano a 90° y reflejada: los dos gestos, los dos sobre una sola ranura.
+    tapDeModificador(window, 'Shift');
+    tapDeModificador(window, 'Control');
+    await vi.waitFor(() => expect(container.textContent).toContain('90° · reflejada'));
+
+    expect(puesta()).toEqual(antes);
+    expect(conNota(container)).toBe(SHAPES.F.length);
   });
 
   it('el regimen cambia lo que la rotacion HACE, y se ve en el fantasma', async () => {
@@ -511,10 +583,11 @@ describe('App — lo que llega al arbol de accesibilidad', () => {
     // transporte— y ninguno de los tres los tiene todos.
     //
     // Eran 22 hasta el spec 019, que borro los cuatro grados y el ON/OFF de Reflexion y
-    // mudo el del recorrido: 12 + 2 + 3.
+    // mudo el del recorrido: 12 + 2 + 3 = 17. El 020 devuelve UNO —el `0°` de la linea de
+    // orientacion— y son 18.
     const { container } = await render(<App />);
     const botones = [...container.querySelectorAll('button')];
-    expect(botones.length).toBe(17);
+    expect(botones.length).toBe(18);
     for (const boton of botones) {
       expect(boton.getAttribute('type'), boton.textContent ?? '').toBe('button');
     }
