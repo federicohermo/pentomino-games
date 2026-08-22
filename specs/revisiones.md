@@ -999,3 +999,53 @@ Vale anotarlo junto con lo que el 019 midió, porque juntos corrigen el modelo c
 razonaba: no es que quedaban ~30 px de colchón y este spec gastó ~10, es que la paleta dejó de ser la
 tarjeta más alta y el alto salió de la ecuación. Hay **42 px** antes de que vuelva a mandar (470 − 428),
 y este spec no gastó ninguno.
+
+---
+
+## 2026-08-21 — El spec 021: un piso que cambia de significado, y un `overflow` que faltaba
+
+### Lo que el spec ya sabía, y conviene no perder
+
+El hallazgo mejor del 021 estaba escrito antes de implementarlo, y es el que da título a esta entrada:
+**el piso de la celda se movió de 60 a 73 sin que nadie remidiera nada**, porque cambió el régimen
+tipográfico. El 60 estaba medido con un `Range` sobre el nodo de texto y era correcto **con la fuente
+clavada en 19 px**; al volverla proporcional a la celda, a celda 60 la nota renderiza a 15,6 px, o sea
+por debajo del tamaño que el propio repo había medido como necesario. El número no envejeció: envejeció
+su premisa.
+
+Es la misma familia que el hallazgo del 019 —un colchón que se agranda lo suficiente cambia de signo— y
+tiene el mismo corolario: **cuando un número medido se lee de nuevo, hay que releer contra qué se
+midió**, no sólo el número.
+
+### Lo que salió distinto: AC5 pedía un `max-height` que ninguna tarea nombraba
+
+AC5 tiene dos mitades. La primera —abajo de 730 px de viewport el tablero scrollea horizontal y la celda
+se queda en 73— salió del `overflow-x-auto` que ya estaba, sin tocar nada. La segunda —«abajo de 438 px
+de alto el desborde vertical lo absorbe **el contenedor del tablero**, no la página»— **no salía**, y
+ninguna tarea decía por qué.
+
+Medido en el DOM con el raíz a 380 px de alto: la página no scrolleaba, correcto, pero el contenedor del
+tablero tampoco. Las dos filas de abajo quedaban **recortadas y sin forma de llegar**. La razón es que
+el contenedor de la grilla crece con su contenido, así que el que desbordaba era el raíz — y el raíz es
+`overflow-hidden`, que es lo que hace cierta la primera mitad de AC1. O sea que las dos mitades de AC5
+se estaban peleando: el `overflow-hidden` que impide el scroll de página era el mismo que se comía las
+filas.
+
+La salida es una clase: `max-h-full` sobre el contenedor que ya tenía `overflow-x-auto`. Con el tope, el
+que desborda es él y su eje Y —que ya computaba a `auto` por la regla de CSS que prohíbe un `visible`
+junto a un `auto`— pasa a trabajar. Con el tope puesto, 58 px de desborde vertical scrolleados por el
+tablero y cero por la página.
+
+**La lección**: `overflow` no es una propiedad de un nodo, es un contrato entre dos. Un AC que dice «lo
+absorbe X y no Y» hay que leerlo como una afirmación sobre **quién tiene el tope**, y el tope es lo que
+las tareas no nombraban.
+
+### Y dos que la medición confirmó mejor de lo previsto
+
+- **El dock no desborda horizontalmente al piso** (AC19), y las dos tareas que lo iban a resolver —T073,
+  la tabla de columnas contra el contenedor, y T074, la fila de Tempo apilada— eran las dos necesarias.
+  Medido con el dock abierto: `scrollWidth - clientWidth = 0` y tres columnas de miniaturas resueltas
+  por el `auto-fill` contra la caja real, no contra el breakpoint del viewport.
+- **Plegados, las once celdas tapadas bajan a cero.** Es lo que hace que la deuda de accesibilidad que
+  este spec agranda sea acotable: el gesto de destaparlas es un click, y está a un `Tab` porque los dos
+  encabezados son `<button>`.

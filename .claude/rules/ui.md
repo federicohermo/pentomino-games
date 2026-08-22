@@ -13,8 +13,11 @@ paths:
 # UI: el shell y los componentes
 
 `App.tsx` es el shell: estado con `useState` local, derivados, handlers y la composición. Desde el spec
-022 **no declara un solo `useEffect`**: los cuatro de reconciliación viven en `components/use-engine.ts`
-y los dos de entrada en `components/use-input.ts`. **Ninguna función pura y ningún literal de
+022 **no declara un solo `useEffect`**: los cuatro de reconciliación viven en `components/use-engine.ts`,
+los dos de entrada en `components/use-input.ts` y el que mide el viewport para escribir `--cell` en
+`components/use-cell-px.ts` (spec 021). Ese último es el caso que muestra que la regla no es una
+formalidad: un listener de `resize` es exactamente lo que la sección «Los listeners de entrada» ya
+resolvía, y el shell se quedó con el `ref` y la llamada. **Ninguna función pura y ningún literal de
 dominio** — y eso ya no significa «se va a `domain/`»: un `.tsx` no puede exportar nada además del
 componente (`react-refresh/only-export-components`), así que lo que vive acá no se puede testear, pero
 el destino puede ser tanto `domain/` como un `.ts` de `components/`. Es lo que el spec 029 aplicó a los
@@ -101,9 +104,13 @@ distinta y ahí no tiene que pasar nada.
 - **El estado de una pieza no se comunica con su color.** El color es identidad y está medido en
   contraste; la opacidad la tiene tomada el velo de `Playhead`. El muteo usó el canal que quedaba —la
   ausencia de color— y el próximo estado tiene que buscarse el suyo. Ver [DESIGN.md](../../DESIGN.md).
-- **Los `col-span` no viven en `App.tsx`**, sino en la tarjeta de cada componente. Y `CELL_PX` es un
-  número **medido**, no elegido: sale de `min(interior / 10, interior / 6)` sobre la tarjeta real, así
-  que mover un `col-span` obliga a remedirlo en el DOM.
+- **No hay `col-span` ni tarjetas desde el spec 021**: el tablero ocupa el viewport y los dos paneles
+  flotan encima, `fixed`, sin empujar la grilla. El tamaño de celda es
+  `max(73, min(vw / 10, vh / 6))`, vive en la custom property `--cell` y lo escribe
+  `components/use-cell-px.ts`. **Todo lo que dependa de él lo lee de ahí y nunca de una constante** —la
+  grilla, la baldosa entera, el velo, la cabeza lectora y las cajas de los dos flotantes—, que es lo que
+  hace que redimensionar la ventana reposicione las 60 celdas sin un solo re-render. Lo único que se
+  queda fijo es el filete de 1 px de la baldosa, y su porqué está escrito al lado.
 
 ## El árbol de accesibilidad dice lo que el color pinta
 
@@ -177,7 +184,7 @@ operación destructiva sin ninguna otra vía y sin deshacer (`specs/deuda.md`).
   ahí: dos copias de dónde está el cursor son dos formas de que prometa una cosa y el gesto haga otra.
 
 - **El anillo de foco va en la caja de afuera, y son dos propiedades y no una.** Una celda son dos
-  cajas —la de `CELL_PX` y la baldosa redondeada de adentro, con 2 px de aire—, y los canales de la
+  cajas —la de `--cell` y la baldosa redondeada de adentro, con un aire de `2/73` de la celda—, y los canales de la
   baldosa están todos tomados: el fondo es identidad, el blanco es el muteo, el rosa es la jugada
   inválida, el gris es el fantasma, el grosor de borde es la cabeza lectora y la opacidad es el velo.
   La caja de afuera no pinta nada, así que ahí va el foco. Y van **dos** tonos —claro adentro, oscuro

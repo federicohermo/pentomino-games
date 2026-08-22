@@ -5,7 +5,7 @@ una persona y no bloquea el cierre.
 
 ## Paso 1 — `--cell`, la única fuente del tamaño de celda
 
-- [ ] T001 `layout.constants.ts`: `CELL_PX` pasa a `CELL_PX_MIN = 73` (el **piso**, no el tamaño).
+- [x] T001 `layout.constants.ts`: `CELL_PX` pasa a `CELL_PX_MIN = 73` (el **piso**, no el tamaño).
       **El 73 NO se lee de la medición del 019 ni de la del 020**, y hay que decirlo porque el número
       coincide y esa coincidencia invita a encadenarlos. El piso de este spec sale del **§3** del
       research: es la celda donde la nota vale los **19 px** que el repo midió con un `Range` como
@@ -18,7 +18,7 @@ una persona y no bloquea el cierre.
       («que el 019 lo re-derive por geometría y le dé el mismo número es coincidencia aritmética, no
       dependencia»), y la versión anterior de esta tarea lo contradecía. La única cifra del 019 y del
       020 que este spec necesita es ninguna
-- [ ] T002 `layout.constants.ts` (`:1-68`): reescribir el docblock entero — se va la tabla de repartos
+- [x] T002 `layout.constants.ts` (`:1-68`): reescribir el docblock entero — se va la tabla de repartos
       de columnas, se queda la medición del `Range`, y entra **por qué el piso se movió de 60 a 73** al
       volverse proporcional la fuente — **AC15**. **El texto de partida NO es el de `main`**: el 019 ya
       reescribe este mismo docblock (su `T016` agrega una fila a la tabla de «quién manda», su `T017`
@@ -26,23 +26,23 @@ una persona y no bloquea el cierre.
       y su propio `tasks.md:108-113` declara que este `T002` se lo lleva entero. Leer el docblock que
       el 019 deja y reescribir sobre ése: de las dos versiones lo único que sobrevive es la medición
       del `Range` —los 35,4 px de `D#5` a 19 px—, que es lo que el §3 del research re-lee
-- [ ] T003 `layout.constants.ts`: las dos proporciones tipográficas (`19/73 = 0,2603`,
+- [x] T003 `layout.constants.ts`: las dos proporciones tipográficas (`19/73 = 0,2603`,
       `13/73 = 0,1781`) como constantes, con los números que las originaron escritos al lado.
       **El 73 del denominador es el `CELL_PX_MIN` de T001 y no un literal de acá** — derivarlo del
       símbolo y no reescribirlo a mano, que es lo que evita el segundo lugar donde vive el mismo
       número. Lo que **no** hay que hacer es recalcularlas contra la medición del 019 o la del 020:
       esas dos miden un layout que este spec borra, y el piso de acá es tipográfico (T001, research
       §3 y §11). Si alguna de las dos da 72, estas razones **siguen siendo** `19/73` y `13/73`
-- [ ] T004 Pura `cellPxPara(vw, vh)` en `src/components/cell-px.ts`, con la fórmula. Es lo único del
+- [x] T004 Pura `cellPxPara(vw, vh)` en `src/components/cell-px.ts`, con la fórmula. Es lo único del
       spec testeable en `environment: 'node'` — **AC2**
-- [ ] T005 Test en `src/components/__tests__/cell-px.test.ts` con la tabla de viewports del research
+- [x] T005 Test en `src/components/__tests__/cell-px.test.ts` con la tabla de viewports del research
       (ocho casos, incluidos los dos donde gana el piso) — **AC2**, **AC5**. **No lleva `[P]`**: la
       escribe contra la firma de T004, así que depende de ella. **Y la tabla tampoco es un literal
       independiente**: sus dos últimas filas (430×932 y 375×667) son las dos donde gana el piso, así
       que su valor esperado es el `CELL_PX_MIN` de T001 y no un `73` escrito a mano. Lo que **no** las
       mueve es la medición del 019 ni la del 020: el piso es tipográfico (T001), así que esas dos
       celdas valen 73 aunque el navegador de aquéllas hubiera dado otra cosa
-- [ ] T054 `src/App.tsx`: `ref` propio sobre el **contenedor raíz** (el que el paso 3 deja a `100dvh`)
+- [x] T054 `src/App.tsx`: `ref` propio sobre el **contenedor raíz** (el que el paso 3 deja a `100dvh`)
       para colgar ahí `--cell`. **No es `boardRef`**: la custom property hereda hacia abajo y los dos
       flotantes de T017/T018 son `fixed` fuera de `Board`, así que colgada de `boardRef`
       (hoy `Board.tsx:294`, no `:193`: el 026 reescribió el archivo entero y lo corrió 101 líneas) el
@@ -50,7 +50,7 @@ una persona y no bloquea el cierre.
       una celda: las 60 celdas van `key={i}` y **sin refs ni `data-*`** (`.claude/rules/ui.md:43-47`),
       y esta tarea no toca esa regla. `boardRef` queda como está, para los listeners del 013 —
       **AC8**, **AC9**
-- [ ] T006 **El efecto NO va en `App.tsx`**, y esto corrige lo que este spec decía. Desde el 022 el
+- [x] T006 **El efecto NO va en `App.tsx`**, y esto corrige lo que este spec decía. Desde el 022 el
       shell **no declara un solo `useEffect`** —`.claude/rules/ui.md:15-16`, `CLAUDE.md:136-138`,
       `docs/architecture/overview.md:22`, `:74` y `:180`—, y hoy el archivo ni siquiera lo importa
       (`App.tsx:1`: `useMemo, useState, useRef, useCallback`). Un listener de `resize` es exactamente
@@ -64,19 +64,19 @@ una persona y no bloquea el cierre.
       re-renderiza las 60 celdas por evento de resize, que es el re-render que la custom property
       existe para evitar (§1). Con el hook el cableado además es testeable con `renderHook` en el
       proyecto `browser` — ver T064, que el umbral 100 del 029 vuelve obligatorio
-- [ ] T043 `src/components/use-cell-px.ts` (no `App.tsx`, ver T006): la primera escritura de `--cell`
+- [x] T043 `src/components/use-cell-px.ts` (no `App.tsx`, ver T006): la primera escritura de `--cell`
       va en `useLayoutEffect` y no en `useEffect`. Con `--cell` sin definir, `repeat(10, var(--cell))`
       es inválido y la grilla colapsa a una columna durante el primer cuadro. Como el efecto vive en un
       hook de `components/`, las cuatro afirmaciones de `docs/`, `CLAUDE.md` y `.claude/rules/` sobre el
       shell **siguen siendo ciertas**, y T049/T059/T060 pasan de reescribirlas a verificarlas
-- [ ] T007 `App.tsx`: `100dvh` (o `visualViewport.height` cuando existe) y no `100vh` — en iOS `100vh`
+- [x] T007 `App.tsx`: `100dvh` (o `visualViewport.height` cuando existe) y no `100vh` — en iOS `100vh`
       incluye la barra del navegador y el tablero salta. El `vh` que entra a la fórmula de T004 y el
       alto del contenedor tienen que ser **el mismo número**: si uno mide `innerHeight` y el otro
       `100dvh`, la celda se calcula contra un alto que la caja no tiene y el tablero desborda por unos
       píxeles sin que nada falle
-- [ ] T008 Comentario en `use-cell-px.ts`: por qué `setProperty` sobre el ref y **no**
+- [x] T008 Comentario en `use-cell-px.ts`: por qué `setProperty` sobre el ref y **no**
       `style={{ '--cell': … }}`, que pide un `as React.CSSProperties`
-- [ ] T064 `src/components/__tests__/use-cell-px.browser.test.tsx`: el **cableado** del hook, montado
+- [x] T064 `src/components/__tests__/use-cell-px.browser.test.tsx`: el **cableado** del hook, montado
       con `renderHook` como los dos hooks del 022. T005 cubre la pura y no toca el DOM; esto cubre lo
       otro, que es donde estarían los bugs: que `--cell` quede escrita **con unidad**, que se escriba
       antes del primer paint, que un `resize` la reescriba, y que la limpieza saque el listener
@@ -85,17 +85,17 @@ una persona y no bloquea el cierre.
 
 ## Paso 2 — El tablero deriva todo de `--cell`
 
-- [ ] T009 `Board.tsx`: `gridTemplateColumns: repeat(10, var(--cell))` y la celda a `var(--cell)`.
+- [x] T009 `Board.tsx`: `gridTemplateColumns: repeat(10, var(--cell))` y la celda a `var(--cell)`.
       **El `gridTemplateColumns` ya no está en el contenedor**: el 026 metió filas de verdad
       (`role="row"`) y lo mudó a la fila (`Board.tsx:327`), así que se escribe una vez y se evalúa
       seis. La caja de la celda es el `const caja: CSSProperties = { width: CELL_PX, height: CELL_PX }`
       de `:412`, que es el mismo objeto donde el 026 cuelga el anillo de foco — ver T065. El `w-max`
       del contenedor (`:314`) **se queda**: es de lo que depende el `overflow-x-auto`
-- [ ] T010 `Board.tsx`: la nota a `calc(var(--cell) * 0.2603)` y el `#N` a `calc(var(--cell) * 0.1781)`
+- [x] T010 `Board.tsx`: la nota a `calc(var(--cell) * 0.2603)` y el `#N` a `calc(var(--cell) * 0.1781)`
       — **AC3**. Hoy son el `text-[19px]` de la baldosa (`:522`) y el `text-[13px]` del `#N` (`:527`),
       los dos clases de Tailwind: pasan a estilo inline, que es lo que `.claude/rules/ui.md:86-87` ya
       manda para todo lo que salga de una constante
-- [ ] T011 `Board.tsx`: el aire entre baldosas, el redondeo y la posición del `#N` pasan a `calc()`
+- [x] T011 `Board.tsx`: el aire entre baldosas, el redondeo y la posición del `#N` pasan a `calc()`
       con su proporción de hoy sobre 73. No es cosmética: de esas tres medidas depende que la baldosa
       «se lea como una ficha y no como un casillero» — **AC18**. Dónde están hoy, después del 026: el
       aire es el `p-0.5` de `:483` (la caja de afuera, no la baldosa) y el redondeo aparece **dos
@@ -104,7 +104,7 @@ una persona y no bloquea el cierre.
       (su comentario, `:477-482`): se convierten las dos o el anillo deja de seguir el radio. La
       posición del `#N` es el `bottom-0.5 right-1.5` de `:527`. **Y del aire de `:483` cuelgan
       `ANILLO_FOCO_OSCURO` y `ANILLO_FOCO_CLARO`** — ver T065, que es trabajo nuevo traído por el 026
-- [ ] T065 `layout.constants.ts` + `Board.tsx`: **el anillo de foco del spec 026 es el sexto número
+- [x] T065 `layout.constants.ts` + `Board.tsx`: **el anillo de foco del spec 026 es el sexto número
       fijo de la baldosa, y este spec lo rompe.** No estaba escrito acá porque el 026 se mergeó después
       de redactarse este spec. `ANILLO_FOCO_OSCURO` y `ANILLO_FOCO_CLARO` valen **2 px cada uno**
       (`layout.constants.ts:158-159`) y su docblock (`:118-157`) deriva los dos números **del aire de
@@ -117,14 +117,14 @@ una persona y no bloquea el cierre.
       la `W`). Los dos pasan a `calc()` con su razón sobre 73 (`2/73 = 0,0274`), incluido el
       `outlineOffset` negativo de `Board.tsx:416`, que es la suma de los dos; y el docblock se reescribe
       con el reparto dicho en proporciones y no en px — **AC21**
-- [ ] T012 `Board.tsx`: muere la tarjeta (`col-span-8 bg-white rounded-2xl shadow p-4`) y con ella la
+- [x] T012 `Board.tsx`: muere la tarjeta (`col-span-8 bg-white rounded-2xl shadow p-4`) y con ella la
       tabla de repartos del docblock — **AC1**
-- [ ] T013 `Board.tsx`: **conservar** el `overflow-x-auto` y su comentario — sigue siendo lo que evita
+- [x] T013 `Board.tsx`: **conservar** el `overflow-x-auto` y su comentario — sigue siendo lo que evita
       que la grilla empuje scroll horizontal a la página cuando gana el piso — **AC5**
-- [ ] T053 `Board.tsx`: el `pb-2` de la baldosa (`:522`, con su comentario en `:511-519`) es el
+- [x] T053 `Board.tsx`: el `pb-2` de la baldosa (`:522`, con su comentario en `:511-519`) es el
       **cuarto** número fijo, y ese comentario lo declara portante («no es estética: es lo que deja
       crecer la nota»). Pasa a `calc()` con `8/73 = 0,1096` — **AC18**
-- [ ] T062 `Board.tsx`: el `border border-slate-900` de la baldosa (hoy `:522`, no `:292`) es el **quinto** número
+- [x] T062 `Board.tsx`: el `border border-slate-900` de la baldosa (hoy `:522`, no `:292`) es el **quinto** número
       fijo y **se queda fijo a propósito** —es la única de las cinco que no se convierte—. Escribir el
       porqué al lado, porque sin eso el próximo que lea el archivo lo va a leer como un olvido de este
       spec: (a) un filete de 1 px es un **delimitador**, no un elemento tipográfico —`DESIGN.md:83` ya
@@ -144,7 +144,7 @@ una persona y no bloquea el cierre.
       separando las baldosas y no desaparece contra el fondo. Es lo que vuelve falsable a T062: la
       decisión de dejarlo fijo se apoya en que a 180 todavía se lee, y eso es exactamente lo que ningún
       cálculo contesta — **AC20**
-- [ ] T014 Los **seis** sitios que dependen del tamaño de celda pasan a `calc(var(--cell) * n)`.
+- [x] T014 Los **seis** sitios que dependen del tamaño de celda pasan a `calc(var(--cell) * n)`.
       **No están todos en `Playhead.tsx` y ninguna de las líneas que este spec citaba existe**: el 029
       sacó el bucle a `playhead-loop.ts` para poder testearlo, y `Playhead.tsx` quedó en 108 líneas.
       `find_symbol CELL_PX` da **tres** consumidores, no dos. Los seis, hoy:
@@ -159,7 +159,7 @@ una persona y no bloquea el cierre.
       cual; el sexto es una prop de estilo de React. Convertidos, `playhead-loop.ts` deja de importar
       `CELL_PX` y su comentario de `:136-138` —«las coordenadas salen de `CELL_PX`, que es una
       constante»— pasa a ser falso: lo reescribe T015 — **AC6**, **AC17**
-- [ ] T044 `VELO_CAJA` (`'absolute p-[2px]'`) y el `rounded-lg` de `VELO_TAPA` repiten **a propósito**
+- [x] T044 `VELO_CAJA` (`'absolute p-[2px]'`) y el `rounded-lg` de `VELO_TAPA` repiten **a propósito**
       el aire y el redondeo de la baldosa de `Board.tsx`, y su docblock lo dice. **Ya no están en
       `Playhead.tsx:129-130`**: el 029 los mudó a `src/components/constants/playhead.constants.ts:83-84`,
       con su docblock en `:77-82`. Si T011/T053 los vuelven `calc()` allá y acá quedan literales, el
@@ -168,13 +168,13 @@ una persona y no bloquea el cierre.
       (`.claude/rules/ui.md:86-87`): el aire y el radio del velo pasan a estilo inline escrito por
       `rearmar` (`playhead-loop.ts:71-79`), al lado de las cuatro escrituras de T014, y el docblock de
       las dos constantes tiene que decir qué quedó en la clase y qué se fue al estilo — **AC17**
-- [ ] T055 `Playhead.tsx`: el **segundo par**, el de la cabeza y no el del velo — el `p-0.5` de su
+- [x] T055 `Playhead.tsx`: el **segundo par**, el de la cabeza y no el del velo — el `p-0.5` de su
       caja (hoy `:99`, dentro del `className`) y el `rounded-lg` de su resalte (hoy `:104`), cuyo
       comentario al lado (hoy `:102-103`)
       dice «Misma caja que la baldosa de `Board.tsx` —2 px de aire y `rounded-lg`— para que el borde
       cubra la celda exacta y no medio pixel afuera». Con T011 en `calc()` y estos dos literales, a
       celda 180 el anillo de la cabeza cubre 2 px de aire sobre una baldosa que tiene 4,9 — **AC17**
-- [ ] T015 Docblock con por qué, y va **en los dos archivos**, porque el 029 partió el componente del
+- [x] T015 Docblock con por qué, y va **en los dos archivos**, porque el 029 partió el componente del
       bucle: en `Playhead.tsx` (`:6-64`), por qué la cabeza sigue fuera del estado de React (**AC7**) y
       sigue alineada al redimensionar (**AC6**) —las dos leen el mismo valor, resuelto por el
       navegador—; y en `playhead-loop.ts`, el reemplazo del comentario de `:136-138`, que hoy explica
@@ -183,14 +183,14 @@ una persona y no bloquea el cierre.
 
 ## Paso 3 — El layout de la página
 
-- [ ] T016 `App.tsx`: mueren el `min-h-screen … p-4` de `:323` y el `max-w-6xl mx-auto grid
+- [x] T016 `App.tsx`: mueren el `min-h-screen … p-4` de `:323` y el `max-w-6xl mx-auto grid
       grid-cols-12 gap-4` de `:324`; el tablero centrado a pantalla, sin scroll vertical de página —
       **AC1**. **`bg-fondo text-slate-900` del raíz sobreviven**: el 028 hizo del `div` raíz uno de los
       cuatro lugares donde vive el color de fondo, y `src/__tests__/fondo-sincronizado.test.ts` existe
       para que no se desincronicen. Y el `<div aria-live="polite" className="sr-only">` de `:428` (spec
       026) **se queda**: es `sr-only`, así que no ocupa layout, pero tiene que seguir montado desde el
       primer render o el primer anuncio no se escucha (su comentario, `:412-427`)
-- [ ] T017 `PiecePalette.tsx`: de tarjeta en columna a dock `fixed` pegado al borde derecho, centrado
+- [x] T017 `PiecePalette.tsx`: de tarjeta en columna a dock `fixed` pegado al borde derecho, centrado
       en vertical — **AC8**. **La barrera de memoización del 027 no se toca y hay que dejarlo dicho**:
       `orientacion` es un `useMemo` de `App.tsx:313-320` y `OrientationPanel` está envuelto en `memo`
       (`OrientationPanel.tsx:31`), y las dos mitades son **una sola** barrera —«sin el `useMemo`, la
@@ -208,17 +208,17 @@ una persona y no bloquea el cierre.
       Los dos los acaba de reescribir el 019 (su `T035`, su `T011`) y el 020 le suma el comentario del
       `0°` (su `T017`): esto no es rehacer su trabajo, es **cambiarles el marco**. Anclar por texto y
       no por número de línea
-- [ ] T018 `App.tsx`: el espectro pasa a franja `fixed` abajo a la izquierda — **AC8**
-- [ ] T019 Comentario junto a las clases de posición de los dos: las posiciones salen de la medición y
+- [x] T018 `App.tsx`: el espectro pasa a franja `fixed` abajo a la izquierda — **AC8**
+- [x] T019 Comentario junto a las clases de posición de los dos: las posiciones salen de la medición y
       dejan libres `(0,0)` y `(9,5)`, que es donde el circuito cierra (009) y donde arranca la cabeza
       (010). Leyendo `fixed right-4 top-1/2` no se adivina — **AC9**
-- [ ] T045 Las cajas de los dos flotantes se miden **en celdas**, no en px: dock `2 × 4`, franja
+- [x] T045 Las cajas de los dos flotantes se miden **en celdas**, no en px: dock `2 × 4`, franja
       `3 × 1`, vía `calc(var(--cell) * n)`. Con px fijos, a 1366×768 el dock tapa `(9,5)` (§4 del
       research) — **AC9**
-- [ ] T046 `src/components/PiecePalette.tsx`: scroll interno propio. A `CELL_PX = 73` el dock queda en
+- [x] T046 `src/components/PiecePalette.tsx`: scroll interno propio. A `CELL_PX = 73` el dock queda en
       146 × 292 px y el panel mide hoy del orden de 349 × 496 (medición sobre `main`; el 019 y el 020
       la mueven, ver §4 del research) — sin scroll, crece y se come celdas — **AC19**
-- [ ] T073 `src/components/OrientationPanel.tsx`: **el scroll de T046 es vertical y el problema del
+- [x] T073 `src/components/OrientationPanel.tsx`: **el scroll de T046 es vertical y el problema del
       dock también es de ancho.** La grilla de las doce miniaturas es hoy
       `grid-cols-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6` (`OrientationPanel.tsx:66`), o sea
       columnas atadas al **breakpoint del viewport** — y después de este spec el ancho del contenedor
@@ -234,7 +234,7 @@ una persona y no bloquea el cierre.
       `md:col-span-4` que se declara «la premisa de la tabla de columnas de `OrientationPanel.tsx`»,
       pero la tabla misma queda con la premisa vieja adentro. Falsable donde AC19 ya pide: al piso,
       146 × 292, sin desborde horizontal — **AC19**
-- [ ] T074 `src/components/TransportPanel.tsx`: **la fila de transporte tiene el mismo problema en el
+- [x] T074 `src/components/TransportPanel.tsx`: **la fila de transporte tiene el mismo problema en el
       mismo eje.** El bloque de Tempo es un `flex items-center justify-between` con la etiqueta, el
       `<input type="range">` y un lector `tabular-nums w-16` (64 px clavados) — tres cosas en una
       fila, dimensionadas para la tarjeta de ~349 px que este spec borra, no para 146. Y abajo el
@@ -244,7 +244,7 @@ una persona y no bloquea el cierre.
       —eso corta lo que sobra por abajo, no lo que sobra por el costado— ni con `overflow-x`, que es
       justamente el desborde que AC19 prohíbe. Es el archivo que el 019 y el 020 acaban de tocar, así
       que anclar por texto y no por número de línea — **AC19**
-- [ ] T066 `src/components/Spectrum.tsx`: **la franja de `3 × 1` celdas no entra, y AC19 sólo mide el
+- [x] T066 `src/components/Spectrum.tsx`: **la franja de `3 × 1` celdas no entra, y AC19 sólo mide el
       dock.** A `CELL_PX = 73` la franja mide 219 × **73 px**, y adentro tienen que caber el
       `<h2>Señal</h2>` que T022 vuelve `<button>` (`text-lg font-semibold mb-2`, ~28 px + 8 de margen)
       **más** el `<div className="h-24 w-full">` de `Spectrum.tsx:26`, que son **96 px clavados**: 132
@@ -254,21 +254,21 @@ una persona y no bloquea el cierre.
       coherente con el resto del spec. Ojo con el orden: quien observa ese `div` es el
       `ResizeObserver` de `spectrum-loop.ts:118`, así que cambiarle el alto es justamente lo que T024
       verifica — **AC22**, **AC9**
-- [ ] T047 `src/App.tsx`: el `<footer>` con la leyenda de gestos (**hoy `:433-439`**, con su
+- [x] T047 `src/App.tsx`: el `<footer>` con la leyenda de gestos (**hoy `:433-439`**, con su
       comentario en `:430-432`; ni `:446-455` ni `:303-309`, que son dos estados anteriores del
       archivo — el 025 y el 026 lo volvieron a correr y `App.tsx` está en 442 líneas) **se muda adentro de un flotante**, no se
       borra: es hoy el único lugar donde los cuatro gestos del 013 están escritos, y dejarlo debajo del
       tablero da scroll vertical de página — **AC1**, **AC16**
-- [ ] T020 `z-index` explícito por encima del tablero, y fondo semiopaco con `backdrop-blur`: abajo hay
+- [x] T020 `z-index` explícito por encima del tablero, y fondo semiopaco con `backdrop-blur`: abajo hay
       celdas con nota, y un panel opaco las esconde mientras uno translúcido dice que están ahí
 
 ## Paso 4 — Plegar y desplegar
 
-- [ ] T021 `App.tsx`: dos `useState<boolean>`, los dos en `true` — **AC10**
-- [ ] T022 El encabezado de cada panel es un `<button>` con `aria-expanded` y `aria-controls`. Si no,
+- [x] T021 `App.tsx`: dos `useState<boolean>`, los dos en `true` — **AC10**
+- [x] T022 El encabezado de cada panel es un `<button>` con `aria-expanded` y `aria-controls`. Si no,
       es un control que sólo existe para el mouse, y este spec ya agranda esa deuda
-- [ ] T023 Plegado deja **sólo** el encabezado, no un icono suelto: el panel sigue diciendo qué es
-- [ ] T072 **Plegar OCULTA, no desmonta**, y de eso dependen dos cosas medidas. (a) **AC11**: el
+- [x] T023 Plegado deja **sólo** el encabezado, no un icono suelto: el panel sigue diciendo qué es
+- [x] T072 **Plegar OCULTA, no desmonta**, y de eso dependen dos cosas medidas. (a) **AC11**: el
       `ResizeObserver` de `spectrum-loop.ts:118` redibuja porque su contenedor **cambia de tamaño**; si
       plegar desmonta el `<canvas>`, no hay observador que se dispare —se ejecuta la limpieza de
       `iniciarEspectro` y al desplegar se monta un loop nuevo—, así que la premisa de T024 y de AC11
@@ -285,12 +285,12 @@ una persona y no bloquea el cierre.
 
 ## Paso 5 — Reescribir lo que dejó de ser cierto
 
-- [ ] T025 [P] `MINI_CELL_PX`: su docblock justifica el tamaño con «la paleta manda el alto de toda la
+- [x] T025 [P] `MINI_CELL_PX`: su docblock justifica el tamaño con «la paleta manda el alto de toda la
       fila». **Con el layout nuevo no hay fila** — el argumento entero desaparece y hay que
       reemplazarlo por el que corresponda al dock
-- [ ] T026 [P] `docs/guides/conventions.md:247-248`: las celdas ya no se dimensionan con
+- [x] T026 [P] `docs/guides/conventions.md:247-248`: las celdas ya no se dimensionan con
       `style={{ width: CELL_PX, … }}` sino con `var(--cell)`
-- [ ] T059 [P] `docs/architecture/overview.md`: **el archivo afirma en presente que el shell no tiene
+- [x] T059 [P] `docs/architecture/overview.md`: **el archivo afirma en presente que el shell no tiene
       efectos, y son TRES lugares y no dos** — el diagrama, «el shell, sin un solo efecto» (`:22`); la
       prosa de «Qué vive dónde», «con **cero `useEffect`**» (`:74`); y **`:180`**, que este spec no
       tenía: «`App.tsx` no declara un solo `useEffect`». Con T006/T043 poniendo el efecto en
@@ -307,14 +307,14 @@ una persona y no bloquea el cierre.
       porque este spec mergea segundo. Es el mismo trabajo a mano que `specs/revisiones.md`
       (2026-08-20) documenta al renombrar `motor.ts` a `engine-bridge.ts`, siete columnas más ancho —
       y es el único archivo compartido del lote que el `log.md` no declaraba
-- [ ] T060 [P] `CLAUDE.md`: la línea 4 de «Arquitectura» está hoy en **`:136-138`** (no `:74-76`) y
+- [x] T060 [P] `CLAUDE.md`: la línea 4 de «Arquitectura» está hoy en **`:136-138`** (no `:74-76`) y
       dice «el shell: estado, derivados, handlers y la composición. Desde el spec 022 **sin un solo
       `useEffect`**: los cuatro de reconciliación viven en `components/use-engine.ts` y los dos de
       entrada en `components/use-input.ts`». Con T006/T043 la frase **sigue siendo cierta**: la tarea
       es verificarlo y agregar el tercer hook —`use-cell-px.ts`, el que escribe `--cell` al medir el
       viewport— a la enumeración. **No** cambiarla por «con un `useEffect`», que es lo que este spec
       decía antes de que el efecto se mudara al hook
-- [ ] T048 [P] `DESIGN.md:79-83`: la tabla afirma en presente `CELL_PX` **73**, «Tablero **730 × 438
+- [x] T048 [P] `DESIGN.md:79-83`: la tabla afirma en presente `CELL_PX` **73**, «Tablero **730 × 438
       px**», «Tarjeta del tablero **`md:col-span-8`**» y —las dos filas que faltaban en esta lista—
       «Aire de la baldosa **2 px** por lado» y «Borde de la baldosa **1 px**». Y `:99-102` (la baldosa
       con sus medidas fijas) y `:110-114` (el párrafo de debajo de `md`, que habla del «panel» y de los
@@ -322,7 +322,7 @@ una persona y no bloquea el cierre.
       tenía, porque la escribió el 026**: `:237-242`, «Cada celda son dos: la de `CELL_PX` y la baldosa
       redondeada de adentro, **con 2 px de aire** entre las dos», que es de donde sale el anillo de
       foco de T065 — el mismo «2 px» en presente, dicho por tercera vez en el repo
-- [ ] T049 [P] `.claude/rules/ui.md`, **tres regiones del mismo archivo** —por eso van en una sola
+- [x] T049 [P] `.claude/rules/ui.md`, **tres regiones del mismo archivo** —por eso van en una sola
       tarea y no en tres `[P]` que se pisarían—. Ninguna de las líneas que este spec citaba sigue
       donde estaba: el 025, el 026 y el 029 agregaron tres secciones y el archivo está en 251 líneas.
       1. **`:103-105`** (era `:66-68`, después `:84-86`), bajo «## El tablero se edita en el tablero»:
@@ -342,7 +342,7 @@ una persona y no bloquea el cierre.
          — lo único que cambia es que ahora los hooks son tres: se agrega `use-cell-px.ts` a la
          enumeración. Tampoco tocar `:84-85`, que dice en pasado «la que le sacó al shell sus seis
          `useEffect` con el spec 022»
-- [ ] T027 [P] `specs/deuda.md`: anotar **en qué** este spec agranda la deuda de accesibilidad del
+- [x] T027 [P] `specs/deuda.md`: anotar **en qué** este spec agranda la deuda de accesibilidad del
       tablero. **Los tres puntos de los Límites de Alcance están escritos contra el tablero de antes
       del 025 y del 026, que ya están en `main`, y con ellos puestos dos de los tres cambian de
       forma:**
@@ -366,7 +366,7 @@ una persona y no bloquea el cierre.
 
 ## Verificación
 
-- [ ] T028 `pnpm verify` en verde
+- [x] T028 `pnpm verify` en verde
 - [ ] T029 [M] **El criterio del spec**: redimensionar la ventana **con el transporte corriendo** y
       confirmar que la cabeza lectora sigue clavada en su celda — **AC6**, **AC7**
 - [ ] T030 [M] Navegador: medir `CELL_PX` efectivo en cinco viewports y contrastarlo con la tabla del
@@ -398,7 +398,7 @@ una persona y no bloquea el cierre.
 - [ ] T058 [M] Navegador: en un viewport apaisado y bajo (`vh < 438`, p. ej. 1280 × 400) el desborde
       vertical lo absorbe el contenedor del tablero y **no la página** — es la mitad de **AC5** que
       T037 no cubre, y la que sostiene **AC1** en ese viewport — **AC5**, **AC1**
-- [ ] T067 `src/components/__tests__/Board.browser.test.tsx`: **hay tests que afirman la geometría en
+- [x] T067 `src/components/__tests__/Board.browser.test.tsx`: **hay tests que afirman la geometría en
       px y este spec los rompe.** `:74-80` («cada una mide CELL_PX») y `:83-99` («la grilla mide 10 ×
       CELL_PX y NO le empuja scroll horizontal a la página») comparan `getBoundingClientRect()` contra
       `CELL_PX`, que después de T001 ya no existe con ese nombre ni con ese significado. Y `Board` se
@@ -406,13 +406,13 @@ una persona y no bloquea el cierre.
       colapsa a una columna: el test tiene que escribir `--cell` sobre el nodo que monta, que es la
       forma de que además verifique la herencia. `:424-429` (el anillo no agranda la región
       scrolleable) se conserva y se re-corre a celda 180, que es donde el anillo de T065 es más grande
-- [ ] T068 `src/components/__tests__/Playhead.browser.test.tsx`: mismo caso. `:86-95` compara
+- [x] T068 `src/components/__tests__/Playhead.browser.test.tsx`: mismo caso. `:86-95` compara
       `cabeza.style.transform` contra la cadena exacta `translate(${3 * CELL_PX}px, ${2 * CELL_PX}px)`
       y `:176-178` compara `tapas[0].style.left` y `.width` contra `${CELL_PX}px`. Después de T014 el
       valor escrito es un `calc(var(--cell) * n)`, así que el test pasa a leer el **computado**
       (`getComputedStyle`) con un `--cell` puesto por él: comparar la cadena literal volvería a atar el
       test a la sintaxis en vez de a la posición
-- [ ] T069 `src/__tests__/App.browser.test.tsx:139`: el caso se llama «monta las **tres tarjetas** y el
+- [x] T069 `src/__tests__/App.browser.test.tsx:139`: el caso se llama «monta las **tres tarjetas** y el
       pie con los gestos», y este spec deja cero tarjetas y muda el pie adentro de un flotante (T012,
       T016, T017, T018, T047). Reescribirlo contra lo que el layout nuevo promete —el tablero, los dos
       flotantes y la leyenda de gestos alcanzable— y **por rol y nombre, nunca por `className`**, que
@@ -426,7 +426,7 @@ una persona y no bloquea el cierre.
       la `W` (`#0000FF`), las dos bandas del anillo se siguen viendo — que es la promesa del docblock
       de `ANILLO_FOCO_*` y lo que T065 tiene que conservar. Es la contraparte falsable de T065, y el
       caso que sólo se ve al techo — **AC21**
-- [ ] T061 [P] `specs/016-la-pieza-se-ve-antes-de-colocarse/tasks.md`: declarar que este spec cierra su
+- [x] T061 [P] `specs/016-la-pieza-se-ve-antes-de-colocarse/tasks.md`: declarar que este spec cierra su
       `T033`. Proponía «alinear la grilla arriba y dejar el sobrante abajo» si el aire muerto de la
       tarjeta del tablero quedaba feo, y acá **muere la tarjeta entera** (T012): no queda ni aire que
       alinear ni tarjeta donde hacerlo. Ya está marcada cerrada del lado del 016 —esto es la otra
@@ -434,9 +434,9 @@ una persona y no bloquea el cierre.
 
 ## PR
 
-- [ ] T038 Rama `feature/021-el-tablero-es-la-pantalla`
+- [x] T038 Rama `feature/021-el-tablero-es-la-pantalla`
 - [ ] T039 Actualizar la fila del 021 en `specs/log.md` a `Implementado`
-- [ ] T040 Anotar en `specs/revisiones.md` qué se aprendió — el piso que se movió de 60 a 73 al
+- [x] T040 Anotar en `specs/revisiones.md` qué se aprendió — el piso que se movió de 60 a 73 al
       cambiar de régimen tipográfico es candidato
 
 ## Seguimiento (no bloquea)
