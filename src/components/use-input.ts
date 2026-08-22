@@ -50,9 +50,12 @@ interface Acciones {
 /**
  * `Shift` rota, `Ctrl` refleja, la barra espaciadora es el transporte, la letra elige.
  *
- * Las dependencias son las REALES —las identidades de los tres callbacks, que del lado
- * del shell dependen de `rotation`, `mirror` y `playing`— y el efecto se re-suscribe
- * cuando cambian. La alternativa es un ref con el estado para suscribir una sola vez, que
+ * Las dependencias son las REALES —las identidades de los cuatro callbacks: tres dependen
+ * del lado del shell de `rotation`, `mirror` y `playing`, y `seleccionar` no depende de
+ * nada porque envuelve un setter— y el efecto se re-suscribe cuando cambian. Que uno de
+ * los cuatro sea estable no lo saca del array: sacarlo escondería que su identidad importa
+ * igual, y el día que deje de serlo el efecto se quedaría con el callback viejo.
+ * La alternativa es un ref con el estado para suscribir una sola vez, que
  * es la optimización que este repo no necesita: son dos `addEventListener` sobre
  * `window`, no un costo, y el ref escondería de dónde sale cada valor.
  *
@@ -63,9 +66,10 @@ interface Acciones {
  * `Shift` ni `Ctrl`, que con una celda enfocada siguen rotando y reflejando.
  *
  * Los cuatro campos van a las dependencias por SEPARADO y el objeto `acciones` NO entra
- * crudo: un literal `{ rotar, reflejar, transporte }` armado en el shell tiene identidad
- * nueva en cada render, así que con el objeto en el array el efecto se re-suscribiría por
- * render en vez de por cambio de la orientación — peor que hoy, y sin que nada falle.
+ * crudo: un literal `{ rotar, reflejar, transporte, seleccionar }` armado en el shell tiene
+ * identidad nueva en cada render, así que con el objeto en el array el efecto se
+ * re-suscribiría por render en vez de por cambio de la orientación — peor que hoy, y sin
+ * que nada falle.
  */
 export function useAtajosDeTeclado(acciones: Acciones, tapLimpio: RefObject<boolean>): void {
   const { rotar, reflejar, transporte, seleccionar } = acciones;

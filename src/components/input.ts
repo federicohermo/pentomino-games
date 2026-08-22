@@ -164,8 +164,9 @@ export function accionDeTecla(e: EventoDeTecla): Accion | null {
 /**
  * Si el navegador **no** puede quedarse el evento entero.
  *
- * Es una pregunta distinta de la de `accionDeTecla` aunque parezca la misma, y las
- * separa un solo caso: la barra con auto-repeat. Ahí `accionDeTecla` devuelve `null`
+ * Es una pregunta distinta de la de `accionDeTecla` aunque parezca la misma, y hoy las
+ * separan los TRES casos que enumera el docblock de aquélla. El que la hizo nacer es la
+ * barra con auto-repeat. Ahí `accionDeTecla` devuelve `null`
  * —mantenerla apretada no tiene que alternar el transporte treinta veces por segundo—
  * pero el default sigue vivo, porque **cada `keydown` repetido trae el suyo** y el de
  * la barra es scrollear. Fundidas en una sola pregunta, un tap un poco largo arrancaba
@@ -186,7 +187,10 @@ export function accionDeTecla(e: EventoDeTecla): Accion | null {
  * es un efecto que nadie pidió.
  *
  * Los modificadores no aparecen acá: `Shift` y `Control` sueltos no tienen ningún
- * default que frenar, ni al bajar ni al soltar.
+ * default que frenar, ni al bajar ni al soltar. Y las doce letras del spec 018 tampoco: son
+ * el tercer caso y el primero del lado inverso —hay acción y NO hay que frenar nada—, que
+ * es todo AC6 del 018: una letra suelta no tiene default que frenar, y frenarlo igual sería
+ * quitarle al navegador un evento que no es nuestro.
  */
 export function frenaElDefault(e: EventoDeTecla): boolean {
   return !e.targetEsControl && e.key === ' ' && e.tipo === 'keydown';
