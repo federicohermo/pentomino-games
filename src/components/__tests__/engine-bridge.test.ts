@@ -8,6 +8,7 @@ import { REGIMEN } from '../../domain/constants/music.constants.ts';
 import type { PieceKey } from '../../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../../domain/types/board.types.ts';
 import type { MotorDeTransporte } from '../types/engine.types.ts';
+import { GRID_DEFAULT } from '../../domain/constants/board.constants.ts';
 
 /**
  * `engine-bridge.ts` es el único puente entre el `Sequence` del dominio y el del motor, y hasta
@@ -47,7 +48,7 @@ const colocar = (piece: PieceKey, rot: number, mirror: boolean, x: number, y: nu
  */
 const CON_CRUCE = [colocar('X', 0, false, 1, 1), colocar('F', 0, false, 3, 2), colocar('N', 0, false, 2, 4)];
 
-const SECUENCIA = buildSequence(CON_CRUCE, REGIMEN.escala);
+const SECUENCIA = buildSequence(CON_CRUCE, REGIMEN.escala, GRID_DEFAULT);
 
 describe('AC2/AC3 — proyectarAlMotor deja caer lo que el motor no puede ver', () => {
   it('un `Step` conserva `offset` y `notes`, y NO lleva `pieceId`', () => {

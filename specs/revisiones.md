@@ -1049,3 +1049,21 @@ las tareas no nombraban.
 - **Plegados, las once celdas tapadas bajan a cero.** Es lo que hace que la deuda de accesibilidad que
   este spec agranda sea acotable: el gesto de destaparlas es un click, y está a un `Tab` porque los dos
   encabezados son `<button>`.
+
+- **2026-08-22 — El presupuesto del 031 salió con techo 8 y el AC6 dice 5, y el motivo es el vecino y
+  no el producto.** El AC pide que `buildSequence` con 12 piezas entre en 5 ms sobre el tablero de una
+  pantalla de 1920 × 1080 (26 × 15 = 390 celdas), que es 6,5 veces el de 60 sobre el que el 009 midió
+  su AC10. Con la caché de distancias por destino entra: **3,1 ms** corriendo el archivo solo. Adentro
+  de `pnpm verify` la misma mediana da **5,39 ms**, porque hay cuatro nodos peleándose la CPU — el
+  mismo modo de falla que el AC8 del 011 ya tenía documentado y que le hizo subir su techo de 2 a 4.
+  El test quedó en 8: lo que tiene que atrapar es una regresión de **orden** —perder la caché y volver
+  a los 10,9 ms medidos, o dejar entrar una pieza 13— y para eso 8 sobra. El número fino lo imprime el
+  `console.log`, que es para lo que está.
+- **2026-08-22 — El 031 encontró que el tope de 12 piezas no era una regla sino una consecuencia.**
+  `shortestCircuit` dice en su docblock que «hay 12 pentominós libres y no se repiten», y la segunda
+  mitad de esa frase no era cierta: `isValid` chequea bordes y solapamiento, y colocar cinco `T` era
+  legal. Lo que acotaba `n` a 12 era el **área** —60 celdas ÷ 5— y por eso nadie lo había escrito. Con
+  el tablero saliendo del viewport eso deja de acotar nada (390 celdas dan 78 piezas) y el Held-Karp es
+  `O(n²·2ⁿ)`: medido, 12 piezas 3,1 ms, 14 piezas 5,6 ms, 16 piezas 18,6 ms, 22 piezas 1,78 s. El tope
+  pasó a ser `MAX_PIEZAS`, y lo importante es que **no recorta ningún tablero que hoy se pueda armar**:
+  es el mismo número, con otro garante.

@@ -1,11 +1,24 @@
 import { describe, it, expect } from 'vitest';
-import { cellsAt, isValid, occupantAt, occupantCellIndex, routeBetween } from '../board.ts';
+import { cellsAt, isValid, occupantAt, occupantCellIndex, routeBetween, rutador, costuraDe } from '../board.ts';
 import { rotateN, reflect } from '../transform.ts';
 import { SHAPES, ANCHOR_INDEX } from '../constants/pieces.constants.ts';
-import { GRID_W, GRID_H, SEAM, CROSS_COST } from '../constants/board.constants.ts';
+import { GRID_DEFAULT, CROSS_COST } from '../constants/board.constants.ts';
 import type { Cell } from '../types/transform.types.ts';
 import type { PieceKey } from '../types/pieces.types.ts';
 import type { PlacedPiece } from '../types/board.types.ts';
+
+/**
+ * Todo este archivo mide el tablero de REFERENCIA, que es el de 10 x 6 de siempre.
+ *
+ * Desde el spec 031 el tablero sale del viewport, asi que las funciones lo reciben por
+ * parametro y un test tiene que elegir uno. Se elige `GRID_DEFAULT` y no un tamano nuevo
+ * porque los numeros que este archivo verifica —los 496 pares que acorta la costura, la
+ * distancia maxima de 12, la tabla de PASOS— estan medidos sobre ese tablero: cambiarlo
+ * invalidaria las mediciones sin agregar cobertura. Lo que SI tiene test propio con otras
+ * dimensiones es lo que depende de ellas, y es `costuraDe`.
+ */
+const { w: GRID_W, h: GRID_H } = GRID_DEFAULT;
+const SEAM = costuraDe(GRID_DEFAULT);
 
 const PIECES = Object.keys(SHAPES) as PieceKey[];
 
@@ -54,41 +67,41 @@ describe('cellsAt', () => {
 
 describe('isValid', () => {
   it('acepta una pieza que entra en un tablero vacio', () => {
-    expect(isValid([[0,0],[1,0],[2,0]], [])).toBe(true);
+    expect(isValid([[0,0],[1,0],[2,0]], [], GRID_DEFAULT)).toBe(true);
   });
 
   it('AC8 — rechaza por cada uno de los cuatro bordes', () => {
-    expect(isValid([[-1,0]], [])).toBe(false);                 // izquierda
-    expect(isValid([[0,-1]], [])).toBe(false);                 // arriba
-    expect(isValid([[GRID_W,0]], [])).toBe(false);             // derecha
-    expect(isValid([[0,GRID_H]], [])).toBe(false);             // abajo
+    expect(isValid([[-1,0]], [], GRID_DEFAULT)).toBe(false);                 // izquierda
+    expect(isValid([[0,-1]], [], GRID_DEFAULT)).toBe(false);                 // arriba
+    expect(isValid([[GRID_W,0]], [], GRID_DEFAULT)).toBe(false);             // derecha
+    expect(isValid([[0,GRID_H]], [], GRID_DEFAULT)).toBe(false);             // abajo
   });
 
   it('AC8 — las esquinas del tablero son validas y sus vecinas de afuera no', () => {
-    expect(isValid([[0,0],[GRID_W-1,GRID_H-1]], [])).toBe(true);
-    expect(isValid([[GRID_W-1,GRID_H]], [])).toBe(false);
+    expect(isValid([[0,0],[GRID_W-1,GRID_H-1]], [], GRID_DEFAULT)).toBe(true);
+    expect(isValid([[GRID_W-1,GRID_H]], [], GRID_DEFAULT)).toBe(false);
   });
 
   it('AC8 — rechaza el choque contra una pieza ya colocada', () => {
     const placed = [piezaEn('1', [[2,2],[3,2],[4,2]])];
-    expect(isValid([[4,2]], placed)).toBe(false);              // se pisan en una celda
-    expect(isValid([[2,2],[3,2],[4,2]], placed)).toBe(false);  // se pisan enteras
-    expect(isValid([[2,3],[3,3],[4,3]], placed)).toBe(true);   // justo debajo, libre
+    expect(isValid([[4,2]], placed, GRID_DEFAULT)).toBe(false);              // se pisan en una celda
+    expect(isValid([[2,2],[3,2],[4,2]], placed, GRID_DEFAULT)).toBe(false);  // se pisan enteras
+    expect(isValid([[2,3],[3,3],[4,3]], placed, GRID_DEFAULT)).toBe(true);   // justo debajo, libre
   });
 
   it('mira TODAS las piezas colocadas, no solo la primera', () => {
     const placed = [piezaEn('1', [[0,0]]), piezaEn('2', [[5,5]])];
-    expect(isValid([[5,5]], placed)).toBe(false);
+    expect(isValid([[5,5]], placed, GRID_DEFAULT)).toBe(false);
   });
 
   it('una jugada fuera del tablero es invalida aunque no choque con nada', () => {
-    expect(isValid([[8,0],[9,0],[10,0]], [])).toBe(false);
+    expect(isValid([[8,0],[9,0],[10,0]], [], GRID_DEFAULT)).toBe(false);
   });
 
   it('las 12 piezas entran en el tablero en su rotacion 0', () => {
     for (const p of PIECES) {
       const shape = rotateN(SHAPES[p], 0);
-      expect(isValid(cellsAt(shape, ANCHOR_INDEX[p], 4, 2), [])).toBe(true);
+      expect(isValid(cellsAt(shape, ANCHOR_INDEX[p], 4, 2), [], GRID_DEFAULT)).toBe(true);
     }
   });
 });
@@ -195,7 +208,7 @@ const VECINAS = new Map<string, Cell[]>(
  * restas, `routeBetween` corre un Dijkstra. La desigualdad triangular mira 216.000
  * ternas, y a llamada por terna el test tardaba segundos.
  */
-const PASOS: number[][] = TODAS.map((a) => TODAS.map((b) => routeBetween(a, b, []).steps));
+const PASOS: number[][] = TODAS.map((a) => TODAS.map((b) => routeBetween(a, b, [], GRID_DEFAULT).steps));
 
 /**
  * La distancia del spec 009 en forma cerrada: Manhattan, o el mejor de los dos cruces
@@ -316,7 +329,7 @@ const tableroAlAzar = (rng: () => number, cuantas: number): PlacedPiece[] => {
       Math.floor(rng() * 4), rng() < 0.5,
       Math.floor(rng() * GRID_W), Math.floor(rng() * GRID_H),
     );
-    if (isValid(pieza.cells, board)) board.push(pieza);
+    if (isValid(pieza.cells, board, GRID_DEFAULT)) board.push(pieza);
   }
   return board;
 };
@@ -351,8 +364,8 @@ describe('routeBetween — el tablero vacio', () => {
   it('AC2 — las dos esquinas de la costura estan a un paso', () => {
     // Es la definicion del repliegue: (0,0) y (9,5) son las mas lejanas de la grilla y
     // la costura las vuelve vecinas. Un paso son cero celdas en el medio.
-    expect(routeBetween([0, 0], [GRID_W - 1, GRID_H - 1], [])).toEqual({ path: [], steps: 1, cost: 0, crossed: [] });
-    expect(routeBetween([GRID_W - 1, GRID_H - 1], [0, 0], [])).toEqual({ path: [], steps: 1, cost: 0, crossed: [] });
+    expect(routeBetween([0, 0], [GRID_W - 1, GRID_H - 1], [], GRID_DEFAULT)).toEqual({ path: [], steps: 1, cost: 0, crossed: [] });
+    expect(routeBetween([GRID_W - 1, GRID_H - 1], [0, 0], [], GRID_DEFAULT)).toEqual({ path: [], steps: 1, cost: 0, crossed: [] });
   });
 
   it('AC2 — la distancia maxima del tablero es 12, no 14', () => {
@@ -423,7 +436,7 @@ describe('routeBetween — el tablero vacio', () => {
     for (const a of TODAS) for (const b of TODAS) {
       if (misma(a, b)) continue;
       aseverados++;
-      const r = routeBetween(a, b, []);
+      const r = routeBetween(a, b, [], GRID_DEFAULT);
       expect(r.path.length, `${a} -> ${b}`).toBe(r.steps - 1);
     }
     expect(aseverados).toBe(3540);
@@ -436,7 +449,7 @@ describe('routeBetween — el tablero vacio', () => {
     const fallas: string[] = [];
     for (const a of TODAS) for (const b of TODAS) {
       if (misma(a, b)) continue;
-      const completo = [a, ...routeBetween(a, b, []).path, b];
+      const completo = [a, ...routeBetween(a, b, [], GRID_DEFAULT).path, b];
       for (let i = 1; i < completo.length; i++) {
         if (!adyacentes(completo[i - 1], completo[i])) fallas.push(`salto ${a} -> ${b} en ${i}`);
       }
@@ -447,7 +460,7 @@ describe('routeBetween — el tablero vacio', () => {
   });
 
   it('no incluye ni el origen ni el destino', () => {
-    expect(routeBetween([0, 0], [3, 0], []).path).toEqual([[1, 0], [2, 0]]);
+    expect(routeBetween([0, 0], [3, 0], [], GRID_DEFAULT).path).toEqual([[1, 0], [2, 0]]);
   });
 
   it('AC5 — el trazo cambio: gana el lexicograficamente menor y no "primero en X"', () => {
@@ -456,39 +469,39 @@ describe('routeBetween — el tablero vacio', () => {
     // desempate de D7 compara las celdas como pares `(x, y)`, asi que prefiere la de X
     // mas chica: baja en Y primero y recien despues avanza. Los 10 caminos minimos
     // siguen siendo 10 y todos miden lo mismo — lo que cambio es cual se elige.
-    expect(routeBetween([0, 0], [3, 2], []).path).toEqual([[0, 1], [0, 2], [1, 2], [2, 2]]);
+    expect(routeBetween([0, 0], [3, 2], [], GRID_DEFAULT).path).toEqual([[0, 1], [0, 2], [1, 2], [2, 2]]);
   });
 
   it('AC7b — el borde de la costura: el origen ya ES la esquina', () => {
     // Es donde fallaba la version del 009 que excluia los extremos tramo por tramo: el
     // primer tramo se queda sin celdas propias y la esquina de llegada, que en el camino
     // completo es intermedia, se perdia.
-    const r = routeBetween([0, 0], [GRID_W - 1, GRID_H - 2], []);
+    const r = routeBetween([0, 0], [GRID_W - 1, GRID_H - 2], [], GRID_DEFAULT);
     expect(r.steps).toBe(2);
     expect(r.path).toEqual([[GRID_W - 1, GRID_H - 1]]);
   });
 
   it('AC7b — el borde de la costura: el destino ya ES la esquina', () => {
-    const r = routeBetween([GRID_W - 1, GRID_H - 2], [0, 0], []);
+    const r = routeBetween([GRID_W - 1, GRID_H - 2], [0, 0], [], GRID_DEFAULT);
     expect(r.steps).toBe(2);
     expect(r.path).toEqual([[GRID_W - 1, GRID_H - 1]]);
   });
 
   it('AC7b — el borde de la costura: origen y destino son las dos esquinas', () => {
-    expect(routeBetween([0, 0], [GRID_W - 1, GRID_H - 1], []).path).toEqual([]);
-    expect(routeBetween([GRID_W - 1, GRID_H - 1], [0, 0], []).path).toEqual([]);
+    expect(routeBetween([0, 0], [GRID_W - 1, GRID_H - 1], [], GRID_DEFAULT).path).toEqual([]);
+    expect(routeBetween([GRID_W - 1, GRID_H - 1], [0, 0], [], GRID_DEFAULT).path).toEqual([]);
   });
 
   it('cruza la costura solo cuando acorta', () => {
     // (8,5) -> (1,0): 12 derecho contra 1+1+1=3 por la costura, asi que la usa y el
     // camino pasa por sus dos puntas.
-    const porLaCostura = routeBetween([8, 5], [1, 0], []);
+    const porLaCostura = routeBetween([8, 5], [1, 0], [], GRID_DEFAULT);
     expect(porLaCostura.steps).toBe(3);
     expect(porLaCostura.path).toEqual([[GRID_W - 1, GRID_H - 1], [0, 0]]);
     // (9,0) -> (0,4): 13 derecho contra 5+1+4=10 por la costura. Tambien acorta.
-    expect(routeBetween([GRID_W - 1, 0], [0, 4], []).steps).toBe(10);
+    expect(routeBetween([GRID_W - 1, 0], [0, 4], [], GRID_DEFAULT).steps).toBe(10);
     // En el centro no acorta nada y la costura queda afuera del camino.
-    const central = routeBetween([4, 2], [6, 3], []);
+    const central = routeBetween([4, 2], [6, 3], [], GRID_DEFAULT);
     expect(central.steps).toBe(3);
     expect(central.path.some((c) => misma(c, COSTURA_FIN) || misma(c, COSTURA_INICIO))).toBe(false);
   });
@@ -510,14 +523,14 @@ describe('AC1 — el caso testigo: el recorrido deja de pisar la puerta de la pi
     // Si esto se mueve, todo lo de abajo mide otro tablero.
     expect(TESTIGO_P.cells).toEqual([[3, 3], [4, 3], [3, 2], [4, 2], [3, 1]]);
     expect(TESTIGO_Y.cells).toEqual([[7, 4], [7, 3], [7, 2], [7, 1], [8, 2]]);
-    expect(isValid(TESTIGO_Y.cells, [TESTIGO_P])).toBe(true);
+    expect(isValid(TESTIGO_Y.cells, [TESTIGO_P], GRID_DEFAULT)).toBe(true);
   });
 
   it('el tramo de la P a la Y no pisa [7,1]', () => {
     // Las puertas van escritas a mano y no derivadas con `gates`: la salida de la `P` es
     // [3,1] y la entrada de la `Y` es [8,2] (medido con `simulate_board`). Derivarlas aca
     // ataria este test al modulo de la secuencia, que es el que las usa.
-    const r = routeBetween([3, 1], [8, 2], TESTIGO);
+    const r = routeBetween([3, 1], [8, 2], TESTIGO, GRID_DEFAULT);
     // El rodeo por la fila 0, que es exactamente el que `research.md` §1 describio como
     // la unica forma de llegar sin pisar: "cualquier camino libre tiene que subir a la
     // fila 0 y rodear: mide 8".
@@ -531,8 +544,8 @@ describe('AC1 — el caso testigo: el recorrido deja de pisar la puerta de la pi
   it('...y esquivarla CUESTA dos intervalos, que es el precio que fija CROSS_COST', () => {
     // Sin obstaculos el tramo mide 6; esquivando mide 8. Los dos intervalos de mas son
     // dos silencios agregados al ciclo para no pisar una celda que suena.
-    expect(routeBetween([3, 1], [8, 2], []).steps).toBe(6);
-    expect(routeBetween([3, 1], [8, 2], TESTIGO).steps).toBe(8);
+    expect(routeBetween([3, 1], [8, 2], [], GRID_DEFAULT).steps).toBe(6);
+    expect(routeBetween([3, 1], [8, 2], TESTIGO, GRID_DEFAULT).steps).toBe(8);
 
     // Y aca esta el numero que decide, que es lo que hace revisable el valor de la
     // constante. NINGUN camino de 6 pasos esta libre: `research.md` §1 lo probo a mano
@@ -549,11 +562,11 @@ describe('AC1 — el caso testigo: el recorrido deja de pisar la puerta de la pi
     // que se veia con la cabeza lectora del 010.
     const barato = Math.min(...minimos.map((c, i) => (c.length - librePorCamino[i]) + librePorCamino[i] * CROSS_COST));
     expect(barato).toBe(4 + CROSS_COST);
-    expect(routeBetween([3, 1], [8, 2], TESTIGO).cost).toBeLessThan(barato);
+    expect(routeBetween([3, 1], [8, 2], TESTIGO, GRID_DEFAULT).cost).toBeLessThan(barato);
   });
 
   it('la vuelta de la Y a la P no pisa nada', () => {
-    const r = routeBetween([7, 1], [4, 2], TESTIGO);
+    const r = routeBetween([7, 1], [4, 2], TESTIGO, GRID_DEFAULT);
     expect(r.path).toEqual([[6, 1], [5, 1], [4, 1]]);
     expect(r.steps).toBe(4);
     expect(costoDe(r)).toBe(3);
@@ -574,7 +587,7 @@ describe('AC2 — ningun cruce evitable, contrastado contra una implementacion d
     // pesos no existen y la referencia estaria midiendo la grilla pelada.
     for (const { nombre, board } of TABLEROS.slice(1)) {
       expect(board.length, nombre).toBeGreaterThanOrEqual(2);
-      expect(board.every((p, i) => isValid(p.cells, board.slice(0, i))), nombre).toBe(true);
+      expect(board.every((p, i) => isValid(p.cells, board.slice(0, i), GRID_DEFAULT)), nombre).toBe(true);
     }
   });
 
@@ -596,7 +609,7 @@ describe('AC2 — ningun cruce evitable, contrastado contra una implementacion d
             pasos: llegada.camino.length,
             camino: llegada.camino.slice(0, -1),
           };
-          const real = routeBetween(a, b, board);
+          const real = routeBetween(a, b, board, GRID_DEFAULT);
           const donde = `${nombre} ${a} -> ${b}`;
           if (costoDe(real) !== esperado.costo) fallas.push(`costo ${donde}: ${costoDe(real)} vs ${esperado.costo}`);
           if (real.steps !== esperado.pasos) fallas.push(`pasos ${donde}: ${real.steps} vs ${esperado.pasos}`);
@@ -616,7 +629,7 @@ describe('AC2 — ningun cruce evitable, contrastado contra una implementacion d
       const ocupadas = ocupadasDe(board);
       for (const a of [[1, 1], [8, 3]] as Cell[]) for (const b of TODAS) {
         if (misma(a, b)) continue;
-        const r = routeBetween(a, b, board);
+        const r = routeBetween(a, b, board, GRID_DEFAULT);
         const esperado = r.path.filter((c) => ocupadas.has(c.join(',')));
         if (JSON.stringify(r.crossed) !== JSON.stringify(esperado)) fallas.push(`${nombre} ${a} -> ${b}`);
       }
@@ -633,7 +646,7 @@ describe('AC2 — ningun cruce evitable, contrastado contra una implementacion d
     for (const { nombre, board } of TABLEROS) {
       for (const a of TODAS) for (const b of TODAS) {
         if (misma(a, b)) continue;
-        if (costoDe(routeBetween(a, b, board)) !== costoDe(routeBetween(b, a, board))) fallas.push(`${nombre} ${a} / ${b}`);
+        if (costoDe(routeBetween(a, b, board, GRID_DEFAULT)) !== costoDe(routeBetween(b, a, board, GRID_DEFAULT))) fallas.push(`${nombre} ${a} / ${b}`);
       }
     }
     expect(fallas).toEqual([]);
@@ -647,8 +660,8 @@ describe('AC5 — determinismo y desempate', () => {
     // lo unico que se lee de ellas es que celdas ocupan.
     for (const { board } of TABLEROS) {
       for (const [a, b] of [[[0, 0], [7, 4]], [[3, 1], [8, 2]], [[9, 5], [2, 2]]] as [Cell, Cell][]) {
-        expect(routeBetween(a, b, board)).toEqual(routeBetween(a, b, board));
-        expect(routeBetween(a, b, [...board])).toEqual(routeBetween(a, b, board));
+        expect(routeBetween(a, b, board, GRID_DEFAULT)).toEqual(routeBetween(a, b, board, GRID_DEFAULT));
+        expect(routeBetween(a, b, [...board], GRID_DEFAULT)).toEqual(routeBetween(a, b, board, GRID_DEFAULT));
       }
     }
   });
@@ -668,7 +681,7 @@ describe('AC5 — determinismo y desempate', () => {
       const donde = `${a} -> ${b}`;
       expect(todos.length, `${donde} tiene que empatar`).toBeGreaterThan(1);
       const menor = todos.reduce((mejor, c) => menorLex(c, mejor) ? c : mejor);
-      expect(routeBetween(a, b, board).path, donde).toEqual(menor);
+      expect(routeBetween(a, b, board, GRID_DEFAULT).path, donde).toEqual(menor);
     }
   });
 
@@ -678,11 +691,72 @@ describe('AC5 — determinismo y desempate', () => {
     // Estos pares tienen mas de un camino minimo que arranca por la misma celda, asi que
     // el desempate tiene que seguir decidiendo despues del primer paso.
     for (const [a, b] of [[[0, 0], [3, 2]], [[4, 2], [7, 4]]] as [Cell, Cell][]) {
-      const elegido = routeBetween(a, b, []).path;
+      const elegido = routeBetween(a, b, [], GRID_DEFAULT).path;
       const mismoArranque = todosLosMinimos(a, b, []).filter((c) => misma(c[0], elegido[0]));
       expect(mismoArranque.length, `${a} -> ${b}`).toBeGreaterThan(1);
       const menor = mismoArranque.reduce((mejor, c) => menorLex(c, mejor) ? c : mejor);
       expect(elegido, `${a} -> ${b}`).toEqual(menor);
+    }
+  });
+});
+
+describe('031 — la costura sale de las dimensiones', () => {
+  it('son siempre las dos esquinas opuestas del tablero que haya', () => {
+    // AC11. El tablero de 10 x 6 dejo de ser el unico, asi que `(0,0)`-`(9,5)` dejo de
+    // poder ser una constante: la costura es «las dos esquinas», y eso se lee en cualquier
+    // tamano.
+    for (const dims of [GRID_DEFAULT, { w: 5, h: 5 }, { w: 26, h: 15 }, { w: 64, h: 7 }]) {
+      expect(costuraDe(dims), `${dims.w}x${dims.h}`).toEqual([[0, 0], [dims.w - 1, dims.h - 1]]);
+    }
+  });
+
+  it('la celda de la costura es vecina de la otra punta, y solo ella', () => {
+    // La costura como propiedad OBSERVABLE y no como par de coordenadas: en un tablero de
+    // 26 x 15 la esquina `(25,14)` esta a 39 pasos de `(0,0)` por la grilla y a UNO por la
+    // costura. Y su vecina de al lado no: la costura es una arista, no un toroide.
+    const dims = { w: 26, h: 15 };
+    const [inicio, fin] = costuraDe(dims);
+    expect(routeBetween(inicio, fin, [], dims).steps).toBe(1);
+    expect(routeBetween(inicio, [dims.w - 2, dims.h - 1], [], dims).steps).toBe(2);
+  });
+});
+
+describe('031 AC7 — la cache de distancias no cambia una sola ruta', () => {
+  it('un rutador compartido contesta lo mismo que uno nuevo por consulta', () => {
+    // El unico riesgo de la cache es que una `dist[]` guardada para un destino se lea desde
+    // un origen para el que no valia. Se contrasta contra la version sin cache, que es
+    // exactamente `routeBetween`: cada llamada arma su propio rutador y lo tira.
+    //
+    // Doce tableros con semilla —reproducibles, sin `Math.random`— por las 3.600 rutas del
+    // tablero de referencia serian 43.200 comparaciones; se toma una muestra de pares
+    // repartida por el tablero, que es lo que hace que el test corra en milisegundos.
+    const pares: [Cell, Cell][] = [];
+    for (let i = 0; i < TODAS.length; i += 7) for (let j = 3; j < TODAS.length; j += 11) {
+      pares.push([TODAS[i], TODAS[j]]);
+    }
+    for (const semilla of [11, 22, 33, 44, 55, 66]) {
+      const board = tableroAlAzar(azar(semilla), 8);
+      const compartido = rutador(board, GRID_DEFAULT);
+      for (const [a, b] of pares) {
+        expect(compartido(a, b), `${semilla} ${a} -> ${b}`).toEqual(routeBetween(a, b, board, GRID_DEFAULT));
+      }
+    }
+  });
+
+  it('y tampoco en un tablero grande, que es donde la cache existe', () => {
+    // El mismo contraste sobre 26 x 15: es el tamano donde las 144 corridas pasan a ser 12,
+    // o sea donde la cache hace la diferencia que el spec mide (10,9 ms -> 3,1 ms).
+    const dims = { w: 26, h: 15 };
+    const board = [
+      colocar('a', 'F', 0, false, 3, 2),
+      colocar('b', 'I', 1, false, 12, 7),
+      colocar('c', 'Z', 2, true, 20, 11),
+    ];
+    const compartido = rutador(board, dims);
+    for (let x = 0; x < dims.w; x += 5) for (let y = 0; y < dims.h; y += 4) {
+      const a: Cell = [x, y];
+      const b: Cell = [dims.w - 1 - x, dims.h - 1 - y];
+      expect(compartido(a, b), `${a} -> ${b}`).toEqual(routeBetween(a, b, board, dims));
     }
   });
 });

@@ -15,7 +15,7 @@ paths:
 `App.tsx` es el shell: estado con `useState` local, derivados, handlers y la composición. Desde el spec
 022 **no declara un solo `useEffect`**: los cuatro de reconciliación viven en `components/use-engine.ts`,
 los dos de entrada en `components/use-input.ts` y el que mide el viewport para escribir `--cell` en
-`components/use-cell-px.ts` (spec 021). Ese último es el caso que muestra que la regla no es una
+`components/use-grid.ts` (specs 021 y 031). Ese último es el caso que muestra que la regla no es una
 formalidad: un listener de `resize` es exactamente lo que la sección «Los listeners de entrada» ya
 resolvía, y el shell se quedó con el `ref` y la llamada. **Ninguna función pura y ningún literal de
 dominio** — y eso ya no significa «se va a `domain/`»: un `.tsx` no puede exportar nada además del
@@ -106,13 +106,17 @@ distinta y ahí no tiene que pasar nada.
   ausencia de color— y el próximo estado tiene que buscarse el suyo. Ver [DESIGN.md](../../DESIGN.md).
 - **No hay `col-span` ni tarjetas desde el spec 021**: el tablero ocupa el viewport y los dos paneles
   flotan encima, `fixed`, sin empujar la grilla. El tamaño de celda es
-  `min(CELL_PX_MAX, max(CELL_PX_MIN, min(vw / 10, vh / 6)))` —con techo y piso en 73, o sea la celda
-  fija de antes del 021: el 021 sin techo la llevaba a 180 px en un escritorio—, vive en la custom
-  property `--cell` y lo escribe
-  `components/use-cell-px.ts`. **Todo lo que dependa de él lo lee de ahí y nunca de una constante** —la
-  grilla, la baldosa entera, el velo, la cabeza lectora y las cajas de los dos flotantes—, que es lo que
-  hace que redimensionar la ventana reposicione las 60 celdas sin un solo re-render. Lo único que se
-  queda fijo es el filete de 1 px de la baldosa, y su porqué está escrito al lado.
+  de unos **73 px** y lo que sale del viewport es **cuántas celdas hay** (spec 031): `grid-fit.ts`
+  contesta las dos cosas y `components/use-grid.ts` las escribe. La celda va por la custom property
+  `--cell` —**todo lo que dependa de ella la lee de ahí y nunca de una constante**: la grilla, la
+  baldosa entera, el velo, la cabeza lectora y las cajas de los dos flotantes—, y las dimensiones
+  vuelven como estado, porque deciden cuántos nodos existen y eso el CSS no lo puede resolver. El
+  reparto es por frecuencia: la celda cambia en cada píxel del arrastre y las dimensiones una o dos
+  veces, así que el hook devuelve el objeto anterior cuando los números no cambiaron.
+
+  **Y no hay scroll.** `Board.tsx` se quedó sin `overflow-x-auto`, sin `max-h-full` y sin `w-max`: la
+  grilla entra por construcción, porque `cols · cell ≤ vw`. Lo único que se queda fijo es el filete de
+  1 px de la baldosa, y su porqué está escrito al lado.
 
 ## El árbol de accesibilidad dice lo que el color pinta
 

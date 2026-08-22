@@ -1,9 +1,8 @@
 import type { CSSProperties, FocusEvent, KeyboardEvent, MouseEvent, RefObject } from 'react';
 import { occupantAt, occupantCellIndex } from '../domain/board.ts';
-import { GRID_W, GRID_H } from '../domain/constants/board.constants.ts';
 import type { Cell } from '../domain/types/transform.types.ts';
 import type { PieceKey } from '../domain/types/pieces.types.ts';
-import type { PlacedPiece } from '../domain/types/board.types.ts';
+import type { PlacedPiece, Dims } from '../domain/types/board.types.ts';
 import type { RegimenDeRotacion } from '../domain/types/music.types.ts';
 import { cellTextFor } from './cell-text.ts';
 import { cellNameFor } from './cell-name.ts';
@@ -160,6 +159,12 @@ interface Props {
   /** El boton derecho sobre el tablero alterna la reflexion (spec 013). Handler y no
       logica: quien decide si el evento cuenta es `App.tsx` con `reflejaElContextMenu`. */
   onContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
+  /** Cuanto mide el tablero, en celdas (spec 031). Llega por prop y no de una constante
+      porque sale del viewport, y quien lo mide es `useGrilla` en el shell: este componente
+      dibuja `dims.h` filas de `dims.w` celdas y no sabe de donde salio el numero. Lo leen
+      tambien los topes del movimiento por teclado y los `aria-*` de la grilla, que si no
+      dirian el tamano de otro tablero. */
+  dims: Dims;
   /** El nodo al que `useRuedaRota` (`components/use-input.ts`) le engancha la rueda.
       Este componente lo CUELGA y no lo lee: el `ref` se crea en `App.tsx`, que es quien
       compone los dos hooks de entrada, asi que aca no hay ni estado ni efecto. */
@@ -169,7 +174,7 @@ interface Props {
 export default function Board({
   placed, previewCells, previewValid, hover, selected, rotation, mirror, regimen,
   onCellClick, onCellEnter, onMouseLeave, focoEnTablero, onFoco, hoverEdita, onContextMenu,
-  boardRef,
+  dims, boardRef,
 }: Props) {
   // Que celda del fantasma cae en (x,y), POR INDICE: es lo que permite pedirle su
   // texto al mapeo canonico. Se arma una vez por render y no una vez por celda.
@@ -216,18 +221,19 @@ export default function Board({
       // `Home` y `End` no tocan `destinoY`: van a la primera y a la ultima celda de SU
       // fila, que es lo que el patron `grid` de ARIA reserva para el par sin modificador.
       case 'Home': destinoX = 0; break;
-      case 'End': destinoX = GRID_W - 1; break;
+      case 'End': destinoX = dims.w - 1; break;
       default: return;
     }
     // Frena el default SIEMPRE, tambien en el borde donde el destino termina siendo la
-    // misma celda: sin esto la flecha scrollea la pagina Y el `overflow-x-auto` del
-    // tablero. Mismo trato que la rueda y por el mismo motivo.
+    // misma celda: sin esto la flecha scrollea la pagina. Mismo trato que la rueda y por
+    // el mismo motivo. Hasta el spec 031 tambien scrolleaba el `overflow-x-auto` del
+    // tablero, que ya no existe.
     e.preventDefault();
     // Se ACOTA en vez de salir por un `if`: en el borde la flecha deja el foco donde
     // estaba, que es lo que pide "sin salirse de la grilla", y de paso no agrega cuatro
     // ramas que solo se pueden ejercer desde los cuatro bordes.
-    const dx = Math.min(GRID_W - 1, Math.max(0, destinoX));
-    const dy = Math.min(GRID_H - 1, Math.max(0, destinoY));
+    const dx = Math.min(dims.w - 1, Math.max(0, destinoX));
+    const dy = Math.min(dims.h - 1, Math.max(0, destinoY));
     // Cambiar el `tabIndex` NO mueve el foco del DOM: sin este `.focus()` el `0` y el foco
     // real se separan a la primera flecha. Es React pidiendole foco a un nodo que React
     // renderiza —no el loop tocando lo ajeno—, y el nodo se alcanza desde el evento y no
@@ -244,7 +250,7 @@ export default function Board({
     // por `Tab`. El `onFocus` de la celda destino es el que corre el cursor, y con el
     // cursor corrido el `0` lo sigue en el render siguiente.
     const grilla = e.currentTarget.closest('[role="grid"]')!;
-    grilla.querySelectorAll<HTMLElement>('[role="gridcell"]')[dy * GRID_W + dx].focus();
+    grilla.querySelectorAll<HTMLElement>('[role="gridcell"]')[dy * dims.w + dx].focus();
   };
 
   // El foco se fue del tablero, o solo salto de una celda a otra. `relatedTarget` es quien
@@ -261,28 +267,22 @@ export default function Board({
   // para repartir un `max-w-6xl` entre dos tarjetas. Ya no hay dos tarjetas ni hay
   // `max-w-6xl`: el tablero ES la pantalla y los dos paneles flotan encima.
   //
-  // Lo que reemplaza a esa cadena entera es una linea: `--cell`, que sale de
-  // `components/cell-px.ts` y no del interior de una caja. La grilla mide `GRID_W x --cell`
-  // y se CENTRA en la pantalla; lo que ya no hace es crecer con ella. El 021 la dejaba
-  // crecer entre 2,7 y 6 veces en area contra el layout viejo, y eso es justamente lo que
-  // el techo de `CELL_PX_MAX` deshizo: a 1920 x 1080 la baldosa quedaba en 180 px con el
-  // nombre de la nota a 46,8 y el tablero dejaba de leerse como un instrumento denso. La
-  // pantalla sigue siendo del tablero —no hay tarjeta, los dos paneles flotan encima— pero
-  // la celda vale lo que valia antes del 021.
+  // Lo que reemplaza a esa cadena entera son dos numeros que salen del mismo lugar:
+  // `components/grid-fit.ts` mira el viewport y contesta CUANTAS celdas entran y CUANTO
+  // mide cada una. La grilla mide `dims.w x --cell` por `dims.h x --cell` y llena la
+  // pantalla creciendo en CANTIDAD y no en tamano — que es la correccion del spec 031 al
+  // 021, donde crecia la baldosa: a 1920 x 1080 quedaba en 180 px con el nombre de la nota
+  // a 46,8, y el tablero dejaba de leerse como un instrumento denso.
   return (
     <div className="w-full h-full flex items-center justify-center">
-      {/* `overflow-x-auto` y no una celda mas chica. La celda tiene PISO —73 px, ver
-          `CELL_PX_MIN`— asi que abajo de 730 px de viewport la grilla deja de entrar y no
-          se encoge. Sin esto se sale del borde derecho y —toda la cadena de ancestros es
-          `overflow-x: visible`— empuja scroll horizontal a la PAGINA entera. Scrollea el
-          tablero, que es lo que sobra, en vez de achicar la celda: la nota es lo que hay
-          que poder leer.
-          El eje Y computa a `auto` por la regla de CSS que dice que si un eje es `auto` el
-          otro no puede quedar `visible`, y el `max-h-full` es lo que lo pone a trabajar: sin
-          el, en un viewport apaisado y bajo (`vh < 438`) la grilla no desborda a ESTE nodo
-          —que crece con su contenido— sino al raiz, que es `overflow-hidden`, y las filas de
-          abajo quedan recortadas y sin forma de llegar. Con el tope, el desborde vertical es
-          de este contenedor y se scrollea, que es lo que AC5 pide. */}
+      {/* **Sin `overflow-x-auto`, sin `max-h-full` y sin `w-max`** — el spec 031 se los
+          llevo a los tres, y con ellos la unica forma que este componente tenia de
+          scrollear. Existian para el caso "la grilla no entra", que era real mientras el
+          tablero media 10 x 6 celdas de 73 px pasara lo que pasara: abajo de 730 px de
+          viewport se salia por el borde derecho, y en un viewport apaisado y bajo se salia
+          por abajo. Hoy no hay tal caso: `grid-fit.ts` elige `cols` y `rows` contra la caja
+          real, y `cols * cell <= vw` y `rows * cell <= vh` valen por definicion de `floor`.
+          El `overflow-hidden` del contenedor raiz pasa de ser la red a ser la garantia. */}
       {/* La cabeza lectora se monta ACA, dentro del contenedor que scrollea: un
           absoluto se posiciona contra la caja de padding de su contenedor posicionado,
           asi que scrollea con la grilla y sigue alineada debajo de `md`. Se importa
@@ -302,7 +302,7 @@ export default function Board({
           que anda. Por eso la rueda va por `addEventListener(..., { passive: false })`
           desde `use-input.ts`, y lo unico que llega aca es el `ref` del nodo. `contextmenu`
           no esta entre esos tres nombres, asi que el boton derecho si puede ir por prop. */}
-      <div ref={boardRef} className="relative max-h-full overflow-x-auto" onContextMenu={onContextMenu}>
+      <div ref={boardRef} className="relative" onContextMenu={onContextMenu}>
         <Playhead />
         {/* FILAS DE VERDAD y no `display: contents` sobre filas ficticias. `role="grid"`
             exige `role="row"`, y hasta el spec 026 esto eran 60 hijos planos dentro de un
@@ -316,29 +316,30 @@ export default function Board({
             columnas estaban donde los hijos eran las 60 celdas, y ahora los hijos son
             seis. Dejarlo arriba pondria seis filas dentro de una grilla de diez columnas,
             que es el pixel que AC11 prohibe. El contenedor sigue siendo grid con su
-            columna implicita —una fila por renglon, ancho de contenido— y conserva el
-            `w-max` del que depende el `overflow-x-auto`.
+            columna implicita —una fila por renglon, ancho de contenido—. El `w-max` que
+            tenia se fue con el `overflow-x-auto` del spec 031: sostenia el ancho de una
+            grilla que podia ser mas ancha que su caja, y ya no puede serlo.
 
             `Playhead` no se entera: se posiciona con `transform` en pixeles contra el
             contenedor posicionado, no con colocacion de grid. */}
         <div
-          className="grid w-max"
+          className="grid"
           role="grid"
-          aria-label={`Tablero de ${GRID_W} por ${GRID_H}`}
-          aria-rowcount={GRID_H}
-          aria-colcount={GRID_W}
+          aria-label={`Tablero de ${dims.w} por ${dims.h}`}
+          aria-rowcount={dims.h}
+          aria-colcount={dims.w}
           onMouseLeave={onMouseLeave}
           onBlur={alSalirElFoco}
         >
-          {Array.from({ length: GRID_H }, (_, fila) => (
+          {Array.from({ length: dims.h }, (_, fila) => (
           <div
             key={fila}
             role="row"
             className="grid"
-            style={{ gridTemplateColumns: `repeat(${GRID_W}, var(--cell))` }}
+            style={{ gridTemplateColumns: `repeat(${dims.w}, var(--cell))` }}
           >
-          {Array.from({ length: GRID_W }, (_, columna) => {
-            const i = fila * GRID_W + columna;
+          {Array.from({ length: dims.w }, (_, columna) => {
+            const i = fila * dims.w + columna;
             const x = columna; const y = fila;
             const occ = occupantAt(placed, x, y);
             const ghostIndex = ghostIndexAt.get(`${x},${y}`);
@@ -411,7 +412,7 @@ export default function Board({
             //
             // Y lo PROHIBIDO es `transform: scale`, que es lo obvio para agrandar la celda
             // enfocada: `scale` cuenta para el overflow SCROLLEABLE del contenedor, asi que
-            // le haria aparecer las dos barras de desplazamiento al `overflow-x-auto` de
+            // le hacia aparecer las dos barras de desplazamiento al `overflow-x-auto` de
             // arriba. Esta medido en el repo, y no aca sino en el docblock de
             // `components/constants/playhead.constants.ts`, que lo pago para la cabeza
             // lectora: con la cabeza en (9,5) y `scale(1.10)` el `scrollHeight` pasaba de

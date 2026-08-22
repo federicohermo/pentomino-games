@@ -1,6 +1,6 @@
 import type { Cell } from './types/transform.types.ts';
-import type { PlacedPiece } from './types/board.types.ts';
-import { GRID_W, GRID_H, SEAM, CROSS_COST } from './constants/board.constants.ts';
+import type { PlacedPiece, Dims, Ruta } from './types/board.types.ts';
+import { CROSS_COST } from './constants/board.constants.ts';
 
 /**
  * Las reglas del tablero: donde cae una pieza, si la jugada es legal, y cuanto
@@ -9,7 +9,36 @@ import { GRID_W, GRID_H, SEAM, CROSS_COST } from './constants/board.constants.ts
  * Todas reciben todo por parametro en vez de cerrar sobre estado: es lo que las
  * hace testeables y lo que evita que el spec 006 tenga que reimplementar la regla
  * de colocacion en su propio modulo.
+ *
+ * **Desde el spec 031 eso incluye cuanto mide el tablero.** Este archivo importaba
+ * `GRID_W`/`GRID_H` y ya no: las dimensiones llegan como `Dims` porque salen del viewport,
+ * y el viewport lo ve `components/`. Es la misma regla de siempre llevada hasta el final —
+ * el dominio no lee nada de afuera, ni siquiera una constante que resulto no serlo.
  */
+
+/**
+ * Los dos extremos de la costura: el tablero se repliega sobre si mismo y `(0,0)`
+ * queda adyacente a `(w-1, h-1)` (spec 009, D2).
+ *
+ * Es UNA arista extra, no un toroide ni envoltura de todo el borde: ningun otro
+ * par de celdas del borde se toca de mas. Medido sobre los 3.600 pares del tablero de
+ * 10 x 6: acorta 496 (13,8 %) y baja la distancia maxima del tablero de 14 a 12.
+ *
+ * El orden ya NO lo lee nadie. Mientras la ruta se elegia con formula cerrada, los
+ * dos extremos eran dos rutas distintas —`viaStart` y `viaEnd`— y habia que saber
+ * cual era cual. Con `routeBetween` (spec 011) la costura es una arista mas del
+ * grafo y se recorre en los dos sentidos sin nombre propio, asi que los dos son
+ * intercambiables: lo unico que importa es que sean estas dos celdas.
+ *
+ * **Es una funcion desde el spec 031 y era la constante `SEAM`.** Dejo de poder ser un
+ * valor cuando las dimensiones dejaron de ser constantes: la costura son las dos esquinas
+ * opuestas del tablero que haya, no dos coordenadas fijas. Vive en este archivo y no en
+ * `constants/` por la regla del repo —un `.ts` de capa tiene funciones, `constants/` tiene
+ * valores— y al lado de `neighborsOf`, que es su unico llamador.
+ */
+export function costuraDe(dims: Dims): readonly [Cell, Cell] {
+  return [[0, 0], [dims.w - 1, dims.h - 1]];
+}
 
 /**
  * Celdas que ocuparia `shape` si su celda de agarre cae en `(x, y)`.
@@ -29,9 +58,18 @@ export function cellsAt(shape: readonly Cell[], anchorIndex: number, x: number, 
   return shape.map(([cx, cy]): Cell => [cx + ox, cy + oy]);
 }
 
-/** Dentro del tablero y sin solaparse con lo ya colocado. */
-export function isValid(cells: Cell[], placed: readonly PlacedPiece[]): boolean {
-  if (cells.some(([x, y]) => x < 0 || y < 0 || x >= GRID_W || y >= GRID_H)) return false;
+/**
+ * Dentro del tablero y sin solaparse con lo ya colocado.
+ *
+ * **`placed` tiene que ser el tablero ENTERO y no lo que se ve.** Desde el spec 031 el
+ * tablero se achica con la ventana y las piezas que dejan de entrar se guardan sin
+ * dibujarse; una de esas puede tener celdas adentro de la grilla nueva —«no entra entera»
+ * no es «esta toda afuera»— y colocar encima dejaria dos piezas solapadas en cuanto la
+ * ventana crezca. El filtro de lo visible es de `App.tsx` y alimenta al dibujo y a la
+ * secuencia; esta funcion mira todo.
+ */
+export function isValid(cells: Cell[], placed: readonly PlacedPiece[], dims: Dims): boolean {
+  if (cells.some(([x, y]) => x < 0 || y < 0 || x >= dims.w || y >= dims.h)) return false;
   for (const p of placed) {
     const set = new Set(p.cells.map(([x, y]) => `${x},${y}`));
     if (cells.some(([x, y]) => set.has(`${x},${y}`))) return false;
@@ -87,16 +125,16 @@ export function occupantCellIndex(p: PlacedPiece, x: number, y: number): number 
 /**
  * El nodo del grafo que le toca a `(x, y)`, y su vuelta.
  *
- * `x * GRID_H + y` y no `y * GRID_W + x` a proposito: asi el id crece en el mismo
- * orden en que ordenan los pares `(x, y)`, y el desempate lexicografico de
- * `routeBetween` es una comparacion de enteros en vez de una de tuplas.
+ * `x * h + y` y no `y * w + x` a proposito: asi el id crece en el mismo orden en que
+ * ordenan los pares `(x, y)`, y el desempate lexicografico de `routeBetween` es una
+ * comparacion de enteros en vez de una de tuplas.
  */
-function nodeOf(x: number, y: number): number {
-  return x * GRID_H + y;
+function nodeOf(x: number, y: number, h: number): number {
+  return x * h + y;
 }
 
-function cellOf(n: number): Cell {
-  return [Math.floor(n / GRID_H), n % GRID_H];
+function cellOf(n: number, h: number): Cell {
+  return [Math.floor(n / h), n % h];
 }
 
 /**
@@ -109,19 +147,26 @@ function cellOf(n: number): Cell {
  *
  * El orden en que las escribe NO importa: quien desempata lo hace por id (ver
  * `routeBetween`), no por orden de aparicion.
+ *
+ * **La costura son los nodos `0` y `N - 1`, y eso no es una coincidencia que haya que
+ * recordar**: `costuraDe` la define como las dos esquinas opuestas y `nodeOf` numera con
+ * `x * h + y`, asi que `(0,0)` es el nodo 0 y `(w-1, h-1)` el ultimo. Se escribe asi y no
+ * llamando a `costuraDe` porque esta funcion corre una vez por celda y por Dijkstra
+ * —millones de veces en un tablero grande— y la version con la llamada aloca dos tuplas
+ * en cada una. El test de la costura contrasta las dos formas, que es lo que impide que
+ * se separen.
  */
-function neighborsOf(n: number, out: number[]): number {
-  const x = Math.floor(n / GRID_H);
-  const y = n % GRID_H;
+function neighborsOf(n: number, out: number[], w: number, h: number): number {
+  const x = Math.floor(n / h);
+  const y = n % h;
   let k = 0;
-  if (x > 0) out[k++] = n - GRID_H;
-  if (x < GRID_W - 1) out[k++] = n + GRID_H;
+  if (x > 0) out[k++] = n - h;
+  if (x < w - 1) out[k++] = n + h;
   if (y > 0) out[k++] = n - 1;
-  if (y < GRID_H - 1) out[k++] = n + 1;
-  const inicio = nodeOf(SEAM[0][0], SEAM[0][1]);
-  const fin = nodeOf(SEAM[1][0], SEAM[1][1]);
-  if (n === inicio) out[k++] = fin;
-  else if (n === fin) out[k++] = inicio;
+  if (y < h - 1) out[k++] = n + 1;
+  const ultimo = w * h - 1;
+  if (n === 0) out[k++] = ultimo;
+  else if (n === ultimo) out[k++] = 0;
   return k;
 }
 
@@ -174,69 +219,126 @@ function neighborsOf(n: number, out: number[]): number {
  * distancia, y queda fuera del dominio por la misma razon que en el 009: el tramo va
  * de la salida de una pieza a la entrada de OTRA, y con una sola pieza no hay tramo.
  */
-export function routeBetween(a: Cell, b: Cell, placed: readonly PlacedPiece[]): { path: Cell[]; steps: number; cost: number; crossed: Cell[] } {
-  const N = GRID_W * GRID_H;
-  const origen = nodeOf(a[0], a[1]);
-  const destino = nodeOf(b[0], b[1]);
+export function routeBetween(a: Cell, b: Cell, placed: readonly PlacedPiece[], dims: Dims): Ruta {
+  return rutador(placed, dims)(a, b);
+}
 
+/**
+ * Un buscador de rutas sobre UN tablero, que se acuerda de lo que ya calculo.
+ *
+ * Es la misma respuesta que `routeBetween` —de hecho es su implementacion— pero atada a
+ * `(placed, dims)` de entrada, y esa atadura es lo que la hace barata: **la caché de
+ * distancias por destino** (spec 031). Y esa es la unica razon por la que existe como
+ * factory en vez de un cuarto parametro opcional: el `Map` no puede sobrevivir a un cambio
+ * del tablero, y la unica forma de garantizarlo sin acordarse de invalidarlo es que viva en
+ * el closure de un tablero.
+ *
+ * ## Por que la cache es por DESTINO
+ *
+ * `buildSequence` pide una matriz de `n x n` rutas —de la salida de cada pieza a la entrada
+ * de cada otra—, o sea 144 consultas con 12 piezas. Pero los DESTINOS son 12: las entradas.
+ * Y el Dijkstra de abajo corre **desde el destino** (esta escrito asi para poder reconstruir
+ * el camino hacia adelante, ver el docblock de `routeBetween`), asi que una corrida da la
+ * distancia desde TODAS las celdas de una vez. Las 144 corridas son 12 corridas y 132
+ * reconstrucciones de camino, que son lineales en el largo del camino.
+ *
+ * El precio es el corte temprano: para poder reusar `dist[]` desde cualquier origen hay que
+ * dejar que el Dijkstra cierre entero, y no cortarlo cuando el origen ya quedo cerrado. Aun
+ * asi gana, y ya ganaba en el tablero de 60 celdas — 12 corridas completas cuestan menos que
+ * 144 parciales. Medido con 12 piezas:
+ *
+ * ```
+ * tablero          celdas   sin cache   con cache
+ * 10 x  6             60      2,3 ms      1,9 ms
+ * 26 x 14            364     10,9 ms      3,1 ms
+ * 53 x 30 (4K)     1.590         —       30,9 ms
+ * ```
+ *
+ * El 4K sigue fuera del presupuesto del AC10 del 009 y esta anotado en `specs/deuda.md` con
+ * la salida identificada: los pesos son solo dos (1 y `CROSS_COST`), asi que una cola de
+ * baldes baja el `O(N^2)` de la busqueda lineal del minimo a `O(N * C)`.
+ *
+ * **No cambia una sola nota**, y eso esta verificado y no argumentado: 279 tableros
+ * generados con PRNG determinista dan la misma secuencia con cache y sin ella
+ * (`__tests__/sequence.test.ts`). El argumento igual existe: `dist[]` es funcion de
+ * `(destino, placed)`, y adentro de un rutador `placed` no cambia.
+ */
+export function rutador(placed: readonly PlacedPiece[], dims: Dims): (a: Cell, b: Cell) => Ruta {
+  const { w, h } = dims;
+  const N = w * h;
+
+  // Una sola vez para todo el tablero, y no una por consulta: con 12 piezas y la matriz
+  // completa, esto se armaba 144 veces para dar siempre lo mismo.
   const ocupada = new Uint8Array(N);
-  for (const p of placed) for (const [x, y] of p.cells) ocupada[nodeOf(x, y)] = 1;
+  for (const p of placed) for (const [x, y] of p.cells) ocupada[nodeOf(x, y, h)] = 1;
 
-  const peso = (n: number): number => n === destino ? 0 : ocupada[n] ? CROSS_COST : 1;
-
-  // Centinela de "todavia sin alcanzar": mas caro que el camino mas caro posible —60
-  // celdas ocupadas a `CROSS_COST` son 300 con el 5 de hoy, y 3.660 con el 61 que la
-  // constante discute y descarta— y lejos del borde de Int32 para que sumarle un peso
-  // no desborde. O sea que aguanta cualquier valor razonable sin tocarlo.
+  // Centinela de "todavia sin alcanzar": mas caro que el camino mas caro posible —las 60
+  // celdas del tablero viejo ocupadas a `CROSS_COST` son 300 con el 5 de hoy, y 3.660 con
+  // el 61 que la constante discute y descarta; en un tablero de 390 celdas son 1.950— y
+  // lejos del borde de Int32 para que sumarle un peso no desborde. O sea que aguanta
+  // cualquier tablero y cualquier peso razonable sin tocarlo.
   const INF = 0x3fffffff;
-  const dist = new Int32Array(N).fill(INF);
-  const listo = new Uint8Array(N);
   const vecinas = [0, 0, 0, 0, 0];
+  const cache = new Map<number, Int32Array>();
 
-  dist[destino] = 0;
-  for (;;) {
-    let u = -1;
-    let mejor = INF;
-    for (let v = 0; v < N; v++) if (!listo[v] && dist[v] < mejor) { mejor = dist[v]; u = v; }
-    // El tablero es conexo, asi que `u === -1` no puede pasar; el corte que si se usa
-    // es el otro: con `origen` ya cerrado, todo lo que el camino va a pisar tiene
-    // `dist` menor y por lo tanto ya quedo cerrado antes.
-    if (u === -1 || u === origen) break;
-    listo[u] = 1;
-    const k = neighborsOf(u, vecinas);
-    const entrar = mejor + peso(u);
-    for (let i = 0; i < k; i++) if (entrar < dist[vecinas[i]]) dist[vecinas[i]] = entrar;
-  }
+  const distanciasHacia = (destino: number): Int32Array => {
+    const guardada = cache.get(destino);
+    if (guardada !== undefined) return guardada;
 
-  const path: Cell[] = [];
-  const crossed: Cell[] = [];
-  let cur = origen;
-  while (cur !== destino) {
-    const k = neighborsOf(cur, vecinas);
-    let siguiente = vecinas[0];
-    let costo = peso(vecinas[0]) + dist[vecinas[0]];
-    for (let i = 1; i < k; i++) {
-      const v = vecinas[i];
-      const c = peso(v) + dist[v];
-      if (c < costo || (c === costo && v < siguiente)) { costo = c; siguiente = v; }
+    const dist = new Int32Array(N).fill(INF);
+    const listo = new Uint8Array(N);
+    dist[destino] = 0;
+    for (;;) {
+      let u = -1;
+      let mejor = INF;
+      for (let v = 0; v < N; v++) if (!listo[v] && dist[v] < mejor) { mejor = dist[v]; u = v; }
+      // El tablero es conexo, asi que esto solo pasa cuando ya se cerraron todas.
+      if (u === -1) break;
+      listo[u] = 1;
+      const k = neighborsOf(u, vecinas, w, h);
+      const entrar = mejor + (u === destino ? 0 : ocupada[u] ? CROSS_COST : 1);
+      for (let i = 0; i < k; i++) if (entrar < dist[vecinas[i]]) dist[vecinas[i]] = entrar;
     }
-    // Sin centinela ni guarda de "no encontre": el minimo sobre las vecinas ES
-    // `dist[cur]` —es la ecuacion de Dijkstra—, y como entrar a cualquier celda que no
-    // sea `destino` cuesta al menos 1, `dist` baja ESTRICTAMENTE en cada paso. El
-    // recorrido termina y no puede volver sobre una celda que ya piso.
-    cur = siguiente;
-    if (cur !== destino) {
-      const celda = cellOf(cur);
-      path.push(celda);
-      if (ocupada[cur]) crossed.push(celda);
-    }
-  }
+    cache.set(destino, dist);
+    return dist;
+  };
 
-  // `cost` sale de `dist[origen]` y no de recontar `path` y `crossed`: es EL numero que
-  // el Dijkstra minimizo, no una formula que lo reproduce. Recalcularlo afuera —aunque
-  // hoy `path.length + crossed.length * (CROSS_COST - 1)` de lo mismo, porque `crossed`
-  // es el subconjunto ocupado de `path`— seria escribir la regla de pesos en un segundo
-  // lugar, y es exactamente lo que D3 existe para evitar: sin formula cerrada, dos
-  // lugares que calculan el costo no tienen nada que los obligue a coincidir.
-  return { path, steps: path.length + 1, cost: dist[origen], crossed };
+  return (a: Cell, b: Cell): Ruta => {
+    const origen = nodeOf(a[0], a[1], h);
+    const destino = nodeOf(b[0], b[1], h);
+    const dist = distanciasHacia(destino);
+    const peso = (n: number): number => n === destino ? 0 : ocupada[n] ? CROSS_COST : 1;
+
+    const path: Cell[] = [];
+    const crossed: Cell[] = [];
+    let cur = origen;
+    while (cur !== destino) {
+      const k = neighborsOf(cur, vecinas, w, h);
+      let siguiente = vecinas[0];
+      let costo = peso(vecinas[0]) + dist[vecinas[0]];
+      for (let i = 1; i < k; i++) {
+        const v = vecinas[i];
+        const c = peso(v) + dist[v];
+        if (c < costo || (c === costo && v < siguiente)) { costo = c; siguiente = v; }
+      }
+      // Sin centinela ni guarda de "no encontre": el minimo sobre las vecinas ES
+      // `dist[cur]` —es la ecuacion de Dijkstra—, y como entrar a cualquier celda que no
+      // sea `destino` cuesta al menos 1, `dist` baja ESTRICTAMENTE en cada paso. El
+      // recorrido termina y no puede volver sobre una celda que ya piso.
+      cur = siguiente;
+      if (cur !== destino) {
+        const celda = cellOf(cur, h);
+        path.push(celda);
+        if (ocupada[cur]) crossed.push(celda);
+      }
+    }
+
+    // `cost` sale de `dist[origen]` y no de recontar `path` y `crossed`: es EL numero que
+    // el Dijkstra minimizo, no una formula que lo reproduce. Recalcularlo afuera —aunque
+    // hoy `path.length + crossed.length * (CROSS_COST - 1)` de lo mismo, porque `crossed`
+    // es el subconjunto ocupado de `path`— seria escribir la regla de pesos en un segundo
+    // lugar, y es exactamente lo que D3 existe para evitar: sin formula cerrada, dos
+    // lugares que calculan el costo no tienen nada que los obligue a coincidir.
+    return { path, steps: path.length + 1, cost: dist[origen], crossed };
+  };
 }

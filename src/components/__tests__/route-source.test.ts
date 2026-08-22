@@ -7,6 +7,7 @@ import { REGIMEN } from '../../domain/constants/music.constants.ts';
 import { MARCA } from '../constants/route.constants.ts';
 import type { PieceKey } from '../../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../../domain/types/board.types.ts';
+import { GRID_DEFAULT } from '../../domain/constants/board.constants.ts';
 
 /**
  * `route-source.ts` es donde vive AC9 del spec 010 —que la cabeza dibuje el circuito
@@ -49,7 +50,7 @@ const colocar = (piece: PieceKey, rot: number, mirror: boolean, x: number, y: nu
 };
 
 /** Encola el tablero por el mismo camino que `components/use-engine.ts`: una `buildSequence`, dos colas. */
-const encolarTablero = (placed: readonly PlacedPiece[]): void => rs.encolar(buildSequence(placed, REGIMEN.escala), placed);
+const encolarTablero = (placed: readonly PlacedPiece[]): void => rs.encolar(buildSequence(placed, REGIMEN.escala, GRID_DEFAULT), placed);
 
 /** Lo que hace el motor al cerrar un ciclo: subir el contador. */
 const cerrarCiclo = (): void => { motor.generacion++; };
@@ -105,7 +106,7 @@ describe('AC9 — la ruta activa es la que suena, no la encolada', () => {
     cerrarCiclo();
     const nueva = rs.rutaActiva();
     expect(nueva).not.toEqual(vieja);
-    expect(nueva).toHaveLength(buildSequence(DOS, REGIMEN.escala).length);
+    expect(nueva).toHaveLength(buildSequence(DOS, REGIMEN.escala, GRID_DEFAULT).length);
   });
 
   it('quitar una pieza tampoco la apaga antes de que deje de sonar', () => {
@@ -143,7 +144,7 @@ describe('la tabla por offset', () => {
     encolarTablero(DOS);
     cerrarCiclo();
     const marcas = rs.rutaActiva();
-    const s = buildSequence(DOS, REGIMEN.escala);
+    const s = buildSequence(DOS, REGIMEN.escala, GRID_DEFAULT);
 
     // Las notas: la celda de `notes[j]` sale de la pura del dominio, no de aca.
     for (const step of s.steps) {
@@ -187,7 +188,7 @@ describe('la tabla por offset', () => {
     encolarTablero(CON_CRUCE);
     cerrarCiclo();
     const marcas = rs.rutaActiva();
-    const s = buildSequence(CON_CRUCE, REGIMEN.escala);
+    const s = buildSequence(CON_CRUCE, REGIMEN.escala, GRID_DEFAULT);
 
     // Guarda del propio test: exactamente TRES de los clicks traen `note` (dos brazos de
     // la `X` y su centro) y el resto no. Si esto dejara de ser cierto, los dos `for` de
@@ -214,7 +215,7 @@ describe('AC5 — el velo de lo que todavia no sono', () => {
 
     // Ya entro al ciclo: ahora cada celda sabe CUANDO le toca, que es lo que hace
     // visible que el orden de reproduccion no es el de colocacion.
-    const s = buildSequence(UNA, REGIMEN.escala);
+    const s = buildSequence(UNA, REGIMEN.escala, GRID_DEFAULT);
     const paso = s.steps[0];
     const celdas = cellsByPlayOrder(UNA[0]);
     expect(rs.velo()).toEqual(celdas.map((cell, j) => ({ id: 'F', cell, offset: paso.offset + j })));
@@ -262,7 +263,7 @@ describe('AC19 — la cabeza recorre la pieza muteada, con el borde del click', 
     cerrarCiclo();
     const marcas = rs.rutaActiva();
     const celdas = cellsByPlayOrder(MUTEADA[0]);
-    const s = buildSequence(MUTEADA, REGIMEN.escala);
+    const s = buildSequence(MUTEADA, REGIMEN.escala, GRID_DEFAULT);
 
     // Sin `Step` para la pieza muteada: sus celdas entran por la rama de los clicks.
     expect(s.steps.map((st) => st.pieceId)).toEqual(['L']);
@@ -337,7 +338,7 @@ describe('AC1 y AC2 (spec 027) — el reinicio es una orden, no una consecuencia
     encolarTablero(UNA);
     cerrarCiclo();
     const sonando = rs.rutaActiva();
-    expect(sonando).toHaveLength(buildSequence(UNA, REGIMEN.escala).length);
+    expect(sonando).toHaveLength(buildSequence(UNA, REGIMEN.escala, GRID_DEFAULT).length);
 
     // Quitar es una EDICION del tablero: no hay orden de volver a cero, asi que hasta el
     // borde la cabeza sigue recorriendo lo que suena y el velo sigue diciendo que a esas
@@ -372,7 +373,7 @@ describe('AC1 y AC2 (spec 027) — el reinicio es una orden, no una consecuencia
 describe('un paso cuya pieza no esta en el tablero', () => {
   it('queda a oscuras en vez de dibujar una celda inventada, y no arrastra al resto', () => {
     // La secuencia conoce a las dos piezas; el tablero que se entrega, a una sola.
-    const seq = buildSequence(DOS, REGIMEN.escala);
+    const seq = buildSequence(DOS, REGIMEN.escala, GRID_DEFAULT);
     const pasoF = seq.steps.find((st) => st.pieceId === 'F')!;
     const pasoL = seq.steps.find((st) => st.pieceId === 'L')!;
     rs.encolar(seq, [DOS[0]]);

@@ -257,7 +257,7 @@ obstáculos: medido, entre el 71 % y el 88 % de los tramos pisaban una pieza, y 
 12 piezas caían ahí los 21 clicks del ciclo. Esquivar las piezas dejó de ser "un spec propio" —así lo
 anotaba el 009 en su tabla de riesgos— y es exactamente lo que hace el 011: `routeBetween` no es un
 BFS que rodea a cualquier costo, es un camino de **costo mínimo** con peso 1 en celda vacía y
-`CROSS_COST = 5` (`domain/constants/board.constants.ts`, junto a `SEAM`) en celda ocupada, así que
+`CROSS_COST = 5` (`domain/constants/board.constants.ts`) en celda ocupada, así que
 rodea cuando el rodeo sale barato y cruza —sonando la nota— cuando rodear cuesta más caro. El
 interruptor de clicks queda, pero ya no es la única mitigación: la mitigación de fondo es el peso.
 

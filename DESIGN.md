@@ -76,12 +76,12 @@ texto blanco **sin oscurecer ni un color de la lámina** — bajo 2.1 las dos co
 
 | Medida | Valor | Por qué |
 |---|---|---|
-| Celda | **`min(73, max(73, min(vw/10, vh/6)))`**, en `--cell` | el spec 021 la sacó del viewport y la dejó crecer hasta 180 px en un escritorio: la baldosa se volvía una tarjeta grande —el nombre de la nota a 46,8 px— y el tablero dejaba de leerse como un instrumento denso. El techo la devolvió a los **73 px fijos** de antes. Lo que se queda del 021 es el mecanismo: el número sigue viajando por `--cell`, así que aflojar el techo es cambiar `CELL_PX_MAX` y nada más |
-| Piso de la celda | **73** (era 60) | el piso es **tipográfico**: es la celda donde la nota vale los 19 px que el repo midió con un `Range` (`D#5` ocupa 35,4). Era 60 mientras la fuente estaba clavada en 19; al volverse proporcional, a celda 60 la nota renderiza a 15,6 y queda por debajo de lo medido. Y deja una promesa: **el tablero nunca es más chico que antes del 021** |
-| Techo de la celda | **73**, o sea el piso | piso y techo en el mismo número es lo que dice que la celda es fija. La pantalla entera sigue siendo del tablero —sin tarjetas, con los dos paneles flotando encima— pero la grilla se **centra** en vez de estirarse: 10 × 6 celdas cuadradas de 73 px miden 730 × 438 y ningún reparto las hace cubrir un escritorio |
-| Tablero | **10 × 6 celdas**, centrado en el viewport | sin tarjeta, sin `max-w-6xl` y sin scroll de página. Abajo de 730 px de ancho gana el piso y scrollea **el tablero**, no la página |
+| Celda | **unos 73 px**, en `--cell` | el spec 021 la sacó del viewport y la dejó crecer hasta 180 px en un escritorio: la baldosa se volvía una tarjeta grande —el nombre de la nota a 46,8 px— y el tablero dejaba de leerse como un instrumento denso. El **031** la devolvió al tamaño de siempre y puso a crecer lo otro: lo que sale del viewport es **cuántas celdas hay**. El redondeo la deja entre 64 y 74,1 px según la pantalla (`grid-fit.ts`) |
+| Objetivo de la celda | **73** (era 60) | es **tipográfico**: es la celda donde la nota vale los 19 px que el repo midió con un `Range` (`D#5` ocupa 35,4). Era 60 mientras la fuente estaba clavada en 19; al volverse proporcional, a celda 60 la nota renderiza a 15,6 y queda por debajo de lo medido |
+| Tablero | **lo que entra en la pantalla**, mínimo 5 × 5 celdas | 26 × 15 en 1920 × 1080, 5 × 9 en un teléfono en vertical. Lo que sobra sin cubrir es siempre menos de una celda, y **no hay scroll en ningún eje**: `cols · cell ≤ vw` por construcción. El mínimo es 5 × 5 porque es la caja más chica donde entra cualquier pentominó — abajo de eso hay piezas que no se podrían colocar |
+| Piezas a la vez | **12**, mida el tablero lo que mida | hasta el 031 lo garantizaba el área (60 ÷ 5) y nadie tenía que escribirlo. El circuito se resuelve con Held-Karp exacto, `O(n²·2ⁿ)`: medido, 12 piezas 3,1 ms y 16 piezas 18,6 ms. Es el mismo tope de siempre, dicho donde se pueda leer |
 | Aire de la baldosa | **`2/73` de la celda** | separa las fichas sin sumar un segundo número al ancho. Proporcional desde el 021: fijo, a celda 180 la nota quedaría apretada contra 2 px de aire |
-| Borde de la baldosa | **1 px `slate-900`, y NO escala** | es el único número fijo que sobrevive al 021: un filete es un delimitador y no un elemento tipográfico, y en `calc()` daría fracciones que el navegador redondea distinto por arista — sobre 60 celdas adyacentes, un enrejado irregular |
+| Borde de la baldosa | **1 px `slate-900`, y NO escala** | es el único número fijo que sobrevive al 021: un filete es un delimitador y no un elemento tipográfico, y en `calc()` daría fracciones que el navegador redondea distinto por arista — sobre decenas de celdas adyacentes, un enrejado irregular |
 
 Una celda ocupada muestra **el nombre de su nota** como contenido principal (`C4`, `D#5`, …) y **su paso
 como número chico en la esquina inferior derecha**, con `#`. Son dos lecturas del mismo dato: la nota es
@@ -170,9 +170,11 @@ borde derecho; la señal es una franja de `3 × 1` en la esquina inferior izquie
 
 **Las dos cajas se miden en celdas y no en píxeles**, y eso no es coherencia decorativa: es lo que hace
 que la cuenta de qué celdas tapan valga en cualquier viewport. Con medidas fijas, un dock de 640 px de
-alto centrado entra en la fila 5 a 1366 × 768 y tapa `(9,5)`.
+alto centrado entra en la fila 5 a 1366 × 768 y tapa la última celda. Desde el spec 031 vale el doble:
+el tablero mide lo que entra en la pantalla, así que «la fila 5» no es la de abajo en ningún viewport
+en particular — medido en celdas, el dock tapa las mismas cuatro esté el tablero como esté.
 
-`(0,0)` y `(9,5)` no se tapan nunca, y ésa es la regla que decidió las dos posiciones: ahí es donde el
+`(0,0)` y la esquina opuesta no se tapan nunca, y ésa es la regla que decidió las dos posiciones: ahí es donde el
 circuito cierra (spec 009) y donde arranca la cabeza lectora (spec 010). Arriba se descartó por lo
 mismo — una barra superior tapa el borde de arriba entero, `(0,0)` incluida.
 
@@ -297,13 +299,13 @@ relleno oscuro sí funciona (medido: al 30 % el peor caso de las 12, la `W`, da 
 sobre un umbral de ~3) pero **tapa la nota** que la celda muestra desde el spec 007, que es justo lo que
 hay que poder leer. El borde marca el límite sin pisar el contenido.
 
-**Por qué engorda para los dos lados.** Las 60 celdas ya tienen `border-slate-900`, ocupadas o vacías,
+**Por qué engorda para los dos lados.** Todas las celdas ya tienen `border-slate-900`, ocupadas o vacías,
 así que engrosar hacia adentro es un cambio de grado contra un campo lleno de bordes negros. El anillo
 exterior es lo que agrega el salto de tamaño: la celda se lee más grande sin que crezca su caja.
 
 **Por qué no `transform: scale`, que es lo obvio.** Porque `scale` cuenta para el overflow
 **scrolleable** del contenedor. Medido en el DOM con `CELL_PX` en 63 —grilla de 630 × 378—: con la
-cabeza en `(9,5)` y `scale(1.10)`, el `scrollHeight` del `overflow-x-auto` de `Board` pasaba de 378 a
+cabeza en la última celda y `scale(1.10)`, el `scrollHeight` del `overflow-x-auto` de `Board` pasaba de 378 a
 381 y aparecían las barras de desplazamiento —las dos, porque Tailwind fija solo `overflow-x` y
 entonces el eje Y computa a `auto`—. El 014 movió la celda a 71 y el 016 a 73, y esos dos números no se
 remidieron; lo que no depende del tamaño es el mecanismo, que es lo que decide: `box-shadow` es *ink

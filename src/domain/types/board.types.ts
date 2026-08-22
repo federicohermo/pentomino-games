@@ -39,3 +39,44 @@ export interface PlacedPiece {
    */
   muted: boolean;
 }
+
+/**
+ * Cuánto mide el tablero, en celdas.
+ *
+ * **Es un parámetro y no una constante**, y ese es el spec 031. Hasta ahí el tablero medía
+ * `GRID_W × GRID_H` = 10 × 6 y las funciones del dominio lo leían de
+ * `constants/board.constants.ts`; desde el 031 mide lo que entra en la pantalla —26 × 15 en
+ * un escritorio de 1920 × 1080— y quien lo sabe es la capa que ve el viewport, que es
+ * `components/`. El dominio no puede leerlo de ningún lado: se lo tienen que decir.
+ *
+ * Lo reciben las tres funciones que miran el tablero como un todo —`isValid`,
+ * `routeBetween` y `buildSequence`— y de ahí baja solo. `music.ts`, `transform.ts` e
+ * `invariants.ts` no lo necesitan: una pieza y su arpegio no dependen de dónde termina el
+ * tablero.
+ *
+ * `readonly` en los dos campos por la regla de siempre: nunca mutar lo que ya se entregó a
+ * React, y esto viaja como prop desde el spec 031.
+ */
+export interface Dims {
+  readonly w: number;
+  readonly h: number;
+}
+
+/**
+ * Lo que contesta una consulta de ruta: el camino entre dos celdas, lo que pisa en el
+ * medio, cuántos intervalos dura y cuánto costó elegirlo.
+ *
+ * **`cost` y `steps` no son el mismo número desde el spec 011**, y por eso viajan los dos:
+ * un cruce cuesta `CROSS_COST` pero dura UN intervalo. El costo ordena —es con lo que el
+ * circuito elige entre dos caminos— y los pasos miden el tiempo. Confundirlos estira el
+ * ciclo justo donde no hay nada que esperar.
+ *
+ * `crossed` es exactamente el subconjunto ocupado de `path`, y no una lista aparte que
+ * haya que mantener.
+ */
+export interface Ruta {
+  path: Cell[];
+  steps: number;
+  cost: number;
+  crossed: Cell[];
+}

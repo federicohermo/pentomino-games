@@ -68,11 +68,12 @@ src/
 │   ├── types/                    # el contrato de la capa. Cero imports de afuera
 │   │   ├── transform.types.ts    #   Cell
 │   │   ├── pieces.types.ts       #   PieceKey
-│   │   ├── board.types.ts        #   PlacedPiece
+│   │   ├── board.types.ts        #   PlacedPiece · Dims · Ruta
 │   │   └── sequence.types.ts     #   Step · Click · Sequence
 │   ├── constants/                # los datos del modelo. Solo importan tipos
 │   │   ├── pieces.constants.ts   #   SHAPES · ANCHOR_INDEX
-│   │   ├── board.constants.ts    #   GRID_W · GRID_H · SEAM · CROSS_COST
+│   │   ├── board.constants.ts    #   GRID_MIN · GRID_DEFAULT · MAX_PIEZAS · CROSS_COST
+│   │   │                         #   (el tamaño del tablero es un parámetro desde el 031)
 │   │   ├── music.constants.ts    #   CHROMATIC · PENT_* · BASE_MAP · DEFAULT_OCTAVE
 │   │   ├── sequence.constants.ts #   PASOS_MAX
 │   │   └── invariants.constants.ts #   ROTATIONS
@@ -101,7 +102,7 @@ src/
     ├── OrientationPanel.tsx      # las doce miniaturas, cada una en SU orientación recordada
     │                             #   (spec 016 la forma, spec 020 la orientación por pieza)
     ├── TransportPanel.tsx        # tempo, play/pausa, el recorrido en el vacío y el reset
-    ├── Board.tsx                 # grilla 10×6: color por pieza, nota por celda, y el fantasma
+    ├── Board.tsx                 # la grilla que le digan `dims`: color por pieza, nota por celda, y el fantasma
     │                             #   diciendo lo mismo antes de colocar
     ├── Spectrum.tsx              # canvas del espectro: rAF + HiDPI, sin props
     ├── Playhead.tsx              # cabeza lectora: rAF + estilo imperativo, sin props (spec 010)
@@ -129,15 +130,13 @@ src/
     │                             #   clicks, la secuencia contra el tablero y el desmontaje
     ├── use-input.ts              # los dos efectos de entrada del 013: teclado y rueda. Reciben
     │                             #   callbacks, no setters, y el tapLimpio del shell
-    ├── cell-px.ts                # la fórmula del tamaño de celda contra el viewport (spec 021):
-    │                             #   min(CELL_PX_MAX, max(CELL_PX_MIN, min(vw/10, vh/6))). Pura,
-    │                             #   fuera del hook para poder testearla sin navegador. Con el
-    │                             #   techo donde está —igual al piso— devuelve siempre 73
-    ├── use-cell-px.ts            # el tercer hook de entrada: mide el contenedor raíz y escribe
-    │                             #   el resultado en la custom property --cell (spec 021)
+    ├── grid-fit.ts               # cuántas celdas entran en el viewport y cuánto mide cada una
+    │                             #   (spec 031, reemplaza a cell-px.ts del 021). Pura, fuera del
+    │                             #   hook para poder testearla sin navegador
+    ├── use-grid.ts               # el tercer hook de entrada: mide el contenedor raíz, escribe la
+    │                             #   celda en --cell y devuelve las dimensiones como estado
     ├── constants/
-    │   ├── layout.constants.ts   # CELL_PX_MIN y CELL_PX_MAX —el piso y el techo, hoy el mismo
-    │   │                         #   número, o sea la celda fija de antes del 021— y las
+    │   ├── layout.constants.ts   # CELL_PX_OBJETIVO —el tamaño al que se apunta, 73— y las
     │   │                         #   razones que vuelven proporcional la baldosa · MINI_BOX ·
     │   │                         #   MINI_CELL_PX · MINI_PISTA_PX · TEMPO_MIN · TEMPO_MAX · las
     │   │                         #   dos razones del anillo de foco de la celda (spec 026)
@@ -168,8 +167,9 @@ src/
         │                         #   miniatura no distingue den textos distintos (AC5 del 019)
         ├── orientation-constants.test.ts # las doce ranuras salen de SHAPES y arrancan en 0°
         │                         #   sin reflejar (spec 020)
-        └── cell-px.test.ts       # el piso, los dos techos y el empate de max(min(vw/10, vh/6))
-                                  #   (spec 021)
+        └── grid-fit.test.ts      # la tabla de nueve viewports, que lo que sobra es menos de una
+                                  #   celda en los dos ejes, y los dos casos desproporcionados
+                                  #   (spec 031)
 ```
 
 ## La dirección de dependencia
@@ -210,8 +210,8 @@ por lo que el test necesita:
   navegador sirve su propio documento y nunca carga ese archivo, así que el `lang` de la página era lo
   único del repo que ningún test podía falsear.
 - **`browser`** — Chromium de verdad, por Playwright, sobre `src/**/__tests__/*.browser.test.tsx`. Son
-  11: los seis componentes, `App.tsx`, los tres hooks —el tercero es `use-cell-px.ts`, del spec
-  021— y `audio/engine.ts`. Renderizan con
+  11: los seis componentes, `App.tsx`, los tres hooks —el tercero es `use-grid.ts`, de los specs
+  021 y 031— y `audio/engine.ts`. Renderizan con
   `vitest-browser-react`, y el `setupFiles` (`browser-setup.ts`) importa la hoja de estilos **una** vez:
   sin ella `z-10` está en el `className` y `getComputedStyle` devuelve `auto`, o sea que un test de
   layout pasa o falla por el motivo equivocado y en silencio.
@@ -300,7 +300,7 @@ aparece con qué disparador— está en [conventions.md](../guides/conventions.m
 
 - **Componentes**: `PascalCase.tsx`, un componente por archivo y ningún otro export.
 - **Funciones puras y utilidades**: `camelCase`.
-- **Constantes de dominio**: `SCREAMING_SNAKE_CASE` (`SHAPES`, `BASE_MAP`, `ANCHOR_INDEX`, `GRID_W`).
+- **Constantes de dominio**: `SCREAMING_SNAKE_CASE` (`SHAPES`, `BASE_MAP`, `ANCHOR_INDEX`, `MAX_PIEZAS`).
 - **Tipos e interfaces**: `PascalCase` (`Cell`, `PieceKey`, `PlacedPiece`).
 - **Archivos de rol**: repiten el nombre de su módulo con el sufijo del rol
   (`transform.ts` → `types/transform.types.ts`, `constants/…`, `__tests__/transform.test.ts`).

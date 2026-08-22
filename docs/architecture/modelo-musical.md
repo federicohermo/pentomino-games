@@ -84,7 +84,8 @@ después de escucharlo**, porque ese camino atraviesa la propia pieza y lo que s
 recorrido sino golpes encima del arpegio que acaba de sonar. El recorrido existe *entre* piezas.
 
 **La distancia es la de la grilla, más una arista.** El tablero se repliega sobre sí mismo: la celda
-`(0,0)` y la celda `(9,5)` son adyacentes, una sola costura extra y no un toroide. Con ella la distancia
+`(0,0)` y la esquina opuesta —`(9,5)` en el tablero de 10×6, y desde el spec 031 la que corresponda al
+tablero que haya— son adyacentes, una sola costura extra y no un toroide. Con ella la distancia
 máxima del tablero baja de 14 a **12**, y el 13,8 % de los 3.600 pares de celdas se acorta
 (`research.md` del spec 009, §2); `(0,0)` a `(9,5)` pasa de 14 celdas a **1**.
 
@@ -102,7 +103,7 @@ sobre la celda**, y ésa es la propiedad del modelo. Además arranca **apagado**
 recorrido sobre el vacío se enciende desde el panel. Sobre celda **ocupada** suena
 la nota de esa celda —la misma altura que la celda muestra desde el spec 007— como una floritura más
 corta y más suave que la nota de una pieza (spec 011). `routeBetween(a, b, placed)` (`domain/board.ts`)
-materializa esas celdas intermedias: es el camino de **costo mínimo** sobre las 60 celdas —peso 1 en
+materializa esas celdas intermedias: es el camino de **costo mínimo** sobre las celdas del tablero —peso 1 en
 celda vacía, `CROSS_COST` en celda ocupada, con desempate lexicográfico explícito entre caminos de
 igual costo— y no la regla "primero en X, después en Y" de `pathBetween`, que dejó de existir junto con
 `cellDistance`, `bestRoute` y el const-object `ROUTE`. Cada click de la `Sequence` lleva `note?: number`

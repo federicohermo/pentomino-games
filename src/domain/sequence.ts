@@ -1,8 +1,8 @@
 import type { Cell } from './types/transform.types.ts';
-import type { PlacedPiece } from './types/board.types.ts';
+import type { PlacedPiece, Dims } from './types/board.types.ts';
 import type { Step, Click, Visita, Sequence } from './types/sequence.types.ts';
 import type { RegimenDeRotacion } from './types/music.types.ts';
-import { routeBetween, occupantAt, occupantCellIndex } from './board.ts';
+import { rutador, occupantAt, occupantCellIndex } from './board.ts';
 import { degreeByCellIndex, playOrderByCellIndex, arpeggioFor, notesForRotation } from './music.ts';
 import { SHAPES, CELLS_PER_PIECE } from './constants/pieces.constants.ts';
 import { BASE_MAP, DEFAULT_OCTAVE } from './constants/music.constants.ts';
@@ -341,7 +341,7 @@ function shortestCircuit(cost: readonly (readonly number[])[]): number[] {
  * El otro borde lo pone `clickEn`: un tramo que CRUZA una pieza muteada tampoco suena su
  * nota. Sin eso el muteo seria parcial en uno de cada tres tableros.
  */
-export function buildSequence(placed: readonly PlacedPiece[], regimen: RegimenDeRotacion): Sequence {
+export function buildSequence(placed: readonly PlacedPiece[], regimen: RegimenDeRotacion, dims: Dims): Sequence {
   const n = placed.length;
   if (n === 0) return { steps: [], clicks: [], order: [], length: 0 };
 
@@ -376,7 +376,12 @@ export function buildSequence(placed: readonly PlacedPiece[], regimen: RegimenDe
   // camino y agendar otro.
   // `placed` entero y no "las demas piezas": un tramo puede pisar tambien a las dos que
   // une, y esquivarlas es igual de deseable.
-  const rutas = puertas.map((desde) => puertas.map((hasta) => routeBetween(desde.salida, hasta.entrada, placed)));
+  // Un rutador y no `n^2` llamadas sueltas a `routeBetween`: adentro se acuerda de las
+  // distancias por destino, que son `n` y no `n^2` (spec 031). Con 12 piezas eso es 12
+  // Dijkstras en vez de 144, y es lo que hace que un tablero de 390 celdas entre en el
+  // mismo presupuesto que tenia el de 60. El argumento entero esta en `board.ts`.
+  const ruta = rutador(placed, dims);
+  const rutas = puertas.map((desde) => puertas.map((hasta) => ruta(desde.salida, hasta.entrada)));
   const circuito = shortestCircuit(rutas.map((fila) => fila.map(claveDeTramo)));
 
   const steps: Step[] = [];

@@ -134,3 +134,18 @@ pieza», con el nombre que la función tenía antes del 005, en
 [`001/tasks.md:35`](./001-notas-por-celda-en-orden-angular/tasks.md)—: la cierra el 007 **sin cambiar la
 firma**, con una pura hermana al lado (`occupantCellIndex`). Ensanchar el retorno le habría cambiado el
 tipo a todos los llamadores que solo quieren saber qué pieza ocupa una celda, para servir a uno solo.
+
+- **El Dijkstra del recorrido no entra en presupuesto en 4K.** Medido con el spec 031: en un tablero de
+  53 × 30 —1.590 celdas, que es lo que da una pantalla de 3840 × 2160— `buildSequence` con 12 piezas
+  tarda **30,9 ms**, seis veces el techo de 5 ms del AC10 del 009. En 1920 × 1080 (390 celdas) da 3,1 ms,
+  así que no muerde en ninguna pantalla común. La salida está identificada y no probada: los pesos son
+  sólo dos (1 y `CROSS_COST`), así que una **cola de baldes** baja la búsqueda lineal del mínimo de
+  `O(N²)` a `O(N · C)`. `revisiones.md` registra que a `N = 60` esa cola se probó y salió **peor**
+  (1,41 ms contra 0,68) — es exactamente el resultado que se da vuelta cuando `N` crece dos órdenes.
+
+- **El dock de piezas mide en celdas y con la celda de 73 px muestra una sola columna.** Su caja es
+  `calc(var(--cell) * 2)`, que con la celda del spec 021 daba entre 240 y 360 px y desde el 031 da
+  siempre **146**. Ahí adentro `MINI_PISTA_PX` (58) entra dos veces por 1 px, así que la barra de
+  scroll vertical tira la segunda columna y las doce miniaturas quedan en fila. Se arregla ensanchando
+  el dock a tres o cuatro celdas —hay que remedir qué celdas del tablero tapa, que es lo que la medida
+  en celdas existe para poder contestar— o bajando `MINI_PISTA_PX`. Es diseño del dock, no del tablero.
