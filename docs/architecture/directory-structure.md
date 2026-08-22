@@ -97,8 +97,7 @@ src/
 └── components/                   # un componente por archivo, presentacionales
     ├── PiecePalette.tsx          # la tarjeta y la composición de los dos paneles, más las
     │                             #   filas que quedan interpoladas entre ellos (spec 022)
-    ├── OrientationPanel.tsx      # las doce miniaturas, cada una en SU orientación recordada
-    │                             #   (spec 016 la forma, spec 020 la orientación por pieza)
+    ├── OrientationPanel.tsx      # las doce miniaturas en la orientación actual (spec 016)
     ├── TransportPanel.tsx        # tempo, play/pausa y reset
     ├── Board.tsx                 # grilla 10×6: color por pieza, nota por celda, y el fantasma
     │                             #   diciendo lo mismo antes de colocar
@@ -131,8 +130,6 @@ src/
     │   ├── palette.constants.ts  # los 12 colores y su color de texto (ver DESIGN.md)
     │   ├── route.constants.ts    # MARCA: los estados de una celda bajo la cabeza lectora
     │   ├── input.constants.ts    # ACCION y EDICION: lo que puede pedir un gesto
-    │   ├── orientation.constants.ts # ROTACION, la orientación inicial y las doce ranuras
-    │   │                         #   derivadas de SHAPES (spec 020)
     │   ├── playhead.constants.ts # los tres grosores de borde, su tabla por MarcaKind y las
     │   │                         #   clases del velo (spec 029, al salir del .tsx)
     │   └── spectrum.constants.ts # BAR_COUNT · GAP · MIN_BAR · IDLE_TEXT
@@ -140,7 +137,6 @@ src/
     │   ├── cell-text.types.ts    # CellText: lo que una celda muestra
     │   ├── route.types.ts        # Marca · CeldaPorEstrenar
     │   ├── engine.types.ts       # MotorDeTransporte · SequenceDelMotor
-    │   ├── orientation.types.ts  # Rotacion · Orientacion · MemoriaDeOrientacion (spec 020)
     │   ├── panel.types.ts        # PropsDeOrientacion · PropsDeTransporte
     │   └── input.types.ts        # Accion · Edicion · los campos de evento que las puras miran
     └── __tests__/
@@ -185,7 +181,7 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 por lo que el test necesita:
 
 - **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre `src/**/__tests__/*.test.ts`.
-  Son 21 archivos. El dominio es puro y el audio tiene una implementación nativa de Web Audio, así que
+  Son 17 archivos. El dominio es puro y el audio tiene una implementación nativa de Web Audio, así que
   corren ahí sin adaptación. El único que no es el test de un módulo es
   `src/__tests__/documento.test.ts`, del spec 025: lee `index.html` **del disco** porque el proyecto de
   navegador sirve su propio documento y nunca carga ese archivo, así que el `lang` de la página era lo
