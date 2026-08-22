@@ -97,8 +97,9 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
         // el borde de la miniatura y el `aria-pressed`, y tienen que invertirse en el
         // mismo momento.
         const activo = selected === key;
-        // `type="button"` y no el default, aca y en los otros seis sitios de JSX que
-        // renderizan los 22 botones de la app: hoy no hay un solo `<form>` en el arbol,
+        // `type="button"` y no el default, aca y en los otros cuatro sitios de JSX que
+        // renderizan los 17 botones de la app —eran siete sitios y 22 botones hasta que el
+        // 019 borro los cuatro grados y el ON/OFF de Reflexion—: hoy no hay un `<form>`,
         // asi que no hay bug. Pero el default de un `<button>` DENTRO de un formulario es
         // `submit`, y en esta app eso significa recargar la pagina perdiendo el tablero
         // entero, y no hay deshacer (`specs/deuda.md`). Va sin excepcion y sin discutir

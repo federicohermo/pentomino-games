@@ -23,7 +23,8 @@ salieron a `playhead-loop.ts` y `spectrum-loop.ts` sin cambiar una línea de com
 
 Desde ese spec `components/` tiene **dos clases de test y las dos corren con `pnpm test`**: los `.ts`
 puros en el proyecto `node` —`input.ts`, `cell-text.ts`, `cell-name.ts`, `piece-mini.ts`,
-`route-source.ts`, `engine-bridge.ts`, `palette.constants.ts` y los dos `-loop.ts`— y los
+`orientation-text.ts`, `route-source.ts`, `engine-bridge.ts`, `palette.constants.ts` y los dos
+`-loop.ts`— y los
 `*.browser.test.tsx` en un
 Chromium de verdad, que es donde se verifican los seis componentes, `App.tsx` y los dos hooks. El
 discriminante es el **sufijo**, no la carpeta. Y el umbral es 100 en las cuatro métricas: lo que se

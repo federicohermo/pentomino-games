@@ -70,8 +70,9 @@ pnpm exec tsc -b --noEmit
 
 ## Cómo se toca
 
-Los cuatro gestos que gobiernan la pieza **por colocar** son la única vía: desde el spec 019 rotar y
-reflejar **no tienen botón**, porque los que había eran el camino lento al mismo lugar. El panel se
+De los cuatro gestos que gobiernan la pieza **por colocar**, los de rotar y reflejar son desde el
+spec 019 la **única** vía: los botones que hacían lo mismo eran el camino lento al mismo lugar y se
+borraron —elegir la pieza sí conserva su segunda vía, las doce miniaturas—. El panel se
 queda como quien **muestra** el estado, y por eso los atajos siguen descubriéndose solos: se rota con
 la rueda y la línea de orientación de la paleta pasa de `0°` a `90°`. Ese lector no es decorativo —es
 la mitad del trabajo que hacían los botones—: la miniatura no puede decir la orientación entera, y en

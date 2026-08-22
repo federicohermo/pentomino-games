@@ -101,11 +101,13 @@ export default function PiecePalette({ orientacion, transporte }: Props) {
         <div className="pt-2 text-sm text-slate-600">
           <p><b>{selected}</b> → tónica {CHROMATIC[BASE_MAP[selected]]}</p>
           {/* La orientación EN TEXTO, y es lo único que el 019 suma en vez de restar. Al
-              borrar los cuatro botones de grados la miniatura se queda como el único lector
-              VISIBLE de la orientación, y hay 29 de 96 combinaciones que suenan distinto sin
-              verse distinto: la `X` rotada cuatro veces da cuatro arpegios y cero cambio en
-              la forma. El argumento entero, con las seis piezas ciegas, está en
-              `orientation-text.ts`.
+              borrar los cuatro botones de grados la orientación queda sólo DERIVABLE: de la
+              miniatura, que es ciega en 6 de las 12 piezas —hay 29 de 96 combinaciones que
+              suenan distinto sin verse distinto, y la `X` rotada cuatro veces da cuatro
+              arpegios y cero cambio en la forma—, o de los cinco nombres de `Notas
+              actuales`, que sí las distingue las ocho pero obliga a deducirla. Lo que
+              faltaba era un lector DIRECTO, que es exactamente la derivación que un panel
+              existe para ahorrar. El argumento entero está en `orientation-text.ts`.
 
               No devuelve un botón —no se puede apretar— así que no deshace el borrado: lo
               que se fue era el camino lento a rotar, y lo que queda es el lector.

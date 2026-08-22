@@ -259,12 +259,16 @@ T021 no puede dar verde, y el umbral de coverage es 100. **AC16**.
       `Z, rotación 180°`, que es justo lo que AC13 prohibe degradar al hacer que T031 consuma la pura.
       Si después de T031 hubo que editar este archivo, el `aria-label` perdió el sustantivo «rotación»
       o ganó el separador que el lector deletrea, o sea que AC13 se saldó agrandando la deuda de
-      accesibilidad — **AC13**, **AC16**
+      accesibilidad — **AC13**, **AC16**.
+      **Salió distinto y quedó anotado**: hubo que tocar el factory —T005 borra `onRotate` y
+      `onMirror` de `PropsDeOrientacion` y sin eso el archivo no typechequea—, pero **ninguna
+      aserción** cambió, que es lo que la tarea protegía. La forma correcta era «ninguna aserción se
+      toca», no «ningún byte»; el detalle está en `specs/revisiones.md`
 
 ## Verificación
 
 - [x] T021 `pnpm verify` en verde — **AC15**
-- [ ] T022 [M] Navegador: medir `CELL_PX` en el DOM y confirmar que sigue en **73** — **AC9**. Es la
+- [x] T022 [M] Navegador: medir `CELL_PX` en el DOM y confirmar que sigue en **73** — **AC9**. Es la
       única forma de verificarlo de verdad. **Se toma antes de mergear este spec, no al final del
       lote**, y es el único `[M]` de acá que **sí** bloquea su PR: el 020 le agrega el botón `0°` a la
       fila que esto acaba de medir —su `T039` repite la medición— y el 021 **borra la tarjeta de la
@@ -272,7 +276,10 @@ T021 no puede dar verde, y el umbral de coverage es 100. **AC16**.
       solo carril de `/spec-implement-batch`: diferir este `[M]` al cierre deja el navegador sin
       tarjeta ni `max-w-6xl` que medir, y con eso AC9 se vuelve infalsificable — junto con la salida
       que el 020 se reserva en su AC15 («si da otra cosa, el `0°` baja a una fila propia»), que
-      después del 021 no tiene fila adonde bajar
+      después del 021 no tiene fila adonde bajar.
+      **Tomada**: `CELL_PX` sigue en **73** y la paleta cayó a **428** px contra los 470 del tablero,
+      o sea que dejó de ser la tarjeta más alta. Es la medición de la que salen T016, T017 y T033, y
+      la crónica de por qué eso cambia el modelo y no sólo el número está en `specs/revisiones.md`
 - [ ] T023 [M] Navegador: rotar una `X` cuatro veces y confirmar que la línea de texto es lo único que
       cambia — **AC4**, **AC5**
 - [ ] T024 [M] Navegador: rueda, `Shift`, botón derecho y `Ctrl` siguen rotando y reflejando — **AC2**
@@ -300,3 +307,12 @@ T021 no puede dar verde, y el umbral de coverage es 100. **AC16**.
 - [x] T030 `↺` no tiene deshacer y ahora tampoco tiene la palabra «Reset» que lo frenaba un segundo.
       La deuda de «no hay deshacer» ya está en `specs/deuda.md` desde el 014; anotar ahí que este spec
       la roza sin agrandarla
+- [ ] T044 El `title` del metrónomo quedó **igual** al `aria-label` («Recorrido en el vacío»), y el
+      `research.md` §6 y §9 pedían lo contrario: que el `title` dijera la aclaración **entera** —que
+      apaga una sola de las dos clases de cruce, porque el cruce sobre celda ocupada es modelo y no
+      mezcla (D6)—, que es la mitigación declarada del riesgo «el metrónomo sin texto no dice qué
+      apaga». La implementación eligió el texto único con un argumento propio, escrito al lado del
+      botón: el puntero y el lector no pueden contar dos historias del mismo control. No se cambia
+      acá porque tocarlo obliga a reescribir ese argumento y el riesgo es **medio**, no bloqueante:
+      lo que falta es decidir entre las dos formas —`title` descriptivo distinto del nombre, o texto
+      único— y dejarla escrita una sola vez
