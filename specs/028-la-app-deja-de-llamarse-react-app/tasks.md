@@ -15,14 +15,35 @@ que es ortogonal en semántica y no en texto: ver la sección 10 del research. N
       el T003. Dura un commit y es el precio de que el borrado sea reversible
 - [x] T003 Iconos propios en 192 y 512 px, más el `favicon`. Salen del lenguaje que `DESIGN.md` ya fijó:
       una pieza en uno de los doce colores medidos, baldosa `rounded-lg` con borde `slate-900`
-      (`Board.tsx:293`), fondo `#f8fafc` — **AC2a**. **Ni `L` ni `Y`**: son las dos excepciones de
+      (`Board.tsx:293`), fondo `#f8fafc` — **AC2a**. **Las dos mitades de esa última frase caducaron
+      y quedan acá como historia**: la pieza pasó de la `X` (`#00A99D`) a la **`F`** (`#D9E021`,
+      Lc 83,1 contra negro) y el fondo dejó de ser `#f8fafc` para ser **transparente**, las dos por
+      pedido del usuario el 2026-08-21. El `manifest.json` **no cambia**: su `background_color`
+      sigue en `#f8fafc` y con el icono transparente pasa a ser lo que de verdad pinta atrás en el
+      splash, que es para lo que existe. **Ni `L` ni `Y`**: son las dos excepciones de
       `LC_EXCEPCIONES` (`palette.constants.ts:70`), no llegan al piso de contraste Lc 60 y un ícono es
       justo donde eso se ve. Elegir una de esas dos sería meter la deuda D3 en la identidad del
       proyecto
 - [x] T004 Es **aplicación** del lenguaje visual, no una revisión: si algo no cierra, se cambia el ícono
       y no `DESIGN.md`
-- [ ] T005 [M] Mirar el favicon a 16 px, y los tres contra `DESIGN.md` — **AC2b**. Una pieza de cinco celdas puede volverse una mancha; si pasa,
-      la salida es una silueta más simple y no otro color
+- [x] T005 [M] Mirar el favicon a 16 px, y los tres contra `DESIGN.md` — **AC2b**. Una pieza de cinco celdas puede volverse una mancha; si pasa,
+      la salida es una silueta más simple y no otro color.
+      **Hecho el 2026-08-21, y la mancha era real y está medida.** Con el lenguaje por baldosa, a
+      16 px la baldosa mide **3,01 px** y el filete de 1 px se come 2 de esos 3: el icono queda
+      **0 % del color de la pieza y 100 % tinta**, promedio `#282f29` — cinco puntos negros, no una
+      pieza. Se aplicó la salida que esta tarea ya tenía escrita —silueta, **no** otro color—: las
+      cinco celdas unidas sin aire, con un solo filete alrededor del perímetro. Medido, la silueta
+      da **55 %** del color a 16 px.
+      **El corte quedó entre 16 y 32 y no más arriba**, también midiendo: a 32 px la baldosa mide 8
+      y el icono ya da 57 % de color, o sea que se lee — así que 32, 48 y 64 conservan el lenguaje
+      por baldosa y sólo el 16 es silueta. Ceder más arriba habría cambiado el icono en tamaños
+      donde no hacía falta.
+      **Y un tercer hallazgo que esta tarea no preveía**: a los tamaños del favicon el paso y el
+      origen tienen que caer en **entero**. Con `origen = 0,5` cada borde cae en medio píxel y el
+      **38 %** de los píxeles dibujados salen parciales — el icono se ve borroso sin que nada esté
+      mal. Alineado a entero, el 16 queda **100 % sin antialias**.
+      Verificado además en Chrome de verdad, no sólo en el generador: los tres decodifican y la
+      esquina `(0,0)` da `rgba(0,0,0,0)` — transparencia real y no blanco
 
 ## Paso 2 — El manifest y las metas
 
