@@ -44,6 +44,82 @@ export interface LogRow {
  */
 const ESTADOS_TERMINALES = new Set(['Descartado', 'Superado']);
 
+/**
+ * Un archivo que una tarea nombra entre backticks, con su linea cuando la trae.
+ *
+ * Se devuelve como DATO y no como verdad. Un `tasks.md` nombra un archivo entre
+ * backticks tambien cuando la tarea es actualizar un doc que lo enumera, y esa
+ * mencion no es una escritura de codigo: medido en
+ * `spec-implement-batch/calibracion.md`, contar una de esas le inventaba al lote
+ * una arista con el unico spec que si editaba el archivo. Quien filtra por el
+ * verbo sigue siendo la skill; lo que esta tool ahorra es el parseo.
+ */
+export interface Cita {
+  /** El `T0NN` de la tarea que lo nombra. `null` en los specs anteriores a la convencion. */
+  tarea: string | null;
+  archivo: string;
+  /** La linea citada —`Board.tsx:61`—, cuando la tarea la trae. */
+  linea: number | null;
+}
+
+/**
+ * Un par `X → Y`: un numero que una tarea mueve de un valor a otro.
+ *
+ * Es la arista que ningun import delata. Dos specs que mueven la misma constante
+ * parecen un conflicto de merge y son una dependencia dura: se lee cruzando los
+ * `a` de un spec contra los `de` del resto.
+ *
+ * Los dos valores viajan como STRING y no como number, y no es pereza: los casos
+ * reales del repo incluyen `4,0 → 11,8` y `0,02 → 0,05`, con coma decimal, que
+ * `Number()` convierte en `NaN` sin avisar.
+ */
+export interface Cruce {
+  tarea: string | null;
+  de: string;
+  a: string;
+}
+
+/**
+ * Que backtick es un archivo: el que termina en una extension conocida, con la
+ * linea opcional pegada atras.
+ *
+ * La lista de extensiones no es decorativa. Sin ella entran `` `CELL_PX` `` y
+ * `` `vitest@^4.1.10` `` —medido sobre los 33 `tasks.md`: 847 supuestas citas
+ * contra 803 reales—, y una cita que no es un archivo es exactamente la clase de
+ * ruido que hace que la skill vuelva a abrir el archivo para desconfiar.
+ */
+const CITA = /`([^`\s]*?[\w.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|md|json|css|html|yml|yaml))(?::(\d+)(?:-\d+)?)?`/g;
+
+/**
+ * El par `X → Y`, tolerando el enfasis de markdown que lo rodea.
+ *
+ * Fijado contra los casos reales del repo y no contra el ideal: en `007` el par
+ * se escribe ``CELL_PX` 44 → **63**`, con los asteriscos ADENTRO del par, y un
+ * patron de `\d+ → \d+` los pierde. Medido: **2** pares sin tolerar el enfasis
+ * contra **7** con el, y los cinco que faltaban incluyen los dos que
+ * `spec-review-batch/cruces.md` documenta como caso testigo (`63 → 71` del 014 y
+ * `71 → 73` del 016).
+ *
+ * El enfasis se come con una clase de caracteres y no con `(?:\*\*|[*`_])*`: las
+ * dos alternativas se solapan en `*` y esa forma es la del backtracking
+ * exponencial sobre una linea con muchos asteriscos.
+ */
+const CRUCE = /[*`_]*(\d+(?:[.,]\d+)?)[*`_]*\s*→\s*[*`_]*(\d+(?:[.,]\d+)?)[*`_]*/g;
+
+/**
+ * Saca las citas y los cruces de un tramo de texto de tarea.
+ *
+ * Recibe los acumuladores en vez de devolver: se llama una vez por la linea de la
+ * tarea y una vez por cada continuacion, y las de una continuacion son de la
+ * tarea de arriba. Es el mismo recorrido de `parseTasks`, no una segunda pasada.
+ */
+function extraer(texto: string, tarea: string | null, citas: Cita[], cruces: Cruce[]): void {
+  for (const m of texto.matchAll(CITA)) {
+    citas.push({ tarea, archivo: m[1], linea: m[2] === undefined ? null : Number(m[2]) });
+  }
+  for (const m of texto.matchAll(CRUCE)) cruces.push({ tarea, de: m[1], a: m[2] });
+}
+
 export interface TasksInfo {
   hechas: number;
   total: number;
@@ -70,6 +146,14 @@ export interface TasksInfo {
   proxima: string | null;
   /** El `T###` de `proxima`, cuando el spec numera sus tareas. */
   proximaId: string | null;
+  /**
+   * Los archivos que cada tarea nombra. Opcional porque `spec_status` las omite
+   * cuando responde por los 33 specs: pesan 49.670 bytes sobre los 29.019 que la
+   * respuesta ya pesa, y son una lectura que siempre se hace sobre UN spec.
+   */
+  citas?: Cita[];
+  /** Los `X → Y` de cada tarea. Son 7 en todo el repo: viajan siempre. */
+  cruces: Cruce[];
 }
 
 /**
@@ -118,6 +202,11 @@ export function parseTasks(md: string): TasksInfo {
   let proxima: string[] | null = null;
   let proximaId: string | null = null;
   let abierta: string[] | null = null;
+  const citas: Cita[] = [];
+  const cruces: Cruce[] = [];
+  // El ID de la tarea abierta: una cita que aparece en una continuacion es de la
+  // tarea de arriba, y sin esto quedaria colgada de `null`.
+  let idAbierto: string | null = null;
 
   for (const line of lines(md)) {
     const h = encabezado.exec(line);
@@ -137,6 +226,8 @@ export function parseTasks(md: string): TasksInfo {
       if (esManual) manual++;
 
       abierta = [t[4].trim()];
+      idAbierto = t[2] ?? null;
+      extraer(t[4], idAbierto, citas, cruces);
       // La primera sin marcar que no es de seguimiento ni pide una persona se
       // queda como `proxima`, y sigue abierta para recibir sus continuaciones.
       if (!marcada && !enSeguimiento && !esManual) {
@@ -149,14 +240,17 @@ export function parseTasks(md: string): TasksInfo {
       continue;
     }
 
-    if (abierta && continuacion.test(line)) abierta.push(line.trim());
-    else if (line.trim() === '') abierta = null;
+    if (abierta && continuacion.test(line)) {
+      abierta.push(line.trim());
+      extraer(line, idAbierto, citas, cruces);
+    } else if (line.trim() === '') abierta = null;
   }
 
   return {
     hechas, total, seguimiento, manual, pendientes,
     proxima: proxima === null ? null : proxima.join(' '),
     proximaId,
+    citas, cruces,
   };
 }
 
@@ -170,6 +264,25 @@ export interface SpecStatus {
   tareas: TasksInfo | null;
   /** Que falto para responder del todo. Vacio cuando no falto nada. */
   notas: string[];
+}
+
+/**
+ * El spec que nombra `ref`: su id (`033`, `33`), su carpeta entera, o el prefijo
+ * de su carpeta.
+ *
+ * Es pura y vive aca, y no en cada tool, porque la resuelven DOS: `spec_status`
+ * para acotar la respuesta y `spec_write` para saber que archivo tocar. Dos
+ * copias de esta funcion se desincronizan la primera vez que alguien acepta una
+ * forma nueva de nombrar un spec en un solo lado.
+ */
+export function buscarSpec(specs: SpecStatus[], ref: string): SpecStatus | null {
+  const limpio = ref.trim();
+  // `33` y `033` son el mismo spec: el id del log lleva tres digitos y quien
+  // escribe a mano no siempre.
+  const id = /^\d+$/.test(limpio) ? limpio.padStart(3, '0') : null;
+  return specs.find(s =>
+    s.dir === limpio || s.id === limpio ||
+    (id !== null && (s.id === id || s.dir.startsWith(`${id}-`)))) ?? null;
 }
 
 /** Carpetas `NNN-...` dentro de `specs/`. La lista no se hardcodea en ningun lado. */
@@ -234,4 +347,115 @@ export function readSpecStatus(specsDir: string): { specs: SpecStatus[]; totales
     totales[k] = (totales[k] ?? 0) + 1;
   }
   return { specs, totales };
+}
+
+/**
+ * Lo que devuelve una escritura sobre un `tasks.md`.
+ *
+ * El fallo viaja como valor y no como excepcion porque los dos casos que importan
+ * —la tarea no existe, la tarea ya estaba marcada— no son errores del programa
+ * sino respuestas: quien llama tiene que poder decirlas. Y devuelve `md` en vez
+ * de escribir: estas dos funciones son puras y el I/O lo hace la tool, que es lo
+ * que deja testearlas contra strings fijos igual que a los parsers.
+ */
+export type Escritura =
+  | { ok: true; md: string; tarea: string; linea: number; texto: string }
+  | { ok: false; motivo: string };
+
+/**
+ * Corta conservando los terminadores: los indices pares son lineas y los impares
+ * su `\r\n` o `\n`.
+ *
+ * `lines()` alcanza para leer y NO para escribir. Cortar con `split(/\r?\n/)` y
+ * volver a pegar con `\n` reescribe cada linea del archivo en un repo que esta en
+ * CRLF, asi que marcar una casilla daria un diff de 300 lineas.
+ */
+const partir = (md: string): string[] => md.split(/(\r?\n)/);
+
+/** El terminador que ya usa el archivo, para las lineas que se agregan. */
+const finDeLinea = (partes: string[]): string => partes.length > 1 ? partes[1] : '\n';
+
+/**
+ * Una tarea pasa de `- [ ]` a `- [x]`.
+ *
+ * No inventa: si la tarea no existe o ya estaba marcada, lo dice. Marcar lo que
+ * no se hizo es exactamente el descuido que este repo acaba de arreglar en
+ * `log.md`, y una escritura que devuelve exito sin haber cambiado nada es la
+ * familia «fallar en verde» que ya costo el `--filter "{.}"` de `verify`.
+ */
+export function marcarTarea(md: string, id: string): Escritura {
+  const partes = partir(md);
+  const tarea = /^(\s*-\s\[)([ xX])(\]\s*)(T\d{3})(\s*.*)$/;
+
+  for (let i = 0; i < partes.length; i += 2) {
+    const m = tarea.exec(partes[i]);
+    if (m === null || m[4] !== id) continue;
+    const linea = i / 2 + 1;
+    const texto = m[5].trim();
+    if (m[2] !== ' ') return { ok: false, motivo: `${id} ya estaba marcada (linea ${linea}): «${texto}».` };
+    partes[i] = `${m[1]}x${m[3]}${m[4]}${m[5]}`;
+    return { ok: true, md: partes.join(''), tarea: id, linea, texto };
+  }
+  return { ok: false, motivo: `No hay ninguna tarea ${id} en este spec.` };
+}
+
+/**
+ * Agrega una tarea al `## Seguimiento` de un spec, con el `T0NN` que sigue.
+ *
+ * El ID **sigue contando desde el mayor del archivo entero** y nunca reusa uno
+ * libre (`specs/README.md`: «un ID libre no molesta a nadie; uno reusado rompe la
+ * referencia que otra tarea le hacia»). Por eso el maximo se busca sobre todo el
+ * archivo y no sobre la seccion.
+ *
+ * Si el spec no tiene la seccion, se crea: medido, uno de los 33 —el 018— no la
+ * tiene, asi que fallar ahi seria negarse a anotar deuda justo donde no hay
+ * ninguna anotada.
+ */
+export function agregarSeguimiento(md: string, texto: string): Escritura {
+  const partes = partir(md);
+  const eol = finDeLinea(partes);
+
+  let mayor = 0;
+  for (const m of md.matchAll(/^\s*-\s\[[ xX]\]\s*T(\d{3})\b/gm)) {
+    mayor = Math.max(mayor, Number(m[1]));
+  }
+  // `T\d{3}` es el formato que parsea `parseTasks`. Pasado el 999 la tarea nueva
+  // seria invisible para la propia tool que la escribio, asi que se dice.
+  if (mayor >= 999) return { ok: false, motivo: 'El spec ya llego a T999: no hay ID siguiente de tres digitos.' };
+  const id = `T${String(mayor + 1).padStart(3, '0')}`;
+  const linea = `- [ ] ${id} ${texto}`;
+
+  // Dos indices y no uno: el encabezado dice si la seccion existe, la ultima
+  // linea con contenido dice donde termina. Una seccion que existe pero esta
+  // vacia tiene el primero y no el segundo, y colapsarlos escribia un SEGUNDO
+  // encabezado debajo del que ya estaba.
+  let dentro = false;
+  let inicio = -1;
+  let ultima = -1;
+  for (let i = 0; i < partes.length; i += 2) {
+    const h = /^#{2,}\s+(.*)$/.exec(partes[i]);
+    if (h !== null) {
+      if (dentro) break;
+      dentro = /^seguimiento/i.test(h[1].trim());
+      if (dentro) inicio = i;
+      continue;
+    }
+    if (dentro && partes[i].trim() !== '') ultima = i;
+  }
+
+  if (inicio === -1) {
+    // Sin seccion, la tarea nueva se lleva su encabezado. El texto exacto es el
+    // que documenta `specs/README.md`.
+    const cola = md.endsWith(eol) ? '' : eol;
+    const nuevo = `${md}${cola}${eol}## Seguimiento (no bloquea)${eol}${eol}${linea}${eol}`;
+    // La linea nueva es la anteultima de `partir`: atras quedan su terminador y
+    // el tramo vacio que todo archivo terminado en salto deja al final.
+    return { ok: true, md: nuevo, tarea: id, linea: (partir(nuevo).length - 3) / 2 + 1, texto };
+  }
+
+  // Al final de la seccion y no debajo del encabezado: el orden de lectura
+  // termina siendo el de escritura, que es lo que hace legible el seguimiento.
+  const anclaje = ultima === -1 ? inicio : ultima;
+  partes.splice(anclaje + 1, 0, eol, linea);
+  return { ok: true, md: partes.join(''), tarea: id, linea: (anclaje + 2) / 2 + 1, texto };
 }
