@@ -1,8 +1,9 @@
 # Research — Spec 032
 
 Todo lo de acá está **medido** sobre el `main` del 2026-08-22 (`e6fae9e`, con el 031 ya mergeado), con
-`@eslint/markdown@8.0.3` y scripts de un solo uso. **Cuatro** supuestos se cayeron midiendo y están
-anotados donde se cayeron.
+`@eslint/markdown@8.0.3` y scripts de un solo uso. **Cinco** supuestos se cayeron midiendo y están
+anotados donde se cayeron. Los nº 3 y nº 5 son el mismo: los dos son un slugger casero que se lleva
+un carácter que GitHub conserva, y los dos declararon roto un enlace que anda.
 
 > Los conteos incluyen los cuatro `.md` de este mismo spec, que ya existen cuando se mide. Donde el
 > número cambia por eso, se dice cuál es el otro.
@@ -118,14 +119,33 @@ dos espacios que quedan pasan a dos guiones, uno por espacio. El slugger de prue
 `.replace(/\s+/g, '-')` y colapsaba, así que declaraba roto un enlace que funciona. Corregido a
 `.replace(/\s/g, '-')` —sin el `+`— los cuatro desaparecen.
 
-Con el slugger correcto queda **1 roto, y es real**:
+Con esa corrección quedaba **1 roto**, y durante un rato se lo dio por real:
 
-```
-docs/guides/mcp-domain.md → ./troubleshooting.md#el-mcp-server-no-arranca-err_module_not_found
+```text
+docs/guides/mcp-domain.md:164 → ./troubleshooting.md#el-mcp-server-no-arranca-err_module_not_found
 ```
 
-`docs/guides/troubleshooting.md` no tiene ningún encabezado que genere ese slug. El enlace lleva a la
-cabecera del archivo, en silencio.
+### Supuesto caído nº 5 — ese roto tampoco era real, y era el mismo bug con otro carácter
+
+Se volvió a medir contra los encabezados de `docs/guides/troubleshooting.md` en vez de contra el
+slugger, y el encabezado está: la línea 170 es
+
+```markdown
+### El MCP server no arranca: `ERR_MODULE_NOT_FOUND`
+```
+
+El slugger de prueba borraba todo lo que no fuera letra, número, espacio o guión —`/[^\p{L}\p{N}\s-]/u`—
+y eso **se lleva el `_`**. El conjunto que GitHub descarta no lo incluye: `_` es `0x5F` y queda fuera
+del rango `[`–`^` (`0x5B`–`0x5E`) que sí se borra, así que el slug real es
+`el-mcp-server-no-arranca-err_module_not_found` y **el enlace funciona**.
+
+Es el supuesto nº 3 otra vez con otro carácter, y por eso la lección no es «arreglar el slugger» sino
+**fijarlo carácter por carácter en el AC**, que es lo que AC2 hace ahora. La consecuencia práctica es
+la que importa: la versión anterior de este spec pedía «corregir el ancla», y ejecutarla habría
+cambiado un enlace que anda por uno que no. **Un gate de documentación mal calibrado no deja la
+documentación igual: la rompe con la autoridad de un test en verde.**
+
+Corriendo el barrido con las dos reglas: **0 enlaces rotos sobre los 159 `.md`**.
 
 ### Supuesto caído nº 4 — el barrido tiene que saltear los code spans
 
@@ -231,10 +251,17 @@ que respetarla.
 
 | Dónde | Aserciones `!` | `CLAUDE.md` dice |
 |---|---|---|
-| producción | **3** | «Quedan **dos**» |
-| tests | **95**, en 13 archivos | «hay **66**» |
+| producción (`src/` + `mcp-server/`) | **3** | «Quedan **dos**» |
+| `src/**/__tests__/` | **100**, en 12 archivos | «hay **66**» |
+| `mcp-server/**/__tests__/` | 2, en 1 archivo | — |
 
-La tercera de producción es `src/components/Board.tsx:246`:
+> El **100** es una segunda medición: la primera dio «95 en 13 archivos» y ninguno de los dos números
+> era el bueno. Se recontó corriendo la regla sobre el repo entero y partiendo el JSON de ESLint por
+> paquete —`eslint . -f json` con un override que la pone en `error`— y da 100 + 2 = 102, con
+> `App.browser.test.tsx` a la cabeza con 25. El detalle importa porque este número se copia a
+> `CLAUDE.md` (AC10): **un conteo a ojo es cómo se llegó al 66 que estamos corrigiendo.**
+
+La tercera de producción es `src/components/Board.tsx:252`:
 
 ```ts
 const grilla = e.currentTarget.closest('[role="grid"]')!;
@@ -247,8 +274,21 @@ cumple; lo que está mal es **el conteo**, que es justamente lo que un número e
 eso el arreglo no es tocar `Board.tsx` sino poner la regla con sus tres overrides: a partir de ahí el
 número no puede desincronizarse porque no hay número, hay una lista en el config.
 
-`no-warning-comments` con `v8 ignore` / `c8 ignore` / `istanbul ignore`: **0 hallazgos**. La
-afirmación «cero `/* v8 ignore */`» de `CLAUDE.md` es cierta hoy, y por eso la regla entra gratis.
+`no-warning-comments` con `v8 ignore` / `c8 ignore` / `istanbul ignore` y `location: 'anywhere'`,
+corrida sobre el repo entero con `eslint . --rule …`: **1 hallazgo**, y no está en `src/`.
+
+```text
+vite.config.ts:155  error  Unexpected 'v8 ignore' comment  no-warning-comments
+```
+
+Es el docblock del umbral 100, que deletrea el término **para prohibirlo**. O sea que la afirmación
+de `CLAUDE.md` sigue siendo cierta —no hay ni un ignore puesto— y lo que la regla caza es la frase
+que lo explica: mira texto, no sintaxis, y no puede distinguir el uso de la mención. La primera
+medición dio 0 porque se corrió sobre `src/` y `mcp-server/`, y `vite.config.ts` está en la raíz.
+
+El arreglo es de una línea y no afloja nada: se reescribe la frase para que nombre el mecanismo sin
+deletrearlo. Y deja una restricción permanente para el propio `eslint.config.js`, que también es
+código linteado: **el docblock de la regla no puede escribir el término**.
 
 ## 7. El presupuesto de `CLAUDE.md`
 

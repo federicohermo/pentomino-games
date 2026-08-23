@@ -15,10 +15,17 @@
 > | Hallazgo | Dónde |
 > |---|---|
 > | Una tabla que **GitHub renderiza mal** y descarta dos celdas | `specs/027-.../research.md:112` |
-> | Un ancla de enlace que ya no existe | `docs/guides/mcp-domain.md` |
-> | **4 archivos de `src/`** que el mapa del filesystem no nombra | `docs/architecture/directory-structure.md` |
-> | `CLAUDE.md` dice que quedan **dos** aserciones no nulas en producción: son **tres** | `src/components/Board.tsx:246` |
-> | `CLAUDE.md` dice que hay **66** en tests: son **95** | `src/**/__tests__/` |
+> | Un comentario que la regla nueva de AC6 rechaza | `vite.config.ts:155` |
+> | **5 archivos** que el mapa del filesystem no nombra | `docs/architecture/directory-structure.md` |
+> | `CLAUDE.md` dice que quedan **dos** aserciones no nulas en producción: son **tres** | `src/components/Board.tsx:252` |
+> | `CLAUDE.md` dice que hay **66** en tests: son **100** | `src/**/__tests__/` |
+>
+> **El sexto candidato se cayó midiendo y la lección quedó dentro de AC2.** El «ancla muerta» de
+> `docs/guides/mcp-domain.md` **no está muerta**: el slugger del barrido borraba el `_`, y el ancla
+> real —`#el-mcp-server-no-arranca-err_module_not_found`, que
+> `docs/guides/troubleshooting.md:170` sí genera— lo lleva. Es el mismo modo de falla que el
+> supuesto caído nº 3 del [`research.md`](./research.md) con otro carácter, y por eso AC2 fija el
+> slug carácter por carácter en vez de describirlo.
 >
 > **El precio se mide al implementar y se anota en [`research.md`](./research.md)**, no acá: los dos
 > nodos que toca son `lint` (159 archivos `.md` más) y `suite` (cuatro tests más), y el spec sólo se
@@ -42,12 +49,12 @@ La lista de lo que hoy no verifica nadie, con lo que ya se rompió:
 
 | Lo que la documentación afirma | Qué lo verifica hoy | Ya está roto |
 |---|---|---|
-| Sus enlaces relativos apuntan a algo | nadie | **sí** (1) |
+| Sus enlaces relativos apuntan a algo | nadie | no (0 de 159 archivos) |
 | Sus tablas tienen las columnas que dicen | nadie | **sí** (1) |
-| `directory-structure.md` es el mapa de `src/` | nadie | **sí** (4 archivos) |
+| `directory-structure.md` es el mapa de `src/` y de `mcp-server/src/` | nadie | **sí** (5 archivos) |
 | «Quedan **dos** aserciones no nulas, las dos anotadas» | nadie | **sí** (son 3) |
-| «Hay **66** en `src/**/__tests__/`» | nadie | **sí** (son 95) |
-| «Cero `/* v8 ignore */`» | nadie | no |
+| «Hay **66** en `src/**/__tests__/`» | nadie | **sí** (son 100) |
+| «Cero `/* v8 ignore */`» | nadie | **sí** (1: `vite.config.ts:155`) |
 | Los specs tienen sus cuatro archivos y su fila en `log.md` | nadie | no |
 | El formato de tarea de `specs/README.md` | `parseTasks`, **que descarta en silencio** | no |
 | `CLAUDE.md` bajo 200 líneas (convención de Anthropic) | nadie | **sí** (286) |
@@ -126,14 +133,30 @@ Dos reglas del preset se apagan **en los dos carriles**, con la medición al lad
 
 ## Criterios de aceptación
 
-**AC1.** `pnpm lint` lintea los 155 `.md` del repo con `@eslint/markdown`, con `frontmatter: 'yaml'` y
-el régimen de dos carriles descrito arriba. El carril B lista sus reglas **por nombre**, no por
-exclusión: agregar una regla nueva al preset no puede colarse sola en los specs congelados.
+**AC1.** `pnpm lint` lintea **todos** los `.md` del repo con `@eslint/markdown`, con
+`frontmatter: 'yaml'` y el régimen de dos carriles descrito arriba. El carril B lista sus reglas **por
+nombre**, no por exclusión: agregar una regla nueva al preset no puede colarse sola en los specs
+congelados. El AC no fija el número de archivos —hoy son **159**, y este spec agrega el suyo— porque
+un conteo escrito a mano es exactamente lo que el AC10 viene a borrar; lo que se verifica es que el
+bloque `**/*.md` exista y que `eslint .` los levante sin pasarle un glob.
 
 **AC2.** Un test falla si un enlace relativo de cualquier `.md` del repo no resuelve: archivo
 inexistente, o ancla —propia o ajena— que ningún encabezado genera. El slug se calcula como el de
-GitHub, **sin colapsar espacios consecutivos**: `## Forma → qué celda` genera `forma--qué-celda` con
-dos guiones, y colapsarlos daría un falso positivo sobre un enlace que funciona.
+GitHub, y **las dos reglas que un slugger casero pierde están medidas contra este repo**, cada una
+con el falso positivo que produce:
+
+- **No se colapsan los espacios consecutivos.** `## Forma → qué celda` genera `forma--qué-celda` con
+  dos guiones —la flecha se borra y cada uno de los dos espacios que quedan pasa a un guión—, así que
+  `\s+` da 4 falsos positivos en `docs/architecture/modelo-musical.md` sobre enlaces que funcionan.
+- **El `_` se conserva.** No está en el conjunto que GitHub descarta —es `0x5F`, justo afuera del
+  rango que sí borra—, así que el encabezado de `docs/guides/troubleshooting.md:170` genera
+  `el-mcp-server-no-arranca-err_module_not_found`. Un slugger que se lo lleva —el de la primera
+  corrida del research— declara roto el único enlace de `docs/guides/mcp-domain.md:164` que apunta
+  ahí, y «arreglarlo» lo rompería de verdad.
+
+**Con las dos reglas puestas: 0 rotos sobre los 159 `.md`.** Es lo que hace que esta verificación
+entre como gate — y también lo que la deja sin hallazgo propio: entra como no-regresión, no como
+arreglo.
 
 **AC3.** Un test falla si un archivo de producción de `src/**` o de `mcp-server/src/*.ts` no está
 nombrado en `docs/architecture/directory-structure.md`. Se excluyen los `__tests__/` y los
@@ -152,8 +175,16 @@ regla escrita en `CLAUDE.md` ya predice este mecanismo palabra por palabra: *«v
 archivo en `eslint.config.js` —que se ve en el diff y se explica— y no como un comentario suelto»*.
 
 **AC6.** `no-warning-comments` en `error` con los términos `v8 ignore`, `c8 ignore` e
-`istanbul ignore`, en cualquier posición del comentario. Hoy hay **cero**, así que entra gratis y
-convierte en gate el corolario del umbral 100 que hasta hoy era prosa.
+`istanbul ignore`, en cualquier posición del comentario. Convierte en gate el corolario del umbral 100
+que hasta hoy era prosa.
+
+**No entra gratis: hoy da 1, y el hallazgo es del propio repo.** `vite.config.ts:155` es el docblock
+del umbral 100 y **escribe el término que la regla prohíbe** para explicar por qué no hay que usarlo:
+*«nunca un `/* v8 ignore */`»*. Medido con la regla puesta sobre el repo entero: 1 error, ése. El
+arreglo es reescribir esa frase para que nombre el mecanismo sin deletrear el término —el motivo
+sobrevive, la cadena literal no—, y la misma trampa aplica al docblock que la regla se lleve en
+`eslint.config.js`: **explicar la regla no puede violarla**. Es el precio de una regla que mira texto
+y no sintaxis, y se paga una vez.
 
 **AC7.** `CLAUDE.md` queda **bajo 200 líneas** (hoy 286) y un test lo verifica, con la cita de la convención en
 el mensaje de falla. El detalle que sale **no se borra**: se muda a `docs/`, que es donde el propio
@@ -179,8 +210,14 @@ obligatorio *«en specs nuevos»* y los diez primeros son anteriores a la conven
 falla sobre 17 specs cerrados es un gate que se apaga a la semana.
 
 **AC10.** Los cinco hallazgos reales de la tabla de arriba quedan **arreglados**, no anotados como
-deuda: la tabla del 027, el ancla de `mcp-domain.md`, los 4 archivos que faltan en
-`directory-structure.md`, y los dos números de `CLAUDE.md` (`dos` → `tres`, `66` → `95`).
+deuda: la tabla del 027, el comentario de `vite.config.ts:155`, los **5** archivos que faltan en
+`directory-structure.md` —los 4 de `src/` más `mcp-server/src/symbols.ts`, que el gate de AC3 también
+exige—, y los dos números de `CLAUDE.md` (`dos` → `tres`, `66` → `100`).
+
+El segundo número queda escrito a mano **una última vez y con fecha**: el mecanismo que AC5 monta es
+una lista de **archivos**, no de aserciones, así que un `!` nuevo dentro de `Board.tsx` sigue sin
+mover el 100. Si el número se vuelve a caer, la salida es borrarlo de `CLAUDE.md` y remitir a la
+lista del config, no medirlo otra vez.
 
 **AC11.** `pnpm verify` sigue teniendo **cuatro** nodos. El Markdown entra por `lint` y los tests por
 `suite`.
