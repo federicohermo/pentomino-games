@@ -140,13 +140,40 @@ const enlacesDe = (contenido: string) => {
   return enlaces;
 };
 
+/**
+ * El regimen del registro (spec 034), redetectado aca en cuatro lineas en vez de
+ * compartir un helper con `specs-convencion.test.ts` — por la misma razon que el
+ * caminante: un helper compartido entre tests es codigo sin tests.
+ *
+ * En regimen `issue` los `specs/NNN-*​/` estan **ignorados**: pueden estar hidratados
+ * o no, y cualquiera de los dos es correcto. Un spec hidratado que cita a otro que no
+ * lo esta daria «roto» sin que nada este mal, asi que **los enlaces DE un spec HACIA
+ * otro spec** dejan de verificarse — y solo esos. Todo el resto del repo, incluidos
+ * los enlaces de `docs/` y de los registros, se sigue verificando igual.
+ */
+const LOG = readFileSync(join(RAIZ, 'specs/log.md'), 'utf8');
+const hrefs = [...LOG.matchAll(/^\|\s*\[\d{3}\]\(([^)]*)\)/gm)].map((m) => m[1].trim());
+const REGIMEN_ISSUE = hrefs.length > 0 && hrefs.every((h) => /^https:\/\/github\.com\/.+\/issues\/\d+$/.test(h));
+
+/** ¿La ruta cae dentro de un directorio de spec, que es lo que el 034 ignora? */
+const esDeUnSpec = (absoluto: string) => /[/\\]specs[/\\]\d{3}-/.test(absoluto);
+
 describe('los enlaces relativos de la documentacion resuelven', () => {
-  it('camina todos los `.md` del repo, y son mas de cien', () => {
+  it('camina los `.md` del repo, y son los que su regimen tiene', () => {
     // El gate mas importante del archivo y el que parece de adorno: si el caminante
     // se rompe o si un `IGNORADOS` de mas se come medio repo, los otros dos tests
     // pasan **sin haber mirado nada**. Es el mismo «fallar en verde» que el `--filter
     // "{.}"` de `verify`, aca con otra cara.
-    expect(ARCHIVOS.length).toBeGreaterThan(100);
+    //
+    // El piso depende del regimen porque la cuenta cambia sola con el spec 034, no
+    // porque el gate afloje. Medido sobre un worktree con `specs/NNN-*​/` ignorado:
+    // **30** archivos contra los 163 del repo completo — los 133 que faltan son
+    // exactamente los specs. Un piso de 25 sigue siendo una red que atrapa un
+    // caminante roto; lo que no puede es seguir en 100 y fallar por el motivo
+    // equivocado.
+    const piso = REGIMEN_ISSUE ? 25 : 100;
+
+    expect(ARCHIVOS.length, `regimen ${REGIMEN_ISSUE ? 'issue' : 'archivo'}: piso ${piso}`).toBeGreaterThan(piso);
   });
 
   it('cada enlace apunta a un archivo que existe', () => {
@@ -157,6 +184,12 @@ describe('los enlaces relativos de la documentacion resuelven', () => {
         const [ruta] = destino.split('#');
         if (ruta === '') continue; // ancla propia: la mira el test de abajo
         const absoluto = resolve(dirname(archivo), ruta);
+
+        // La unica excepcion, y es angosta a proposito: un spec citando a otro spec,
+        // en regimen `issue`. Ahi los dos estan ignorados y la hidratacion puede
+        // haber traido uno y no el otro. Fuera de ese cruce exacto, todo se verifica.
+        if (REGIMEN_ISSUE && esDeUnSpec(archivo) && esDeUnSpec(absoluto)) continue;
+
         if (!ARCHIVOS.includes(absoluto) && !existe(absoluto)) {
           rotos.push(`${relative(RAIZ, archivo)}:${linea} → ${destino}`);
         }

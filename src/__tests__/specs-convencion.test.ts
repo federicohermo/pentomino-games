@@ -44,11 +44,169 @@ const TAREA = /^\s*-\s\[([ xX])\]\s*(?:(T\d{3})\s+)?((?:\[[PM]\]\s*)*)(.*)$/;
 /** Toda linea que ARRANCA como checkbox, matchee o no el formato completo. */
 const PARECE_TAREA = /^\s*-\s\[.\]/;
 
-describe('los specs cumplen la convencion que su README documenta', () => {
+/* ────────────────────────────────────────────────────────────────────────────
+ * El regimen, y por que existe (spec 034)
+ *
+ * El 034 saca `specs/NNN-*​/` del repo: el spec pasa a vivir en un issue y el
+ * directorio local queda como cache. O sea que estos gates tienen que valer en
+ * DOS mundos, y el modo de falla a evitar esta medido — con `specs/` ignorado,
+ * el gate «cada spec tiene sus cuatro archivos» **pasaba en verde con cero
+ * carpetas**, porque `flatMap` sobre una lista vacia devuelve `[]`.
+ *
+ * La regla que dejo esa medicion: **la red anti-vacio ES el gate.** La asercion
+ * que mira el contenido es la que sobra cuando no hay contenido.
+ *
+ * Asi que el regimen **no se infiere** de si los directorios estan o no —eso es
+ * exactamente el gate apagandose solo—: lo **declara `log.md`**, en la unica
+ * columna que ya apunta a algo. Si sus filas enlazan a `./NNN-*​/spec.md` el
+ * registro vive en el repo; si enlazan a un issue, vive en GitHub. Y tiene que
+ * ser uniforme: media tabla migrada es justo el estado que el 034 evita.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+/** Una fila de la tabla de `log.md`: su `NNN` y a donde enlaza. */
+const filasDeLog = (log: string) =>
+  [...log.matchAll(/^\|\s*\[(\d{3})\]\(([^)]*)\)/gm)].map((m) => ({ id: m[1], href: m[2].trim() }));
+
+const ES_RUTA = /^\.\/\d{3}-[a-z0-9-]+\/spec\.md$/;
+const ES_ISSUE = /^https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/\d+$/;
+
+/**
+ * `archivo` · `issue` · `mezclado` · `vacio`. Los dos ultimos son estados invalidos y
+ * un gate los reporta: sin eso, un `log.md` que no matchea nada dejaria a todos los
+ * demas sin saber que verificar, que es la forma en la que este archivo se apagaria.
+ */
+const regimenDe = (log: string) => {
+  const filas = filasDeLog(log);
+  if (filas.length === 0) return 'vacio';
+  const rutas = filas.filter((f) => ES_RUTA.test(f.href)).length;
+  const issues = filas.filter((f) => ES_ISSUE.test(f.href)).length;
+  if (rutas === filas.length) return 'archivo';
+  if (issues === filas.length) return 'issue';
+  return 'mezclado';
+};
+
+const FILAS = filasDeLog(LOG);
+const REGIMEN = regimenDe(LOG);
+
+describe('el regimen del registro esta declarado y es uniforme', () => {
+  // Este bloque va PRIMERO y es la condicion de los demas: si no se sabe en que
+  // regimen esta el registro, ningun gate de abajo sabe que tiene que verificar, y
+  // «no saber» tiene que ser rojo y no verde.
+  it('`log.md` declara un regimen, y no es ni vacio ni mezclado', () => {
+    expect(
+      REGIMEN,
+      REGIMEN === 'vacio'
+        ? 'No se leyo ninguna fila de log.md. O la tabla se rompio, o el regex de filasDeLog dejo de matchear su formato.'
+        : 'La tabla de log.md tiene filas que enlazan a una ruta y filas que enlazan a un issue.\n' +
+          'Media tabla migrada es el estado que el spec 034 existe para evitar: mientras dure,\n' +
+          'ningun gate sabe si un spec deberia estar en el disco o no.',
+    ).toMatch(/^(archivo|issue)$/);
+  });
+
+  it('hay filas que verificar', () => {
+    // La red anti-vacio del registro, que vale en los DOS regimenes: `log.md` se
+    // queda trackeado pase lo que pase, asi que sus filas son lo unico que siempre
+    // esta. Sin esto, un `log.md` truncado deja todo lo de abajo corriendo sobre
+    // listas vacias.
+    expect(FILAS.length).toBeGreaterThan(20);
+  });
+
+  it('cada fila enlaza a algo que existe: su carpeta, o su issue', () => {
+    // El reemplazo del viejo «cada fila de log.md tiene su carpeta», que en regimen
+    // `issue` no tendria a que apuntar. Es tambien el mapa spec<->issue del AC3: en
+    // regimen `issue`, esta columna ES el mapa, y verificar que cada fila lo tenga es
+    // verificar que el mapa este completo.
+    const carpetas = new Set(CARPETAS.map((c) => c.slice(0, 3)));
+    const rotas = FILAS.filter((f) => (REGIMEN === 'archivo'
+      ? !carpetas.has(f.id) || !f.href.startsWith(`./${f.id}-`)
+      : !ES_ISSUE.test(f.href)));
+
+    expect(rotas.map((f) => `${f.id} → ${f.href}`), `filas que no resuelven (regimen ${REGIMEN})`).toEqual([]);
+  });
+
+  it('cada fila trae fecha ISO y un estado del conjunto cerrado', () => {
+    // Los cinco estados los declara `log.md` arriba de su propia tabla. Se listan aca
+    // porque el gate tiene que fallar ante uno inventado, que es la forma en la que una
+    // tabla de estados se desarma: alguien escribe «En progreso» y `spec_status` lo lee
+    // como no-terminal sin que nada avise.
+    //
+    // Corre en los dos regimenes: `log.md` se queda trackeado pase lo que pase, y estas
+    // dos columnas son suyas y no del directorio.
+    const ESTADOS = ['Propuesto', 'En curso', 'Implementado', 'Descartado', 'Superado'];
+    const problemas: string[] = [];
+
+    for (const { id } of FILAS) {
+      const fila = new RegExp(`^\\|\\s*\\[${id}\\]\\([^)]*\\)\\s*\\|([^|]*)\\|([^|]*)\\|`, 'm').exec(LOG);
+      if (!fila) { problemas.push(`${id}: la fila no tiene las tres columnas`); continue; }
+
+      const fecha = fila[1].trim();
+      const estado = fila[2].trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) problemas.push(`${id}: fecha "${fecha}" no es ISO`);
+      if (!ESTADOS.includes(estado)) problemas.push(`${id}: estado "${estado}" no esta en el conjunto`);
+    }
+
+    expect(problemas, `filas de log.md con problemas:\n${problemas.join('\n')}`).toEqual([]);
+  });
+});
+
+/**
+ * El detector de regimen, contra fixtures, para que **las dos ramas esten verificadas
+ * antes de que exista la segunda**.
+ *
+ * Sin esto, la rama `issue` de todo este archivo es codigo que nadie ejecuto nunca y
+ * que recien se estrena el dia de la mudanza — que es el peor momento para descubrir
+ * que no anda.
+ */
+describe('el detector de regimen', () => {
+  const fila = (id: string, href: string) => `| [${id}](${href}) | 2026-08-23 | Propuesto | x |`;
+  const RUTA = (id: string) => `./${id}-un-spec-cualquiera/spec.md`;
+  const ISSUE = (n: number) => `https://github.com/federicohermo/pentomino-games/issues/${n}`;
+
+  it('reconoce el regimen `archivo`', () => {
+    expect(regimenDe([fila('001', RUTA('001')), fila('002', RUTA('002'))].join('\n'))).toBe('archivo');
+  });
+
+  it('reconoce el regimen `issue`', () => {
+    expect(regimenDe([fila('001', ISSUE(70)), fila('002', ISSUE(71))].join('\n'))).toBe('issue');
+  });
+
+  it('llama `mezclado` a la tabla a medio migrar', () => {
+    // El estado que el 034 evita: mientras dure, ningun gate sabe si un spec deberia
+    // estar en el disco. Tiene que ser rojo, no un default silencioso a uno de los dos.
+    expect(regimenDe([fila('001', RUTA('001')), fila('002', ISSUE(71))].join('\n'))).toBe('mezclado');
+  });
+
+  it('llama `vacio` a lo que no tiene filas', () => {
+    expect(regimenDe('# Log\n\nsin tabla')).toBe('vacio');
+  });
+
+  it('no confunde un issue de otro repo con una ruta ni al reves', () => {
+    // Un `href` que no es ninguna de las dos formas cae en `mezclado`, que es rojo. Es
+    // deliberado: el gate no tiene por que adivinar que quiso decir.
+    expect(regimenDe(fila('001', 'https://example.com/algo'))).toBe('mezclado');
+  });
+});
+
+/**
+ * Lo que sigue mira los CUATRO ARCHIVOS de cada spec, asi que sólo corre en regimen
+ * `archivo`. En regimen `issue` el contenido no esta en el repo — puede estar como
+ * cache hidratada, o no estar — y un gate del repo no puede verificar lo que el repo
+ * no tiene.
+ *
+ * `describe.runIf` y no un `if` adentro de cada test: asi el reporte **dice** que se
+ * saltearon en vez de decir que pasaron, que es la diferencia entre un gate que no
+ * aplica y un gate que se apago. Cuando llegue el regimen `issue`, lo que verifica el
+ * formato de las tareas es el gate del propio issue, no este archivo.
+ */
+describe.runIf(REGIMEN === 'archivo')('los specs cumplen la convencion que su README documenta', () => {
   it('hay specs que verificar', () => {
     // Sin esto, un `readdirSync` que devuelva vacio deja los seis gates de abajo
     // pasando sobre listas vacias. Es el modo de falla que este spec vino a cerrar,
     // asi que el gate no puede tenerlo.
+    //
+    // Medido en el research del 034: es el UNICO que atrapa el caso de cero carpetas.
+    // El de «cada spec tiene sus cuatro archivos» pasaba en verde, porque `flatMap`
+    // sobre vacio da `[]`.
     expect(CARPETAS.length).toBeGreaterThan(20);
   });
 
@@ -60,57 +218,33 @@ describe('los specs cumplen la convencion que su README documenta', () => {
 
   it('cada spec tiene sus cuatro archivos', () => {
     const CUATRO = ['spec.md', 'research.md', 'plan.md', 'tasks.md'];
-    const faltan = CARPETAS.flatMap((c) =>
-      CUATRO.filter((a) => !existsSync(join(SPECS, c, a))).map((a) => `${c}/${a}`));
+    const vistos = CARPETAS.flatMap((c) =>
+      CUATRO.map((a) => ({ ruta: `${c}/${a}`, esta: existsSync(join(SPECS, c, a)) })));
+    const faltan = vistos.filter((v) => !v.esta).map((v) => v.ruta);
 
+    // La red anti-vacio, y no es ceremonia: **este gate pasaba en verde con cero
+    // carpetas** —medido en el research del 034, simulando la mudanza con un
+    // worktree—, porque `flatMap` sobre una lista vacia devuelve `[]` y `[]` es
+    // igual a `[]`. Contar lo que se MIRO, y no solo lo que fallo, es lo que
+    // distingue «no hay nada mal» de «no hay nada».
+    expect(vistos.length, 'no se miro un solo archivo de spec').toBeGreaterThan(80);
     expect(faltan, `archivos que faltan:\n${faltan.join('\n')}`).toEqual([]);
   });
 
-  it('cada spec tiene su fila en `log.md`, apuntando a SU carpeta, con fecha ISO y un estado del conjunto cerrado', () => {
-    // Los cinco estados los declara `log.md` arriba de su propia tabla. Se listan aca
-    // porque el gate tiene que fallar ante uno inventado, que es la forma en la que una
-    // tabla de estados se desarma: alguien escribe «En progreso» y `spec_status` lo lee
-    // como no-terminal sin que nada avise.
-    const ESTADOS = ['Propuesto', 'En curso', 'Implementado', 'Descartado', 'Superado'];
-    const problemas: string[] = [];
-
-    for (const carpeta of CARPETAS) {
-      const id = carpeta.slice(0, 3);
-      const fila = new RegExp(`^\\|\\s*\\[${id}\\]\\(([^)]*)\\)\\s*\\|([^|]*)\\|([^|]*)\\|`, 'm').exec(LOG);
-      if (!fila) { problemas.push(`${carpeta}: sin fila en log.md`); continue; }
-
-      // El `href` y no solo el texto del enlace: el numero entre corchetes y la carpeta a
-      // la que lleva son dos cosas distintas, y una fila que dice `[032]` apuntando al 031
-      // pasa las dos direcciones de la biyeccion sin que nada avise. Es la mitad del punto
-      // 3 del AC8 que el enlace visible no cubre.
-      const href = fila[1].trim();
-      const fecha = fila[2].trim();
-      const estado = fila[3].trim();
-      if (!href.startsWith(`./${carpeta}/`)) problemas.push(`${carpeta}: la fila enlaza a "${href}"`);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) problemas.push(`${carpeta}: fecha "${fecha}" no es ISO`);
-      if (!ESTADOS.includes(estado)) problemas.push(`${carpeta}: estado "${estado}" no esta en el conjunto`);
-    }
-
-    expect(problemas, `filas de log.md con problemas:\n${problemas.join('\n')}`).toEqual([]);
-  });
-
   /**
-   * Y la direccion inversa, que aca SI se verifica: toda fila de `log.md` tiene su
-   * carpeta.
+   * La direccion que falta: toda carpeta tiene su fila. La vuelta —toda fila resuelve—
+   * la verifica el bloque del regimen, que corre siempre.
    *
-   * Es la asimetria con `mapa-de-directorios.test.ts`, y no es incoherencia: alla el
-   * doc nombra archivos borrados **a proposito**, para que nadie los vuelva a crear.
-   * Aca no hay equivalente — una fila sin carpeta es un spec fantasma, y `spec_status`
-   * lo reportaria como trabajo que no existe. Los specs que no prosperaron no se borran
-   * del registro: quedan con estado `Descartado` y su carpeta puesta, como el 001.
+   * Es la asimetria con `mapa-de-directorios.test.ts`, y no es incoherencia: alla la
+   * direccion inversa borraria el registro de los archivos eliminados a proposito. Aca
+   * no hay equivalente: los specs que no prosperaron no se borran, quedan con estado
+   * `Descartado` y su carpeta puesta, como el 001.
    */
-  it('cada fila de `log.md` tiene su carpeta', () => {
-    const ids = new Set(CARPETAS.map((c) => c.slice(0, 3)));
-    const fantasmas = [...LOG.matchAll(/^\|\s*\[(\d{3})\]\(/gm)]
-      .map((m) => m[1])
-      .filter((id) => !ids.has(id));
+  it('cada carpeta tiene su fila en `log.md`', () => {
+    const conFila = new Set(FILAS.map((f) => f.id));
+    const huerfanas = CARPETAS.filter((c) => !conFila.has(c.slice(0, 3)));
 
-    expect(fantasmas, `filas de log.md sin carpeta:\n${fantasmas.join('\n')}`).toEqual([]);
+    expect(huerfanas, `carpetas sin fila en log.md:\n${huerfanas.join('\n')}`).toEqual([]);
   });
 
   it('toda linea que arranca como checkbox parsea con el formato documentado', () => {
