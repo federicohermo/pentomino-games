@@ -3,6 +3,7 @@ import { describePiece } from './describePiece.ts';
 import { checkInvariants } from './checkInvariants.ts';
 import { simulateBoard } from './simulateBoard.ts';
 import { specStatus } from './specStatus.ts';
+import { specWrite } from './specWrite.ts';
 import { findSymbol } from './findSymbol.ts';
 
 /**
@@ -14,5 +15,6 @@ export const tools: readonly ToolDef[] = [
   checkInvariants,
   simulateBoard,
   specStatus,
+  specWrite,
   findSymbol,
 ];

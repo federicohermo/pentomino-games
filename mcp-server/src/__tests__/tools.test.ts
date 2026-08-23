@@ -1,11 +1,15 @@
 import { test, describe } from 'node:test';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import assert from 'node:assert/strict';
 import { tools } from '../tools/index.ts';
 import { describePiece } from '../tools/describePiece.ts';
 import { checkInvariants, pieceOf } from '../tools/checkInvariants.ts';
 import { simulateBoard, nombreDeHz } from '../tools/simulateBoard.ts';
 import { findSymbol } from '../tools/findSymbol.ts';
-import { specStatus } from '../tools/specStatus.ts';
+import { crearSpecStatus, specStatus } from '../tools/specStatus.ts';
+import { crearSpecWrite } from '../tools/specWrite.ts';
 import { PIECE_KEYS } from '../pieces.ts';
 import { routeBetween } from '../../../src/domain/board.ts';
 import { SHAPES, CELLS_PER_PIECE } from '../../../src/domain/constants/pieces.constants.ts';
@@ -839,5 +843,159 @@ describe('simulate_board — el tablero deja de ser 10x6 (spec 031)', () => {
     const chico = call(simulateBoard, { pieces: piezas });
     const grande = call(simulateBoard, { pieces: piezas, dims: { w: 26, h: 15 } });
     assert.notDeepEqual(saltos(grande), saltos(chico));
+  });
+});
+
+/**
+ * Las dos tools de `specs/` se testean contra un registro FABRICADO y no contra
+ * el de verdad, y no es prolijidad: `spec_write` escribe. Correrla sobre
+ * `specs/` dejaría el repo distinto después de cada `pnpm verify`.
+ *
+ * Es también lo que hace alcanzables las dos ramas que el registro real no
+ * tiene: un spec sin `tasks.md` (los 33 lo tienen) y una escritura que falla.
+ */
+describe('spec_status y spec_write — sobre un registro fabricado', () => {
+  const CABECERA = '| Spec | Fecha | Estado | Descripción |\n|---|---|---|---|\n';
+
+  const TAREAS = [
+    '# Tareas — Fixture',
+    '',
+    '## Paso 1',
+    '- [ ] T001 Tocar `src/domain/music.ts` y `music.test.ts:12`',
+    '- [x] T002 El ancho pasa de 63 → **71**',
+    '',
+    '## Seguimiento (no bloquea)',
+    '- [ ] T010 Deuda anotada',
+    '',
+  ].join('\r\n');
+
+  /** Un `specs/` desechable con dos specs: uno completo y uno sin `tasks.md`. */
+  function registro(): string {
+    const raiz = mkdtempSync(join(tmpdir(), 'spec-write-'));
+    writeFileSync(join(raiz, 'log.md'), CABECERA +
+      '| [001](./001-completo/spec.md) | 2026-08-23 | Propuesto | El completo |\n' +
+      '| [002](./002-sin-tasks/spec.md) | 2026-08-23 | Propuesto | El vacío |\n', 'utf8');
+    mkdirSync(join(raiz, '001-completo'));
+    writeFileSync(join(raiz, '001-completo', 'tasks.md'), TAREAS, 'utf8');
+    mkdirSync(join(raiz, '002-sin-tasks'));
+    return raiz;
+  }
+
+  /** Corre `fn` con un registro nuevo y lo borra pase lo que pase. */
+  function con(fn: (raiz: string, status: ToolDef, write: ToolDef) => void): void {
+    const raiz = registro();
+    try {
+      fn(raiz, crearSpecStatus(raiz), crearSpecWrite(raiz));
+    } finally {
+      rmSync(raiz, { recursive: true, force: true });
+    }
+  }
+
+  /** Lo que `spec_write` devuelve cuando falla: texto plano con `isError`. */
+  function motivo(tool: ToolDef, args: unknown): string {
+    const r = tool.run(args);
+    assert.equal(r.isError, true, 'una escritura que no escribió tiene que decirlo con isError');
+    const first = r.content?.[0];
+    assert.ok(first !== undefined && first.type === 'text');
+    return first.text;
+  }
+
+  test('sin `spec` vienen todos y las citas NO viajan', () => {
+    // Medido sobre el repo real: las citas son 49.670 bytes contra los 29.019
+    // que la respuesta ya pesa, para una lectura que siempre es sobre UN spec.
+    con((_raiz, status) => {
+      const r = call(status, {});
+      const specs = r.specs as { dir: string; tareas: { citas?: unknown[]; cruces: unknown[] } | null }[];
+      assert.deepEqual(specs.map(s => s.dir), ['001-completo', '002-sin-tasks']);
+      assert.equal(specs[0].tareas?.citas, undefined);
+      // Los cruces sí: son 7 en todo el repo y es la lectura que necesita ver
+      // los specs de a varios para servir de algo.
+      assert.deepEqual(specs[0].tareas?.cruces, [{ tarea: 'T002', de: '63', a: '71' }]);
+      assert.ok(typeof r.nota === 'string' && r.nota.includes('citas'));
+      // Y un spec sin tasks.md no rompe el recorte.
+      assert.equal(specs[1].tareas, null);
+    });
+  });
+
+  test('con `spec` viene ese solo, con sus citas', () => {
+    con((_raiz, status) => {
+      const r = call(status, { spec: '1' });
+      const specs = r.specs as { dir: string; tareas: { citas: unknown[] } }[];
+      assert.equal(specs.length, 1);
+      assert.equal(specs[0].dir, '001-completo');
+      assert.deepEqual(specs[0].tareas.citas, [
+        { tarea: 'T001', archivo: 'src/domain/music.ts', linea: null },
+        { tarea: 'T001', archivo: 'music.test.ts', linea: 12 },
+      ]);
+      // Los totales siguen siendo los de todos: el recorte es de la lista, no
+      // del contexto.
+      assert.equal((r.totales as Record<string, number>).specs, 2);
+    });
+  });
+
+  test('un spec que no existe se dice, no se contesta con la lista vacía a secas', () => {
+    con((_raiz, status) => {
+      const r = call(status, { spec: '999' });
+      assert.deepEqual(r.specs, []);
+      assert.ok(typeof r.nota === 'string' && r.nota.includes('999'));
+    });
+  });
+
+  test('`marcar` escribe en el archivo y devuelve dónde', () => {
+    con((raiz, status, write) => {
+      const r = call(write, { op: 'marcar', spec: '001-completo', tarea: 'T001' });
+      assert.equal(r.tarea, 'T001');
+      assert.equal(r.linea, 4);
+      assert.equal(r.archivo, 'specs/001-completo/tasks.md');
+
+      const md = readFileSync(join(raiz, '001-completo', 'tasks.md'), 'utf8');
+      assert.ok(md.includes('- [x] T001 Tocar'));
+      assert.ok(!/[^\r]\n/.test(md), 'el CRLF del archivo sobrevive a la escritura');
+
+      // Y `spec_status` lo ve: es la vuelta entera de la indirección.
+      const specs = call(status, { spec: '001-completo' }).specs as { tareas: { hechas: number } }[];
+      assert.equal(specs[0].tareas.hechas, 2);
+    });
+  });
+
+  test('`seguimiento` agrega la tarea con el ID que sigue', () => {
+    con((raiz, _status, write) => {
+      const r = call(write, { op: 'seguimiento', spec: '1', texto: 'Un hallazgo del review' });
+      assert.equal(r.tarea, 'T011');
+
+      const md = readFileSync(join(raiz, '001-completo', 'tasks.md'), 'utf8');
+      assert.ok(md.includes('- [ ] T011 Un hallazgo del review'));
+      // Y cae DESPUÉS de la que ya estaba, no arriba.
+      assert.ok(md.indexOf('T011') > md.indexOf('T010'));
+    });
+  });
+
+  test('las dos operaciones y ninguna más', () => {
+    // AC3 del spec 033: el schema es el que impide que esta tool se convierta en
+    // un editor de texto y devuelva el formato a manos de quien llama.
+    con((_raiz, _status, write) => {
+      assert.throws(() => write.run({ op: 'borrar', spec: '1' }));
+    });
+  });
+
+  test('lo que no se pudo escribir FALLA, y el motivo dice qué pasó', () => {
+    con((_raiz, _status, write) => {
+      assert.match(motivo(write, { op: 'marcar', spec: '999', tarea: 'T001' }), /coincide con "999"/);
+      assert.match(motivo(write, { op: 'marcar', spec: '002-sin-tasks', tarea: 'T001' }), /no tiene tasks\.md/);
+      assert.match(motivo(write, { op: 'marcar', spec: '1' }), /necesita `tarea`/);
+      assert.match(motivo(write, { op: 'seguimiento', spec: '1' }), /necesita `texto`/);
+      assert.match(motivo(write, { op: 'marcar', spec: '1', tarea: 'T900' }), /No hay ninguna tarea T900/);
+      assert.match(motivo(write, { op: 'marcar', spec: '1', tarea: 'T002' }), /ya estaba marcada/);
+    });
+  });
+
+  test('una escritura que falla no toca el archivo', () => {
+    // Es la mitad que un `isError` sin esto no garantiza: decir que falló y
+    // haber escrito igual sería peor que cualquiera de las dos cosas sola.
+    con((raiz, _status, write) => {
+      const antes = readFileSync(join(raiz, '001-completo', 'tasks.md'), 'utf8');
+      motivo(write, { op: 'marcar', spec: '1', tarea: 'T002' });
+      assert.equal(readFileSync(join(raiz, '001-completo', 'tasks.md'), 'utf8'), antes);
+    });
   });
 });
