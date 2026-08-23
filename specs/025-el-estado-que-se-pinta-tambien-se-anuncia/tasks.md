@@ -97,7 +97,7 @@ archivos que existen** y ninguno queda `[M]`.
       023–028 agregan tests, así que el `457 + 105` de `main` sólo vale para el primero que mergee. Lo
       que se afirma es que **no baja** y que el coverage sigue en 100 en las cuatro métricas — el
       número exacto lo fija el merge, no la rama
-- [ ] T023 [M] Actualizar la fila del 025 en `specs/log.md` a `Implementado` — el estado lo mueve el
+- [x] T023 [M] Actualizar la fila del 025 en `specs/log.md` a `Implementado` — el estado lo mueve el
       merge. Va `[M]` para que `spec_status` no la cuente como trabajo pendiente para siempre
 - [x] T024 PR contra `main`
 

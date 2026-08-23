@@ -313,7 +313,7 @@ una persona y no bloquea el cierre.
 ## PR
 
 - [x] T034 Rama `feature/022-el-puente-con-el-motor-sale-del-shell`
-- [ ] T035 Actualizar la fila del 022 en `specs/log.md` a `Implementado`
+- [x] T035 Actualizar la fila del 022 en `specs/log.md` a `Implementado`
       — **queda abierta a proposito**: en este repo el estado del spec en `log.md` lo mueve
       el **merge**, no la rama (`.claude/skills/spec-implement/SKILL.md`), asi que la fila
       se toca al mergear y no acá

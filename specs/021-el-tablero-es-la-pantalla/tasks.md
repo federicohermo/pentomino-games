@@ -435,7 +435,7 @@ una persona y no bloquea el cierre.
 ## PR
 
 - [x] T038 Rama `feature/021-el-tablero-es-la-pantalla`
-- [ ] T039 Actualizar la fila del 021 en `specs/log.md` a `Implementado`
+- [x] T039 Actualizar la fila del 021 en `specs/log.md` a `Implementado`
 - [x] T040 Anotar en `specs/revisiones.md` qué se aprendió — el piso que se movió de 60 a 73 al
       cambiar de régimen tipográfico es candidato
 

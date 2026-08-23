@@ -202,7 +202,7 @@ global de `window` en la misma página. Dos `[P]` del mismo bloque no pueden toc
 - [x] T041 `pnpm verify` verde, con el coverage al **100** en las cuatro métricas que dejó el 029:
       `cell-name.ts`, las ramas nuevas de `input.ts` y los handlers de `Board.tsx`/`App.tsx` vienen con
       su test — **AC13**
-- [ ] T042 Actualizar la fila del 026 en `specs/log.md` a `Implementado` — **queda abierta a propósito**:
+- [x] T042 Actualizar la fila del 026 en `specs/log.md` a `Implementado` — **queda abierta a propósito**:
       el estado lo mueve el merge
 - [x] T043 PR contra `main`
 
