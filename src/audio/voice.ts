@@ -69,10 +69,10 @@ export function scheduleVoice(
 }
 
 /**
- * Agenda UN click: el recorrido cruzando una celda vacia (D4 del spec 009). `at`
+ * Agenda UN click: el recorrido cruzando una celda vacia. `at`
  * es tiempo absoluto del reloj del contexto, igual que en scheduleVoice.
  *
- * **Una campana de altura fija, y no ruido** (spec 015). Hasta el 015 esto era un
+ * **Una campana de altura fija, y no ruido.** Esto llego a ser un
  * `AudioBufferSourceNode` lleno de muestras aleatorias, con un argumento que NO se
  * borra porque sigue siendo cierto a medias: un oscilador SIEMPRE tiene altura, y una
  * altura que se mueve hace que el recorrido dibuje una linea melodica que compite con

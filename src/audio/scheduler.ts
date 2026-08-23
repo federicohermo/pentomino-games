@@ -12,8 +12,8 @@ import { CLOCK_START_DELAY } from './constants/engine.constants.ts';
  *
  * **El reloj es un origen, no un cursor.** `ClockState` son dos escalares y los
  * onsets del ciclo —`origin + (k * ciclo + offset) * intervalo`— se resuelven en
- * forma cerrada. Lo unico que el spec 009 cambio es el periodo: antes el compas y
- * la fase de la pieza, ahora el ciclo del recorrido y el offset del paso. Escrito
+ * forma cerrada. Lo unico que cambio al pasar de compas a recorrido es el periodo:
+ * antes el compas y la fase de la pieza, ahora el ciclo y el offset del paso. Escrito
  * como fraccion del ciclo, `phase = offset / length`, es la MISMA progresion, y por
  * eso `firstOnsetAfter` no se toco.
  *
@@ -42,8 +42,8 @@ export const barDuration = (bpm: number): number => (60 / bpm) * BEATS_PER_BAR;
  * Exportada por el mismo motivo que barDuration: es una regla, no un detalle.
  * Antes el espaciado del arpegio era una constante en segundos (0.15) que no
  * miraba el tempo: el arpegio de 5 notas duraba 4 * 0.15 = 0.6 s a cualquier bpm,
- * o sea un 25% del compas a 100 bpm pero un 40% a 160, donde la linea base del
- * spec 008 mostro que las piezas ya se pisan. Derivado del compas mide siempre
+ * o sea un 25% del compas a 100 bpm pero un 40% a 160, donde la linea base
+ * mostro que las piezas ya se pisan. Derivado del compas mide siempre
  * `compas / 4` —1.000 s a 60 bpm, 0.375 s a 160— y deja de depender del tempo.
  * A 100 bpm da 0.15 s exactos, que es el valor de antes: ahi no cambia nada.
  */
@@ -53,7 +53,7 @@ export const intervalDuration = (bpm: number): number =>
 /**
  * Primer onset de una progresion periodica estrictamente posterior a `after`.
  *
- * **El cuerpo no cambio ni un byte con el spec 009** (D6), y por eso el parametro
+ * **El cuerpo no cambio ni un byte al pasar de compas a recorrido**, y por eso el parametro
  * sigue llamandose `bar`: lo que cambio es QUE se le pasa. Antes el periodo era el
  * compas y `phase` la columna del ancla sobre el ancho del tablero; ahora el periodo
  * es el CICLO del recorrido y `phase` es `offset / sequence.length`. Escrito como
@@ -89,7 +89,7 @@ function firstOnsetAfter(after: number, origin: number, bar: number, phase: numb
  *
  * Los cruces recorren la misma grilla que los pasos y salen del mismo calculo; lo
  * unico que los distingue es que no tienen notas que expandir, asi que aportan un
- * solo hit por onset. Desde el spec 011 son de dos clases —celda vacia o celda
+ * solo hit por onset. Son de dos clases —celda vacia o celda
  * ocupada— y esta funcion es quien decide cual: la de mas abajo (`collectWindow`)
  * solo empalma ciclos, y `engine.ts` solo despacha lo que sale de aca.
  *
@@ -108,8 +108,8 @@ export function collectHits(
   // Arrancar desde scheduledUntil evita re-emitir lo que ya salio en la ventana
   // anterior; arrancar desde fromTime cuando el reloj se adelanto DESCARTA los
   // ciclos perdidos por el estrangulamiento de la pestana en vez de intentar
-  // recuperarlos. Es lo que reemplaza a la guarda de recuperacion explicita del
-  // spec 002: no hay bucle que acotar, porque el primer k sale en forma cerrada
+  // recuperarlos. Es lo que reemplaza a una guarda de recuperacion explicita:
+  // no hay bucle que acotar, porque el primer k sale en forma cerrada
   // y saltear 10 ciclos cuesta lo mismo que saltear 1.
   const from = Math.max(state.scheduledUntil, fromTime);
   // Sin este corte, una ventana mas chica que la anterior haria RETROCEDER
@@ -154,7 +154,7 @@ export function collectHits(
     // el `kind` sea una comparacion y no una lectura de un campo que puede faltar.
     const hz = click.note === undefined ? null : midiToHz(click.note);
     for (let at = firstOnsetAfter(from, state.origin, cycle, click.offset / sequence.length); at <= until; at += cycle) {
-      // Aca nace la tercera clase de evento (AC13 del spec 011). El cruce por celda
+      // Aca nace la tercera clase de evento. El cruce por celda
       // OCUPADA suena la nota de esa celda y el motor tiene que poder distinguirlo del
       // click mudo: `tick()` los agenda con constantes distintas y `setClicksAudible`
       // apaga solo al segundo (D6).
@@ -173,7 +173,7 @@ export function collectHits(
  * Vive aca y no en `engine.ts` por una razon medible: `engine.ts` toca el singleton
  * del `AudioContext`, que en los tests no existe —`audio()` devuelve null y `tick()`
  * se va por la falla suave—, asi que todo lo que se escriba alli solo se puede
- * verificar escuchando. El empalme del swap es la parte mas delicada del spec 009 y
+ * verificar escuchando. El empalme del swap es la parte mas delicada del modelo y
  * es justo la que hay que poder afirmar con un test. `engine.ts` queda como el
  * cableado: llama a esta funcion y manda los hits a sonar.
  *
@@ -214,7 +214,7 @@ export function collectWindow(
       const from = Math.max(state.scheduledUntil, fromTime);
       // `floor + 1` y no `ceil`, igual que firstOnsetAfter: el primer cierre
       // ESTRICTAMENTE posterior a lo comprometido. Con floor, saltear 10 ciclos por
-      // una pestana oculta cuesta lo mismo que saltear 1 (spec 002), y ademas queda
+      // una pestana oculta cuesta lo mismo que saltear 1, y ademas queda
       // garantizado `borde > from >= fromTime`: el swap se decide ANTES de cruzar el
       // borde, dentro del lookahead, asi que ningun onset del ciclo nuevo se agenda
       // en el pasado ni se pierde por llegar tarde a mirarlo.

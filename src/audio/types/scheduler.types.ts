@@ -3,16 +3,16 @@ import type { HIT } from '../constants/scheduler.constants.ts';
 /**
  * Un ciclo listo para sonar: lo unico que el motor necesita saber, y nada mas.
  *
- * El modelo del spec 009 es un RECORRIDO: un circuito cerrado visita las piezas, y
+ * El modelo es un RECORRIDO: un circuito cerrado visita las piezas, y
  * las celdas que cruza entre una y otra suenan al pasar. En el dominio un cruce lleva
  * su celda ademas de su instante, porque alli el recorrido ES el modelo.
  *
- * Aca la celda igual no viaja, pero desde el spec 011 hay que decir POR QUE, porque
+ * Aca la celda igual no viaja, pero hay que decir POR QUE, porque
  * de las dos razones que habia sobrevive una sola:
  *
  * - **Ya NO vale** que para sonar alcance con contar. Eso era cierto mientras todo
- *   cruce fuera un click sin altura (D4 del spec 009); hoy el recorrido puede pisar
- *   una celda OCUPADA y ese cruce suena la nota de la celda (D5 del spec 011), asi
+ *   cruce fuera un click sin altura; hoy el recorrido puede pisar
+ *   una celda OCUPADA y ese cruce suena la nota de la celda, asi
  *   que `clicks` lleva su `note` en MIDI.
  * - **Sigue valiendo** que no podria verla: `Cell` vive en el dominio y el override
  *   de eslint sobre esta capa prohibe importarlo, tambien como `import type` (usa la
@@ -30,14 +30,14 @@ import type { HIT } from '../constants/scheduler.constants.ts';
  *   mantener iguales a mano, que es exactamente lo que la regla de constantes del
  *   repo existe para evitar.
  * - AFLOJAR el override del linter compra comodidad tirando abajo la separacion que
- *   sostiene el grafo de imports desde el spec 005.
+ *   sostiene el grafo de imports.
  *
  * Por eso esta forma es la del dominio MENOS `pieceId` y MENOS `cell`:
  * `components/engine-bridge.ts` es el unico puente entre las dos capas y entrega la secuencia
  * dejando caer esos campos. Vive en `components/` porque es la unica capa que puede
  * importar los dos tipos `Sequence` —el override de eslint le prohibe a `domain/` ver
- * `audio/` y viceversa—, y es una PURA con test desde el spec 022: hasta ahi el cruce
- * estaba escrito dos veces adentro del shell, donde no se podia exportar ni verificar. Es una
+ * `audio/` y viceversa—, y es una PURA con test: escrita adentro del shell estaba
+ * dos veces y no se podia exportar ni verificar. Es una
  * PROYECCION, no una traduccion —los `offset`, los `notes` y la `note`
  * del cruce viajan tal cual, en MIDI y sin recalcularse—, y eso solo se sostiene
  * mientras las dos formas sigan siendo estructuralmente compatibles.
@@ -62,7 +62,7 @@ export interface Sequence {
    * Cuanto mide el ciclo completo, en INTERVALOS — la misma unidad que los `offset`.
    *
    * En intervalos y no en segundos porque el intervalo es la unidad ritmica del
-   * instrumento desde el spec 008 (`intervalDuration(bpm) = barDuration(bpm) / 16`):
+   * instrumento (`intervalDuration(bpm) = barDuration(bpm) / 16`):
    * asi el recorrido mantiene su forma a cualquier tempo en vez de quedar atado al
    * bpm con el que se armo. Medido: con 8 piezas el ciclo mide ~55 intervalos, que a
    * 110 bpm son 7,5 s.
@@ -102,8 +102,8 @@ export type HitKind = (typeof HIT)[keyof typeof HIT];
  * Con la union, `kind` obliga a elegir y el compilador reclama el `hz` en la rama que
  * lo lleva.
  *
- * El spec 011 agrega la TERCERA rama y vuelve a poner a prueba el mismo argumento
- * (AC13): el cruce por celda ocupada lleva altura, y la salida corta habria sido un
+ * La TERCERA rama vuelve a poner a prueba el mismo argumento:
+ * el cruce por celda ocupada lleva altura, y la salida corta habria sido un
  * `hz?: number` sobre la rama del click. Es la misma trampa de antes y ademas una
  * peor, porque `tick()` DESPACHA por `kind`: `setClicksAudible` tiene que apagar el
  * click mudo y dejar sonar el cruce con altura (D6), y con un campo opcional esa

@@ -7,10 +7,10 @@ export const TICK_MS = 25;
 /**
  * Pulsos por compas. El instrumento esta en 4/4.
  *
- * No confundir con el ancho del tablero, que ademas dejo de ser un numero fijo con el
- * spec 031: aquel dice cuantas celdas hay y este en cuantos pulsos se divide el compas.
- * Que se hayan podido confundir alguna vez es del spec 004, cuando el eje X del tablero
- * ERA el tiempo; desde el 009 el tablero es un recorrido y el motor no lo mira.
+ * No confundir con el ancho del tablero, que ademas no es un numero fijo: aquel dice
+ * cuantas celdas hay y este en cuantos pulsos se divide el compas. Se pudieron
+ * confundir mientras el eje X del tablero ERA el tiempo; hoy el tablero es un
+ * recorrido y el motor no lo mira.
  */
 export const BEATS_PER_BAR = 4;
 
@@ -27,12 +27,11 @@ export const SUBDIVISIONS_PER_BEAT = 4;
 /**
  * Las TRES clases de evento sonoro del recorrido: la nota que dispara una pieza, el
  * click de una celda vacia que el circuito cruza al ir de una pieza a la siguiente, y
- * el cruce por una celda OCUPADA, que desde el spec 011 suena la nota de esa celda
- * como floritura (D5).
+ * el cruce por una celda OCUPADA, que suena la nota de esa celda como floritura.
  *
- * Tres claves y no dos con un campo opcional (AC13 del spec 011): el argumento largo
+ * Tres claves y no dos con un campo opcional: el argumento largo
  * esta en el docblock de `Hit`, y ademas `cross` y `click` se despachan distinto en
- * `tick()` — `setClicksAudible` apaga solo al segundo (D6), y sin discriminante no
+ * `tick()` — `setClicksAudible` apaga solo al segundo, y sin discriminante no
  * tendria a quien apagar.
  *
  * Const-object con union derivada (`HitKind`) y no un `enum`: `erasableSyntaxOnly`
