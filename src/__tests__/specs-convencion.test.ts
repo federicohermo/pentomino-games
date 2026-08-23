@@ -88,6 +88,25 @@ describe('los specs cumplen la convencion que su README documenta', () => {
     expect(problemas, `filas de log.md con problemas:\n${problemas.join('\n')}`).toEqual([]);
   });
 
+  /**
+   * Y la direccion inversa, que aca SI se verifica: toda fila de `log.md` tiene su
+   * carpeta.
+   *
+   * Es la asimetria con `mapa-de-directorios.test.ts`, y no es incoherencia: alla el
+   * doc nombra archivos borrados **a proposito**, para que nadie los vuelva a crear.
+   * Aca no hay equivalente — una fila sin carpeta es un spec fantasma, y `spec_status`
+   * lo reportaria como trabajo que no existe. Los specs que no prosperaron no se borran
+   * del registro: quedan con estado `Descartado` y su carpeta puesta, como el 001.
+   */
+  it('cada fila de `log.md` tiene su carpeta', () => {
+    const ids = new Set(CARPETAS.map((c) => c.slice(0, 3)));
+    const fantasmas = [...LOG.matchAll(/^\|\s*\[(\d{3})\]\(/gm)]
+      .map((m) => m[1])
+      .filter((id) => !ids.has(id));
+
+    expect(fantasmas, `filas de log.md sin carpeta:\n${fantasmas.join('\n')}`).toEqual([]);
+  });
+
   it('toda linea que arranca como checkbox parsea con el formato documentado', () => {
     const malformadas: string[] = [];
     let tareas = 0;
