@@ -116,7 +116,7 @@ describe('useAtajosDeTeclado', () => {
   });
 
   it('una tecla sin accion no llama a nadie', async () => {
-    // `'q'` no es un pentominó, y desde el spec 018 eso es load-bearing: si lo fuera,
+    // `'q'` no es un pentominó, y eso es load-bearing: si lo fuera,
     // este test dejaria de medir "sin accion". Lo mismo vale para la `'c'` del test de
     // `Ctrl`+C de mas arriba.
     const a = acciones();

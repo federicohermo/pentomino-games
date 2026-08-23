@@ -46,7 +46,7 @@ describe('scheduler + sintesis integrados', () => {
     const interval = intervalDuration(bpm);
     const state: ClockState = { origin: 0.2, scheduledUntil: 0 };
     // Un paso y un cruce por celda vacia tres intervalos despues: el caso que el
-    // spec 009 hace posible, con las dos clases de hit en la misma grilla.
+    // recorrido hace posible, con las dos clases de hit en la misma grilla.
     const hits = collectHits(0, 6 * interval, bpm, {
       steps: [{ offset: 0, notes: [A4] }],
       clicks: [{ offset: 3 }],
@@ -70,7 +70,7 @@ describe('scheduler + sintesis integrados', () => {
 
     // El click no invade el intervalo que sigue: 80 ms despues ya es silencio
     // absoluto (`CLICK_SECONDS` 0,05 mas 0,03), donde una nota del mismo instante
-    // todavia estaria sonando (0,136 s mas el release). Desde el spec 015 el click es
+    // todavia estaria sonando (0,136 s mas el release). El click es
     // un oscilador y no un buffer, asi que ese cero lo garantiza su `stop()`: sin el,
     // el epsilon en el que muere la caida exponencial seguiria sonando aca.
     const click = hits[1].at;
@@ -108,7 +108,7 @@ describe('scheduler + sintesis integrados', () => {
     const [nota, cruce] = [hits[0].at, hits[1].at];
 
     // TIENE altura, y es la de la CELDA: eso es lo que lo separa del click. Desde el
-    // spec 015 el click tambien tiene altura, pero es una sola y siempre la misma
+    // el click tambien tiene altura, pero es una sola y siempre la misma
     // —una marca—, mientras que esta sale del modelo y cambia con lo que se piso. Se
     // mide en el sostenido, despues del transitorio.
     const hz = zeroCrossHz(d, cruce + 0.02, cruce + GRACE_INTERVALS * interval);
@@ -166,7 +166,7 @@ describe('analizador', () => {
       }
       // 0.35 s es una duracion de render arbitraria: este test es sobre la
       // transparencia del analizador, no sobre cuanto dura la nota (esa cuenta
-      // es NOTE_INTERVALS * intervalDuration(bpm) desde el spec 008, y no hay
+      // es NOTE_INTERVALS * intervalDuration(bpm), y no hay
       // bpm en juego aca).
       scheduleVoice(ctx, g, midiToHz(60), 0.1, 0.35, REL, VEL);
       return (await ctx.startRendering()).getChannelData(0);

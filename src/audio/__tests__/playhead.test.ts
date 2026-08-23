@@ -29,7 +29,7 @@ describe('offsetAt', () => {
   it('varios ciclos adelante sigue dentro del rango', () => {
     expect(offsetAt(10 + (5 * 8 + 3) * 0.25, 10, 0.25, 8)).toBe(3);
     expect(offsetAt(10 + (1000 * 8 + 6) * 0.25, 10, 0.25, 8)).toBe(6);
-    // Un ciclo realista: 55 intervalos son las 8 piezas medidas en el spec 009.
+    // Un ciclo realista: 55 intervalos son las 8 piezas medidas.
     expect(offsetAt(10 + (37 * 55 + 54) * 0.25, 10, 0.25, 55)).toBe(54);
   });
 

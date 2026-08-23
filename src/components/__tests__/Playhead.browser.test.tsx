@@ -20,7 +20,7 @@ import type { Marca, CeldaPorEstrenar } from '../types/route.types.ts';
  *
  * ## Las posiciones se leen COMPUTADAS, no como la cadena escrita
  *
- * Desde el spec 021 el bucle escribe `calc(var(--cell) * n)` y no un producto en pixeles,
+ * El bucle escribe `calc(var(--cell) * n)` y no un producto en pixeles,
  * asi que comparar contra la cadena literal ataria el test a la SINTAXIS en vez de a la
  * posicion. Lo que se afirma es donde queda la cabeza, que es lo que el modulo decide.
  *

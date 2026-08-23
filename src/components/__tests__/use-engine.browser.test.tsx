@@ -11,7 +11,7 @@ import type { PlacedPiece } from '../../domain/types/board.types.ts';
 import { GRID_DEFAULT } from '../../domain/constants/board.constants.ts';
 
 /**
- * Los cuatro efectos que el spec 022 saco de `App.tsx`.
+ * Los cuatro efectos que salieron de `App.tsx`.
  *
  * Se los mide por lo que LE DICEN AL MOTOR, no por lo que suena: son reconciliacion
  * pura —tempo, clicks, secuencia y limpieza— y lo unico que hay para verificar es que
@@ -21,13 +21,13 @@ import { GRID_DEFAULT } from '../../domain/constants/board.constants.ts';
  *
  * Por eso el motor y las dos colas van mockeados: son el borde que el hook cruza, y con
  * el motor real habria que inferir "se llamo a `setBpm`" desde el sonido, que es
- * exactamente el problema que el spec 022 vino a resolver moviendo esto a una funcion.
+ * exactamente el problema que se resolvio moviendo esto a una funcion.
  */
 const motor = vi.hoisted(() => ({
   setSequence: vi.fn(), setBpm: vi.fn(), setClicksAudible: vi.fn(),
   startClock: vi.fn(), stopClock: vi.fn(), clockRunning: vi.fn(() => false),
 }));
-// El mock de la cola de dibujo lista sus DOS funciones: desde el spec 027 el hook
+// El mock de la cola de dibujo lista sus DOS funciones: el hook
 // tambien re-exporta el reinicio, y un mock parcial lo dejaria en `undefined` — que acá
 // falla con un TypeError que no dice nada sobre lo que se rompio.
 const colaDeDibujo = vi.hoisted(() => ({ encolar: vi.fn(), reiniciar: vi.fn() }));

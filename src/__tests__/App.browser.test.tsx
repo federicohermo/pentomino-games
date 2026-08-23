@@ -16,7 +16,7 @@ import type { PropsDeOrientacion } from '../components/types/panel.types.ts';
 /**
  * El shell, entero y en un navegador.
  *
- * Desde el spec 022 `App.tsx` no tiene un solo `useEffect` —los seis viven en
+ * `App.tsx` no tiene un solo `useEffect` —los seis viven en
  * `use-engine.ts` y `use-input.ts`— pero sigue siendo dueño de TODO el estado y de los
  * handlers que lo mueven, y eso es lo que no verificaba nada: el gesto de colocar, las
  * tres formas de editar en el tablero, cuándo se dispara el arpegio de
@@ -100,7 +100,7 @@ const App = (await import('../App.tsx')).default;
 /**
  * El viewport de estos tests, y por que ahora hay uno.
  *
- * Desde el spec 031 el tablero sale del viewport, asi que el tamano de la ventana dejo de
+ * El tablero sale del viewport, asi que el tamano de la ventana dejo de
  * ser un detalle del runner: sin fijarlo, Playwright arranca en **414 x 896** —un telefono
  * en vertical— y el tablero queda de **6 columnas**, donde media docena de estos casos
  * apuntan a celdas que no existen. Se fija uno de escritorio, y las dimensiones esperadas
@@ -119,7 +119,7 @@ beforeEach(async () => {
 /**
  * Las celdas del tablero, en orden de indice.
  *
- * Por ROL y no por estructura desde el spec 026: la grilla dejo de ser hijos planos y paso
+ * Por ROL y no por estructura: la grilla dejo de ser hijos planos y paso
  * a ser `role="row"` con celdas adentro, asi que `div.grid > div` devuelve las filas. Y
  * cuantas son ya no se puede escribir: desde el 031 el tablero mide lo que entra en la
  * ventana del navegador de test.
@@ -163,7 +163,7 @@ const notaDelFantasma = (c: HTMLElement) => {
  * limpio y el `keyup` es el que alterna, para que `Ctrl`+C no de vuelta la reflexion.
  *
  * Recibe el target porque los dos casos importan: sobre `window` es el atajo global del
- * spec 013, y sobre una celda es el mismo atajo con el tablero enfocado (026).
+ * la entrada directa, y sobre una celda es el mismo atajo con el tablero enfocado.
  */
 const tapDeModificador = (el: EventTarget, key: string) => {
   el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
@@ -413,7 +413,7 @@ describe('App — el transporte', () => {
     await page.getByRole('button', { name: 'Reproducir' }).click();
     motor.stopClock.mockClear();
 
-    // El boton perdio la palabra `Reset` con el spec 019 y quedo en `↺`: se lo busca por
+    // El boton perdio la palabra `Reset` y quedo en `↺`: se lo busca por
     // el nombre accesible nuevo, que dice las dos mitades que este test verifica.
     await page.getByRole('button', { name: 'Vaciar el tablero y frenar el transporte' }).click();
     expect(motor.stopClock).toHaveBeenCalled();
@@ -426,7 +426,7 @@ describe('App — el transporte', () => {
     await page.getByRole('slider').fill('128');
     await vi.waitFor(() => expect(motor.setBpm).toHaveBeenLastCalledWith(128));
 
-    // Con el spec 019 el recorrido dejo de ser una fila con etiqueta visible y paso a ser
+    // El recorrido dejo de ser una fila con etiqueta visible y paso a ser
     // el metronomo de la fila de transporte: se lo busca por su nombre accesible, que es
     // la misma etiqueta mudada a `aria-label`. Y sobre el MISMO render que el tempo: el
     // segundo `render(<App />)` que habia aca dejaba dos apps montadas, que con una
@@ -438,7 +438,7 @@ describe('App — el transporte', () => {
 
 describe('App — la orientacion, por panel y por gesto', () => {
   it('el panel ya no rota ni refleja: lo que hace es DECIR la orientacion', async () => {
-    // El spec 019 le saco a la tarjeta los cuatro botones de grados y el ON/OFF de
+    // La tarjeta perdio los cuatro botones de grados y el ON/OFF de
     // Reflexion, porque duplicaban la rueda, `Shift`, el boton derecho y `Ctrl`. Lo que
     // queda en su lugar es un lector: una linea de texto que no se puede apretar.
     //
@@ -451,7 +451,7 @@ describe('App — la orientacion, por panel y por gesto', () => {
     }
     expect(page.getByRole('button', { name: /^Reflexión$/ }).elements()).toHaveLength(0);
 
-    // El `<span>` de adentro y no el `<p>`: desde el spec 020 la linea comparte parrafo con
+    // El `<span>` de adentro y no el `<p>`: la linea comparte parrafo con
     // el boton `0°`, asi que el `textContent` del `<p>` dice `0°0°`.
     const linea = () => [...container.querySelectorAll('p > span')].find(e => /^\d+°/.test(e.textContent!))!;
     expect(linea().textContent).toBe('0°');
@@ -540,7 +540,7 @@ describe('App — la orientacion, por panel y por gesto', () => {
     // AC7 del 017: sin llevar el regimen a las tres derivaciones, cambiarlo no
     // re-derivaria el tablero.
     const { container } = await render(<App />);
-    // Se rota con `Shift` y no con el boton `90°`: el spec 019 lo borro. Lo que este test
+    // Se rota con `Shift` y no con el boton `90°`, que ya no existe. Lo que este test
     // mide no cambio — que el regimen llegue a las tres derivaciones — pero el gesto que
     // lo pone en una rotacion distinta de cero, si.
     tapDeModificador(window, 'Shift');
@@ -661,14 +661,14 @@ describe('App — lo que llega al arbol de accesibilidad', () => {
     // esta es la unica linea que nada mas falsea: existe para una
     // regresion futura. El default de un `<button>` dentro de un formulario es
     // `submit`, y en esta app eso significa recargar la pagina perdiendo el tablero
-    // entero, sin deshacer (`specs/deuda.md`).
+    // entero, sin deshacer.
     //
     // Se afirma sobre la app COMPLETA y no componente por componente porque los botones
     // salen de tres archivos —doce miniaturas, el regimen en la tarjeta, y los tres del
     // transporte— y ninguno de los tres los tiene todos.
     //
-    // Eran 22 hasta el spec 019, que borro los cuatro grados y el ON/OFF de Reflexion y
-    // mudo el del recorrido: 12 + 2 + 3 = 17. El 020 devuelve UNO —el `0°` de la linea de
+    // Llegaron a ser 22, con los cuatro grados y el ON/OFF de Reflexion, y sin el del
+    // recorrido mudado: 12 + 2 + 3 = 17. La orientacion por pieza devuelve UNO —el `0°` de la linea de
     // orientacion— y son 18. El 021 suma los DOS encabezados de los flotantes, que pasan de
     // `<h2>` a `<button>` con `aria-expanded`: 20.
     const { container } = await render(<App />);
@@ -719,7 +719,7 @@ describe('App — lo que cuesta mover el cursor', () => {
 
     // La memo no lo congelo: cuando la orientacion cambia DE VERDAD, se ejecuta. Sin esta
     // mitad, el cero de arriba lo cumpliria igual un panel roto. Se rota con `Shift`
-    // porque el spec 019 borro el boton `90°` que estaba escrito aca.
+    // porque el boton `90°` que estaba escrito aca ya no existe.
     tapDeModificador(window, 'Shift');
     await vi.waitFor(() => expect(panel.ejecuciones).toBe(1));
   });
@@ -788,7 +788,7 @@ describe('App — el tablero se toca con el teclado', () => {
     const origen = celda(container, 4, 2);
     origen.focus();
 
-    // **El oraculo cambio de forma con el spec 021, y hacia arriba.** Hasta ahi la pagina
+    // **El oraculo cambio de forma, y hacia arriba.** Antes la pagina
     // TENIA de donde scrollear —la app medía mas que el viewport— y lo que se afirmaba era
     // que las cuatro flechas no le hicieran perder esa posicion; sin esa premisa el par del
     // final habria sido trivialmente cierto. Hoy el contenedor raiz mide exactamente
@@ -899,8 +899,8 @@ describe('App — el tablero se toca con el teclado', () => {
     tecla(play, ' ');
     expect(motor.startClock).not.toHaveBeenCalled();
 
-    // Y con el foco en ningun lado, la barra sigue siendo del transporte: el spec 026 le
-    // saco UNA tecla en UN lugar, no la apago.
+    // Y con el foco en ningun lado, la barra sigue siendo del transporte: la celda le
+    // saca UNA tecla en UN lugar, no la apaga.
     play.blur();
     window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
     await vi.waitFor(() => expect(motor.startClock).toHaveBeenCalled());
@@ -999,8 +999,8 @@ describe('App — el fondo, un solo valor', () => {
   // El hex no se escribe aca por eso mismo: su unica aparicion en `src/` es el token.
   it('el div raiz pinta lo mismo que el body, y ninguno de los dos es transparente', async () => {
     const { container } = await render(<App />);
-    // El primer hijo del contenedor y no `div.min-h-screen`: el spec 021 cambio esa clase
-    // por `h-[100dvh] overflow-hidden`. Buscarlo por posicion en vez de por una clase de
+    // El primer hijo del contenedor y no `div.min-h-screen`: esa clase paso a ser
+    // `h-[100dvh] overflow-hidden`. Buscarlo por posicion en vez de por una clase de
     // layout es lo que hace que este test siga midiendo el FONDO cuando el layout cambie.
     const raiz = container.firstElementChild!;
     const delDiv = getComputedStyle(raiz).backgroundColor;
@@ -1085,7 +1085,7 @@ describe('App — el tablero crece hasta la pantalla', () => {
   });
 
   it('achicar la ventana no borra piezas: vuelven enteras al agrandarla', async () => {
-    // El repo no tiene deshacer (`specs/deuda.md`) y arrastrar el borde de una ventana no es
+    // El repo no tiene deshacer y arrastrar el borde de una ventana no es
     // un gesto de edicion. La pieza que deja de entrar se guarda: no se dibuja, no suena, y
     // vuelve identica cuando hay lugar.
     const { container } = await render(<App />);
@@ -1126,8 +1126,8 @@ describe('App — el tablero crece hasta la pantalla', () => {
     // y si el shell consultara el ocupante sobre `placed` en vez de sobre lo visible, un
     // click ahi quitaria una pieza que no esta en pantalla y lo anunciaria.
     //
-    // No hay deshacer (`specs/deuda.md`): borrar por accidente lo que no se ve es
-    // exactamente el gesto que el spec 031 vino a hacer imposible.
+    // No hay deshacer: borrar por accidente lo que no se ve es
+    // exactamente el gesto que guardar la pieza entera hace imposible.
     const { container } = await render(<App />);
     const conPieza = () => celdas(container).filter(e => e.getAttribute('aria-label')!.includes('pieza')).length;
     const dicho = () => container.querySelector('[aria-live="polite"]')!.textContent;

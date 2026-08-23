@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 /**
  * El color de fondo, en los cuatro lugares donde el repo lo escribe.
  *
- * El spec 028 lo unifico adentro de `src/`: hay UN token, `--color-fondo`, y de ahi
+ * Adentro de `src/` esta unificado: hay UN token, `--color-fondo`, y de ahi
  * salen el `body` y el `div` raiz de `App.tsx`. Pero afuera de `src/` quedan tres
  * copias mas y son INEVITABLES, no un descuido: el navegador parsea el manifest y la
  * `<meta name="theme-color">` sin CSS a la vista —el manifest lo lee para pintar el

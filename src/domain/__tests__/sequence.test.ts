@@ -70,7 +70,7 @@ const puertas = (p: PlacedPiece): { entrada: Cell; salida: Cell } => {
  * haya en el medio.
  *
  * Lleva el tablero ENTERO y no solo las dos piezas porque el camino puede pisar
- * cualquiera de las doce, que es justamente lo que el spec 011 le agrega al modelo.
+ * cualquiera de las doce, que es justamente lo que el cruce con floritura agrega al modelo.
  */
 const rutaEntre = (a: PlacedPiece, b: PlacedPiece, board: readonly PlacedPiece[]) =>
   routeBetween(puertas(a).salida, puertas(b).entrada, board, GRID_DEFAULT);
@@ -135,7 +135,7 @@ describe('bordes', () => {
     // [[2,0],[1,0]]: dos golpes encima del arpegio que acababa de sonar, no un
     // recorrido.
     //
-    // El spec 011 le saco el sintoma —medido, con la `Z` en (4,2) el tramo de la pieza
+    // Rodear las piezas le saco el sintoma —medido, con la `Z` en (4,2) el tramo de la pieza
     // a si misma la RODEA y sus dos clicks caen en celdas vacias— y la decision no
     // cambia: lo que sobraba no era que pisaran, era que no hay a donde ir. El
     // recorrido existe ENTRE piezas.
@@ -161,7 +161,7 @@ describe('bordes', () => {
 
 describe('las puertas de una pieza', () => {
   it('SIN reflexion la entrada es la celda del grado 0 y la salida la del grado 4', () => {
-    // `F` canonica da los grados [0,1,2,3,4] desde el spec 012: su camino arranca en
+    // `F` canonica da los grados [0,1,2,3,4]: su camino arranca en
     // el indice 0 y termina en el 4, que es el unico caso en que el mapeo coincide con
     // el orden del array. Los numeros van escritos a mano contra la tabla del spec —
     // derivarlos aca dejaria el test sin oraculo.
@@ -187,7 +187,7 @@ describe('las puertas de una pieza', () => {
 
   it('salen de la forma CANONICA: recalcularlas sobre la transformada moveria 53 de las 96 orientaciones', () => {
     // Es la trampa mas cara de esta capa. Rotar corre el origen del angulo, que es lo
-    // que desde el spec 012 elige por que punta se entra al camino, asi que
+    // que elige por que punta se entra al camino, asi que
     // `degreeByCellIndex(formaTransformada)` compila igual y devuelve otro mapeo. El
     // conteo va medido y no aproximado para que el dia que alguien "simplifique" la
     // derivacion el test diga exactamente cuanto cambio: eran 74 con el orden angular
@@ -487,7 +487,7 @@ const ordenDe = (board: PlacedPiece[]): number[] =>
  * orden de colocacion. Es el caso concreto que hace audible la diferencia: mover una
  * pieza reordena la musica.
  *
- * Los numeros se movieron con el spec 011 —el 009 media 17 contra 22 y visitaba
+ * Los numeros se movieron al encarecer el cruce —antes median 17 contra 22 y visitaban
  * W, F, X, P— porque la matriz que ordena el circuito dejo de ser la distancia pelada:
  * ahora cada celda pisada suma `CROSS_COST`, asi que un tramo que atraviesa una pieza
  * puede perder contra uno mas largo que la rodea.
@@ -539,7 +539,7 @@ describe('dos piezas adyacentes quedan contiguas', () => {
     // (1,3). Los dos tramos del circuito miden 1, asi que el patron queda contiguo en
     // los dos sentidos y no hay silencio en ninguna costura.
     //
-    // El par cambio con el spec 012 y no por gusto: con el mapeo del 007 el testigo era
+    // El par cambio y no por gusto: con el mapeo angular el testigo era
     // `F`(1,1) + `P` rot 90 (3,1), y hoy ese par mide 1 en un sentido y 6 en el otro.
     // Un tramo de ida y vuelta de largo 1 depende de donde caen las DOS puertas, asi que
     // mover el orden de las notas lo mueve.
@@ -639,11 +639,11 @@ describe('los offsets y los clicks', () => {
  *
  * ## Por que este tablero y no el
  *
- * Porque el 011 se apoyaba en una propiedad que el **spec 012 le saco a la `X`**: que su
+ * Porque el testigo viejo se apoyaba en una propiedad que **la `X` perdio**: que su
  * celda central fuera siempre una de sus dos puertas. Con el orden angular el grado 0 de
- * la `X` era su centro —estaba escrito como decision, D1 del 007— asi que todo tramo que
+ * la `X` era su centro —y estaba escrito como decision— asi que todo tramo que
  * entrara a la `X` cruzaba tres de sus celdas por mucho que subiera `CROSS_COST`: no
- * existia camino libre. Con el camino del 012 la `X` entra y sale por dos brazos
+ * existia camino libre. Con el arpegio caminando la pieza, la `X` entra y sale por dos brazos
  * opuestos, y su testigo viejo —`X`(4,2) + `F`(3,4) + `I`(5,0)— **dejo de cruzar
  * ninguna celda**: sus 10 clicks caen todos en celdas vacias.
  *
@@ -779,7 +779,7 @@ describe('determinismo', () => {
     // intervalos mas largo o mas corto segun como se armo. Sobre 120 tableros de 5 piezas
     // al azar pasaba en el 8,3 %; con los pasos como segundo criterio pasa en el 0 %.
     //
-    // El tablero es otro desde el spec 012, por el mismo motivo que el del test de
+    // El tablero es otro, por el mismo motivo que el del test de
     // arriba: el que estaba (N, V, Z, U, F) dejo de tener dos circuitos optimos cuando
     // las puertas se movieron, asi que ya no ejercia el desempate.
     const spec: [PieceKey, number, number, number][] = [
@@ -852,7 +852,7 @@ describe('el tablero lleno', () => {
   // volvia a romper el presupuesto por contencion de CPU—. La env var la inyecta
   // `vite.config.ts`, que es el unico lugar que ve con que flags arranco vitest.
   //
-  // ## Y tampoco corren en CI, desde el spec 023, por la MISMA razon
+  // ## Y tampoco corren en CI, por la MISMA razon
   //
   // Es el segundo entorno donde el numero no habla del producto. Aca no es la
   // instrumentacion: es que el runner de Actions es una VM compartida sin numero propio.
@@ -910,7 +910,7 @@ describe('el tablero lleno', () => {
   });
 
   it.skipIf(NO_ES_MEDIBLE)('031 AC6 — el MISMO presupuesto sobre el tablero de una pantalla de 1920x1080', () => {
-    // El presupuesto de arriba mide 12 piezas sobre 60 celdas. Desde el spec 031 el tablero
+    // El presupuesto de arriba mide 12 piezas sobre 60 celdas. El tablero
     // sale del viewport, asi que el peor caso realista de escritorio es **26 x 15 = 390
     // celdas**, 6,5 veces mas grande — y el Dijkstra de `routeBetween` es `O(N^2)`.
     //
@@ -958,7 +958,7 @@ describe('el tablero lleno', () => {
   });
 
   it.skipIf(NO_ES_MEDIBLE)('AC8 — la matriz de 12x12 rutas se mantiene despreciable (mediana de 21 corridas)', () => {
-    // El pedazo que el spec 011 encarecio, medido aparte y con su propio tope: son las
+    // El pedazo que encarecio el cruce, medido aparte y con su propio tope: son las
     // 144 rutas con las que `buildSequence` arma la matriz que ordena el circuito. El
     // 009 hacia 144 restas; hoy son 144 Dijkstras sobre 60 celdas.
     //

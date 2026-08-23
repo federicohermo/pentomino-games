@@ -93,7 +93,7 @@ describe('sintesis', () => {
   });
 });
 
-describe('dur en intervalos, spec 008 (la envolvente no se movio)', () => {
+describe('dur en intervalos (la envolvente no se movio)', () => {
   it('con dur = NOTE_INTERVALS * intervalDuration(bpm), pico y sostenido son los de siempre', async () => {
     // Mismo patron que AC3: lo unico que cambia es de donde sale `dur`. Si
     // scheduleVoice tratara `dur` distinto por venir de intervalos en vez de
@@ -156,9 +156,9 @@ describe('scheduleClick — el cruce por una celda vacia', () => {
   it('TIENE altura, y es CLICK_MIDI: cruza el cero a la tasa de una nota, no de ruido', async () => {
     const at = 0.1;
     const d = await renderClick(at);
-    // Este test decia lo contrario hasta el spec 015 —exigia `> 4000`, que es la tasa
+    // Este test llego a decir lo contrario —exigia `> 4000`, que es la tasa
     // del ruido blanco: medido, 10.815 Hz a 44,1 kHz de muestreo—. Se da vuelta y no se
-    // agrega uno al lado, porque la afirmacion vieja es exactamente la que el spec
+    // agrega uno al lado, porque la afirmacion vieja es exactamente la que la campana
     // falsifica. La tasa de cruces separa senoidal de ruido por un factor de cinco, y
     // eso alcanza para que vuelva a rojo si alguien repone el ruido sin querer.
     //

@@ -68,13 +68,13 @@ const DOS = [colocar('F', 0, false, 2, 2), colocar('L', 0, true, 7, 1)];
  * sobre este mismo tablero: son tres de sus cuatro clicks, y el cuarto cae en una celda
  * vacia.
  *
- * ## Por que cambio de tablero en el spec 012
+ * ## Por que cambio de tablero
  *
  * El que estaba —`X`(4,2) + `F`(3,4) + `I`(5,0)— se eligio porque la `X` era el caso
  * ESTRUCTURAL: su celda central estaba rodeada por sus cuatro brazos y era siempre una
  * de sus dos puertas, asi que entrar a ella cruzaba si o si, por mucho que subiera
  * `CROSS_COST`. Esa propiedad venia del mapeo del 007 —el centro se llevaba el grado 0—
- * y el **spec 012 se la saca**: con el arpegio recorriendo la pieza, la `X` entra por un
+ * y **la perdio**: con el arpegio recorriendo la pieza, la `X` entra por un
  * brazo y sale por el opuesto. Ese tablero pasa a tener CERO cruces y este test se
  * habria quedado vacio en silencio, que es exactamente contra lo que su guarda existe.
  *

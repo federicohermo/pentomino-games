@@ -30,7 +30,7 @@ const memoria = (pisadas: Partial<MemoriaDeOrientacion> = {}): MemoriaDeOrientac
 
 const orientacion = (over: Partial<PropsDeOrientacion> = {}): PropsDeOrientacion => ({
   selected: 'F',
-  // Las DOCE desde el spec 020: la linea de orientacion deriva la de `selected` en vez de
+  // Las DOCE: la linea de orientacion deriva la de `selected` en vez de
   // recibirla suelta, que es lo que impide que la linea diga una cosa y la miniatura
   // dibuje otra.
   orientaciones: ORIENTACIONES_INICIALES,
@@ -55,7 +55,7 @@ const transporte = (over: Partial<PropsDeTransporte> = {}): PropsDeTransporte =>
 
 /**
  * El dock con el plegado ya resuelto, para que los casos de abajo sigan hablando de lo que
- * les importa. El spec 021 le sumo dos props —`abierto` y `onToggle`, que son estado del
+ * les importa. El plegado le suma dos props —`abierto` y `onToggle`, que son estado del
  * shell— y ninguno de estos tests es sobre eso: el que lo verifica esta al final y usa
  * `Dock` directo.
  */

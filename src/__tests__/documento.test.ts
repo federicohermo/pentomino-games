@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
  * `lang` equivocado no rompe una sola asercion. Por eso el test vive en el proyecto
  * `node` y lee el archivo como texto.
  *
- * El nombre no es libre: el spec 028 crea el OTRO test del lote que lee este mismo
+ * El nombre no es libre: hay OTRO test que lee este mismo
  * archivo del disco —la sincronia del color de fondo entre CSS, manifest y `meta`— y
  * va en `fondo-sincronizado.test.ts`. Si los dos hubieran elegido el nombre obvio
  * (`index-html.test.ts`), el segundo carril en mergear pisaba al primero sin que el
@@ -21,8 +21,8 @@ describe('index.html', () => {
   it('declara el idioma de la interfaz, que es el que se habla adentro', () => {
     // Un lector de pantalla usa `lang` para elegir el motor de voz. Con `en`
     // —la herencia de la plantilla de Create React App— «Reflexión» y «rotación 90°»
-    // se pronunciaban con fonetica inglesa, incluido el `aria-label` que el spec 016
-    // escribio en español a proposito. WCAG 2.2 3.1.1, nivel A.
+    // se pronunciaban con fonetica inglesa, incluido el `aria-label` de las miniaturas,
+    // escrito en español a proposito. WCAG 2.2 3.1.1, nivel A.
     expect(HTML).toMatch(/<html\s+lang="es"\s*>/);
     // Y que no quede la vieja en ningun lado del documento: un segundo `lang` mas
     // adentro ganaria para su subarbol sin que la primera asercion se entere.

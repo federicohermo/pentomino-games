@@ -10,7 +10,7 @@ import type { PlacedPiece } from '../types/board.types.ts';
 /**
  * Todo este archivo mide el tablero de REFERENCIA, que es el de 10 x 6 de siempre.
  *
- * Desde el spec 031 el tablero sale del viewport, asi que las funciones lo reciben por
+ * El tablero sale del viewport, asi que las funciones lo reciben por
  * parametro y un test tiene que elegir uno. Se elige `GRID_DEFAULT` y no un tamano nuevo
  * porque los numeros que este archivo verifica —los 496 pares que acorta la costura, la
  * distancia maxima de 12, la tabla de PASOS— estan medidos sobre ese tablero: cambiarlo
@@ -126,7 +126,7 @@ describe('031 — `cabeEn`: si la pieza entra ENTERA en el tablero de ahora', ()
   });
 
   it('la misma pieza entra o no segun el tablero, que es para lo que existe', () => {
-    // El caso que el spec 031 describe: la ventana se achica y la pieza deja de entrar sin
+    // El caso central: la ventana se achica y la pieza deja de entrar sin
     // que la pieza cambie. Achicar y volver a agrandar la devuelve.
     const alBorde = piezaEn('a', [[7,1],[8,1],[9,1]]);
     expect(cabeEn(alBorde, GRID_DEFAULT)).toBe(true);

@@ -63,7 +63,7 @@ describe('el nombre de la app esta sincronizado', () => {
   });
 
   it('el `<title>` del `index.html` dice el mismo nombre', () => {
-    // Es lo que se ve en la pestaña y en el historial. El spec 028 lo saco de
+    // Es lo que se ve en la pestaña y en el historial. Salio de la plantilla como
     // «React App»; que quede desincronizado lo devuelve a nombrar otra cosa.
     expect(extraer(html, /<title>([^<]+)<\/title>/, 'index.html')).toBe(nombre);
   });

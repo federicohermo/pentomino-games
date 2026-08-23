@@ -29,13 +29,13 @@ const PIEZAS = Object.keys(SHAPES) as PieceKey[];
 const memoria = (pisadas: Partial<MemoriaDeOrientacion> = {}): MemoriaDeOrientacion =>
   ({ ...ORIENTACIONES_INICIALES, ...pisadas });
 
-/** Las doce en la MISMA orientacion, que es lo que el panel hacia hasta el spec 020. */
+/** Las doce en la MISMA orientacion, que es lo que el panel hacia con una global. */
 const todas = (o: Orientacion): MemoriaDeOrientacion =>
   Object.fromEntries(PIEZAS.map(p => [p, o])) as MemoriaDeOrientacion;
 
 const orientacion = (over: Partial<PropsDeOrientacion> = {}): PropsDeOrientacion => ({
   selected: 'F',
-  // `rotation`/`mirror` sueltos salieron de `PropsDeOrientacion` con el spec 020: el panel
+  // `rotation`/`mirror` sueltos salieron de `PropsDeOrientacion`: el panel
   // necesita las DOCE, porque cada miniatura se dibuja en la suya. `onRotate` y `onMirror`
   // se habian ido con el 019, que borro los botones que los llamaban.
   //

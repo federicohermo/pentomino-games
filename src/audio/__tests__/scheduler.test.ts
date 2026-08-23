@@ -32,15 +32,15 @@ const UN_COMPAS = 16;
  *
  * Es codigo muerto en produccion a proposito: la unica forma de afirmar que la
  * reformulacion no cambio ningun instante es tener las dos implementaciones vivas
- * y compararlas. Si el spec 004 se revierte, este bloque se borra con el.
+ * y compararlas. Si el reloj por origen se revierte, este bloque se borra con el.
  *
- * `interval` se recibe por parametro y ya no sale de `job.spread` (spec 008
- * borro ese campo): el espaciado del arpegio dejo de ser un dato del job y paso
+ * `interval` se recibe por parametro y ya no sale de `job.spread`, que dejo de
+ * existir: el espaciado del arpegio dejo de ser un dato del job y paso
  * a derivarse del bpm. Pasarlo desde afuera no debilita el oraculo — lo que este
  * test compara es el mecanismo del RELOJ (cursor vs origen), no de donde sale el
  * espaciado, y las dos implementaciones siguen usando el mismo numero.
  *
- * El spec 009 tampoco lo debilita: recibe los pasos sueltos porque `Job` ya no
+ * El recorrido tampoco lo debilita: recibe los pasos sueltos porque `Job` ya no
  * existe, y se lo compara contra una secuencia de UN paso en offset 0 y ciclo de
  * 16 intervalos, que es un compas exacto. O sea el mismo periodo que este cursor
  * recorre, que es lo unico que el oraculo mide.
@@ -400,7 +400,7 @@ describe('el offset dentro del ciclo', () => {
 
   it('nunca mas de LOOKAHEAD comprometido, tampoco con un ciclo largo', () => {
     // 55 y 66 intervalos son los ciclos medidos de 8 y 10 piezas: 7,5 s y 9,0 s a
-    // 110 bpm. Es el caso que el spec 009 hace posible y el 004 no tenia, donde el
+    // 110 bpm. Es el caso que el recorrido hace posible y el compas no tenia, donde el
     // periodo pasa a ser 7 veces el compas y una implementacion que agendara "el
     // ciclo entero de una" comprometeria 75 veces el lookahead.
     for (const largo of [55, 66]) {
@@ -437,7 +437,7 @@ describe('el offset dentro del ciclo', () => {
     g.gain.value = 1;
     g.connect(ctx.destination);
     // 0.35 s es una duracion de render arbitraria, no la duracion de nota del
-    // spec 008 (esa es NOTE_INTERVALS * intervalDuration(bpm)): este test mide
+    // instrumento (esa es NOTE_INTERVALS * intervalDuration(bpm)): este test mide
     // pico y cantidad de onsets, no cuanto dura cada nota.
     // El release SI sale del tempo: es lo unico de la envolvente que depende de el.
     const rel = RELEASE_INTERVALS * intervalDuration(BPM);
@@ -456,8 +456,8 @@ describe('el offset dentro del ciclo', () => {
     const desfasadas = await renderCiclo(separadas);
 
     // El pico de dos piezas en el mismo instante es volumen apilado sobre la misma
-    // voz; el de dos separadas es el de una pieza sola. Es el problema que ataca el
-    // spec 004 y que el recorrido del 009 mantiene resuelto.
+    // voz; el de dos separadas es el de una pieza sola. Es el problema que ataca
+    // desfasar las piezas, y que el recorrido mantiene resuelto.
     expect(peak(desfasadas)).toBeLessThan(peak(alineadas));
     // Y donde habia un evento pasan a haber dos: la textura que el volumen tapaba.
     expect(detectOnsets(desfasadas)).toHaveLength(detectOnsets(alineadas).length * 2);
@@ -672,7 +672,7 @@ describe('la secuencia cambia al cerrar el ciclo', () => {
     }
   });
 
-  it('spec 010 — el swap deja `origin` en el FUTURO, asi que el ciclo nuevo todavia no suena', () => {
+  it('el swap deja `origin` en el FUTURO, asi que el ciclo nuevo todavia no suena', () => {
     // La contracara del test de arriba, y lo que obliga a la guarda `now < origin` de
     // `playheadOffset`. El swap se decide DENTRO del lookahead: cuando ocurre, `origin`
     // es el borde y todavia no llego, mientras lo que se escucha sigue siendo la cola

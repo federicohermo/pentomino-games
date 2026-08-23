@@ -19,7 +19,7 @@ import type { PropsDeTransporte } from '../types/panel.types.ts';
 const transporte = (over: Partial<PropsDeTransporte> = {}): PropsDeTransporte => ({
   tempo: 110,
   playing: false,
-  // Desde el spec 019 `clicks` y `onToggleClicks` SI los lee este componente: el
+  // `clicks` y `onToggleClicks` SI los lee este componente: el
   // interruptor del recorrido dejo de vivir en la tarjeta y bajo a esta fila, como
   // metronomo solo-icono. Hasta entonces eran dos campos que llegaban y se descartaban.
   clicks: false,
@@ -83,7 +83,7 @@ describe('TransportPanel', () => {
   });
 
   it('el reset dice `↺` y su nombre accesible dice las DOS cosas que hace', async () => {
-    // Con el spec 019 el boton perdio la palabra `Reset`, que era todo su nombre
+    // El boton perdio la palabra `Reset`, que era todo su nombre
     // accesible: un glifo no lo es. El nombre nuevo nombra las dos mitades porque las dos
     // pasan —vacia el tablero y frena el transporte—, y el `title` dice exactamente lo
     // mismo: el puntero y el lector no pueden contar dos historias del mismo boton.

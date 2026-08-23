@@ -27,7 +27,7 @@ describe('020 AC6 — las doce arrancan a 0° sin reflejar', () => {
 
   it('`ROTACION` son los cuatro índices que `rotateN` cuenta', () => {
     // Los valores son índices y no grados: `rotateN` cuenta cuartos de vuelta, y el orden
-    // lo fijó el spec 001. Si alguien los cambiara por 0/90/180/270 —que es el error
+    // lo fija `rotateN`. Si alguien los cambiara por 0/90/180/270 —que es el error
     // natural, porque así se llaman las claves— la geometría entera se movería.
     expect(Object.values(ROTACION)).toEqual([0, 1, 2, 3]);
   });

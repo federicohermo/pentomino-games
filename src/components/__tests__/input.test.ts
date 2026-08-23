@@ -48,7 +48,7 @@ describe('la rueda rota en los dos sentidos, con vuelta cíclica', () => {
   });
 
   it('recorre el ciclo de cuatro y vuelve al punto de partida', () => {
-    // El acumulador va tipado como `Rotacion` desde el spec 020: si la pura dejara de
+    // El acumulador va tipado como `Rotacion`: si la pura dejara de
     // garantizar el rango, esta linea deja de compilar antes de que el test corra.
     let r: Rotacion = ROTACION.cero;
     for (let i = 0; i < 4; i++) r = rotacionPorRueda(r, 120);
@@ -121,7 +121,7 @@ describe('AC7 y AC8 — la barra espaciadora', () => {
 describe('AC5, AC6 y AC15 — el foco sobre una celda apaga la barra y NADA MÁS', () => {
   /*
    * LAS SEIS FILAS DE ESTA TABLA SON EL CRITERIO, Y JUNTAS. Por separado no dicen nada:
-   * lo que el spec 026 decide no es «la celda apaga la barra» sino «la celda apaga la
+   * lo que se decide no es «la celda apaga la barra» sino «la celda apaga la
    * barra y nada más». Escrita como tests sueltos, borrar el de `Shift` por redundante
    * dejaría el archivo en verde mientras la app pierde los dos atajos del 013 — que es
    * exactamente el bug de ensanchar `targetEsControl` en vez de agregar `targetEsCelda`:
@@ -159,8 +159,8 @@ describe('AC5, AC6 y AC15 — el foco sobre una celda apaga la barra y NADA MÁS
     // Hoy ninguna letra hace nada, así que las doce dan `null` en las dos columnas. Lo que
     // el test afirma NO es el `null` —sería redundante con «las teclas que no son
     // nuestras»— sino que `targetEsCelda` NO ES EL MOTIVO: la celda enfocada da el mismo
-    // resultado que el foco afuera. Es la promesa que el spec 018 va a heredar cuando las
-    // letras seleccionen pieza —`targetEsCelda` apaga la barra, el `Enter` y las flechas, y
+    // resultado que el foco afuera. Es la promesa que heredan las
+    // letras que seleccionan pieza —`targetEsCelda` apaga la barra, el `Enter` y las flechas, y
     // nada más—, y por eso se escribe comparando las dos columnas y no contra `null`: el
     // día en que una letra haga algo, esta fila sigue diciendo la verdad sin tocarse.
     for (const letra of Object.keys(SHAPES) as PieceKey[]) {
@@ -252,7 +252,7 @@ describe('qué keydown abre un tap limpio', () => {
   });
 
   it('`Alt` y `Meta` abajo también lo ensucian', () => {
-    // `Alt` lo reserva el spec 014 para mutear y `Meta` es el modificador de los
+    // `Alt` lo reserva el muteo y `Meta` es el modificador de los
     // atajos de macOS: los dos son gestos de otro dueño.
     expect(bajar('Control', { altKey: true })).toBe(false);
     expect(bajar('Shift', { metaKey: true })).toBe(false);
@@ -261,7 +261,7 @@ describe('qué keydown abre un tap limpio', () => {
 
 describe('las teclas que no son nuestras', () => {
   it('no producen acción', () => {
-    // Desde el spec 018 este barrido es load-bearing y no una lista cualquiera: la `'a'`
+    // Este barrido es load-bearing y no una lista cualquiera: la `'a'`
     // pasa a decir que `A` NO es un pentominó, así que si algún día `SHAPES` ganara una
     // entrada `A` este test es el que lo grita.
     for (const key of ['a', 'Enter', 'Alt', 'ArrowUp', 'Escape']) {

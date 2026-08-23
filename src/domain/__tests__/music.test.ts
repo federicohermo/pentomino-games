@@ -48,7 +48,7 @@ describe('notesForRotation', () => {
   });
 
   // El titulo de arriba dice `escala` a proposito: los dos regimenes NO hacen lo mismo
-  // fuera de rango, y esa divergencia es el argumento de `specs/deuda.md` para acotar
+  // fuera de rango, y esa divergencia es el argumento para acotar
   // el tipo de `rotation`. Mientras siga siendo un `number`, el borde se testea.
   it('en `orden`, una rotacion fuera de 0..3 corre ciclicamente en vez de caer en la mayor', () => {
     const rot0 = notesForRotation(0, DEFAULT_OCTAVE, 0, REGIMEN.orden);
@@ -126,7 +126,7 @@ describe('notesForRotation', () => {
 const notaDeCelda = (p: PieceKey, rot: number, k: number, regimen: RegimenDeRotacion): number =>
   notesForRotation(BASE_MAP[p], DEFAULT_OCTAVE, rot, regimen)[degreeByCellIndex(SHAPES[p])[k]];
 
-/** Lo que mide el spec 012: cuanto se mueve el arpegio de una nota a la siguiente. */
+/** Cuanto se mueve el arpegio de una nota a la siguiente. */
 const distanciasDelArpegio = (p: PieceKey): number[] => {
   const grados = degreeByCellIndex(SHAPES[p]);
   const orden = grados.map((_, g) => SHAPES[p][grados.indexOf(g)]);
@@ -148,7 +148,7 @@ const distanciaAlCentro = (p: PieceKey, k: number) => {
  * regimen `orden` no hace, asi que sin dejarla escrita la comparacion de los dos
  * regimenes no tendria contra que medirse.
  */
-describe('regimen `escala` — que sobrevive a rotar (caracterizacion, spec 017)', () => {
+describe('regimen `escala` — que sobrevive a rotar (caracterizacion)', () => {
   // 12 piezas x 3 rotaciones != 0 x 5 celdas = 180. La rotacion 0 queda afuera porque
   // es la referencia contra la que se compara, no un caso mas.
   const ROTACIONES = [1, 2, 3];
@@ -180,7 +180,7 @@ describe('regimen `escala` — que sobrevive a rotar (caracterizacion, spec 017)
 });
 
 /**
- * El regimen `orden`, la segunda rama que el spec 017 le agrega a `notesForRotation`.
+ * El regimen `orden`, la segunda rama de `notesForRotation`.
  *
  * El oraculo de estos tests NO es `notesForRotation`: las notas esperadas se componen a
  * mano desde las formulas y la regla del `octShift`, porque una no-regresion que llama
@@ -354,7 +354,7 @@ describe('degreeByCellIndex', () => {
   });
 
   it('en I y X el grado 0 ya NO es la celda del centroide', () => {
-    // Lo revierte el spec 012 y es deliberado: en la `I` arrancar por el centro de una
+    // Es un cambio deliberado: en la `I` arrancar por el centro de una
     // linea de cinco obliga a un salto de 4 celdas que la forma no necesita. El grado 0
     // pasa a ser por donde el recorrido ENTRA a la pieza, no el centro de la figura.
     for (const p of ['I', 'X'] as PieceKey[]) {

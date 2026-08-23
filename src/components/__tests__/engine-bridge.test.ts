@@ -12,7 +12,7 @@ import { GRID_DEFAULT } from '../../domain/constants/board.constants.ts';
 
 /**
  * `engine-bridge.ts` es el único puente entre el `Sequence` del dominio y el del motor, y hasta
- * el spec 022 ese cruce estaba escrito dos veces adentro de `App.tsx` —o sea en un
+ * ese cruce llego a estar escrito dos veces adentro de `App.tsx` —o sea en un
  * `.tsx`, donde no se puede exportar y por lo tanto no se puede testear—. Los tres
  * casos de la proyección son los que ningún test cubría, y el tercero es el que el tipo
  * existe para distinguir.
@@ -147,7 +147,7 @@ describe('alternarTransporte devuelve lo que el motor dice, no lo que se le pidi
   });
 
   it('AC10 — se pidió arrancar y el reloj NO arrancó: devuelve `false`', () => {
-    // La rama que el ítem de deuda más viejo del repo esperaba desde el spec 008, y la
+    // La rama que el ítem de deuda más viejo del repo esperaba, y la
     // que pedía «extraer el handler de `App.tsx` o agregar testing-library». Acá se
     // cierra por la primera vía: `arrancar` es un no-op silencioso cuando el motor no
     // tiene `AudioContext`, y sin este `return` el botón diría "Pausa" con el reloj
