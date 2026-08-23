@@ -58,7 +58,7 @@ const celdasEnOrden = (p: PlacedPiece): Cell[] => {
 /**
  * Las dos puertas, derivadas afuera de `sequence.ts`. Se leen del orden de
  * reproduccion y NO de los grados 0 y 4: esa era la derivacion del 009, y con
- * reflexion daba las dos invertidas (spec 010, D9).
+ * reflexion daba las dos invertidas.
  */
 const puertas = (p: PlacedPiece): { entrada: Cell; salida: Cell } => {
   const orden = celdasEnOrden(p);
@@ -246,10 +246,10 @@ const notaPintadaEn = (p: PlacedPiece, c: Cell): number => {
   return asc[grados[k]];
 };
 
-describe('AC11 — `cellsByPlayOrder`: la celda de cada nota', () => {
+describe('`cellsByPlayOrder`: la celda de cada nota', () => {
   it('`[j]` es la celda que el tablero pinta con `notes[j]`, en las 96 orientaciones', () => {
     // La propiedad que ata las dos puntas del modelo. El tablero deriva la nota de
-    // una celda por GRADO sobre el arpegio ascendente (spec 007) y la secuencia las
+    // una celda por GRADO sobre el arpegio ascendente y la secuencia las
     // reproduce en el orden de `notes`, con el retrogrado ya aplicado: si las dos
     // derivaciones no coinciden, la cabeza lectora enciende una celda y suena otra.
     // Es el bug de D9 visto desde adentro de la pieza, y esto es lo que impide que
@@ -297,7 +297,7 @@ describe('AC11 — `cellsByPlayOrder`: la celda de cada nota', () => {
   });
 });
 
-describe('AC3 — `noteAtCell`: que nota hay en una celda', () => {
+describe('`noteAtCell`: que nota hay en una celda', () => {
   it('es exactamente la que el tablero PINTA, en las 96 orientaciones', () => {
     // Los dos extremos de la misma cadena: `components/Board.tsx` la deriva a mano para
     // DIBUJAR la nota de una celda, y esta pura es la que la deriva para SONAR cuando el
@@ -340,7 +340,7 @@ describe('AC3 — `noteAtCell`: que nota hay en una celda', () => {
     expect(real.filter((n, k) => n !== espejado[k])).toHaveLength(4);
   });
 
-  it('AC16 (spec 017) — bajo `orden` devuelve la nota del regimen de la pieza, no la de `escala`', () => {
+  it('bajo `orden` devuelve la nota del regimen de la pieza, no la de `escala`', () => {
     // De `noteAtCell` sale el `Click.note` de un cruce: la altura que suena al PISAR una
     // celda ocupada. Si se quedara en `escala` mientras el tablero toca `orden`, la
     // celda diria una altura y pisarla sonaria otra — el bug que el docblock de la pura
@@ -378,7 +378,7 @@ describe('AC3 — `noteAtCell`: que nota hay en una celda', () => {
   });
 });
 
-describe('AC12 — las puertas siguen la melodia, tambien con reflexion (D9)', () => {
+describe('las puertas siguen la melodia, tambien con reflexion (D9)', () => {
   it('el caso testigo `L`/0/reflejada: entrada [0,0] y salida [1,3] — el 009 daba al reves', () => {
     // Medido con `describe_piece` y `simulate_board` antes de escribir el arreglo:
     // [1,3] es el grado 0 (D4) y [0,0] el grado 4 (B4); con retrogrado la primera
@@ -499,7 +499,7 @@ const CUATRO = [
   colocar('X', 0, false, 2, 2),
 ];
 
-describe('AC1 — el orden es el del circuito mas corto, no el de colocacion', () => {
+describe('el orden es el del circuito mas corto, no el de colocacion', () => {
   it('con cuatro piezas el circuito reordena la colocacion y sale mas barato', () => {
     expect(CUATRO.every((p, i) => isValid(p.cells, CUATRO.slice(0, i), GRID_DEFAULT))).toBe(true);
     expect(ordenDe(CUATRO)).toEqual([0, 3, 2, 1]);
@@ -533,7 +533,7 @@ describe('AC1 — el orden es el del circuito mas corto, no el de colocacion', (
   });
 });
 
-describe('AC3 — dos piezas adyacentes quedan contiguas', () => {
+describe('dos piezas adyacentes quedan contiguas', () => {
   it('con salto 1 no hay clicks y la nota siguiente cae un intervalo despues de la ultima', () => {
     // `L` sale por (2,0) y `N` entra por (3,0); `N` sale por (2,3) y `L` entra por
     // (1,3). Los dos tramos del circuito miden 1, asi que el patron queda contiguo en
@@ -657,13 +657,13 @@ const CON_X = [colocar('X', 0, false, 1, 1), colocar('F', 0, false, 3, 2), coloc
 /** Manhattan crudo: solo para afirmar que dos celdas son vecinas en la grilla. */
 const manhattanEntre = (a: Cell, b: Cell): number => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
 
-describe('AC3 — el cruce lleva la altura de la celda que pisa', () => {
+describe('el cruce lleva la altura de la celda que pisa', () => {
   it('atravesar la X suena con las notas de la X, celda por celda', () => {
     expect(CON_X.every((p, i) => isValid(p.cells, CON_X.slice(0, i), GRID_DEFAULT))).toBe(true);
     const equis = CON_X[0];
     expect(equis.cells).toEqual([[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]]);
 
-    // Las puertas de la `X` son dos brazos OPUESTOS, no su centro (spec 012, D3).
+    // Las puertas de la `X` son dos brazos OPUESTOS, no su centro.
     expect(gates(equis)).toEqual({ entrada: [2, 1], salida: [1, 0] });
 
     const seq = buildSequence(CON_X, REGIMEN.escala, GRID_DEFAULT);
@@ -836,7 +836,7 @@ describe('determinismo', () => {
   });
 });
 
-describe('AC10 — el tablero lleno', () => {
+describe('el tablero lleno', () => {
   // ## Los dos presupuestos de abajo NO corren bajo coverage, y el motivo esta medido
   //
   // v8 instrumenta insertando contadores en cada rama, y estos dos tests son justamente
@@ -1026,7 +1026,7 @@ describe('AC10 — el tablero lleno', () => {
 const mutando = (board: readonly PlacedPiece[], i: number): PlacedPiece[] =>
   board.map((p, k) => k === i ? { ...p, muted: true } : p);
 
-describe('AC5 — mutear no mueve el circuito', () => {
+describe('mutear no mueve el circuito', () => {
   it('mismo orden de visita, mismos offsets y mismo largo del ciclo', () => {
     const normal = buildSequence(CUATRO, REGIMEN.escala, GRID_DEFAULT);
     for (let i = 0; i < CUATRO.length; i++) {
@@ -1064,7 +1064,7 @@ describe('AC5 — mutear no mueve el circuito', () => {
   });
 });
 
-describe('AC6 — la pieza muteada emite cinco clicks mudos y ningun paso', () => {
+describe('la pieza muteada emite cinco clicks mudos y ningun paso', () => {
   it('los cinco caen donde estaban sus notas, celda por celda', () => {
     const normal = buildSequence(CUATRO, REGIMEN.escala, GRID_DEFAULT);
     const muteada = buildSequence(mutando(CUATRO, 0), REGIMEN.escala, GRID_DEFAULT);
@@ -1087,7 +1087,7 @@ describe('AC6 — la pieza muteada emite cinco clicks mudos y ningun paso', () =
   });
 });
 
-describe('AC18 — una sola pieza muteada va por el retorno temprano y tampoco suena', () => {
+describe('una sola pieza muteada va por el retorno temprano y tampoco suena', () => {
   it('cinco clicks mudos, cero pasos y el ciclo del arpegio', () => {
     // `n === 1` arma su `Step` sin pasar por el bucle (`sequence.ts`), asi que una
     // implementacion que solo tocara el bucle dejaria a este —el unico tablero que se
@@ -1103,7 +1103,7 @@ describe('AC18 — una sola pieza muteada va por el retorno temprano y tampoco s
   });
 });
 
-describe('AC17 — un cruce sobre una pieza muteada no suena', () => {
+describe('un cruce sobre una pieza muteada no suena', () => {
   it('los cruces sobre la X pierden su altura al mutearla', () => {
     // `CON_X` es el tablero donde el recorrido PISA la `X`, y esos cruces suenan la
     // floritura del spec 011 — que es exactamente la nota que el muteo apaga.

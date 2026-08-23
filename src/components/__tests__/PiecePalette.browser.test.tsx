@@ -24,7 +24,7 @@ import type { MemoriaDeOrientacion } from '../types/orientation.types.ts';
  *
  * Necesita layout: se mide con `getBoundingClientRect`, que en jsdom da cero.
  */
-/** Las doce en cero con las ranuras que el test quiera pisar (spec 020). */
+/** Las doce en cero con las ranuras que el test quiera pisar. */
 const memoria = (pisadas: Partial<MemoriaDeOrientacion> = {}): MemoriaDeOrientacion =>
   ({ ...ORIENTACIONES_INICIALES, ...pisadas });
 

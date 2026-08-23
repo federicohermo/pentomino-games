@@ -45,7 +45,7 @@ describe('textoDeOrientacion — las ocho combinaciones', () => {
   });
 });
 
-describe('AC5 — donde la miniatura no puede decirlo, el texto sí', () => {
+describe('donde la miniatura no puede decirlo, el texto sí', () => {
   /** Las seis piezas cuya forma no distingue las ocho orientaciones. */
   const CIEGAS: PieceKey[] = ['I', 'T', 'U', 'V', 'W', 'X'];
 

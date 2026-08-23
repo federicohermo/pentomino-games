@@ -56,7 +56,7 @@ export const BORDE_COLOR = '#0f172a';
 export const NOTA = { dentro: 3, fuera: 2 };
 
 /**
- * El cruce (spec 011, D8): la cabeza pasa sobre una celda OCUPADA que no es su turno
+ * El cruce: la cabeza pasa sobre una celda OCUPADA que no es su turno
  * pero que igual suena una floritura (`Click.note`) — ni la nota propia de una pieza
  * ni el click mudo de siempre, asi que su borde va en el escalon intermedio entre los
  * otros dos. Los tres numeros —3/2, 2/1, 2/0— estan fijados en DESIGN.md.

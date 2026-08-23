@@ -10,7 +10,7 @@ import type { PropsDeOrientacion } from './types/panel.types.ts';
 
 /**
  * Las doce miniaturas, cada una en la orientacion actual: elegir la pieza que va a la
- * mano (spec 016).
+ * mano.
  *
  * Presentacional: sin estado, sin efectos. Recibe UN objeto —el de la orientacion— y
  * nada mas.
@@ -32,7 +32,7 @@ import type { PropsDeOrientacion } from './types/panel.types.ts';
  */
 export default memo(function OrientationPanel({ orientacion }: { orientacion: PropsDeOrientacion }) {
   const { selected, orientaciones, onSelect } = orientacion;
-  // La MISMA derivacion que la linea visible del panel, en el otro formato (spec 019). Los
+  // La MISMA derivacion que la linea visible del panel, en el otro formato. Los
   // dos textos no se pueden unificar —bajar este al visible le saca el sustantivo
   // "rotación" y le mete un separador que el lector de pantalla deletrea— pero el CALCULO
   // si, que era lo que estaba escrito dos veces y desde el 022 ni siquiera en el mismo
@@ -102,7 +102,7 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
           tambien la orientacion, para que el lector de pantalla diga lo que el ojo
           ve: la miniatura muestra la orientacion ACTUAL, no la canonica. */}
       {(Object.keys(SHAPES) as PieceKey[]).map(key=> {
-        // La orientacion de ESTA pieza, no la de la que esta en la mano (spec 020). El
+        // La orientacion de ESTA pieza, no la de la que esta en la mano. El
         // `Record` tiene las doce ranuras garantizadas por su tipo, derivado de `SHAPES`,
         // asi que este acceso no puede dar `undefined`.
         const suya = orientaciones[key];

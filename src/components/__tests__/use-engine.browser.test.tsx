@@ -162,7 +162,7 @@ describe('el cableado del transporte', () => {
   });
 });
 
-describe('AC12 (spec 027) — el Reset les habla a las DOS colas desde este modulo', () => {
+describe('el Reset les habla a las DOS colas desde este modulo', () => {
   it('reiniciarRecorrido reinicia la cola de dibujo, y solo eso', () => {
     // Que salga de acá y no de un import directo de `route-source.ts` en `App.tsx` es el
     // hallazgo entero: las dos colas se reinician por el mismo camino, o vuelve la

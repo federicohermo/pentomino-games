@@ -55,7 +55,7 @@ const manifest = JSON.parse(leer('public/manifest.json')) as {
 const html = leer('index.html');
 const readme = leer('README.md');
 
-describe('el nombre de la app esta sincronizado (spec 028)', () => {
+describe('el nombre de la app esta sincronizado', () => {
   const nombre = manifest.name;
 
   it('el manifest declara un nombre no vacio', () => {

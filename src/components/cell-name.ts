@@ -48,7 +48,7 @@ export interface CeldaOcupada {
 
 /**
  * El nombre accesible de una celda del tablero: lo que anuncia un lector de
- * pantalla cuando el foco entra en el `gridcell` de `Board.tsx` (spec 026, AC8).
+ * pantalla cuando el foco entra en el `gridcell` de `Board.tsx`.
  *
  * ## Por que vive en `components/cell-name.ts` y no adentro de `Board.tsx`
  *
@@ -127,7 +127,7 @@ export function cellNameFor(x: number, y: number, occupied: CeldaOcupada | null)
 
 /**
  * Lo que anuncia la region `aria-live` del shell despues de una edicion del tablero
- * (spec 026, AC10): colocar, quitar y mutear, las tres unicas cosas que cambian el
+ *: colocar, quitar y mutear, las tres unicas cosas que cambian el
  * tablero.
  *
  * ## Por que sale de aca y no de una cadena escrita en `App.tsx`

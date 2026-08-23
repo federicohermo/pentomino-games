@@ -132,12 +132,12 @@ interface Props {
   /** La reflexion del fantasma. Solo mueve el `#N`: la nota de una celda no la
       cambia la reflexion, el orden en que suenan si. */
   mirror: boolean;
-  /** Que hace la rotacion (spec 017). Baja como prop porque `cellTextFor` se llama
+  /** Que hace la rotacion. Baja como prop porque `cellTextFor` se llama
       ACA y no en `App.tsx`, y sin el las celdas mostrarian las notas del otro regimen:
       la mitad visible de AC7. Vale para las dos llamadas —la pieza colocada y el
       fantasma—, que es lo que hace que el fantasma prometa lo que la pieza va a decir. */
   regimen: RegimenDeRotacion;
-  /** El `altKey` cruza porque `Alt`+click MUTEA en vez de colocar o quitar (spec 014):
+  /** El `altKey` cruza porque `Alt`+click MUTEA en vez de colocar o quitar:
       el gesto no se puede decidir sin el, y el `onClick` de la celda no pasaba el evento. */
   onCellClick: (x: number, y: number, altKey: boolean) => void;
   onCellEnter: (cell: Cell) => void;
@@ -156,10 +156,10 @@ interface Props {
       (`esLaPiezaEnLaMano`), y no derivado aca: dos copias de esa condicion serian dos
       formas de que el cursor prometa una cosa y el click haga otra. */
   hoverEdita: boolean;
-  /** El boton derecho sobre el tablero alterna la reflexion (spec 013). Handler y no
+  /** El boton derecho sobre el tablero alterna la reflexion. Handler y no
       logica: quien decide si el evento cuenta es `App.tsx` con `reflejaElContextMenu`. */
   onContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
-  /** Cuanto mide el tablero, en celdas (spec 031). Llega por prop y no de una constante
+  /** Cuanto mide el tablero, en celdas. Llega por prop y no de una constante
       porque sale del viewport, y quien lo mide es `useGrilla` en el shell: este componente
       dibuja `dims.h` filas de `dims.w` celdas y no sabe de donde salio el numero. Lo leen
       tambien los topes del movimiento por teclado y los `aria-*` de la grilla, que si no
@@ -381,7 +381,7 @@ export default function Board({
             const style: CSSProperties = {};
             if (occ && ghost) tone = 'bg-rose-500 text-white';   // choque contra pieza colocada
             // La pieza MUTEADA cae al blanco de una celda libre y conserva su nota y su
-            // `#N` (spec 014). El canal es la AUSENCIA de color y no uno de los dos
+            // `#N`. El canal es la AUSENCIA de color y no uno de los dos
             // obvios, porque los dos estaban tomados: el color es IDENTIDAD de pieza y
             // esta medido en contraste contra su propio `fg`, y la opacidad la usa
             // `Playhead` para el velo de "esta celda no se estreno" — si muteado tambien

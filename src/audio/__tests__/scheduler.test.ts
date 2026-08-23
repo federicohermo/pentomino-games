@@ -28,7 +28,7 @@ const UN_COMPAS = 16;
 
 /**
  * El cursor de compas del spec 002, copiado tal cual, como oraculo de
- * no-regresion del reloj por origen (AC2 del spec 004).
+ * no-regresion del reloj por origen.
  *
  * Es codigo muerto en produccion a proposito: la unica forma de afirmar que la
  * reformulacion no cambio ningun instante es tener las dos implementaciones vivas
@@ -148,7 +148,7 @@ const mismoEvento = (
   b: { at: number; clave: string },
 ) => casiIgual(a.at, b.at) && a.clave === b.clave;
 
-describe('intervalDuration y barDuration (spec 008)', () => {
+describe('intervalDuration y barDuration', () => {
   it('a 100 bpm da el ARPEGGIO_SPREAD exacto de antes, sin epsilon', () => {
     // 0.15 era la constante que este spec borro. Que la formula nueva la
     // reproduzca EXACTA a 100 bpm es la garantia de que ahi no cambia nada.
@@ -170,7 +170,7 @@ describe('intervalDuration y barDuration (spec 008)', () => {
   });
 });
 
-describe('scheduler — reloj por origen (spec 004)', () => {
+describe('scheduler — reloj por origen', () => {
   const BAR = (60 / BPM) * 4;
   const unPaso = (notes: number[], offset = 0): Sequence => seq(UN_COMPAS, [{ offset, notes }]);
 
@@ -228,7 +228,7 @@ describe('scheduler — reloj por origen (spec 004)', () => {
     expect(collectHits(0, 4, 240, unPaso([A4]), { origin: 0.5, scheduledUntil: 0 })).toHaveLength(4);
   });
 
-  it('AC2 — con un ciclo de un compas emite los mismos instantes que el cursor de compas', () => {
+  it('con un ciclo de un compas emite los mismos instantes que el cursor de compas', () => {
     const interval = intervalDuration(BPM);
     const nuevo = recienArrancado();
     const viejo = { nextBar: ORIGIN };
@@ -244,7 +244,7 @@ describe('scheduler — reloj por origen (spec 004)', () => {
     nuevos.forEach((at, i) => expect(at).toBeCloseTo(viejos[i], 6));
   });
 
-  it('AC3 — ventanas solapadas emiten cada onset una sola vez, y todos', () => {
+  it('ventanas solapadas emiten cada onset una sola vez, y todos', () => {
     const LARGO = 19;                                  // primo: el offset no divide al ciclo
     const OFFSET = 7;
     const interval = intervalDuration(BPM);
@@ -269,7 +269,7 @@ describe('scheduler — reloj por origen (spec 004)', () => {
     emitidos.forEach((at, i) => expect(at).toBeCloseTo(esperados[i], 9));
   });
 
-  it('AC4 — ningun hit cae en el pasado', () => {
+  it('ningun hit cae en el pasado', () => {
     const state = recienArrancado();
     const s = seq(13, [{ offset: 9, notes: [60, 62, 64] }], [{ offset: 3 }]);
     for (let i = 0; i < 400; i++) {
@@ -280,7 +280,7 @@ describe('scheduler — reloj por origen (spec 004)', () => {
     }
   });
 
-  it('AC6 — un salto de 10 ciclos se saltea, sin avalancha y sin trabarse', () => {
+  it('un salto de 10 ciclos se saltea, sin avalancha y sin trabarse', () => {
     const state = recienArrancado();
     const s = unPaso([60, 62, 64]);
     collectHits(0, LOOKAHEAD, BPM, s, state);
@@ -296,7 +296,7 @@ describe('scheduler — reloj por origen (spec 004)', () => {
   });
 });
 
-describe('AC2 — el bpm afecta a una secuencia ya armada, sin rehacerla (spec 008)', () => {
+describe('el bpm afecta a una secuencia ya armada, sin rehacerla', () => {
   it('la misma secuencia cambia de espaciado si el bpm de la llamada cambia', () => {
     // Antes, el espaciado vivia en `job.spread`: cambiar el tempo sin reconstruir
     // el job no tenia ningun efecto sobre el arpegio. Ahora sale de `bpm`, que es
@@ -317,7 +317,7 @@ describe('AC2 — el bpm afecta a una secuencia ya armada, sin rehacerla (spec 0
   });
 });
 
-describe('AC4 — el arpegio mide un cuarto de compas (spec 008)', () => {
+describe('el arpegio mide un cuarto de compas', () => {
   it('el onset completo mide 1.000 s a 60 bpm y 0.375 s a 160 bpm', () => {
     const s = seq(UN_COMPAS, [{ offset: 0, notes: [60, 62, 64, 67, 69] }]);   // 5 notas, 4 intervalos punta a punta
 
@@ -332,10 +332,10 @@ describe('AC4 — el arpegio mide un cuarto de compas (spec 008)', () => {
   });
 });
 
-describe('el offset dentro del ciclo (spec 009)', () => {
+describe('el offset dentro del ciclo', () => {
   const interval = intervalDuration(BPM);
 
-  it('AC1 — los onsets caen en origin + k * ciclo + offset * intervalo', () => {
+  it('los onsets caen en origin + k * ciclo + offset * intervalo', () => {
     const state: ClockState = { origin: 0.5, scheduledUntil: 0 };
     const i120 = intervalDuration(120);
     const s = seq(8, [{ offset: 2, notes: [A4] }]);   // ciclo de 8 intervalos = medio compas
@@ -345,7 +345,7 @@ describe('el offset dentro del ciclo (spec 009)', () => {
     hits.forEach((h, k) => expect(h.at).toBeCloseTo(0.5 + k * cycle + 2 * i120, 9));
   });
 
-  it('AC1 — el arpegio se expande desde el onset desplazado', () => {
+  it('el arpegio se expande desde el onset desplazado', () => {
     const state: ClockState = { origin: 0.5, scheduledUntil: 0 };
     const i120 = intervalDuration(120);
     const s = seq(UN_COMPAS, [{ offset: 8, notes: [60, 62, 64] }]);
@@ -354,7 +354,7 @@ describe('el offset dentro del ciclo (spec 009)', () => {
     hits.forEach((h, i) => expect(h.at).toBeCloseTo(0.5 + 8 * i120 + i * i120, 9));
   });
 
-  it('AC1 — dos pasos con offset distinto arrancan en instantes distintos', () => {
+  it('dos pasos con offset distinto arrancan en instantes distintos', () => {
     const state = recienArrancado();
     const s = seq(10, [{ offset: 0, notes: [60] }, { offset: 5, notes: [64] }]);
     const hits = collectHits(0, 10 * interval, BPM, s, state);
@@ -362,7 +362,7 @@ describe('el offset dentro del ciclo (spec 009)', () => {
     expect(hits[1].at - hits[0].at).toBeCloseTo(5 * interval, 9);
   });
 
-  it('D4 — un click es un solo hit sin altura, en la misma grilla que los pasos', () => {
+  it('un click es un solo hit sin altura, en la misma grilla que los pasos', () => {
     const state = recienArrancado();
     const s = seq(6, [{ offset: 0, notes: [60, 62, 64, 67, 69] }], [{ offset: 3 }]);
     const hits = collectHits(0, 6 * interval, BPM, s, state);
@@ -377,7 +377,7 @@ describe('el offset dentro del ciclo (spec 009)', () => {
     expect(Object.keys(clicks[0]).sort()).toEqual(['at', 'kind']);
   });
 
-  it('AC9 — cambiar el tempo estira el recorrido sin reordenarlo', () => {
+  it('cambiar el tempo estira el recorrido sin reordenarlo', () => {
     const s = seq(10, [{ offset: 0, notes: [60] }, { offset: 5, notes: [67] }], [{ offset: 8 }]);
     // Fracciones de ciclo desde el origen: si son iguales a los dos tempos, el
     // patron es el mismo estirado, no otro patron.
@@ -398,7 +398,7 @@ describe('el offset dentro del ciclo (spec 009)', () => {
     lento.forEach((f, i) => expect(f).toBeCloseTo(rapido[i], 6));
   });
 
-  it('AC6 — nunca mas de LOOKAHEAD comprometido, tampoco con un ciclo largo', () => {
+  it('nunca mas de LOOKAHEAD comprometido, tampoco con un ciclo largo', () => {
     // 55 y 66 intervalos son los ciclos medidos de 8 y 10 piezas: 7,5 s y 9,0 s a
     // 110 bpm. Es el caso que el spec 009 hace posible y el 004 no tenia, donde el
     // periodo pasa a ser 7 veces el compas y una implementacion que agendara "el
@@ -447,7 +447,7 @@ describe('el offset dentro del ciclo (spec 009)', () => {
 
   const peak = (d: Float32Array) => d.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
 
-  it('AC7 — separar dos piezas en el recorrido baja el pico y separa los eventos', async () => {
+  it('separar dos piezas en el recorrido baja el pico y separa los eventos', async () => {
     const A = [60, 62, 64, 67, 69];   // pentatonica mayor de C
     const B = [67, 69, 71, 74, 76];   // la de G
     const juntas = seq(UN_COMPAS, [{ offset: 0, notes: A }, { offset: 0, notes: B }]);
@@ -464,7 +464,7 @@ describe('el offset dentro del ciclo (spec 009)', () => {
   });
 });
 
-describe('el cruce por celda ocupada (spec 011)', () => {
+describe('el cruce por celda ocupada', () => {
   const interval = intervalDuration(BPM);
 
   /**
@@ -486,7 +486,7 @@ describe('el cruce por celda ocupada (spec 011)', () => {
   // esquiva eligiendo la `X`.
   const F5 = 77;
 
-  it('AC13 — un cruce con nota es una TERCERA clase de hit, con su altura', () => {
+  it('un cruce con nota es una TERCERA clase de hit, con su altura', () => {
     const state = recienArrancado();
     const s = seq(8, [{ offset: 0, notes: [60] }], [{ offset: 3 }, { offset: 5, note: F5 }]);
     const hits = collectHits(0, 8 * interval, BPM, s, state);
@@ -506,7 +506,7 @@ describe('el cruce por celda ocupada (spec 011)', () => {
     expect(Object.keys(mudos[0]).sort()).toEqual(['at', 'kind']);
   });
 
-  it('D6 — apagar los clicks no puede apagar el cruce con altura', () => {
+  it('apagar los clicks no puede apagar el cruce con altura', () => {
     const state = recienArrancado();
     const s = seq(8, [{ offset: 0, notes: [60] }], [{ offset: 3 }, { offset: 5, note: F5 }]);
     const hits = collectHits(0, 8 * interval, BPM, s, state);
@@ -546,7 +546,7 @@ describe('el cruce por celda ocupada (spec 011)', () => {
   });
 });
 
-describe('D5 — la secuencia cambia al cerrar el ciclo', () => {
+describe('la secuencia cambia al cerrar el ciclo', () => {
   const interval = intervalDuration(BPM);
   /** Dos pasos de una nota: cada hit ES un onset, asi que se pueden contar. */
   const A = seq(8, [{ offset: 0, notes: [60] }, { offset: 4, notes: [64] }]);
@@ -589,7 +589,7 @@ describe('D5 — la secuencia cambia al cerrar el ciclo', () => {
   it('con pendiente pero antes del borde devuelve la MISMA referencia de la activa', () => {
     // No es un detalle de implementacion: `engine.ts` cuenta los swaps de ciclo
     // comparando por identidad (`w.active !== active`) y la UI ata a ese contador el
-    // momento en que la cabeza lectora salta al circuito nuevo (spec 010, AC9). Si esta
+    // momento en que la cabeza lectora salta al circuito nuevo. Si esta
     // funcion devolviera una copia defensiva cuando NO hubo swap, el contador subiria 40
     // veces por segundo y la cabeza dibujaria el circuito nuevo antes de que suene — que
     // es exactamente el bug que AC9 existe para evitar, y ningun test de audio lo veria.
@@ -603,7 +603,7 @@ describe('D5 — la secuencia cambia al cerrar el ciclo', () => {
     expect(state.origin).toBe(ORIGIN);
   });
 
-  it('AC5 — cambiar la secuencia a mitad de ciclo no altera los hits hasta el borde', () => {
+  it('cambiar la secuencia a mitad de ciclo no altera los hits hasta el borde', () => {
     const sinCambio = simular(A, TICKS, recienArrancado());
     const conCambio = simular(A, TICKS, recienArrancado(), { enTick: CAMBIO, a: B });
     const borde = bordeEsperado(conCambio.comprometido);
@@ -619,7 +619,7 @@ describe('D5 — la secuencia cambia al cerrar el ciclo', () => {
     expect(conCambio.hits.length).not.toBe(sinCambio.hits.length);
   });
 
-  it('AC13 — en el empalme del swap no se pierde ni se repite ningun onset', () => {
+  it('en el empalme del swap no se pierde ni se repite ningun onset', () => {
     const state = recienArrancado();
     const { hits, ultimo, comprometido } = simular(A, TICKS, state, { enTick: CAMBIO, a: B });
     const borde = bordeEsperado(comprometido);
@@ -645,7 +645,7 @@ describe('D5 — la secuencia cambia al cerrar el ciclo', () => {
     expect(emitidos.find(x => casiIgual(x.at, borde))?.clave).toBe(`note:${midiToHz(72).toFixed(4)}`);
   });
 
-  it('AC13 — el borde es el nuevo origin, y el primer onset del ciclo nuevo cae ahi', () => {
+  it('el borde es el nuevo origin, y el primer onset del ciclo nuevo cae ahi', () => {
     const state = recienArrancado();
     const { hits, comprometido } = simular(A, TICKS, state, { enTick: CAMBIO, a: B });
     const borde = bordeEsperado(comprometido);
@@ -656,7 +656,7 @@ describe('D5 — la secuencia cambia al cerrar el ciclo', () => {
     expect(hits.filter(h => casiIgual(h.at, borde))).toHaveLength(1);
   });
 
-  it('AC13 — el swap se decide antes de cruzar el borde: nada se agenda en el pasado', () => {
+  it('el swap se decide antes de cruzar el borde: nada se agenda en el pasado', () => {
     // El horizonte es de 100 ms y el borde se mira cada 25 ms. Si el swap esperara a
     // que currentTime pasara el borde, el primer onset del ciclo nuevo ya seria
     // pasado al agendarlo. Se decide adentro del lookahead justamente para evitarlo.

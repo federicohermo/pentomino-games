@@ -62,8 +62,8 @@ export default function PiecePalette({ orientacion, transporte, abierto, onToggl
   // La posicion sale de la MEDICION y no de la estetica, y leyendo `fixed right-0 top-1/2`
   // no se adivina: `2 x 4` celdas pegadas al borde derecho y centradas en vertical tapan
   // `(8,1)`…`(9,4)` y dejan libres `(0,0)` y `(9,5)`, que son las dos celdas que no se
-  // pueden tapar — ahi es donde el circuito cierra (spec 009) y donde arranca la cabeza
-  // lectora (spec 010). Arriba se descarto por lo mismo: una barra superior tapa el borde
+  // pueden tapar — ahi es donde el circuito cierra y donde arranca la cabeza
+  // lectora. Arriba se descarto por lo mismo: una barra superior tapa el borde
   // de arriba entero, `(0,0)` incluida.
   //
   // El fondo va semiopaco con `backdrop-blur` y no opaco: abajo hay celdas con nota, y un
@@ -87,7 +87,7 @@ export default function PiecePalette({ orientacion, transporte, abierto, onToggl
       {/* `hidden` y no desmontar, y de eso dependen dos cosas medidas. Una: el
           `ResizeObserver` del espectro redibuja porque su contenedor CAMBIA DE TAMANO, y
           eso vale para el otro flotante por el mismo mecanismo. Dos: la barrera del `memo`
-          de `OrientationPanel` (spec 027) — desmontar y remontar le cuesta exactamente las
+          de `OrientationPanel` — desmontar y remontar le cuesta exactamente las
           ejecuciones que el memo existe para ahorrar. Con el arbol vivo, las dos siguen
           valiendo. */}
       <div id="dock-piezas" hidden={!abierto} className="min-h-0 overflow-y-auto">

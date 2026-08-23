@@ -42,7 +42,7 @@ const colocar = (piece: PieceKey, rot: number, mirror: boolean, x: number, y: nu
 
 /**
  * El mismo tablero con cruces que usa `route-source.test.ts`: el recorrido no puede
- * esquivar a la `X` y tres de sus clicks salen CON `note` (D5 del spec 011), mientras el
+ * esquivar a la `X` y tres de sus clicks salen CON `note`, mientras el
  * resto cae en celdas vacías y sale sin ella. Es el único tablero que ejercita los dos
  * estados del click en una sola secuencia.
  */
@@ -133,7 +133,7 @@ const motorFalso = (corriendo: boolean) => {
   return { motor, pedidos };
 };
 
-describe('AC6 — alternarTransporte devuelve lo que el motor dice, no lo que se le pidió', () => {
+describe('alternarTransporte devuelve lo que el motor dice, no lo que se le pidió', () => {
   it('en pausa pide arrancar, y si arrancó devuelve `true`', () => {
     const { motor, pedidos } = motorFalso(true);
     expect(alternarTransporte(false, motor)).toBe(true);

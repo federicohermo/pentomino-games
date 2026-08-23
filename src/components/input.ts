@@ -240,7 +240,7 @@ export function reflejaElContextMenu(e: { ctrlKey: boolean }): boolean {
 /**
  * Si la celda clickeada está ocupada por una pieza **del mismo tipo que el seleccionado**.
  *
- * Es la llave de toda la edición en el tablero (D2 del spec 014), y está escrita una sola
+ * Es la llave de toda la edición en el tablero, y está escrita una sola
  * vez porque la usan dos: el handler del click y la derivación del hover, que decide el
  * cursor y si se pinta el fantasma. Dos copias de esta condición serían dos formas de
  * discrepar sobre si un click va a borrar — con el cursor prometiendo una cosa y el click

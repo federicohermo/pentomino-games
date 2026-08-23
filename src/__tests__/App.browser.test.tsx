@@ -19,7 +19,7 @@ import type { PropsDeOrientacion } from '../components/types/panel.types.ts';
  * Desde el spec 022 `App.tsx` no tiene un solo `useEffect` —los seis viven en
  * `use-engine.ts` y `use-input.ts`— pero sigue siendo dueño de TODO el estado y de los
  * handlers que lo mueven, y eso es lo que no verificaba nada: el gesto de colocar, las
- * tres formas de editar en el tablero (spec 014), cuándo se dispara el arpegio de
+ * tres formas de editar en el tablero, cuándo se dispara el arpegio de
  * cortesía y cuándo no, y las tres derivaciones que AC15 del 017 obliga a llevar el
  * régimen.
  *
@@ -294,7 +294,7 @@ describe('App — colocar', () => {
   });
 });
 
-describe('App — editar en el tablero (spec 014)', () => {
+describe('App — editar en el tablero', () => {
   const conUnaF = async () => {
     const vista = await render(<App />);
     click(celda(vista.container, 3, 2));
@@ -628,7 +628,7 @@ describe('App — la orientacion, por panel y por gesto', () => {
     expect(container.textContent).toContain('tónica');
   });
 
-  it('la LETRA elige la pieza, sin ir al panel (spec 018)', async () => {
+  it('la LETRA elige la pieza, sin ir al panel', async () => {
     // No es redundante con el test de `use-input`: lo que cubre de mas es el callback del
     // shell, que es el que traduce la pieza a la ranura de estado y que ningun test del
     // hook ejerce.
@@ -680,7 +680,7 @@ describe('App — lo que llega al arbol de accesibilidad', () => {
   });
 });
 
-describe('App — lo que cuesta mover el cursor (spec 027)', () => {
+describe('App — lo que cuesta mover el cursor', () => {
   /** Diez celdas interiores: dos filas de cinco, con el fantasma entero adentro del tablero. */
   const RECORRIDO = [2, 3].flatMap(y => [1, 2, 3, 4, 5].map(x => [x, y] as const));
 
@@ -726,7 +726,7 @@ describe('App — lo que cuesta mover el cursor (spec 027)', () => {
 });
 
 /**
- * El teclado sobre el SHELL entero (spec 026).
+ * El teclado sobre el SHELL entero.
  *
  * `Board.browser.test.tsx` ya verifica el roving tabindex, las flechas, `Home`/`End` y las
  * cuatro acciones contra un `Board` suelto y con props fijas. Lo que solo existe ACA es lo
@@ -750,7 +750,7 @@ const tecla = (el: Element, key: string, init: KeyboardEventInit = {}) => {
 const aLaVista = (c: HTMLElement) =>
   c.querySelector('div.relative')!.scrollIntoView({ block: 'center' });
 
-describe('App — el tablero se toca con el teclado (spec 026)', () => {
+describe('App — el tablero se toca con el teclado', () => {
   it('desde la paleta, UN `Tab` entra al tablero y otro lo pasa de largo', async () => {
     // `Tab` de VERDAD, por Playwright, y no el conteo de cuantas celdas tienen `tabIndex`
     // distinto de -1: las dos cosas no son la misma. El conteo mide el DOM y seria cierto
@@ -928,7 +928,7 @@ describe('App — el tablero se toca con el teclado (spec 026)', () => {
     await vi.waitFor(() => expect(notaDelFantasma(container)).not.toBe(conRotacion));
   });
 
-  it('con una celda enfocada, la letra IGUAL elige la pieza (spec 018)', async () => {
+  it('con una celda enfocada, la letra IGUAL elige la pieza', async () => {
     // AC13: `targetEsCelda` apaga la barra y solo la barra. El `switch` del `onKeyDown` de
     // la celda cierra con `default: return`, asi que una letra no la maneja nadie mas y no
     // hay doble disparo que evitar — vetarla ahi apagaria el atajo justo donde mas sirve.
@@ -991,7 +991,7 @@ describe('App — el tablero se toca con el teclado (spec 026)', () => {
   });
 });
 
-describe('App — el fondo, un solo valor (spec 028)', () => {
+describe('App — el fondo, un solo valor', () => {
   // Hasta este spec NINGUN test miraba el fondo, asi que AC6 y AC9 se firmaban a ojo: el
   // color vivia dos veces —el hex a mano en el `body` y la clase de Tailwind que resuelve
   // al mismo hex en el `div` raiz— y nada ataba las dos copias. Un grep del hex tampoco lo
@@ -1019,8 +1019,8 @@ describe('App — el fondo, un solo valor (spec 028)', () => {
   });
 });
 
-describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
-  it('AC1 — no scrollea ninguno de los dos ejes, en escritorio ni en telefono', async () => {
+describe('App — el tablero crece hasta la pantalla', () => {
+  it('no scrollea ninguno de los dos ejes, en escritorio ni en telefono', async () => {
     // La mitad del AC1 que solo se puede ver montando la app entera: el tablero mide lo que
     // el contenedor mide, y los dos flotantes van encima sin empujarlo. Se prueban los dos
     // extremos de la tabla del spec — el escritorio grande y el telefono en vertical, que
@@ -1039,7 +1039,7 @@ describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
     }
   });
 
-  it('AC2 — la grilla que se dibuja es la que sale del viewport', async () => {
+  it('la grilla que se dibuja es la que sale del viewport', async () => {
     // El extremo chico de la tabla: 5 columnas por 9 filas en un telefono en vertical,
     // contra las 26 x 15 de un escritorio. Es el numero que hasta el 031 era 10 x 6 en los
     // dos.
@@ -1052,7 +1052,7 @@ describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
     expect(celdas(container).length).toBe(esperado.w * esperado.h);
   });
 
-  it('AC5 — la pieza 13 no entra, y se dice', async () => {
+  it('la pieza 13 no entra, y se dice', async () => {
     // El tope que hasta el 031 lo garantizaba el area: con 154 celdas entrarian 30 piezas y
     // el circuito exacto es `O(n^2 * 2^n)`. Es el unico rechazo que no se explica solo —una
     // jugada invalida se ve, porque el fantasma sale rosa— asi que se anuncia.
@@ -1084,7 +1084,7 @@ describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
     expect(conPieza()).toBe(SHAPES.I.length * MAX_PIEZAS);
   });
 
-  it('AC8 — achicar la ventana no borra piezas: vuelven enteras al agrandarla', async () => {
+  it('achicar la ventana no borra piezas: vuelven enteras al agrandarla', async () => {
     // El repo no tiene deshacer (`specs/deuda.md`) y arrastrar el borde de una ventana no es
     // un gesto de edicion. La pieza que deja de entrar se guarda: no se dibuja, no suena, y
     // vuelve identica cuando hay lugar.
@@ -1118,7 +1118,7 @@ describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
     expect(nombres()).toEqual(antes);
   });
 
-  it('AC8 — la pieza que queda a medias tampoco recibe clicks: la celda vacia se comporta como vacia', async () => {
+  it('la pieza que queda a medias tampoco recibe clicks: la celda vacia se comporta como vacia', async () => {
     // El caso que el AC8 de arriba no toca: ahi la ventana deja la pieza ENTERA afuera, y
     // aca la deja **a medias** —dos celdas adentro de la grilla nueva y tres afuera—, que
     // es el unico estado donde el modelo y lo que se ve pueden discrepar. La pieza no se
@@ -1170,9 +1170,9 @@ describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
     await vi.waitFor(() => expect(conPieza()).toBe(SHAPES.I.length));
   });
 
-  it('AC9 — achicar la ventana no deja al tablero sin ancla de tabulacion', async () => {
+  it('achicar la ventana no deja al tablero sin ancla de tabulacion', async () => {
     // El OTRO estado que la grilla nueva puede dejar apuntando afuera, y que no es una
-    // pieza: el cursor. Lo escriben el mouse y el foco (spec 026) y ninguno de los dos se
+    // pieza: el cursor. Lo escriben el mouse y el foco y ninguno de los dos se
     // entera de un `resize`, asi que el par guardado puede caer fuera de `dims`.
     //
     // `Board` ancla el roving tabindex en esa celda, o sea que si no se acota, NINGUNA

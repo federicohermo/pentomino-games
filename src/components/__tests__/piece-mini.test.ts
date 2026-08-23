@@ -30,7 +30,7 @@ describe('el espacio que recorren estos tests', () => {
   });
 });
 
-describe('AC4 — la forma entra en la caja y queda centrada', () => {
+describe('la forma entra en la caja y queda centrada', () => {
   it('las cinco celdas caen dentro de 0..4 en los dos ejes', () => {
     for (const [p, r, m] of COMBINACIONES) {
       const celdas = miniCells(p, r, m);
@@ -72,7 +72,7 @@ describe('AC4 — la forma entra en la caja y queda centrada', () => {
   });
 });
 
-describe('AC2 — la caja no depende de la orientación', () => {
+describe('la caja no depende de la orientación', () => {
   it('ninguna orientación de ninguna pieza se sale de la caja', () => {
     // La caja se dibuja con cinco pistas fijas, así que el reflow que D1 evita no
     // depende de esta pura. Lo que esta pura sí garantiza es que la forma no la
@@ -83,7 +83,7 @@ describe('AC2 — la caja no depende de la orientación', () => {
   });
 });
 
-describe('AC5 — compone `rotateN` y `reflect`, no los reimplementa', () => {
+describe('compone `rotateN` y `reflect`, no los reimplementa', () => {
   it('normalizado, el resultado es la misma forma que la cadena hecha a mano', () => {
     // Se compara contra `normalize` del resultado y no contra "el resultado sin
     // centrar": la firma no expone ese paso intermedio y no hace falta que lo exponga.

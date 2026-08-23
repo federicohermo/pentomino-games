@@ -7,7 +7,7 @@ import { BASE_MAP, PENT_MAJOR, REGIMEN } from '../constants/music.constants.ts';
 import type { Cell } from '../types/transform.types.ts';
 import type { PieceKey } from '../types/pieces.types.ts';
 
-describe('AC6 — los cinco chequeos sobre las 96 combinaciones', () => {
+describe('los cinco chequeos sobre las 96 combinaciones', () => {
   it('orden del array', () => {
     const r = checkArrayOrder();
     expect(r.failures).toEqual([]);

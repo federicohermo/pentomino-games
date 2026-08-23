@@ -25,7 +25,7 @@ export const ACCION = {
 } as const;
 
 /**
- * Lo que un click sobre una celda le puede pedir al tablero (spec 014).
+ * Lo que un click sobre una celda le puede pedir al tablero.
  *
  * Cuatro y no dos: colocar y colocar-muteada son la misma edición del tablero pero
  * distinto gesto de escucha —la muteada **no** dispara el arpegio de cortesía, porque se

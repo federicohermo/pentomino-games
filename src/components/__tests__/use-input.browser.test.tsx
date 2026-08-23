@@ -128,7 +128,7 @@ describe('useAtajosDeTeclado', () => {
     expect(a.seleccionar).not.toHaveBeenCalled();
   });
 
-  it('la letra elige la pieza y NO arranca el transporte (spec 018)', async () => {
+  it('la letra elige la pieza y NO arranca el transporte', async () => {
     // El segundo `expect` es el que importa: la rama de la letra puesta como un `if`
     // suelto DESPUES de la cadena de `despachar` —en vez de antes del `else transporte()`—
     // selecciona la pieza y ademas arranca el instrumento, y eso pasa typecheck y lint sin

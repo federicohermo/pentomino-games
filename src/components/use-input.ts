@@ -41,7 +41,7 @@ interface Acciones {
   reflejar: () => void;
   transporte: () => void;
   /**
-   * La letra elige la pieza (spec 018). Recibe la pieza y no la tecla: traducir de una a
+   * La letra elige la pieza. Recibe la pieza y no la tecla: traducir de una a
    * otra es una decisión, y las decisiones viven en `input.ts`, donde tienen test.
    */
   seleccionar: (pieza: PieceKey) => void;

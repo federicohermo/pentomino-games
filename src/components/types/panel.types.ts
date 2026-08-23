@@ -13,7 +13,7 @@ import type { MemoriaDeOrientacion } from './orientation.types.ts';
  * Los tres criterios de reparto, que no son obvios y por eso van escritos:
  *
  * - `regimen` va con la ORIENTACIÓN aunque sea global como el tempo, porque gobierna QUÉ
- *   HACE la rotación (spec 017): con `escala` cambia la fórmula de escala y con `orden`
+ *   HACE la rotación: con `escala` cambia la fórmula de escala y con `orden`
  *   cambia por dónde arranca el arpegio, así que sin él la orientación no dice qué suena.
  * - `noteSet` va del mismo lado por lo mismo: es el arpegio de la pieza en la mano EN ESA
  *   orientación, y su `useMemo` en el shell ya depende de los cuatro campos de acá.
@@ -39,7 +39,7 @@ export interface PropsDeOrientacion {
    */
   orientaciones: MemoriaDeOrientacion;
   /**
-   * Que hace la rotacion (spec 017). Hasta el 019 completaba la frase de su propia fila
+   * Que hace la rotacion. Hasta el 019 completaba la frase de su propia fila
    * —«Rotacion … cambia escala / orden»—; al borrarse los cuatro botones de grados la
    * frase se quedo sin sujeto y el regimen paso a ser la fila.
    */

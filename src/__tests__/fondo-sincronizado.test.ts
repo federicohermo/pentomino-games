@@ -41,7 +41,7 @@ const css = leer('src/styles/index.css');
 const manifest = leer('public/manifest.json');
 const html = leer('index.html');
 
-describe('el color de fondo esta sincronizado fuera de `src/` (spec 028)', () => {
+describe('el color de fondo esta sincronizado fuera de `src/`', () => {
   const token = color(css, /--color-fondo:\s*(#[0-9a-fA-F]{3,8})\s*;/, 'src/styles/index.css');
 
   it('el token existe y es un color escrito', () => {

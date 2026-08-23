@@ -157,7 +157,7 @@ describe('Board', () => {
     }
   });
 
-  it('AC1 — la grilla mide lo que dicen `dims` y `--cell`, y nada scrollea', async () => {
+  it('la grilla mide lo que dicen `dims` y `--cell`, y nada scrollea', async () => {
     // Lo que este test verificaba hasta el spec 031 era lo contrario: que el tablero
     // SCROLLEARA cuando no entraba, para no achicar la celda. Hoy no puede no entrar
     // —`grillaPara` elige `cols` y `rows` contra la caja, asi que `cols * cell <= vw`— y
@@ -329,7 +329,7 @@ describe('Board', () => {
 });
 
 /**
- * El teclado (spec 026): el tablero es UNA parada de tabulacion, adentro se mueve con las
+ * El teclado: el tablero es UNA parada de tabulacion, adentro se mueve con las
  * flechas, y las cuatro acciones salen de la misma pura que el click.
  *
  * Necesita navegador de verdad y no jsdom por lo mismo que las mediciones de arriba: lo

@@ -17,7 +17,7 @@
  * `react-refresh/only-export-components` prohíbe que un `.tsx` exporte algo que no sea el
  * componente: escrita adentro de `PiecePalette.tsx` esta pura no se podría exportar y por
  * lo tanto no se podría testear. Es el mismo movimiento con el que salieron `cell-text.ts`
- * (spec 012) y `piece-mini.ts` (016), y es de quien esta función es hermana.
+ * y `piece-mini.ts` (016), y es de quien esta función es hermana.
  *
  * Y no en `cell-text.ts`: ese archivo contesta qué dice una CELDA DEL TABLERO y su tipo
  * cruza hacia `Board.tsx`. Acá la pregunta es qué dice el panel de la pieza en la mano.

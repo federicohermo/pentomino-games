@@ -84,7 +84,7 @@ const DOS = [colocar('F', 0, false, 2, 2), colocar('L', 0, true, 7, 1)];
  */
 const CON_CRUCE = [colocar('X', 0, false, 1, 1), colocar('F', 0, false, 3, 2), colocar('N', 0, false, 2, 4)];
 
-describe('AC9 — la ruta activa es la que suena, no la encolada', () => {
+describe('la ruta activa es la que suena, no la encolada', () => {
   it('encolar no cambia lo que la cabeza dibuja: hace falta que el motor cierre el ciclo', () => {
     encolarTablero(UNA);
     expect(rs.rutaActiva()).toEqual([]);
@@ -172,7 +172,7 @@ describe('la tabla por offset', () => {
     cerrarCiclo();
     const marcas = rs.rutaActiva();
     // El ciclo mide 5 y el arpegio ocupa 5: el ultimo intervalo es el silencio con el
-    // que el ciclo vuelve a empezar contiguo (spec 009), no un click.
+    // que el ciclo vuelve a empezar contiguo, no un click.
     expect(marcas.filter((m) => m?.kind === MARCA.click)).toEqual([]);
     expect(marcas.filter((m) => m?.kind === MARCA.nota)).toHaveLength(5);
   });
@@ -184,7 +184,7 @@ describe('la tabla por offset', () => {
     expect(rs.velo()).toEqual([]);
   });
 
-  it('AC9/D8 (spec 011) — un click sobre celda ocupada suena floritura y se marca MARCA.cruce', () => {
+  it('AC9/D8 — un click sobre celda ocupada suena floritura y se marca MARCA.cruce', () => {
     encolarTablero(CON_CRUCE);
     cerrarCiclo();
     const marcas = rs.rutaActiva();
@@ -203,7 +203,7 @@ describe('la tabla por offset', () => {
   });
 });
 
-describe('AC5 — el velo de lo que todavia no sono', () => {
+describe('el velo de lo que todavia no sono', () => {
   it('la pieza encolada va sin offset, y despues del swap con el intervalo en que estrena', () => {
     encolarTablero(UNA);
     // Encolada y sin ciclo que la contenga: no hay instante que esperar, solo el swap.
@@ -251,7 +251,7 @@ describe('AC5 — el velo de lo que todavia no sono', () => {
   });
 });
 
-describe('AC19 — la cabeza recorre la pieza muteada, con el borde del click', () => {
+describe('la cabeza recorre la pieza muteada, con el borde del click', () => {
   const MUTEADA = [colocar('F', 0, false, 2, 2, true), colocar('L', 0, true, 7, 1)];
 
   it('sus cinco celdas siguen marcadas, pero con MARCA.click y no MARCA.nota', () => {
@@ -275,7 +275,7 @@ describe('AC19 — la cabeza recorre la pieza muteada, con el borde del click', 
     expect(marcas.filter((m) => m === null)).toEqual([]);
   });
 
-  it('AC9 — la pieza muteada no tiene velo de estreno, y la otra si', () => {
+  it('la pieza muteada no tiene velo de estreno, y la otra si', () => {
     // Decision (a) del spec: el velo dice "esto todavia no sono", y una pieza muteada no
     // va a sonar nunca. Atenuarla hasta que le "toque" prometeria algo que no pasa, y
     // ademas la opacidad ya esta ocupada diciendo eso.
@@ -299,8 +299,8 @@ describe('AC19 — la cabeza recorre la pieza muteada, con el borde del click', 
  * Que sea eso y no el estado del reloj es justamente la decision: `reiniciar()` lo llama
  * el Reset y nadie mas.
  */
-describe('AC1 y AC2 (spec 027) — el reinicio es una orden, no una consecuencia', () => {
-  it('AC1 — tras el Reset el velo queda vacio aunque el reloj este parado', () => {
+describe('AC1 y AC2 — el reinicio es una orden, no una consecuencia', () => {
+  it('tras el Reset el velo queda vacio aunque el reloj este parado', () => {
     encolarTablero(UNA);
     cerrarCiclo();
     rs.rutaActiva();
@@ -316,7 +316,7 @@ describe('AC1 y AC2 (spec 027) — el reinicio es una orden, no una consecuencia
     expect(rs.velo()).toEqual([]);
   });
 
-  it('AC1 — el reinicio no adelanta el swap: la generacion se sincroniza, no vuelve a cero', () => {
+  it('el reinicio no adelanta el swap: la generacion se sincroniza, no vuelve a cero', () => {
     // Si `reiniciar()` pusiera la generacion en 0 estando el motor en 1, el proximo
     // cuadro veria una diferencia que no existe y estrenaria la pendiente FUERA del
     // borde del ciclo — la misma mentira que `cycleGen` evita no reseteandose nunca.
@@ -334,7 +334,7 @@ describe('AC1 y AC2 (spec 027) — el reinicio es una orden, no una consecuencia
     expect(new Set(rs.velo().map((e) => e.id))).toEqual(new Set(['F']));
   });
 
-  it('AC2 — quitar la ultima pieza NO reinicia nada: el ciclo activo termina (D5 del 009)', () => {
+  it('quitar la ultima pieza NO reinicia nada: el ciclo activo termina (D5 del 009)', () => {
     encolarTablero(UNA);
     cerrarCiclo();
     const sonando = rs.rutaActiva();

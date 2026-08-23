@@ -80,7 +80,7 @@ describe('cellTextFor — el texto de una celda, en las 96 orientaciones', () =>
     expect(cellTextFor('L', 0, false, REGIMEN.escala)).toBe(cellTextFor('L', 0, false, REGIMEN.escala));
   });
 
-  it('AC15 (spec 017) — el memo tampoco cruza REGIMENES: el regimen esta en la clave', () => {
+  it('el memo tampoco cruza REGIMENES: el regimen esta en la clave', () => {
     // El `Map` es de modulo, sobrevive al render y no lo mira ningun linter: sin el
     // regimen en la clave, cambiarlo re-derivaria el audio y dejaria las celdas
     // mostrando las notas del regimen anterior para siempre. Es AC7 verde en el audio y

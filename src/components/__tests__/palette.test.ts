@@ -121,7 +121,7 @@ describe('PIECE_COLOR', () => {
 });
 
 /**
- * El borde de la miniatura de la paleta (spec 016, ajuste del `/pr-review`).
+ * El borde de la miniatura de la paleta.
  *
  * ## Por que aca vuelve WCAG 2.1, despues de todo lo de arriba
  *

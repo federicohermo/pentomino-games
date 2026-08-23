@@ -25,7 +25,7 @@ import type { MemoriaDeOrientacion, Orientacion } from '../types/orientation.typ
  */
 const PIEZAS = Object.keys(SHAPES) as PieceKey[];
 
-/** Las doce en cero con las ranuras que el test quiera pisar (spec 020). */
+/** Las doce en cero con las ranuras que el test quiera pisar. */
 const memoria = (pisadas: Partial<MemoriaDeOrientacion> = {}): MemoriaDeOrientacion =>
   ({ ...ORIENTACIONES_INICIALES, ...pisadas });
 

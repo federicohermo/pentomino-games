@@ -93,7 +93,7 @@ describe('reflect', () => {
  * cualquier test que compare la salida cruda de `rotate90` contra literales tiene
  * que pasar por `sameCell`.
  */
-describe('AC7 — el cero con signo', () => {
+describe('el cero con signo', () => {
   it('rotate90 cruda produce -0, y toEqual lo distingue de 0', () => {
     const [c] = rotate90([[0, 0]]);
     expect(Object.is(c[1], -0)).toBe(true);
@@ -294,7 +294,7 @@ const porIndice = (cells: readonly Cell[]) => cells.map((_, k) => k);
 const alReves = (cells: readonly Cell[]) => cells.map((_, k) => cells.length - 1 - k);
 
 describe('pathThroughCells', () => {
-  it('AC2 — coincide con la fuerza bruta sobre las 12 piezas', () => {
+  it('coincide con la fuerza bruta sobre las 12 piezas', () => {
     for (const p of PIECES) {
       for (const desempate of [porIndice, alReves]) {
         const rank = desempate(SHAPES[p]);
@@ -303,7 +303,7 @@ describe('pathThroughCells', () => {
     }
   });
 
-  it('AC2 — coincide con la fuerza bruta sobre 200 formas arbitrarias, incluidas las desconexas', () => {
+  it('coincide con la fuerza bruta sobre 200 formas arbitrarias, incluidas las desconexas', () => {
     // Formas arbitrarias a proposito: la funcion las acepta, y las desconexas son las
     // que mas ejercen el criterio de "el salto mas corto" porque no hay vecinos.
     const rnd = conSemilla(20260819);
@@ -329,7 +329,7 @@ describe('pathThroughCells', () => {
     }
   });
 
-  it('AC3 — las 12 piezas se recorren enteras: ningun paso pasa por encima de una celda', () => {
+  it('las 12 piezas se recorren enteras: ningun paso pasa por encima de una celda', () => {
     // La propiedad que compra tolerar la diagonal. Antes eran 8 de 12 y las otras
     // cuatro pasaban POR ENCIMA de una celda propia que todavia no habia sonado.
     for (const p of PIECES) {
@@ -340,7 +340,7 @@ describe('pathThroughCells', () => {
     }
   });
 
-  it('AC4 — la diagonal se tolera pero no se prefiere: solo cuatro piezas la usan', () => {
+  it('la diagonal se tolera pero no se prefiere: solo cuatro piezas la usan', () => {
     // Un paso diagonal mide 2 en Manhattan, o sea el doble que uno recto, asi que el
     // segundo criterio lo evita donde la forma permite ir en cruz. Las cuatro que la
     // usan son las que no admiten recorrido ortogonal: tienen un nodo con 3 o 4 vecinos
@@ -365,7 +365,7 @@ describe('pathThroughCells', () => {
     expect(d).toEqual([2, 1, 1, 1]);
   });
 
-  it('AC6 — el desempate decide, y decide siempre lo mismo', () => {
+  it('el desempate decide, y decide siempre lo mismo', () => {
     // `Y` y `X` son las que tienen empate de verdad: 8 y 24 recorridos igual de buenos
     // sobreviven a los tres primeros criterios. Un test sobre una pieza de camino unico
     // pasaria sin ejercer nada.

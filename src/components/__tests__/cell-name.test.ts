@@ -5,7 +5,7 @@ import { EDICION } from '../constants/input.constants.ts';
 import { REGIMEN } from '../../domain/constants/music.constants.ts';
 
 /**
- * Los cuatro casos del AC8 (spec 026): celda libre, ocupada, ocupada y muteada, y
+ * Los cuatro casos del AC8: celda libre, ocupada, ocupada y muteada, y
  * el criterio de que el fantasma no entra. Es el mismo tipo de test que
  * `cell-text.test.ts` -puro, sin DOM y sin React, en el `environment: 'node'` del
  * resto del repo- por la misma razon: lo que un lector de pantalla va a anunciar
@@ -24,8 +24,8 @@ describe('cellNameFor — el nombre accesible de una celda', () => {
     );
   });
 
-  it('celda ocupada y muteada: el nombre dice "muteada" y conserva nota y paso (spec 014)', () => {
-    // La pieza muteada "ocupa su lugar y su tiempo sin sonar" (spec 014) y NO es una
+  it('celda ocupada y muteada: el nombre dice "muteada" y conserva nota y paso', () => {
+    // La pieza muteada "ocupa su lugar y su tiempo sin sonar" y NO es una
     // ausencia de contenido: el nombre tiene que seguir diciendo que nota y que paso
     // le tocarian, y ademas que esta muteada.
     const cell = cellTextFor('L', 1, true, REGIMEN.orden)[2];
@@ -54,7 +54,7 @@ describe('anuncioDeEdicion — lo que dice la region aria-live', () => {
   it('colocar y colocar muteada se distinguen por el estado en que queda la pieza', () => {
     expect(anuncioDeEdicion(EDICION.colocar, 'F', 3, 2, false))
       .toBe('pieza F colocada en fila 3, columna 4');
-    // La muteada ocupa su lugar y su tiempo sin sonar (spec 014): el anuncio lo dice,
+    // La muteada ocupa su lugar y su tiempo sin sonar: el anuncio lo dice,
     // porque sin ver la pantalla el blanco de la baldosa no se puede leer.
     expect(anuncioDeEdicion(EDICION.colocarMuteada, 'F', 3, 2, true))
       .toBe('pieza F colocada muteada en fila 3, columna 4');
