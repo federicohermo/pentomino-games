@@ -3,7 +3,7 @@ import type { Dims } from '../types/board.types.ts';
 /**
  * El tablero mas chico que tiene sentido, en celdas.
  *
- * Desde el spec 031 el tamano del tablero **no es una constante**: sale del viewport y
+ * El tamano del tablero **no es una constante**: sale del viewport y
  * llega como parametro (`Dims`). Lo que queda fijo son estos dos bordes.
  *
  * 5 x 5 y no 4 x 4 porque 5 es el lado de la caja mas chica que contiene cualquier
@@ -22,19 +22,19 @@ export const GRID_MIN: Dims = { w: 5, h: 5 };
 /**
  * El tablero de siempre: 10 x 6.
  *
- * Ya no es lo que la app dibuja —eso lo decide el viewport desde el 031— pero sigue
+ * No es lo que la app dibuja —eso lo decide el viewport— pero sigue
  * siendo el tablero de REFERENCIA, y por eso vive acá y no como dos numeros sueltos en
  * cada llamador: lo usan el MCP server cuando la consulta no dice dimensiones y los tests
- * del dominio que no tienen ninguna razon para inventar un tamano. Que sea el mismo par de
- * antes es lo que hace que una consulta a `simulate_board` escrita antes del 031 siga
- * dando exactamente lo mismo.
+ * del dominio que no tienen ninguna razon para inventar un tamano. Que sea el mismo par
+ * historico es lo que hace que una consulta a `simulate_board` escrita cuando el tablero
+ * era fijo siga dando exactamente lo mismo.
  */
 export const GRID_DEFAULT: Dims = { w: 10, h: 6 };
 
 /**
  * Cuantas piezas acepta el tablero, sea del tamano que sea.
  *
- * **Es el numero que hasta el spec 031 garantizaba el AREA y no una regla.** El tablero
+ * **Es el numero que antes garantizaba el AREA y no una regla.** El tablero
  * medía 60 celdas y un pentomino ocupa 5, asi que nunca entraban mas de 12 y nadie tenia
  * que escribirlo — `shortestCircuit` lo da por sentado en su docblock. Con el tablero
  * saliendo del viewport el area deja de garantizarlo: 1920 x 1080 dan 390 celdas, o sea 78
@@ -65,11 +65,11 @@ export const MAX_PIEZAS = 12;
 
 /**
  * Lo que cuesta ENTRAR a una celda ocupada al trazar el camino entre dos piezas,
- * contra 1 de una celda vacia (spec 011, D1).
+ * contra 1 de una celda vacia.
  *
  * Es una propiedad del GRAFO del tablero, igual que la costura: aquella dice que celdas
  * son vecinas y esto dice cuanto cuesta pisar cada una. Vivian una al lado de la otra
- * hasta el spec 031, que convirtio a `SEAM` en la funcion `costuraDe(dims)` de `board.ts`
+ * hasta que la costura paso a ser la funcion `costuraDe(dims)` de `board.ts`
  * —dejo de poder ser un valor cuando el tablero dejo de tener un tamano fijo—; este
  * numero no depende de las dimensiones, asi que se queda.
  *
@@ -99,7 +99,7 @@ export const MAX_PIEZAS = 12;
  * | 61 (prohibir de hecho) | 0,51 | 2,83 | +19,3 % | **0 %** |
  *
  * Con 2, **uno de cada cinco tramos cruza una pieza pudiendo rodearla** — y eso se ve:
- * la cabeza lectora del 010 lo hace evidente, que es como se encontro. Con 5 baja a uno
+ * la cabeza lectora lo hace evidente, que es como se encontro. Con 5 baja a uno
  * de cada diez y el ciclo crece 7 %.
  *
  * **No se eligio 61 —que es el unico valor que cumple "solo cruzar si no hay

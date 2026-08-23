@@ -220,18 +220,17 @@ export const setBpm = (v: number): void => { bpm = v; };
  * secuencia para algo que no es una decision del tablero, y ademas haria que el
  * ciclo pareciera distinto segun el volumen.
  *
- * El spec 009 lo dejo previsto en su tabla de riesgos —"es un parametro suelto: si
- * molesta, se baja o se apaga sin tocar el modelo"— y salio de escuchar: los clicks
- * de un salto largo se acumulan y tapan la frase.
+ * Es un parametro suelto a proposito: si molesta, se baja o se apaga sin tocar el
+ * modelo. Salio de escuchar — los clicks de un salto largo se acumulan y tapan la frase.
  *
- * **Solo los mudos** (D6 del spec 011). El cruce por celda ocupada suena la nota de esa
+ * **Solo los mudos.** El cruce por celda ocupada suena la nota de esa
  * celda, y eso es MODELO: es la pieza pisada contestando, no un adorno de mezcla. Por
  * eso `tick()` lo despacha por su propia rama del `kind` y este interruptor no lo toca
  * — apagarlo dejaria el recorrido diciendo que cruzo por el vacio donde cruzo por una
  * pieza. Es tambien la razon por la que `HIT` tiene tres claves y no dos con un campo
  * opcional: sin discriminante, esta funcion no tendria a quien apagar.
  *
- * **Arranca en `false` desde el spec 015**, y este es el segundo lugar donde vive ese
+ * **Arranca en `false`**, y este es el segundo lugar donde vive ese
  * default: el otro es el `useState` de `App.tsx`, que `useMotorSincronizado`
  * (`components/use-engine.ts`) baja al motor en su efecto de montaje.
  * Que se pisen no vuelve inofensivo dejarlos en desacuerdo — es el mismo valor
@@ -247,7 +246,7 @@ export const setClicksAudible = (v: boolean): void => { clicksAudible = v; };
  * al cerrar el ciclo activo, que es lo que permite que el circuito se reordene
  * entero sin que el patron salte a mitad de frase (D5).
  *
- * El precio esta medido y es la decision mas cara del spec 009: con 8 piezas a 110
+ * El precio esta medido y es la decision mas cara del modelo de recorrido: con 8 piezas a 110
  * bpm el ciclo dura 7,5 s, asi que una pieza recien colocada puede tardar eso en
  * escucharse dentro del loop. Lo que si suena al instante es su arpegio, por el otro
  * camino a sonido (`playNotes`).
@@ -264,7 +263,7 @@ export function setSequence(next: Sequence): void { pending = next; }
  * motor que agendo y que le contesten lo que todavia no agendo seria peor que no
  * tener la funcion.
  */
-// `clicks` y `crosses` por separado desde el spec 011: el campo `clicks` de la
+// `clicks` y `crosses` por separado: el campo `clicks` de la
 // `Sequence` mezcla las dos cosas, pero el motor las distingue —una se apaga con
 // `setClicksAudible` y la otra no—, y esta funcion existe para mirar el motor sin
 // oirlo. Un solo numero obligaria a oir cual es cual, que es lo que no se puede.
@@ -358,7 +357,7 @@ function outputLatency(c: AudioContext): number {
  *
  * ## Recibe el destino en vez de leerlo del modulo, y eso NO es cosmetico
  *
- * Hasta el spec 027 empezaba con la misma guarda que `playNotes` —`const c = audio();
+ * Empezaba con la misma guarda que `playNotes` —`const c = audio();
  * if (!c || !master) return;`— y ese `return` era alcanzable: con el grafo a medio
  * construir `audio()` contestaba un contexto sin master y el reloj arrancaba igual.
  * Bajar `ctx` junto con `master` en el `catch` mato esa entrada, y con ella la unica
@@ -400,13 +399,13 @@ function tick(c: AudioContext, bus: GainNode): void {
   if (w.active !== active) cycleGen++;
   active = w.active;
   pending = w.pending;
-  // Tres clases y tres ramas (AC13 del spec 011). El cruce con altura vuelve a pasar
+  // Tres clases y tres ramas. El cruce con altura vuelve a pasar
   // por `scheduleVoice` y no por una funcion nueva: es una nota, con otros dos numeros.
-  // Y no lo mira `clicksAudible`, que apaga solo la rama muda (D6).
+  // Y no lo mira `clicksAudible`, que apaga solo la rama muda.
   //
   // **Y no hay una cuarta rama, ni la va a haber por dos motivos distintos.**
   //
-  // No hay acento en el primer click del ciclo (D6 del spec 015): todos son identicos
+  // No hay acento en el primer click del ciclo: todos son identicos
   // porque el circuito **no tiene un tiempo fuerte**. `buildSequence` fija el arranque
   // en el indice 0 solo para eliminar las rotaciones equivalentes del mismo recorrido,
   // asi que el "1" es un punto de partida convencional y no el comienzo de nada.
@@ -443,8 +442,8 @@ export function startClock(): void {
   clock.origin = c.currentTime + CLOCK_START_DELAY;
   // Estrictamente ANTES de origin: firstOnsetAfter devuelve el primer onset
   // POSTERIOR a lo ya emitido, asi que con scheduledUntil = origin el primer onset
-  // del ciclo 0 se saltearia y el primer sonido llegaria un ciclo tarde — que desde
-  // el spec 009 son 7,5 s con 8 piezas, no un compas. Es la misma trampa que vuelve
+  // del ciclo 0 se saltearia y el primer sonido llegaria un ciclo tarde — que son
+  // 7,5 s con 8 piezas, no un compas. Es la misma trampa que vuelve
   // a aparecer en el swap de collectWindow.
   clock.scheduledUntil = c.currentTime;
   // El par viaja en el closure y no se vuelve a leer del modulo en cada vuelta: ya

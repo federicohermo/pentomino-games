@@ -23,13 +23,13 @@ import type { SequenceDelMotor, MotorDeTransporte } from './types/engine.types.t
 /**
  * La `Sequence` del dominio, como la espera el motor.
  *
- * Acá se PROYECTA, no se traduce (D7, D8, AC12 del spec 009). `offset`, `notes` y la
+ * Acá se PROYECTA, no se traduce (D7, D8, AC12). `offset`, `notes` y la
  * `note` MIDI del cruce viajan tal cual; lo que se cae es `pieceId` —el motor no
  * tiene a quién devolvérselo— y `cell` en los clicks: el motor no puede ver `Cell`,
  * que vive en `domain/` y el override de eslint sobre `audio/**` lo prohíbe importar
  * incluso como `import type`. La `note` sí cruza, porque es un número MIDI y el motor
- * habla MIDI: desde el spec 011 el recorrido puede pisar una celda ocupada y ese
- * cruce suena su altura (D5), así que ya no alcanza con contar los clicks.
+ * habla MIDI: el recorrido puede pisar una celda ocupada y ese
+ * cruce suena su altura, así que no alcanza con contar los clicks.
  * Convertirla a Hz es del motor —lo hace `collectHits`, igual que con `steps.notes`—:
  * acá se proyecta, y traducir sería justo lo que esta función no hace.
  *

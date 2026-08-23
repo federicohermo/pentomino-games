@@ -8,7 +8,7 @@ import type { PropsDeOrientacion, PropsDeTransporte } from '../types/panel.types
 import type { MemoriaDeOrientacion } from '../types/orientation.types.ts';
 
 /**
- * La tarjeta de piezas despues del spec 019: las doce miniaturas, la fila del regimen, la
+ * La tarjeta de piezas despues: las doce miniaturas, la fila del regimen, la
  * orientacion en texto y el transporte.
  *
  * Este archivo se reescribio con el 019 y la mitad de lo que verifica es un BORRADO. Eso
@@ -24,13 +24,13 @@ import type { MemoriaDeOrientacion } from '../types/orientation.types.ts';
  *
  * Necesita layout: se mide con `getBoundingClientRect`, que en jsdom da cero.
  */
-/** Las doce en cero con las ranuras que el test quiera pisar (spec 020). */
+/** Las doce en cero con las ranuras que el test quiera pisar. */
 const memoria = (pisadas: Partial<MemoriaDeOrientacion> = {}): MemoriaDeOrientacion =>
   ({ ...ORIENTACIONES_INICIALES, ...pisadas });
 
 const orientacion = (over: Partial<PropsDeOrientacion> = {}): PropsDeOrientacion => ({
   selected: 'F',
-  // Las DOCE desde el spec 020: la linea de orientacion deriva la de `selected` en vez de
+  // Las DOCE: la linea de orientacion deriva la de `selected` en vez de
   // recibirla suelta, que es lo que impide que la linea diga una cosa y la miniatura
   // dibuje otra.
   orientaciones: ORIENTACIONES_INICIALES,
@@ -55,7 +55,7 @@ const transporte = (over: Partial<PropsDeTransporte> = {}): PropsDeTransporte =>
 
 /**
  * El dock con el plegado ya resuelto, para que los casos de abajo sigan hablando de lo que
- * les importa. El spec 021 le sumo dos props —`abierto` y `onToggle`, que son estado del
+ * les importa. El plegado le suma dos props —`abierto` y `onToggle`, que son estado del
  * shell— y ninguno de estos tests es sobre eso: el que lo verifica esta al final y usa
  * `Dock` directo.
  */
@@ -197,7 +197,7 @@ describe('PiecePalette', () => {
     expect(conReflexion.container.textContent).toContain('180° · reflejada');
     await conReflexion.unmount();
 
-    // AC9 del spec 020: dice la de la PIEZA EN LA MANO, no una global. Con la misma
+    // AC9: dice la de la PIEZA EN LA MANO, no una global. Con la misma
     // memoria y otro `selected`, la linea cambia — que es lo que hace visible la memoria.
     const otra = memoria({ F: { rotation: 2, mirror: true }, T: { rotation: 1, mirror: false } });
     const { container } = await render(

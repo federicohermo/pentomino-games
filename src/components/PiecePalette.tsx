@@ -9,10 +9,10 @@ import type { PropsDeOrientacion, PropsDeTransporte } from './types/panel.types.
 /**
  * El DOCK de piezas: el panel que flota sobre el tablero, pegado al borde derecho.
  *
- * Presentacional: sin estado, sin efectos. Desde el spec 022 recibe DOS objetos en vez de
- * dieciseis props planas —`orientacion` y `transporte`—, y cada panel recibe solo el
- * suyo; el criterio de reparto esta en `types/panel.types.ts`. El spec 021 le suma un
- * tercero, el del plegado, que es estado del shell como todo lo demas.
+ * Presentacional: sin estado, sin efectos. Recibe TRES objetos en vez de dieciseis props
+ * planas —`orientacion`, `transporte` y el del plegado—, y cada panel recibe solo el
+ * suyo; el criterio de reparto esta en `types/panel.types.ts`. El del plegado es estado
+ * del shell como todo lo demas.
  *
  * ## De tarjeta en una columna a dock flotante
  *
@@ -62,8 +62,8 @@ export default function PiecePalette({ orientacion, transporte, abierto, onToggl
   // La posicion sale de la MEDICION y no de la estetica, y leyendo `fixed right-0 top-1/2`
   // no se adivina: `2 x 4` celdas pegadas al borde derecho y centradas en vertical tapan
   // `(8,1)`…`(9,4)` y dejan libres `(0,0)` y `(9,5)`, que son las dos celdas que no se
-  // pueden tapar — ahi es donde el circuito cierra (spec 009) y donde arranca la cabeza
-  // lectora (spec 010). Arriba se descarto por lo mismo: una barra superior tapa el borde
+  // pueden tapar — ahi es donde el circuito cierra y donde arranca la cabeza
+  // lectora. Arriba se descarto por lo mismo: una barra superior tapa el borde
   // de arriba entero, `(0,0)` incluida.
   //
   // El fondo va semiopaco con `backdrop-blur` y no opaco: abajo hay celdas con nota, y un
@@ -87,22 +87,22 @@ export default function PiecePalette({ orientacion, transporte, abierto, onToggl
       {/* `hidden` y no desmontar, y de eso dependen dos cosas medidas. Una: el
           `ResizeObserver` del espectro redibuja porque su contenedor CAMBIA DE TAMANO, y
           eso vale para el otro flotante por el mismo mecanismo. Dos: la barrera del `memo`
-          de `OrientationPanel` (spec 027) — desmontar y remontar le cuesta exactamente las
+          de `OrientationPanel` — desmontar y remontar le cuesta exactamente las
           ejecuciones que el memo existe para ahorrar. Con el arbol vivo, las dos siguen
           valiendo. */}
       <div id="dock-piezas" hidden={!abierto} className="min-h-0 overflow-y-auto">
       <OrientationPanel orientacion={orientacion} />
       <div className="mt-4 space-y-2">
-        {/* El régimen ASCIENDE a fila propia con el spec 019, y no es cosmética. Hasta acá
-            era la segunda línea de la fila de Rotación, y estaba escrito así a propósito
-            (AC10 del 017): sin rotar el régimen no hace nada, así que en vez de abrir una
+        {/* El régimen tiene fila propia, y no es cosmética. Llegó a ser
+            la segunda línea de la fila de Rotación, y estaba escrito así a propósito:
+            sin rotar el régimen no hace nada, así que en vez de abrir una
             fila completaba una —«Rotación … cambia escala / orden»— y el interruptor no
             necesitaba glosa. El 019 borra los cuatro botones de grados, o sea que la frase
             se queda SIN SUJETO: lo que era una segunda línea pasa a ser la fila, con la
             etiqueta que era de arriba.
 
             Y no se borra, aunque la tentación sea la misma que con los grados. El
-            precedente es el `T070` del spec 011: propuso borrar el botón de los clicks y el
+            precedente es el `T070`: propuso borrar el botón de los clicks y el
             015 lo cerró con un «no» porque era la única forma de encender el recorrido. Acá
             está peor: la rotación y la reflexión sobreviven al borrado porque tienen dos
             gestos directos cada una, y el régimen no tiene ninguno. Borrarlo lo dejaría
@@ -120,8 +120,8 @@ export default function PiecePalette({ orientacion, transporte, abierto, onToggl
         {/* El grupo es `role="group"` y NO `radiogroup`, aunque los dos botones sean un
             conjunto exclusivo. Un `radiogroup` obliga a un modelo de foco —una sola parada
             de tabulación para el grupo entero y flechas para moverse adentro— y ese modelo
-            lo fija el spec 026, que es el que contesta la pregunta que `specs/deuda.md`
-            tiene abierta para el tablero. Decidirlo acá de refilón sería decidirlo dos
+            lo fija el modelo de foco del tablero, que es donde esa pregunta se
+            contesta. Decidirlo acá de refilón sería decidirlo dos
             veces y probablemente distinto: el `aria-pressed` de cada botón ya anuncia el
             estado sin comprometer el foco. */}
         <div className="flex items-center justify-between gap-1">
@@ -157,7 +157,7 @@ export default function PiecePalette({ orientacion, transporte, abierto, onToggl
               mueva todo lo que tiene debajo al cambiar de orientación. Uno y no dos porque
               entra en un renglón en todo el rango de anchos — medido en el DOM.
 
-              Desde el spec 020 dice la de la PIEZA EN LA MANO y cambia al elegir otra, que
+              Dice la de la PIEZA EN LA MANO y cambia al elegir otra, que
               es lo que hace visible la memoria: volver a la `F` que dejaste a 180° tiene
               que decir `180°`, o la memoria existe y no se ve. */}
           {/* El botón `0°` y no un icono: en la misma tarjeta hay un `↺` —en
@@ -208,9 +208,9 @@ export default function PiecePalette({ orientacion, transporte, abierto, onToggl
           <p className="min-h-[2lh]">Notas actuales: {noteSet.map(m => midiName(m)).join(" · ")}</p>
         </div>
         <TransportPanel transporte={transporte} />
-        {/* La leyenda de gestos, mudada aca por el spec 021 desde el `<footer>` del shell.
-            No se borra: es el UNICO lugar donde los cuatro gestos del 013 y la letra del
-            018 estan escritos, y sacarla los vuelve invisibles otra vez — el problema que
+        {/* La leyenda de gestos, mudada aca desde el `<footer>` del shell.
+            No se borra: es el UNICO lugar donde los cuatro gestos directos y la letra
+            estan escritos, y sacarla los vuelve invisibles otra vez — el problema que
             su propio comentario decia haber resuelto. Y no puede quedar debajo del tablero,
             que es donde estaba: eso le daria scroll vertical a la pagina, que es lo primero
             que AC1 prohibe. */}

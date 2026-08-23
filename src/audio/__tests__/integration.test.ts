@@ -21,10 +21,10 @@ const VEL = 0.8;
 const REL = RELEASE_INTERVALS * intervalDuration(110);
 
 describe('scheduler + sintesis integrados', () => {
-  it('AC5 — los disparos se oyen donde el scheduler dijo (+-6 ms)', async () => {
+  it('los disparos se oyen donde el scheduler dijo (+-6 ms)', async () => {
     const state: ClockState = { origin: 0.5, scheduledUntil: 0 };
     // Una sola nota: hit y onset coinciden por construccion. Y un ciclo de 16
-    // intervalos es un compas exacto, o sea el periodo de antes del spec 009: a
+    // intervalos es un compas exacto, o sea el periodo de antes: a
     // 120 bpm da los mismos 2 s que este test medía con `phase`.
     const hits = collectHits(0, 5, 120, { steps: [{ offset: 0, notes: [A4] }], clicks: [], length: 16 }, state);
     expect(hits).toHaveLength(3);
@@ -41,12 +41,12 @@ describe('scheduler + sintesis integrados', () => {
     onsets.forEach((t, i) => expect(Math.abs(t - hits[i].at)).toBeLessThan(0.006));
   });
 
-  it('D4 — la nota y el click del recorrido suenan donde el scheduler dijo, y el click no ocupa lugar', async () => {
+  it('la nota y el click del recorrido suenan donde el scheduler dijo, y el click no ocupa lugar', async () => {
     const bpm = 110;
     const interval = intervalDuration(bpm);
     const state: ClockState = { origin: 0.2, scheduledUntil: 0 };
     // Un paso y un cruce por celda vacia tres intervalos despues: el caso que el
-    // spec 009 hace posible, con las dos clases de hit en la misma grilla.
+    // recorrido hace posible, con las dos clases de hit en la misma grilla.
     const hits = collectHits(0, 6 * interval, bpm, {
       steps: [{ offset: 0, notes: [A4] }],
       clicks: [{ offset: 3 }],
@@ -70,7 +70,7 @@ describe('scheduler + sintesis integrados', () => {
 
     // El click no invade el intervalo que sigue: 80 ms despues ya es silencio
     // absoluto (`CLICK_SECONDS` 0,05 mas 0,03), donde una nota del mismo instante
-    // todavia estaria sonando (0,136 s mas el release). Desde el spec 015 el click es
+    // todavia estaria sonando (0,136 s mas el release). El click es
     // un oscilador y no un buffer, asi que ese cero lo garantiza su `stop()`: sin el,
     // el epsilon en el que muere la caida exponencial seguiria sonando aca.
     const click = hits[1].at;
@@ -78,13 +78,13 @@ describe('scheduler + sintesis integrados', () => {
     expect(peakNear(d, click + CLICK_SECONDS + 0.03)).toBe(0);
   });
 
-  it('D5 — el cruce por celda ocupada suena su altura, mas corto y mas suave (spec 011)', async () => {
+  it('el cruce por celda ocupada suena su altura, mas corto y mas suave', async () => {
     const bpm = 110;
     const interval = intervalDuration(bpm);
     const rel = RELEASE_INTERVALS * interval;
     const state: ClockState = { origin: 0.2, scheduledUntil: 0 };
     // Una pieza y, cuatro intervalos despues, el recorrido pisando una celda ocupada
-    // que suena F5 (MIDI 77) — el caso testigo del spec 011.
+    // que suena F5 (MIDI 77) — el caso testigo.
     const hits = collectHits(0, 8 * interval, bpm, {
       steps: [{ offset: 0, notes: [A4] }],
       clicks: [{ offset: 4, note: 77 }],
@@ -108,7 +108,7 @@ describe('scheduler + sintesis integrados', () => {
     const [nota, cruce] = [hits[0].at, hits[1].at];
 
     // TIENE altura, y es la de la CELDA: eso es lo que lo separa del click. Desde el
-    // spec 015 el click tambien tiene altura, pero es una sola y siempre la misma
+    // el click tambien tiene altura, pero es una sola y siempre la misma
     // —una marca—, mientras que esta sale del modelo y cambia con lo que se piso. Se
     // mide en el sostenido, despues del transitorio.
     const hz = zeroCrossHz(d, cruce + 0.02, cruce + GRACE_INTERVALS * interval);
@@ -147,7 +147,7 @@ describe('scheduler + sintesis integrados', () => {
 });
 
 describe('analizador', () => {
-  it('AC1 — el nodo es transparente: la senal que sale es la misma', async () => {
+  it('el nodo es transparente: la senal que sale es la misma', async () => {
     // No verifica el analisis —getByteFrequencyData no rinde nada util offline,
     // por eso el mapeo vive en spectrum.ts— sino la unica parte del AC1 que se
     // puede afirmar sin escuchar: insertar el nodo en serie no altera el audio.
@@ -166,7 +166,7 @@ describe('analizador', () => {
       }
       // 0.35 s es una duracion de render arbitraria: este test es sobre la
       // transparencia del analizador, no sobre cuanto dura la nota (esa cuenta
-      // es NOTE_INTERVALS * intervalDuration(bpm) desde el spec 008, y no hay
+      // es NOTE_INTERVALS * intervalDuration(bpm), y no hay
       // bpm en juego aca).
       scheduleVoice(ctx, g, midiToHz(60), 0.1, 0.35, REL, VEL);
       return (await ctx.startRendering()).getChannelData(0);

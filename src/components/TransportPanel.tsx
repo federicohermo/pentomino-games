@@ -11,8 +11,8 @@ import type { PropsDeTransporte } from './types/panel.types.ts';
  * envolverlo en nada: agregarle un nodo cambiaria el ritmo vertical del `space-y-2` que lo
  * contiene con las clases intactas.
  *
- * Con el spec 022 era el unico subarbol CONTIGUO de los dos paneles, porque el boton de
- * los clicks caia entre dos bloques de orientacion. El 019 lo trajo aca: la fila de abajo
+ * Llego a ser el unico subarbol CONTIGUO de los dos paneles, porque el boton de
+ * los clicks caia entre dos bloques de orientacion. Hoy la fila de abajo
  * son los TRES botones del transporte, y con eso la interpolacion que aquel docblock
  * describia dejo de existir.
  */
@@ -20,11 +20,11 @@ export default function TransportPanel({ transporte }: { transporte: PropsDeTran
   const { tempo, playing, clicks, onTempo, onTogglePlay, onToggleClicks, onReset } = transporte;
   return (
     <div className="mt-4 border-t pt-3 space-y-2">
-      {/* La fila de Tempo se APILA desde el spec 021, y no es estetica: estaba dimensionada
-          para la tarjeta de ~349 px que ese spec borra, y el dock mide 146 al piso. Tres
+      {/* La fila de Tempo se APILA, y no es estetica: estaba dimensionada
+          para una tarjeta de ~349 px que ya no existe, y el dock mide 146 al piso. Tres
           cosas en una fila —la etiqueta, el slider y un lector de ancho fijo— no entran, y
           el desborde seria HORIZONTAL: ni el `overflow-y` del dock lo corta ni un
-          `overflow-x` lo arregla, porque ese scroll es justamente lo que AC19 prohibe.
+          `overflow-x` lo arregla, porque ese scroll es justamente lo que no puede haber.
           Apilado, el slider toma el ancho que haya y el lector se acomoda debajo. */}
       <div className="flex flex-wrap items-center justify-between gap-x-2">
         <span id="tempo-etiqueta" className="font-medium">Tempo</span>
@@ -33,7 +33,7 @@ export default function TransportPanel({ transporte }: { transporte: PropsDeTran
             etiqueta visible, la anunciada lo sigue sola.
 
             Y `aria-valuetext` es el argumento del comentario de abajo —"110" a secas no
-            dice si son bpm o intervalos, y desde el spec 008 el instrumento maneja las
+            dice si son bpm o intervalos, y el instrumento maneja las
             dos unidades— aplicado al oido, donde no hay span al lado que lo salve: un
             `range` se anuncia con su valor numerico crudo salvo que lo tenga. */}
         <input
@@ -46,15 +46,15 @@ export default function TransportPanel({ transporte }: { transporte: PropsDeTran
           aria-valuetext={`${tempo} bpm`}
           className="w-full min-w-0 order-last"
         />
-        {/* Con la unidad: "110" a secas no dice si son bpm o intervalos, y desde el
-            spec 008 el instrumento maneja las dos unidades. El `w-16` que tenia se fue con
-            el 021: era el ancho fijo que le reservaba lugar al numero en una fila de tres,
+        {/* Con la unidad: "110" a secas no dice si son bpm o intervalos, y el
+            instrumento maneja las dos unidades. El `w-16` que tenia se fue con
+            el dock: era el ancho fijo que le reservaba lugar al numero en una fila de tres,
             y en un dock de 146 px es justamente lo que la hacia desbordar. `tabular-nums`
             sigue: es lo que mantiene el numero quieto al arrastrar, que es para lo que
             estaba el ancho fijo — el ancho solo lo reservaba de mas. */}
         <span className="tabular-nums text-right whitespace-nowrap">{tempo} <span className="text-slate-500">bpm</span></span>
       </div>
-      {/* Los TRES botones del transporte, los tres solo-icono. Desde el spec 019 esta fila
+      {/* Los TRES botones del transporte, los tres solo-icono. Esta fila
           es todo el vocabulario del instrumento en marcha: que suene, que se oiga el
           recorrido, y volver a empezar.
 
@@ -103,13 +103,12 @@ export default function TransportPanel({ transporte }: { transporte: PropsDeTran
 
             **Y no se puede borrar**: con el default apagado este boton es la unica forma de
             ENCENDER el recorrido, asi que borrarlo lo dejaria inalcanzable. La propuesta de
-            borrarlo existio y quedo cerrada con un "no"; la cronica de las tres etiquetas y
-            de esa decision esta en `specs/revisiones.md`, pase de comentarios del 022.
+            borrarlo existio y quedo cerrada con un "no".
 
             Al perder el texto perdio el lugar donde escribir ON/OFF, asi que el estado lo
-            dice el COLOR — y el `aria-pressed`, que viaja con el boton desde el 025 y es lo
+            dice el COLOR — y el `aria-pressed`, que viaja con el boton y es lo
             que impide que el color quede como canal unico. Es el caso que
-            `.claude/rules/ui.md` nombra por numero de spec. El `aria-labelledby` no pudo
+            `.claude/rules/ui.md` nombra. El `aria-labelledby` no pudo
             venir: el `<span id="recorrido-etiqueta">` murio con la fila, asi que la
             etiqueta pasa a `aria-label`, que es lo que la misma regla manda cuando no hay
             texto visible que referenciar. */}
@@ -155,9 +154,9 @@ export default function TransportPanel({ transporte }: { transporte: PropsDeTran
             pasan, y el `title` dice lo mismo.
 
             `ml-auto` lo separa del par ▶/metronomo, y no es estetica: es el unico
-            destructivo de los tres y no tiene deshacer (`specs/deuda.md`, abierta desde el
-            014). De paso resuelve lo otro que esta fila introduce — el metronomo apagado es
-            `bg-slate-100` y este `bg-slate-200`, que es exactamente el par que el 008
+            destructivo de los tres y no tiene deshacer. De paso resuelve lo otro que esta
+            fila introduce — el metronomo apagado es
+            `bg-slate-100` y este `bg-slate-200`, que es exactamente el par que se
             rechazo por indistinguible cuando quedaron pegados. Separados, la duda de cual es
             cual no se plantea. */}
         <button

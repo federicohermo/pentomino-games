@@ -4,7 +4,7 @@ import { useAtajosDeTeclado, useRuedaRota } from '../use-input.ts';
 import type { RefObject } from 'react';
 
 /**
- * Los dos efectos de entrada del spec 013, con eventos de VERDAD.
+ * Los dos efectos de entrada, con eventos de VERDAD.
  *
  * Es el archivo que mas necesitaba un navegador y el que peor lo tenia: sus decisiones
  * viven en `components/input.ts` —puras, testeadas en node— pero el CABLEADO no, y el
@@ -116,7 +116,7 @@ describe('useAtajosDeTeclado', () => {
   });
 
   it('una tecla sin accion no llama a nadie', async () => {
-    // `'q'` no es un pentominó, y desde el spec 018 eso es load-bearing: si lo fuera,
+    // `'q'` no es un pentominó, y eso es load-bearing: si lo fuera,
     // este test dejaria de medir "sin accion". Lo mismo vale para la `'c'` del test de
     // `Ctrl`+C de mas arriba.
     const a = acciones();
@@ -128,7 +128,7 @@ describe('useAtajosDeTeclado', () => {
     expect(a.seleccionar).not.toHaveBeenCalled();
   });
 
-  it('la letra elige la pieza y NO arranca el transporte (spec 018)', async () => {
+  it('la letra elige la pieza y NO arranca el transporte', async () => {
     // El segundo `expect` es el que importa: la rama de la letra puesta como un `if`
     // suelto DESPUES de la cadena de `despachar` —en vez de antes del `else transporte()`—
     // selecciona la pieza y ademas arranca el instrumento, y eso pasa typecheck y lint sin

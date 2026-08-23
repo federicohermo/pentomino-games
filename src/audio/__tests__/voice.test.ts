@@ -50,17 +50,17 @@ describe('midiToHz', () => {
 });
 
 describe('sintesis', () => {
-  it('AC2 — la frecuencia renderizada es la pedida (+-1 Hz)', async () => {
+  it('la frecuencia renderizada es la pedida (+-1 Hz)', async () => {
     const d = await renderVoice(0.05, 0.5);
     expect(zeroCrossHz(d, 0.2, 0.3)).toBeCloseTo(440, 0);
   });
 
-  it('AC2 — sirve para cualquier nota, no solo A4', async () => {
+  it('sirve para cualquier nota, no solo A4', async () => {
     const d = await renderVoice(0.05, 0.5, midiToHz(60));
     expect(Math.abs(zeroCrossHz(d, 0.2, 0.3) - midiToHz(60))).toBeLessThan(1);
   });
 
-  it('AC3 — la envolvente alcanza el pico y el sostenido esperados', async () => {
+  it('la envolvente alcanza el pico y el sostenido esperados', async () => {
     const at = 0.1, dur = 0.35;
     const d = await renderVoice(at, dur);
     const { attack, sustain } = DEFAULT_VOICE;
@@ -73,27 +73,27 @@ describe('sintesis', () => {
     expect(Math.abs(peakNear(d, at + dur - 0.02) - expectedSustain)).toBeLessThan(expectedSustain * 0.05);
   });
 
-  it('AC3 — silencio exacto fuera de la nota', async () => {
+  it('silencio exacto fuera de la nota', async () => {
     const at = 0.1, dur = 0.35;
     const d = await renderVoice(at, dur);
     expect(peakNear(d, at - 0.03)).toBe(0);
     expect(peakNear(d, at + dur + REL + 0.1)).toBe(0);
   });
 
-  it('AC4 — la nota empieza donde se la agendo (+-1 ms)', async () => {
+  it('la nota empieza donde se la agendo (+-1 ms)', async () => {
     const at = 0.1;
     const d = await renderVoice(at, 0.3);
     expect(Math.abs(firstAudible(d) - at)).toBeLessThan(0.001);
   });
 
-  it('AC4 — y tambien en otro instante, para descartar una coincidencia', async () => {
+  it('y tambien en otro instante, para descartar una coincidencia', async () => {
     const at = 0.37;
     const d = await renderVoice(at, 0.3);
     expect(Math.abs(firstAudible(d) - at)).toBeLessThan(0.001);
   });
 });
 
-describe('AC5 — dur en intervalos, spec 008 (la envolvente no se movio)', () => {
+describe('dur en intervalos (la envolvente no se movio)', () => {
   it('con dur = NOTE_INTERVALS * intervalDuration(bpm), pico y sostenido son los de siempre', async () => {
     // Mismo patron que AC3: lo unico que cambia es de donde sale `dur`. Si
     // scheduleVoice tratara `dur` distinto por venir de intervalos en vez de
@@ -136,7 +136,7 @@ describe('AC5 — dur en intervalos, spec 008 (la envolvente no se movio)', () =
   });
 });
 
-describe('scheduleClick — el cruce por una celda vacia (spec 009, D4)', () => {
+describe('scheduleClick — el cruce por una celda vacia', () => {
   it('empieza donde se lo agendo (+-1 ms), igual que una nota', async () => {
     const at = 0.37;
     const d = await renderClick(at);
@@ -156,9 +156,9 @@ describe('scheduleClick — el cruce por una celda vacia (spec 009, D4)', () => 
   it('TIENE altura, y es CLICK_MIDI: cruza el cero a la tasa de una nota, no de ruido', async () => {
     const at = 0.1;
     const d = await renderClick(at);
-    // Este test decia lo contrario hasta el spec 015 —exigia `> 4000`, que es la tasa
+    // Este test llego a decir lo contrario —exigia `> 4000`, que es la tasa
     // del ruido blanco: medido, 10.815 Hz a 44,1 kHz de muestreo—. Se da vuelta y no se
-    // agrega uno al lado, porque la afirmacion vieja es exactamente la que el spec
+    // agrega uno al lado, porque la afirmacion vieja es exactamente la que la campana
     // falsifica. La tasa de cruces separa senoidal de ruido por un factor de cinco, y
     // eso alcanza para que vuelva a rojo si alguien repone el ruido sin querer.
     //

@@ -22,7 +22,7 @@ export default function Spectrum() {
   // re-renderiza.
   useEffect(() => iniciarEspectro(ref.current), []);
 
-  // `h-full` y no `h-24`: desde el spec 021 el espectro vive en una franja flotante que
+  // `h-full` y no `h-24`: el espectro vive en una franja flotante que
   // mide UNA celda de alto, o sea entre 73 y 180 px segun el viewport. Con los 96 px
   // clavados que tenia, al piso el canvas mas el encabezado pedian 132 contra los 73 de la
   // caja y la franja se comia una segunda fila del tablero — que es justo lo que la cuenta

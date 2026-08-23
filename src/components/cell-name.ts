@@ -48,7 +48,7 @@ export interface CeldaOcupada {
 
 /**
  * El nombre accesible de una celda del tablero: lo que anuncia un lector de
- * pantalla cuando el foco entra en el `gridcell` de `Board.tsx` (spec 026, AC8).
+ * pantalla cuando el foco entra en el `gridcell` de `Board.tsx`.
  *
  * ## Por que vive en `components/cell-name.ts` y no adentro de `Board.tsx`
  *
@@ -97,7 +97,7 @@ export interface CeldaOcupada {
  * `(3,2)` se lee raro -un lector de pantalla dice "parentesis, tres, coma, dos,
  * parentesis" o se lo salta entero segun el motor-, asi que fila y columna se
  * cuentan desde 1 (persona, no indice) y van en frases separadas por comas, sin
- * parentesis ni signos. Mismo idioma que ya uso el spec 016 en
+ * parentesis ni signos. Mismo idioma que el de las miniaturas en
  * `OrientationPanel.tsx` -`"F, rotación 90°, reflejada"`-: una lista de hechos
  * dicha en voz, con el estado que aplica pegado al sustantivo que modifica
  * (`"reflejada"` ahi, `"muteada"` aca) en vez de un campo aparte. La letra de la
@@ -127,7 +127,7 @@ export function cellNameFor(x: number, y: number, occupied: CeldaOcupada | null)
 
 /**
  * Lo que anuncia la region `aria-live` del shell despues de una edicion del tablero
- * (spec 026, AC10): colocar, quitar y mutear, las tres unicas cosas que cambian el
+ *: colocar, quitar y mutear, las tres unicas cosas que cambian el
  * tablero.
  *
  * ## Por que sale de aca y no de una cadena escrita en `App.tsx`

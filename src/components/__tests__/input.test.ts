@@ -12,7 +12,7 @@ import type { PieceKey } from '../../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../../domain/types/board.types.ts';
 
 /**
- * Las decisiones de los cinco gestos del spec 013 y del sexto que agregó el 018 —la letra
+ * Las decisiones de los cinco gestos y del sexto que agregó el 018 —la letra
  * que elige la pieza—. Lo que NO está acá es el cableado
  * —que `components/use-input.ts` mire bien el `e.target`, que el `preventDefault` frene el scroll de
  * verdad—: eso queda en las tareas `[M]` del navegador, porque el repo no monta
@@ -28,7 +28,7 @@ const tecla = (p: Partial<EventoDeTecla> & Pick<EventoDeTecla, 'key' | 'tipo'>):
 /** Las doce letras, tomadas de `SHAPES` y no escritas a mano: la fuente es la misma que la pura. */
 const LETRAS = Object.keys(SHAPES) as PieceKey[];
 
-describe('AC1 — la rueda rota en los dos sentidos, con vuelta cíclica', () => {
+describe('la rueda rota en los dos sentidos, con vuelta cíclica', () => {
   it('abajo suma 90° y arriba resta 90°', () => {
     expect(rotacionPorRueda(0, 120)).toBe(1);
     expect(rotacionPorRueda(1, -120)).toBe(0);
@@ -48,7 +48,7 @@ describe('AC1 — la rueda rota en los dos sentidos, con vuelta cíclica', () =>
   });
 
   it('recorre el ciclo de cuatro y vuelve al punto de partida', () => {
-    // El acumulador va tipado como `Rotacion` desde el spec 020: si la pura dejara de
+    // El acumulador va tipado como `Rotacion`: si la pura dejara de
     // garantizar el rango, esta linea deja de compilar antes de que el test corra.
     let r: Rotacion = ROTACION.cero;
     for (let i = 0; i < 4; i++) r = rotacionPorRueda(r, 120);
@@ -121,7 +121,7 @@ describe('AC7 y AC8 — la barra espaciadora', () => {
 describe('AC5, AC6 y AC15 — el foco sobre una celda apaga la barra y NADA MÁS', () => {
   /*
    * LAS SEIS FILAS DE ESTA TABLA SON EL CRITERIO, Y JUNTAS. Por separado no dicen nada:
-   * lo que el spec 026 decide no es «la celda apaga la barra» sino «la celda apaga la
+   * lo que se decide no es «la celda apaga la barra» sino «la celda apaga la
    * barra y nada más». Escrita como tests sueltos, borrar el de `Shift` por redundante
    * dejaría el archivo en verde mientras la app pierde los dos atajos del 013 — que es
    * exactamente el bug de ensanchar `targetEsControl` en vez de agregar `targetEsCelda`:
@@ -155,12 +155,12 @@ describe('AC5, AC6 y AC15 — el foco sobre una celda apaga la barra y NADA MÁS
     for (const [que, evento, esperado] of tabla) expect(accionDeTecla(evento), que).toBe(esperado);
   });
 
-  it('AC15 — las doce letras siguen llegando al shell con una celda enfocada', () => {
+  it('las doce letras siguen llegando al shell con una celda enfocada', () => {
     // Hoy ninguna letra hace nada, así que las doce dan `null` en las dos columnas. Lo que
     // el test afirma NO es el `null` —sería redundante con «las teclas que no son
     // nuestras»— sino que `targetEsCelda` NO ES EL MOTIVO: la celda enfocada da el mismo
-    // resultado que el foco afuera. Es la promesa que el spec 018 va a heredar cuando las
-    // letras seleccionen pieza —`targetEsCelda` apaga la barra, el `Enter` y las flechas, y
+    // resultado que el foco afuera. Es la promesa que heredan las
+    // letras que seleccionan pieza —`targetEsCelda` apaga la barra, el `Enter` y las flechas, y
     // nada más—, y por eso se escribe comparando las dos columnas y no contra `null`: el
     // día en que una letra haga algo, esta fila sigue diciendo la verdad sin tocarse.
     for (const letra of Object.keys(SHAPES) as PieceKey[]) {
@@ -173,7 +173,7 @@ describe('AC5, AC6 y AC15 — el foco sobre una celda apaga la barra y NADA MÁS
   });
 });
 
-describe('AC7 — frenar el default es otra pregunta que producir una acción', () => {
+describe('frenar el default es otra pregunta que producir una acción', () => {
   it('la barra repetida NO alterna el transporte pero SÍ frena el scroll', () => {
     // Es el caso que separa a las dos funciones, y el que las tenía fundidas dejaba
     // roto: con `preventDefault` atado a «hay acción», un tap un poco largo de la barra
@@ -252,7 +252,7 @@ describe('qué keydown abre un tap limpio', () => {
   });
 
   it('`Alt` y `Meta` abajo también lo ensucian', () => {
-    // `Alt` lo reserva el spec 014 para mutear y `Meta` es el modificador de los
+    // `Alt` lo reserva el muteo y `Meta` es el modificador de los
     // atajos de macOS: los dos son gestos de otro dueño.
     expect(bajar('Control', { altKey: true })).toBe(false);
     expect(bajar('Shift', { metaKey: true })).toBe(false);
@@ -261,7 +261,7 @@ describe('qué keydown abre un tap limpio', () => {
 
 describe('las teclas que no son nuestras', () => {
   it('no producen acción', () => {
-    // Desde el spec 018 este barrido es load-bearing y no una lista cualquiera: la `'a'`
+    // Este barrido es load-bearing y no una lista cualquiera: la `'a'`
     // pasa a decir que `A` NO es un pentominó, así que si algún día `SHAPES` ganara una
     // entrada `A` este test es el que lo grita.
     for (const key of ['a', 'Enter', 'Alt', 'ArrowUp', 'Escape']) {
@@ -274,9 +274,9 @@ describe('las teclas que no son nuestras', () => {
   });
 });
 
-describe('AC6 — `Ctrl`+click en macOS es el click derecho', () => {
+describe('`Ctrl`+click en macOS es el click derecho', () => {
   /*
-   * Este es el único criterio del spec 013 que NO se puede ver a ojo desde Windows, que
+   * Este es el único criterio que NO se puede ver a ojo desde Windows, que
    * es donde se desarrolla el repo: acá `Ctrl`+click es un click común y las dos filas
    * de la tabla no se cruzan nunca. En macOS el sistema lo traduce a `contextmenu` con
    * `ctrlKey: true`, y sin la guarda el `keyup` de `Ctrl` alterna la reflexión y este
@@ -294,14 +294,14 @@ describe('AC6 — `Ctrl`+click en macOS es el click derecho', () => {
 });
 
 /**
- * El click sobre una celda (spec 014). La llave de toda la edición es que la pieza que
+ * El click sobre una celda. La llave de toda la edición es que la pieza que
  * está en la mano sea la misma que la del tablero: sin esa condición, cualquier click mal
  * apuntado borraría.
  */
 const pieza = (id: string, piece: PieceKey, muted = false): PlacedPiece =>
   ({ id, piece, rotation: 0, mirror: false, cells: [], muted });
 
-describe('AC1 — el click sobre la pieza que está en la mano la quita', () => {
+describe('el click sobre la pieza que está en la mano la quita', () => {
   it('con la misma pieza seleccionada, quitar', () => {
     expect(accionDeClick(pieza('1', 'N'), 'N', false)).toBe(EDICION.quitar);
   });
@@ -318,7 +318,7 @@ describe('AC1 — el click sobre la pieza que está en la mano la quita', () => 
   });
 });
 
-describe('AC2 — el click sobre OTRA pieza no hace nada', () => {
+describe('el click sobre OTRA pieza no hace nada', () => {
   it('sin Alt y con Alt, ninguna de las dos edita', () => {
     // Es el comportamiento de antes del spec: `isValid` rechazaba el solape y el handler
     // volvía. La regla NO puede ser "la jugada es inválida", porque eso también es cierto
@@ -328,7 +328,7 @@ describe('AC2 — el click sobre OTRA pieza no hace nada', () => {
   });
 });
 
-describe('AC3 — `Alt`+click sobre la pieza en la mano alterna el muteo', () => {
+describe('`Alt`+click sobre la pieza en la mano alterna el muteo', () => {
   it('mutea la que suena y desmutea la muteada: es un toggle, no un set', () => {
     // La pura devuelve la misma acción en los dos casos porque el toggle es del llamador:
     // la decisión es "alterná esta", y cuál es el valor nuevo lo sabe la pieza.
@@ -337,7 +337,7 @@ describe('AC3 — `Alt`+click sobre la pieza en la mano alterna el muteo', () =>
   });
 });
 
-describe('AC4 — `Alt`+click sobre una celda vacía coloca ya muteada', () => {
+describe('`Alt`+click sobre una celda vacía coloca ya muteada', () => {
   it('sin Alt coloca normal, con Alt coloca muteada', () => {
     expect(accionDeClick(null, 'N', false)).toBe(EDICION.colocar);
     expect(accionDeClick(null, 'N', true)).toBe(EDICION.colocarMuteada);

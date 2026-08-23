@@ -13,13 +13,13 @@ import type { RegimenDeRotacion } from './types/music.types.ts';
  * El espacio son las 96 combinaciones de pieza x rotacion x reflexion, pero cada
  * chequeo recorre lo que le corresponde y no las 96 por inercia: `checkArrayOrder`
  * y `checkAnchors` si —son los geometricos, y la orientacion es justo lo que
- * pueden romper—, `checkNotes` 96 desde el spec 017 (12 piezas x 4 rotaciones x 2
+ * pueden romper—, `checkNotes` las 96 (12 piezas x 4 rotaciones x 2
  * REGIMENES; el espejo sigue afuera porque solo invierte el orden),
  * `checkShapes` las 12 formas canonicas porque rotar no cambia ni la cantidad de
  * celdas ni la conexidad, y `checkBaseMap` el conjunto una sola vez.
  *
  * DEVUELVEN el resultado en vez de lanzar o asertar: asi los usa igual el test de
- * este modulo y la tool `check_invariants` del spec 006, que necesita responder
+ * este modulo y la tool `check_invariants` del MCP server, que necesita responder
  * con el detalle y no morirse.
  *
  * Lo que cubren no es cosmetico. El primero —el orden del array— es el invariante
@@ -113,8 +113,8 @@ export function checkArrayOrder(): CheckResult {
  *    del ancla original.
  *
  * Es corolario del chequeo 1, y se verifica aparte a proposito: es la propiedad de
- * la que depende que el click caiga donde el usuario apunto, y la que el spec 004
- * reusa para leer la columna del ancla sobre `PlacedPiece.cells`.
+ * la que depende que el click caiga donde el usuario apunto, porque el ancla viaja
+ * como INDICE y se resuelve contra `PlacedPiece.cells`.
  */
 export function checkAnchors(): CheckResult {
   const failures: string[] = [];
@@ -166,7 +166,7 @@ function isConnected(cells: Cell[]): boolean {
   const queue: Cell[] = [cells[0]];
 
   while (queue.length > 0) {
-    // El `!` va con su motivo, que es la regla del repo desde el spec 027: la condicion
+    // El `!` va con su motivo, que es la regla del repo: la condicion
     // del `while` de arriba ya garantiza la cola no vacia y TypeScript no puede
     // relacionar `length` con lo que devuelve `shift()`. La otra salida —un `if (!c)
     // continue`— seria una rama inalcanzable, o sea una linea sin cubrir contra el
@@ -205,16 +205,16 @@ export function checkBaseMap(): CheckResult {
  * 5. Notas — 5 distintas ANTES del retrogrado, tantas como celdas tiene una pieza, y
  *    en el orden que su REGIMEN garantiza.
  *
- * Lo del medio es del spec 007 y hasta el 006 vivia solo en un comentario: desde que
+ * Lo del medio vivio un tiempo solo en un comentario: desde que
  * `degreeByCellIndex` empareja las dos listas por indice, `NOTES_PER_PIECE` y
  * `CELLS_PER_PIECE` pasaron de coincidir a TENER que coincidir. Sin este chequeo
  * una formula de 4 notas con `NOTES_PER_PIECE = 4` pasaba los cinco invariantes
  * y todos los tests, y la celda de grado 4 renderizaba `undefinedNaN` —
  * `midiName(undefined)` no explota, devuelve basura.
  *
- * ## Por que el chequeo de orden esta PARTIDO por regimen (spec 017, AC12)
+ * ## Por que el chequeo de orden esta PARTIDO por regimen
  *
- * Hasta el 017 este chequeo exigia ascendente estricto sobre las 48 combinaciones, y
+ * Con un solo regimen este chequeo exigia ascendente estricto sobre las 48 combinaciones, y
  * eso resulto ser una propiedad de `escala` y no del modelo: las cuatro formulas son
  * crecientes, pero correr el arpegio ciclicamente mete un descenso por diseno. Medido,
  * el ascendente estricto falla en **36 de las 48** combinaciones de `orden`, asi que
@@ -310,7 +310,7 @@ export function checkNotes(): CheckResult {
   return result('notas', failures);
 }
 
-/** Los cinco de una. Es lo que consume la tool del spec 006. */
+/** Los cinco de una. Es lo que consume la tool `check_invariants`. */
 export function checkAll(): CheckResult[] {
   return [checkArrayOrder(), checkAnchors(), checkShapes(), checkBaseMap(), checkNotes()];
 }

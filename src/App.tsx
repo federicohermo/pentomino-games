@@ -32,17 +32,17 @@ import type { MemoriaDeOrientacion, Orientacion } from "./components/types/orien
  *
  * El usuario coloca pentominos en un tablero de 10x6 y cada pieza dispara un
  * arpegio de cinco notas. Que pieza determina la tonica; la rotacion, una de dos cosas
- * segun el REGIMEN elegido (spec 017) —la formula de escala con `escala`, o por donde
+ * segun el REGIMEN elegido —la formula de escala con `escala`, o por donde
  * arranca el arpegio con `orden`—; la reflexion el orden de las notas; y la posicion en
  * el tablero el orden de reproduccion: un circuito cerrado visita las piezas colocadas
- * por el camino mas corto entre ellas (spec 009, `domain/sequence.ts`), no por el orden
+ * por el camino mas corto entre ellas, no por el orden
  * en que se fueron colocando.
  *
- * Este archivo es el shell: estado, derivados, handlers y la composicion — y desde el
- * spec 022, CERO efectos. La geometria, la musica y las reglas del tablero viven en
+ * Este archivo es el shell: estado, derivados, handlers y la composicion — y CERO
+ * efectos. La geometria, la musica y las reglas del tablero viven en
  * `src/domain/`; el sonido en `src/audio/`; el JSX, en los componentes de
  * `src/components/`; y el puente con el motor, en `components/use-engine.ts` (los cuatro
- * de reconciliacion) y `components/use-input.ts` (los dos de entrada del spec 013).
+ * de reconciliacion) y `components/use-input.ts` (los dos de entrada).
  *
  * Que los seis salieran de aca no fue prolijidad: en un `.tsx`
  * `react-refresh/only-export-components` prohibe exportar cualquier cosa que no sea el
@@ -55,7 +55,7 @@ import type { MemoriaDeOrientacion, Orientacion } from "./components/types/orien
 export default function App(){
   const [selected, setSelected] = useState<PieceKey>('F');
 
-  // La orientacion es de la PIEZA y no del instrumento (spec 020). Hasta el 019 habia un
+  // La orientacion es de la PIEZA y no del instrumento. Hasta el 019 habia un
   // `rotation` y un `mirror` para las doce, y eso hacia que girar la rueda para acomodar
   // una `F` reorientara las otras once sin que nadie lo pidiera: medido, 11 de 12
   // miniaturas se movian en cada cuarto de vuelta (la unica quieta era la `X`, que es
@@ -80,12 +80,13 @@ export default function App(){
   // veces no puede discrepar.
   //
   // Apaga solo esos: el cruce por celda ocupada suena su nota y no lo gobierna este
-  // flag, porque es modelo y no mezcla (D6 del spec 011).
+  // flag, porque es modelo y no mezcla.
   //
   // El valor pasó por los dos estados y el argumento del que venía sigue siendo bueno:
-  // la crónica está en `specs/revisiones.md`, entrada del pase de comentarios del 022.
+  // con el recorrido encendido por defecto los clicks tapaban la frase, así que arranca
+  // apagado y el botón es la única forma de encenderlos.
   const [clicks, setClicks] = useState<boolean>(false);
-  // Que hace la rotacion (spec 017). Arranca en `escala`, que es el de siempre: abrir
+  // Que hace la rotacion. Arranca en `escala`, que es el de siempre: abrir
   // la app suena como sonaba (AC11). Es GLOBAL y no por pieza —D3—: por pieza, dos
   // piezas a 90° sonarian con reglas distintas y no habria forma de saber, mirando el
   // tablero, que hace girar una. Es una propiedad del instrumento, como el tempo.
@@ -105,8 +106,8 @@ export default function App(){
   // ahí también que no aparezca un segundo «dónde está apuntando» que pueda
   // desincronizarse del primero.
   //
-  // Lo que se DIBUJA con esto es `cursor`, más abajo: desde el spec 031 la grilla cambia de
-  // tamaño sola y el par guardado acá puede quedar apuntando a una celda que ya no existe.
+  // Lo que se DIBUJA con esto es `cursor`, más abajo: la grilla cambia de tamaño sola y
+  // el par guardado acá puede quedar apuntando a una celda que ya no existe.
   const [hover, setHover] = useState<Cell | null>(null);
 
   // Si el foco del DOM está adentro del tablero. Es lo único que `hover` no puede contestar
@@ -135,9 +136,9 @@ export default function App(){
   const idRef = useRef(0);
 
   // `selected`, leible sin ser dependencia. Existe por UN consumidor: `alRotar`, el
-  // callback de la rueda, que tiene dependencias vacias a proposito desde el spec 022
+  // callback de la rueda, que tiene dependencias vacias a proposito
   // —es lo que deja que `useRuedaRota` registre el listener de `wheel` una sola vez por
-  // montaje (AC16 del 022)—. Con la orientacion global su cuerpo no leia nada; con la
+  // montaje—. Con la orientacion global su cuerpo no leia nada; con la
   // memoria por pieza necesita saber CUAL ranura rotar, y agregarle `selected` a las
   // dependencias romperia esa cardinalidad.
   //
@@ -149,7 +150,7 @@ export default function App(){
   // lo que el linter rechaza («Cannot access refs during render»): un ref leido o escrito
   // durante el render es estado invisible para React, y con `elegirPieza` como unico
   // escritor de los dos el ref no se puede desincronizar. El otro camino era un
-  // `useEffect`, y este shell no tiene ninguno desde el spec 022.
+  // `useEffect`, y este shell no tiene ninguno.
   //
   // El valor inicial sale de `selected` y no de otra `'F'` escrita al lado: dos literales
   // que tienen que coincidir es exactamente el par que este repo no deja suelto.
@@ -174,11 +175,11 @@ export default function App(){
   }, []);
 
   // El nodo del tablero, para colgarle la rueda. Se crea ACA y viaja a `Board` como una
-  // prop mas: asi el componente no gana ni estado ni efectos (AC11 del spec 013).
+  // prop mas: asi el componente no gana ni estado ni efectos.
   const boardRef = useRef<HTMLDivElement | null>(null);
 
   // El contenedor RAIZ, para colgarle `--cell`. No es `boardRef`, y la diferencia es la
-  // herencia: una custom property baja por el arbol, y los dos flotantes del spec 021 son
+  // herencia: una custom property baja por el arbol, y los dos paneles flotantes son
   // `fixed` fuera de `Board`, asi que colgada del tablero sus cajas —medidas en celdas— no
   // resolverian `var(--cell)`.
   //
@@ -188,7 +189,7 @@ export default function App(){
   // un hook de `components/`, con el `ref` creado en el shell—. El precedente literal es
   // `useRuedaRota` recibiendo `boardRef`.
   const raizRef = useRef<HTMLDivElement | null>(null);
-  // Y desde el spec 031 el hook **contesta** ademas de escribir: cuanto mide el tablero en
+  // El hook **contesta** ademas de escribir: cuanto mide el tablero en
   // celdas sale de la misma medicion que el tamano de celda, y a diferencia de ella no la
   // puede resolver el CSS —decide cuantos nodos existen—, asi que vuelve como estado. El
   // hook solo lo cambia cuando cambian los numeros, no en cada pixel del arrastre.
@@ -196,8 +197,8 @@ export default function App(){
 
   // Las piezas que ENTRAN en el tablero de ahora. Achicar la ventana achica la grilla, y
   // una pieza que queda afuera no se borra: se queda en `placed`, deja de dibujarse y de
-  // sonar, y vuelve entera cuando hay lugar otra vez. El repo no tiene deshacer
-  // (`specs/deuda.md`) y arrastrar el borde de una ventana no es un gesto de edicion.
+  // sonar, y vuelve entera cuando hay lugar otra vez. El repo no tiene deshacer y
+  // arrastrar el borde de una ventana no es un gesto de edicion.
   //
   // El criterio —la pieza ENTERA, y por que— vive en `cabeEn` y no aca: es una pura del
   // dominio, y este shell no lleva ninguna (`.claude/rules/ui.md`).
@@ -256,10 +257,10 @@ export default function App(){
   }, [selected, rotation, mirror]);
 
   // El recorrido, calculado UNA vez por tablero y consumido por dos: el motor (por la
-  // proyeccion sin celdas) y la cabeza lectora (por `encolar`). Eran tres hasta que el
-  // spec 014 borro la lista lateral, que lo leia por el orden del circuito.
+  // proyeccion sin celdas) y la cabeza lectora (por `encolar`). Eran tres mientras
+  // existio la lista lateral, que lo leia por el orden del circuito.
   // Recalcularlo en cada consumidor abriria la puerta a que dos de ellos miren circuitos
-  // distintos, que es la clase de discrepancia que D5 del 009 existe para cerrar.
+  // distintos, y lo que se ve y lo que suena no pueden discrepar.
   //
   // El `regimen` va en las dependencias y no es opcional: es la primera de las tres
   // cachas de derivacion que AC15 obliga a llevarlo. Sin el, cambiar el regimen no
@@ -274,7 +275,7 @@ export default function App(){
   const noteSet = useMemo(()=> arpeggioFor(selected, rotation, mirror, regimen), [selected, rotation, mirror, regimen]);
 
   // Los cuatro efectos de reconciliación que mantienen al motor mirando este mismo
-  // tablero viven en `components/use-engine.ts` (spec 022), y la llamada va ACÁ y no
+  // tablero viven en `components/use-engine.ts`, y la llamada va ACÁ y no
   // arriba con el resto del cableado: `secuencia` es un `const`, así que llamarlo antes
   // de su `useMemo` la leería en su zona muerta temporal y tiraría un `ReferenceError`
   // en el primer render. Sigue estando ANTES de los dos hooks de entrada, que es donde
@@ -287,7 +288,7 @@ export default function App(){
   // más que un día se lee como si estuviera.
   useMotorSincronizado({ secuencia, placed: visibles, tempo, clicks });
 
-  // El tablero se edita EN el tablero (spec 014): sobre una pieza ya colocada, y solo con
+  // El tablero se edita EN el tablero: sobre una pieza ya colocada, y solo con
   // esa misma pieza en la mano, el click la quita y `Alt`+click alterna su muteo. Qué
   // gesto es lo decide `accionDeClick`, que es una pura y se testea; acá queda el
   // cableado y las dos consultas al dominio que la pura no puede hacer.
@@ -323,7 +324,7 @@ export default function App(){
 
     const cells = cellsAt(transformedShape, ANCHOR_INDEX[selected], x, y);
     if (!isValid(cells, placed, dims)) return;
-    // El tope de piezas, que hasta el spec 031 lo garantizaba el AREA: 60 celdas ÷ 5 daban
+    // El tope de piezas, que con el tablero fijo lo garantizaba el AREA: 60 celdas ÷ 5 daban
     // 12 y nadie tenia que escribirlo. Con el tablero saliendo del viewport entran 78 en un
     // escritorio, y el circuito se resuelve con Held-Karp exacto —`O(n²·2ⁿ)`, medido: 12
     // piezas 3,1 ms y 16 piezas 18,6 ms—. El porque del numero esta en `MAX_PIEZAS`.
@@ -354,7 +355,7 @@ export default function App(){
     // que anunciarla sería contarle a quien no ve la pantalla algo que no pasó.
     setAnuncio(anuncioDeEdicion(accion, selected, x, y, muted));
     // Con el transporte corriendo, disparar acá duplicaría el arpegio: con D5
-    // (spec 009) la pieza nueva ni siquiera entra al recorrido que está sonando
+    // la pieza nueva ni siquiera entra al recorrido que está sonando
     // —`setSequence` no interrumpe el ciclo en curso, así que hasta que cierre la
     // pieza es muda dentro del loop— y el click sigue siendo la única forma
     // inmediata de escucharla. Con el transporte en pausa pasa lo mismo por otra
@@ -367,20 +368,21 @@ export default function App(){
   }
 
   // Reset frena el transporte ADEMÁS de vaciar el tablero, y esa segunda mitad no es
-  // cosmética. Vaciar solo `placed` deja al motor terminando su ciclo activo —D5 del
-  // spec 009: la secuencia nueva, vacía, entra recién al cerrar—, o sea hasta 7,5 s
+  // cosmética. Vaciar solo `placed` deja al motor terminando su ciclo activo —la
+  // secuencia nueva, vacía, entra recién al cerrar—, o sea hasta 7,5 s
   // sonando sobre un tablero que ya está vacío. Reset es una orden explícita de volver
-  // a cero, no una edición del tablero, así que es el único lugar donde saltearse D5 es
+  // a cero, no una edición del tablero, así que es el único lugar donde saltearse el
+  // empalme al cierre de ciclo es
   // lo correcto. Lo que queda es la latencia de pausar, que el motor ya documenta: los
   // 100 ms del lookahead más la cola del arpegio ya agendado.
   //
   // Y ese párrafo valía para UNA de las dos colas. La otra —la de dibujo, en
   // `components/route-source.ts`— avanza sólo cuando el motor cierra un ciclo, o sea
   // nunca con el reloj parado: sin reiniciarla, el velo de las piezas que ya no están
-  // se seguía dibujando sobre un tablero vacío hasta el próximo Play (spec 027). Las
+  // se seguía dibujando sobre un tablero vacío hasta el próximo Play. Las
   // dos se reinician juntas o vuelve el bug, y las dos entran por `use-engine.ts`, que
   // es el único módulo por el que este shell le habla al motor.
-  // Y lo que NO toca, que desde el spec 020 hay que decirlo porque la constante está justo
+  // Y lo que NO toca, que hay que decirlo porque la constante está justo
   // al lado: `↺` **no** vuelve las doce orientaciones a cero. Es una decisión con un costo
   // escrito —se renuncia al invariante «después de `↺` la app queda como recién abierta»—
   // y a cambio este botón conserva un alcance único y nombrable, las piezas COLOCADAS, en
@@ -394,7 +396,7 @@ export default function App(){
   }
 
   // `useCallback` y no una función suelta desde que el atajo de la barra espaciadora
-  // también la llama (spec 013): el efecto del teclado la tiene en sus dependencias, y
+  // también la llama: el efecto del teclado la tiene en sus dependencias, y
   // sin memo cambiaría de identidad en cada render y re-suscribiría los dos listeners
   // por cada tecla. Con `[playing]`, la identidad cambia exactamente cuando cambia el
   // transporte, que es la dependencia real que el efecto declara.
@@ -405,16 +407,16 @@ export default function App(){
     setPlaying(alternarTransporte(playing, MOTOR));
   }, [playing]);
 
-  // ── Entrada directa (spec 013) ──────────────────────────────────────────────────
-  // Los dos efectos viven en `components/use-input.ts` desde el spec 022, y reciben
-  // CALLBACKS y no setters: así el día en que la orientación deje de ser dos `useState`
-  // y pase a ser una ranura por pieza, lo que cambia es este bloque y no el hook.
+  // ── Entrada directa ──────────────────────────────────────────────────
+  // Los dos efectos viven en `components/use-input.ts`, y reciben CALLBACKS y no
+  // setters: por eso, cuando la orientación dejó de ser dos `useState` y pasó a ser una
+  // ranura por pieza, lo que cambió fue este bloque y no el hook.
   //
   // `tapLimpio` se queda ACÁ y viaja a los dos: lo lee el teclado y lo escriben los dos,
   // así que el ref es de quien los compone. Está argumentado en `use-input.ts`.
 
-  // Los dos del teclado se memoizan con sus dependencias REALES y no con `[]`. Desde el
-  // spec 020 la dependencia real es UNA —`selected`— y ya no `rotation` o `mirror`: el
+  // Los dos del teclado se memoizan con sus dependencias REALES y no con `[]`. La
+  // dependencia real es UNA —`selected`— y no `rotation` o `mirror`: el
   // cambio se calcula adentro del setter funcional sobre la ranura anterior, así que el
   // callback no necesita leer la orientación actual. Con arrows inline el hook se
   // re-suscribiría por render — peor, y en silencio.
@@ -433,19 +435,19 @@ export default function App(){
     [orientar, selected],
   );
 
-  // La letra elige la pieza (spec 018). Es `elegirPieza` tal cual y no un callback nuevo:
+  // La letra elige la pieza. Es `elegirPieza` tal cual y no un callback nuevo:
   // desde el 020 hay UN solo escritor de la pieza en la mano —el que actualiza el estado y
   // el ref en la misma línea— y darle al hook otro envoltorio sería abrir la puerta a un
   // segundo escritor que no toque el ref. Su identidad es estable por el `useCallback` de
   // dependencias vacías de allá arriba, no porque `setSelected` lo sea.
   //
-  // Que el hook reciba un callback y no el setter lo fijó el spec 022, y es lo que hizo que
-  // el cambio de forma de la ranura de estado —lo que el 020 le acaba de hacer a `rotation`
-  // y `mirror`— cayera acá y no adentro del hook.
+  // Que el hook reciba un callback y no el setter es lo que hizo que el cambio de forma
+  // de la ranura de estado —`rotation` y `mirror` pasando a ser una ranura por pieza—
+  // cayera acá y no adentro del hook.
   const seleccionarConTecla = elegirPieza;
 
   // `useCallback` de dependencias VACÍAS, y no es cosmética: es lo que deja que el
-  // listener de `wheel` se registre una sola vez por montaje (AC16 del spec 022). Si
+  // listener de `wheel` se registre una sola vez por montaje. Si
   // alguna vez gana una dependencia, el listener pasa a re-suscribirse con ella.
   //
   // Hasta el 019 era posible porque el cuerpo usaba el setter funcional y no leía
@@ -532,24 +534,24 @@ export default function App(){
     onResetOrientacion: resetearOrientacion,
   }), [selected, orientaciones, regimen, noteSet, elegirPieza, resetearOrientacion]);
 
-  // El tablero ES la pantalla (spec 021). Murieron el `min-h-screen … p-4` y el
+  // El tablero ES la pantalla. Murieron el `min-h-screen … p-4` y el
   // `max-w-6xl mx-auto grid grid-cols-12 gap-4`: no hay fila de tarjetas que repartir
   // porque no hay tarjetas. Lo que queda es una caja del tamano exacto del viewport, con
   // el tablero centrado adentro y los dos paneles flotando encima.
   //
   // `100dvh` y no `100vh`: en iOS `100vh` incluye la barra del navegador, asi que el
   // tablero salta al aparecer y desaparecer. `overflow-hidden` es lo que hace cierta la
-  // primera mitad de AC1 —cero scroll vertical de pagina—, y desde el spec 031 tambien la
-  // otra mitad: el tablero ya no tiene un `overflow-x-auto` propio donde absorber su
+  // primera mitad de la promesa —cero scroll vertical de pagina— y tambien la
+  // otra mitad: el tablero no tiene un `overflow-x-auto` propio donde absorber su
   // desborde, porque no puede desbordar —`grid-fit.ts` elige las celdas contra ESTA caja—.
   // O sea que esta clase paso de ser la red a ser la garantia.
   //
-  // `bg-fondo text-slate-900` SOBREVIVEN: desde el spec 028 este `div` es uno de los cuatro
+  // `bg-fondo text-slate-900` SOBREVIVEN: este `div` es uno de los cuatro
   // lugares donde vive el color de fondo, y `src/__tests__/fondo-sincronizado.test.ts`
   // existe para que los cuatro no se desincronicen.
   return (
     <div ref={raizRef} className="h-[100dvh] w-full overflow-hidden bg-fondo text-slate-900">
-        {/* Hasta el spec 027 aca decia que los dos objetos se armaban INLINE porque
+        {/* Aca llego a decir que los dos objetos se armaban INLINE porque
             memoizarlos "no compra nada": `PiecePalette` no esta memoizado, asi que
             re-renderiza igual. Era cierto y CIRCULAR —no memoizamos las props porque el
             componente no esta memoizado— y encima nunca se habia medido: era el unico caso
@@ -567,20 +569,19 @@ export default function App(){
             commit entero de la app: mediana de 4,9 ms por celda cruzada contra 1,9 ms con la
             barrera puesta. Son 3,0 ms —el 61 %— gastados en el subarbol que no puede haber
             cambiado, a la frecuencia del MOUSE, que arrastrandose sobre el tablero es una
-            celda por cuadro dibujado. Es el mismo criterio con el que el spec 010 saco a
-            `Spectrum` y a `Playhead` de React; a este le alcanza con un `memo`.
+            celda por cuadro dibujado. Es el mismo criterio con el que salieron
+            `Spectrum` y `Playhead` de React; a este le alcanza con un `memo`.
 
             El array de dependencias que el comentario viejo temia no es deuda a mano:
             `react-hooks/exhaustive-deps` lo verifica en el lint, asi que un campo nuevo en
             `PropsDeOrientacion` que se olvide de entrar da rojo y no un panel viejo en
             pantalla.
 
-            Este numero mide SOLO la mitad del mouse. El spec 026 le agrega un segundo
+            Este numero mide SOLO la mitad del mouse. Hay un segundo
             escritor de `hover` con la misma frecuencia por pulsacion —la celda enfocada con
-            el teclado ES `hover`, no un estado paralelo—, y esa medicion la escribe el,
-            debajo de esta.
+            el teclado ES `hover`, no un estado paralelo—, y su medicion va debajo de esta.
 
-            Y aca esta, escrita por el 026: el segundo escritor son las flechas, y cada
+            Y aca esta: el segundo escritor son las flechas, y cada
             pulsacion mueve el foco, el foco escribe `hover` y `hover` re-renderiza este
             arbol — los mismos 337 elementos de `OrientationPanel`, por el mismo motivo (ni
             una sola prop del panel depende del cursor). O sea que la barrera de arriba
@@ -631,14 +632,14 @@ export default function App(){
           boardRef={boardRef}
         />
 
-        {/* La señal que sale por el master, como franja flotante abajo a la izquierda desde
-            el spec 021. No recibe props: lee del motor por su cuenta, para que dibujar a 60
+        {/* La señal que sale por el master, como franja flotante abajo a la izquierda.
+            No recibe props: lee del motor por su cuenta, para que dibujar a 60
             fps no re-renderice nada de acá.
 
             La posición sale de la medición igual que la del dock: `3 × 1` celdas en la
             esquina inferior izquierda tapan `(0,5)`, `(1,5)` y `(2,5)` y dejan libre
             `(9,5)`, que es donde arranca la cabeza lectora. Y `(0,0)` queda libre porque la
-            franja está abajo — es la celda donde el circuito cierra (spec 009).
+            franja está abajo — es la celda donde el circuito cierra.
 
             El alto es UNA celda y el contenido se acomoda adentro con `flex-col`: el canvas
             toma lo que queda después del encabezado. Con el `h-24` de 96 px que `Spectrum`
@@ -664,17 +665,16 @@ export default function App(){
           </div>
         </aside>
 
-      {/* La primera región `aria-live` de `src/`: hasta el spec 026 no había ninguna.
+      {/* La única región `aria-live` de `src/`.
           Anuncia el resultado de las TRES ediciones —colocar, quitar y mutear— porque son
           lo único que cambia el tablero y lo único que, sin ver la pantalla, no se puede
-          confirmar de otra forma: el tablero se edita EN el tablero desde el 014, y quitar
+          confirmar de otra forma: el tablero se edita EN el tablero, y quitar
           no tiene deshacer.
 
           Y NADA más. Ni el recorrido, ni la cabeza lectora, ni el espectro: la cabeza pasa
           de celda en celda entre 4 y 10,6 veces por segundo, y una región que hable a esa
           frecuencia es hostil —el lector de pantalla nunca termina una frase, y tapa todo
-          lo demás—. Cómo contar el recorrido sin narrarlo está anotado como seguimiento
-          del spec 025.
+          lo demás—. Cómo contar el recorrido sin narrarlo sigue sin resolverse.
 
           `polite` y no `assertive`: la edición la pidió quien la escucha, así que puede
           esperar a que el lector termine lo que está diciendo. El nodo existe desde el

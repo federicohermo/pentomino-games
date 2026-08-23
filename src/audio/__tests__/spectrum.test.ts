@@ -24,7 +24,7 @@ function spanOf(binCount: number, barCount: number, bar: number): number {
 }
 
 describe('binsToBars', () => {
-  it('AC2 — determinista y normalizado 0-1', () => {
+  it('determinista y normalizado 0-1', () => {
     const bins = new Uint8Array(128).fill(255);
     expect(Array.from(binsToBars(bins, 8))).toEqual(new Array(8).fill(1));
 
@@ -38,7 +38,7 @@ describe('binsToBars', () => {
     for (const v of binsToBars(half, 16)) expect(v).toBeCloseTo(128 / 255, 6);
   });
 
-  it('AC2 — es el pico de la banda, no el promedio', () => {
+  it('es el pico de la banda, no el promedio', () => {
     // Un unico bin fuerte dentro de una banda ancha tiene que llegar entero a la
     // barra: es el transitorio que el promedio se comeria.
     const bins = new Uint8Array(128);
@@ -47,35 +47,35 @@ describe('binsToBars', () => {
     expect(Math.max(...bars)).toBe(1);
   });
 
-  it('AC3 — la banda grave abarca menos bins que la aguda', () => {
+  it('la banda grave abarca menos bins que la aguda', () => {
     const grave = spanOf(128, 8, 0);
     const aguda = spanOf(128, 8, 7);
     expect(grave).toBeLessThan(aguda);
     expect(grave).toBeGreaterThan(0);   // ninguna banda queda ciega
   });
 
-  it('AC3 — el reparto es monotono: cada banda cubre al menos lo que la anterior', () => {
+  it('el reparto es monotono: cada banda cubre al menos lo que la anterior', () => {
     const spans = Array.from({ length: 8 }, (_, b) => spanOf(128, 8, b));
     for (let b = 1; b < spans.length; b++) expect(spans[b]).toBeGreaterThanOrEqual(spans[b - 1]);
   });
 
-  it('AC3 — todos los bins llegan a alguna barra, incluido el mas agudo', () => {
+  it('todos los bins llegan a alguna barra, incluido el mas agudo', () => {
     for (let i = 0; i < 128; i++) {
       expect(Math.max(...binsToBars(oneHot(128, i), 8))).toBe(1);
     }
   });
 
-  it('AC4 — bins en cero da todas las barras en cero', () => {
+  it('bins en cero da todas las barras en cero', () => {
     expect(binsToBars(new Uint8Array(128), 8).every(v => v === 0)).toBe(true);
   });
 
-  it('AC4 — barCount mayor que la cantidad de bins: ninguna barra queda vacia', () => {
+  it('barCount mayor que la cantidad de bins: ninguna barra queda vacia', () => {
     const bars = binsToBars(new Uint8Array(4).fill(255), 32);
     expect(bars.length).toBe(32);
     expect(Array.from(bars)).toEqual(new Array(32).fill(1));
   });
 
-  it('AC4 — barCount de 1 devuelve el pico de todo el espectro', () => {
+  it('barCount de 1 devuelve el pico de todo el espectro', () => {
     expect(binsToBars(new Uint8Array(128).fill(255), 1)[0]).toBe(1);
 
     const bins = new Uint8Array(128);
@@ -83,7 +83,7 @@ describe('binsToBars', () => {
     expect(binsToBars(bins, 1)[0]).toBeCloseTo(0.2, 6);
   });
 
-  it('AC4 — entradas degeneradas devuelven un array vacio en vez de romper', () => {
+  it('entradas degeneradas devuelven un array vacio en vez de romper', () => {
     expect(binsToBars(new Uint8Array(128), 0).length).toBe(0);
     expect(binsToBars(new Uint8Array(128), -4).length).toBe(0);
     expect(binsToBars(new Uint8Array(0), 8).every(v => v === 0)).toBe(true);

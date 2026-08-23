@@ -11,7 +11,7 @@ import {
  * El modelo musical: de una clase de altura, una rotacion y un REGIMEN, a cinco notas
  * MIDI.
  *
- * Que hace la rotacion es una de dos y se elige (spec 017): con el regimen `escala`
+ * Que hace la rotacion es una de dos y se elige: con el regimen `escala`
  * elige la formula de escala —rotar cambia QUE NOTAS suena la pieza y no toca el
  * orden—, y con `orden` corre ciclicamente el arpegio sobre una pentatonica mayor fija
  * —rotar cambia POR DONDE ARRANCA y deja el material quieto—. Las dos son decisiones de
@@ -19,7 +19,7 @@ import {
  * `constants/music.constants.ts`.
  *
  * Los dos existen a la vez porque cual de las dos reglas vuelve al instrumento mas
- * expresivo no es una pregunta que se conteste en el papel: el 017 construye la
+ * expresivo no es una pregunta que se conteste en el papel: tenerlos juntos construye la
  * comparacion para poder decidirla escuchando, y el regimen viaja como PARAMETRO justo
  * para que retirar el que pierda sea borrar una rama y no desenredarla. Medido, los dos
  * difieren en 36 de las 48 combinaciones de pieza x rotacion y coinciden exactamente en
@@ -79,17 +79,17 @@ function notasDeFormula(basePc: number, octave: number, formula: readonly number
  * formula fija no tiene la transposicion +7 de la rotacion 3.
  *
  * Ninguna de las dos es un efecto a corregir: son consecuencias directas del pedido
- * —cambiar el orden sin cambiar las notas— y son justo lo que la escucha del 017 tiene
- * que evaluar. La variante que las evitaria —reajustar la octava de las notas que dan
+ * —cambiar el orden sin cambiar las notas— y son justo lo que la escucha tiene que
+ * evaluar. La variante que las evitaria —reajustar la octava de las notas que dan
  * la vuelta, `D4 E4 G4 A4 C5` en vez de `D4 E4 G4 A4 C4`, un `+12` condicional en una
  * linea— se descarto porque cambia los MIDI aunque no las clases de altura, y el pedido
- * dice sin cambio de las notas. Queda anotada como seguimiento del spec 017.
+ * dice sin cambio de las notas. Queda escrita aca por si la escucha la reclama.
  */
 export function notesForRotation(basePc: number, octave: number, rot: number, regimen: RegimenDeRotacion): number[]{
   if (regimen === REGIMEN.orden) {
     const base = notasDeFormula(basePc, octave, PENT_MAJOR, 0);
     // El corrimiento va con modulo y no con `base[j + rot]` a secas: el tipo de
-    // `rotation` sigue siendo un `number` sin acotar (`specs/deuda.md`), y sin el un
+    // `rotation` en esta capa sigue siendo un `number` sin acotar, y sin el un
     // valor fuera de `0..3` devolveria `undefined`, que `midiName` no rechaza —pinta
     // `undefinedNaN` en la celda—.
     //
@@ -99,7 +99,8 @@ export function notesForRotation(basePc: number, octave: number, rot: number, re
     // antes del segundo `%` lo lleva al rango, y recien con eso es cierto que
     // CUALQUIER `rot` —negativo incluido— da una permutacion ciclica, que es lo que
     // `checkNotes` verifica. Sigue siendo una red y no el arreglo: el arreglo es que
-    // el tipo no admita el valor, y esta anotado en `specs/deuda.md`.
+    // el tipo no admita el valor, y acotarlo cruza el borde de paquete hacia
+    // `mcp-server/`, asi que es un cambio de firma de las dos partes.
     const largo = base.length;
     return base.map((_n, j) => base[(((j + rot) % largo) + largo) % largo]);
   }
@@ -115,9 +116,9 @@ export function notesForRotation(basePc: number, octave: number, rot: number, re
  * que dispara, con el retrogrado ya aplicado si esta reflejada.
  *
  * Es la derivacion completa `(pieza, rotacion, reflexion) -> notas`, y existe porque
- * hasta el cierre de los seguimientos del 007/009/010 estaba escrita CUATRO veces —en
- * `App.tsx`, en `PlacedList.tsx` (que murio con el spec 014), en `resolve()` del
- * `simulate_board` y en los helpers de dos tests—, cada una componiendo a mano
+ * llego a estar escrita CUATRO veces —en `App.tsx`, en un panel de piezas colocadas que
+ * ya no existe, en `resolve()` del `simulate_board` y en los helpers de dos tests—,
+ * cada una componiendo a mano
  * `BASE_MAP` + `notesForRotation` + el
  * `reverse`. `PlacedPiece.notes` existia para no repetirla, pero guardarla en el estado
  * la volvia un dato que podia contradecir a la pieza: nada impedia construir una
@@ -134,7 +135,7 @@ export function notesForRotation(basePc: number, octave: number, rot: number, re
  * octava. Quien necesite otra —hoy solo `describe_piece`, que la expone como argumento—
  * usa `notesForRotation` directo.
  *
- * El REGIMEN si es parametro y se propaga tal cual (spec 017): esta funcion no elige
+ * El REGIMEN si es parametro y se propaga tal cual: esta funcion no elige
  * ninguno, porque elegirlo aca lo desacoplaria del que eligio el tablero y la misma
  * pieza sonaria distinto segun quien la pregunte.
  */
@@ -148,16 +149,16 @@ export function arpeggioFor(piece: PieceKey, rotation: number, mirror: boolean, 
  * el elemento `k` es el grado (`0..n-1`) de `cells[k]`, no al reves.
  *
  * **El grado `g` va a la celda que el camino de `pathThroughCells` visita en el paso
- * `g`** (spec 012): el arpegio RECORRE la pieza, sin pasar nunca por encima de una
+ * `g`**: el arpegio RECORRE la pieza, sin pasar nunca por encima de una
  * celda propia. El paso preferido es en cruz; en las cuatro piezas que no admiten
  * recorrido ortogonal —`F`, `T`, `Y` y `X`, cuyo grafo de celdas es un arbol con un
  * nodo de 3 o 4 vecinos— se tolera uno en diagonal, que al menos llega a una celda que
  * se toca con la anterior.
  *
- * Hasta el spec 012 el orden lo daba el anillo angular del 007 alrededor del centroide,
- * que no sabe nada de adyacencia: de los 48 pasos de las 12 piezas, **cuatro pasaban por
- * encima** de una celda que todavia no habia sonado —en `I`, `T`, `U` e `Y`— y nueve
- * iban en diagonal. Hoy son 0 y 5.
+ * El orden lo daba antes el anillo angular alrededor del centroide, que no sabe nada de
+ * adyacencia: de los 48 pasos de las 12 piezas, **cuatro pasaban por encima** de una
+ * celda que todavia no habia sonado —en `I`, `T`, `U` e `Y`— y nueve iban en diagonal.
+ * Hoy son 0 y 5.
  *
  * La diagonal se tolera SOLO adentro de la pieza: el recorrido entre piezas
  * (`routeBetween`) se sigue moviendo en cruz. Es asimetrico a proposito y esta
@@ -179,13 +180,13 @@ export function arpeggioFor(piece: PieceKey, rotation: number, mirror: boolean, 
  *
  * ## El grado 0 es la punta del camino, no el centro de la figura
  *
- * El spec 007 sacaba del anillo a la celda parada sobre el centroide y le daba la
+ * El mapeo anterior sacaba del anillo a la celda parada sobre el centroide y le daba la
  * tonica, con el argumento de que el centro de la figura es su raiz. Eso alcanzaba a
  * `I` y `X`, y en la `I` es incompatible con recorrer la pieza: arrancar por el centro
- * de una linea de cinco obliga a un salto de 4 celdas que la forma no necesita. Desde
- * el 012 el grado 0 es **la punta por la que se empieza a caminar la forma**.
+ * de una linea de cinco obliga a un salto de 4 celdas que la forma no necesita. El
+ * grado 0 es **la punta por la que se empieza a caminar la forma**.
  *
- * El 012 dijo ademas que el grado 0 es la celda por donde el recorrido ENTRA a la
+ * Se suele decir ademas que el grado 0 es la celda por donde el recorrido ENTRA a la
  * pieza (`gates`). Eso es cierto solo sin reflexion: con `mirror` el retrogrado
  * invierte el orden en el tiempo, asi que la primera nota que suena —y por lo tanto la
  * puerta de entrada— es la del grado `n-1`. Quien quiera la posicion de una celda en
@@ -197,10 +198,10 @@ export function arpeggioFor(piece: PieceKey, rotation: number, mirror: boolean, 
  *
  * DESEMPATA, y nada mas — pero se ejerce en las 12 piezas, asi que no es decorativo:
  * un camino y su inverso son igual de buenos, y el rango angular es lo que elige la
- * direccion. `angularRank` es el algoritmo que hasta el 012 decidia el orden entero.
+ * direccion. `angularRank` es el algoritmo que antes decidia el orden entero.
  *
  * Que la direccion la decida la FORMA y no el tablero es una regla del instrumento y no
- * una comodidad de implementacion (D11 del spec 012). Se midio la alternativa —entrar
+ * una comodidad de implementacion. Se midio la alternativa —entrar
  * por la punta mas cercana a la pieza anterior del circuito—: acortaria el ciclo en el
  * 79 % de los tableros, un 10,4 % en promedio. Se descarta igual, porque haria que mover
  * una pieza cambiara el arpegio de sus vecinas: **una pieza tiene que sonar igual este
@@ -251,14 +252,14 @@ export function playOrderByCellIndex(cells: readonly Cell[], mirror: boolean): n
  * El rango angular de cada celda alrededor del centroide, POR INDICE: el elemento `k`
  * es la posicion (`0..n-1`) de `cells[k]` en el anillo.
  *
- * Es el orden que el spec 007 usaba como mapeo de grados y que desde el 012 solo
+ * Es el orden que se usaba como mapeo de grados y que hoy solo
  * DESEMPATA caminos de igual calidad (ver arriba). Se conserva entero —la excepcion
  * del centroide, el sentido horario y el desempate por indice— porque cambiarlo
  * cambiaria la direccion en la que se recorre cada pieza, que es audible.
  *
  * Se exporta aunque `degreeByCellIndex` sea su unico consumidor de `src/`: sin export
  * los tests tendrian que reimplementar esas tres decisiones para poder ejercerlas, que
- * es exactamente el patron que el spec 005 denuncio.
+ * es cobertura sin verificacion.
  *
  * Tres reglas, en este orden:
  *

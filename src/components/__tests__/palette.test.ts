@@ -4,7 +4,7 @@ import { BASE_MAP } from '../../domain/constants/music.constants.ts';
 import type { PieceKey } from '../../domain/types/pieces.types.ts';
 
 /**
- * AC7 del spec 007: el texto de cada celda contrasta con el color de su pieza.
+ * AC7: el texto de cada celda contrasta con el color de su pieza.
  *
  * Es el primer test de `components/` y es PURO: constantes y aritmetica, sin DOM y
  * sin React. Corre en el `environment: 'node'` que ya usa el resto del repo.
@@ -121,13 +121,13 @@ describe('PIECE_COLOR', () => {
 });
 
 /**
- * El borde de la miniatura de la paleta (spec 016, ajuste del `/pr-review`).
+ * El borde de la miniatura de la paleta.
  *
  * ## Por que aca vuelve WCAG 2.1, despues de todo lo de arriba
  *
  * No es una recaida: es otro criterio para otra cosa. Lo de arriba elige el color
  * del TEXTO que va sobre un color de pieza, y para eso APCA predice mejor — ese es
- * el argumento del spec 007 y sigue en pie. Una celda pintada de la miniatura, en
+ * el argumento y sigue en pie. Una celda pintada de la miniatura, en
  * cambio, es un OBJETO GRAFICO: no lleva texto, y lo unico que se le pide es
  * distinguirse del fondo sobre el que se apoya. Eso lo cubre WCAG 1.4.11, cuyo piso
  * es la razon 3:1 de 2.1. Confundir los dos criterios es mirar la tabla equivocada.

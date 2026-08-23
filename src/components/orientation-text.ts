@@ -1,7 +1,7 @@
 /**
  * La orientación de la pieza en la mano, dicha en palabras.
  *
- * Existe porque la miniatura del spec 016 **no puede decirla entera**, y está medido: de
+ * Existe porque la miniatura **no puede decirla entera**, y está medido: de
  * las 96 combinaciones de pieza × rotación × reflexión, **29 suenan distinto sin verse
  * distinto** (el 30 %, repartido en 6 de las 12 piezas). La `I` tiene dos formas para
  * cuatro rotaciones y la `X` una sola para las cuatro; la reflexión no le agrega ni una
@@ -17,7 +17,7 @@
  * `react-refresh/only-export-components` prohíbe que un `.tsx` exporte algo que no sea el
  * componente: escrita adentro de `PiecePalette.tsx` esta pura no se podría exportar y por
  * lo tanto no se podría testear. Es el mismo movimiento con el que salieron `cell-text.ts`
- * (spec 012) y `piece-mini.ts` (016), y es de quien esta función es hermana.
+ * y `piece-mini.ts` (016), y es de quien esta función es hermana.
  *
  * Y no en `cell-text.ts`: ese archivo contesta qué dice una CELDA DEL TABLERO y su tipo
  * cruza hacia `Board.tsx`. Acá la pregunta es qué dice el panel de la pieza en la mano.
@@ -40,8 +40,8 @@
  * `aria-label` la vuelve una frase larga en una fila que tiene que entrar en un renglón.
  *
  * Lo que sí se comparte es la DERIVACIÓN —el `* 90` y la condición del espejo—, que es lo
- * que estaba escrito dos veces: desde que el spec 022 partió la tarjeta, las dos copias ni
- * siquiera comparten archivo. Cada `.tsx` compone su formato con estos dos pedazos.
+ * que estaba escrito dos veces: partida la tarjeta, las dos copias ni siquiera comparten
+ * archivo. Cada `.tsx` compone su formato con estos dos pedazos.
  *
  * El tipo va inline en la firma y no en `components/types/`: no es un tipo de props que
  * dos componentes se pasen, es la forma del retorno de una función. El precedente es

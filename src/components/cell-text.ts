@@ -39,7 +39,7 @@ const memo = new Map<string, readonly CellText[]>();
  * ## El memo
  *
  * `degreeByCellIndex` ordena, hay una llamada por celda y por render —eran 60 cuando se
- * escribio y desde el spec 031 son hasta 390 en un escritorio, o sea que el memo cuenta
+ * escribio y hoy son hasta 390 en un escritorio, o sea que el memo cuenta
  * mas— y hay un render por movimiento del cursor. El dominio es CERRADO y chico —12 piezas x 4 rotaciones x 2
  * reflexiones x 2 regimenes son 192 entradas—, asi que el memo vive en el modulo y no
  * adentro del componente: asi sobrevive al render en vez de rearmarse en cada uno. No
@@ -51,8 +51,8 @@ const memo = new Map<string, readonly CellText[]>();
  * quedaria pegada a la otra: el fantasma prometeria una numeracion y la pieza
  * colocada mostraria la inversa.
  *
- * Y el REGIMEN tambien, por la misma razon y con una consecuencia peor (spec 017,
- * AC15): este `Map` es de modulo, sobrevive al render y NO lo mira ningun linter —las
+ * Y el REGIMEN tambien, por la misma razon y con una consecuencia peor:
+ * este `Map` es de modulo, sobrevive al render y NO lo mira ningun linter —las
  * dep arrays de los `useMemo` de `App.tsx` al menos las ve `exhaustive-deps`—. Sin el
  * regimen en la clave, cambiarlo re-derivaria el audio y dejaria las celdas mostrando
  * las notas del regimen anterior PARA SIEMPRE, que es AC7 verde en el audio y falso en

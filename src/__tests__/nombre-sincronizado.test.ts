@@ -55,7 +55,7 @@ const manifest = JSON.parse(leer('public/manifest.json')) as {
 const html = leer('index.html');
 const readme = leer('README.md');
 
-describe('el nombre de la app esta sincronizado (spec 028)', () => {
+describe('el nombre de la app esta sincronizado', () => {
   const nombre = manifest.name;
 
   it('el manifest declara un nombre no vacio', () => {
@@ -63,7 +63,7 @@ describe('el nombre de la app esta sincronizado (spec 028)', () => {
   });
 
   it('el `<title>` del `index.html` dice el mismo nombre', () => {
-    // Es lo que se ve en la pestaña y en el historial. El spec 028 lo saco de
+    // Es lo que se ve en la pestaña y en el historial. Salio de la plantilla como
     // «React App»; que quede desincronizado lo devuelve a nombrar otra cosa.
     expect(extraer(html, /<title>([^<]+)<\/title>/, 'index.html')).toBe(nombre);
   });

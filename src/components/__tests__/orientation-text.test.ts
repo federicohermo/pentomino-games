@@ -4,7 +4,7 @@ import { miniCells } from '../piece-mini.ts';
 import type { PieceKey } from '../../domain/types/pieces.types.ts';
 
 /**
- * La línea que el spec 019 pone en el panel cuando le saca los cuatro botones de grados.
+ * La línea que el panel pone en lugar de los cuatro botones de grados.
  *
  * Lo que hay para verificar no es la interpolación —eso es un `* 90`— sino el criterio que
  * la justifica: que para las seis piezas donde la miniatura NO puede decir la orientación,
@@ -45,7 +45,7 @@ describe('textoDeOrientacion — las ocho combinaciones', () => {
   });
 });
 
-describe('AC5 — donde la miniatura no puede decirlo, el texto sí', () => {
+describe('donde la miniatura no puede decirlo, el texto sí', () => {
   /** Las seis piezas cuya forma no distingue las ocho orientaciones. */
   const CIEGAS: PieceKey[] = ['I', 'T', 'U', 'V', 'W', 'X'];
 

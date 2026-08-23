@@ -58,7 +58,7 @@ const celdasEnOrden = (p: PlacedPiece): Cell[] => {
 /**
  * Las dos puertas, derivadas afuera de `sequence.ts`. Se leen del orden de
  * reproduccion y NO de los grados 0 y 4: esa era la derivacion del 009, y con
- * reflexion daba las dos invertidas (spec 010, D9).
+ * reflexion daba las dos invertidas.
  */
 const puertas = (p: PlacedPiece): { entrada: Cell; salida: Cell } => {
   const orden = celdasEnOrden(p);
@@ -70,7 +70,7 @@ const puertas = (p: PlacedPiece): { entrada: Cell; salida: Cell } => {
  * haya en el medio.
  *
  * Lleva el tablero ENTERO y no solo las dos piezas porque el camino puede pisar
- * cualquiera de las doce, que es justamente lo que el spec 011 le agrega al modelo.
+ * cualquiera de las doce, que es justamente lo que el cruce con floritura agrega al modelo.
  */
 const rutaEntre = (a: PlacedPiece, b: PlacedPiece, board: readonly PlacedPiece[]) =>
   routeBetween(puertas(a).salida, puertas(b).entrada, board, GRID_DEFAULT);
@@ -96,7 +96,7 @@ const misma = (a: Cell, b: Cell): boolean => a[0] === b[0] && a[1] === b[1];
  * Un teselado del tablero entero con las 12 piezas, escrito a mano.
  *
  * No sale de colocar al azar: teselar 10x6 con las 12 piezas es un exact cover, y
- * 200 intentos aleatorios dieron 0 tableros completos (`research.md` del spec 009).
+ * 200 intentos aleatorios dieron 0 tableros completos (`research.md`).
  * Sus PREFIJOS son tableros validos de 1 a 12 piezas, y con eso alcanza para las
  * propiedades que hay que medir sobre muchos tableros sin meter azar en un test.
  */
@@ -135,7 +135,7 @@ describe('bordes', () => {
     // [[2,0],[1,0]]: dos golpes encima del arpegio que acababa de sonar, no un
     // recorrido.
     //
-    // El spec 011 le saco el sintoma —medido, con la `Z` en (4,2) el tramo de la pieza
+    // Rodear las piezas le saco el sintoma —medido, con la `Z` en (4,2) el tramo de la pieza
     // a si misma la RODEA y sus dos clicks caen en celdas vacias— y la decision no
     // cambia: lo que sobraba no era que pisaran, era que no hay a donde ir. El
     // recorrido existe ENTRE piezas.
@@ -161,7 +161,7 @@ describe('bordes', () => {
 
 describe('las puertas de una pieza', () => {
   it('SIN reflexion la entrada es la celda del grado 0 y la salida la del grado 4', () => {
-    // `F` canonica da los grados [0,1,2,3,4] desde el spec 012: su camino arranca en
+    // `F` canonica da los grados [0,1,2,3,4]: su camino arranca en
     // el indice 0 y termina en el 4, que es el unico caso en que el mapeo coincide con
     // el orden del array. Los numeros van escritos a mano contra la tabla del spec —
     // derivarlos aca dejaria el test sin oraculo.
@@ -187,7 +187,7 @@ describe('las puertas de una pieza', () => {
 
   it('salen de la forma CANONICA: recalcularlas sobre la transformada moveria 53 de las 96 orientaciones', () => {
     // Es la trampa mas cara de esta capa. Rotar corre el origen del angulo, que es lo
-    // que desde el spec 012 elige por que punta se entra al camino, asi que
+    // que elige por que punta se entra al camino, asi que
     // `degreeByCellIndex(formaTransformada)` compila igual y devuelve otro mapeo. El
     // conteo va medido y no aproximado para que el dia que alguien "simplifique" la
     // derivacion el test diga exactamente cuanto cambio: eran 74 con el orden angular
@@ -202,7 +202,7 @@ describe('las puertas de una pieza', () => {
           // Los dos lados se derivan POR GRADO y sin retrogrado, a proposito: lo que
           // este test mide es `degreeByCellIndex` sobre la forma canonica contra la
           // transformada, no las puertas. Pasarlo por `puertas` mezclaria la
-          // reflexion del spec 010 y el 74 dejaria de decir lo que dice.
+          // reflexion y el 74 dejaria de decir lo que dice.
           const naive = degreeByCellIndex(shape);
           const canonicos = degreeByCellIndex(SHAPES[k]);
           const canonico = [p.cells[canonicos.indexOf(0)], p.cells[canonicos.indexOf(CELLS_PER_PIECE - 1)]];
@@ -235,7 +235,7 @@ describe('las puertas de una pieza', () => {
  * La nota que `Board.tsx` pinta en una celda de la pieza: grado POR INDICE sobre la
  * forma canonica y el arpegio ASCENDENTE, sin retrogrado.
  *
- * Es la cadena del spec 007 replicada a mano —`occupantCellIndex` -> `degreeByCellIndex`
+ * Es la cadena replicada a mano —`occupantCellIndex` -> `degreeByCellIndex`
  * -> `notesForRotation`— y no una llamada a la pura que se esta verificando: si el
  * oraculo saliera de `cellsByPlayOrder`, el test seria una tautologia.
  */
@@ -246,10 +246,10 @@ const notaPintadaEn = (p: PlacedPiece, c: Cell): number => {
   return asc[grados[k]];
 };
 
-describe('AC11 — `cellsByPlayOrder`: la celda de cada nota', () => {
+describe('`cellsByPlayOrder`: la celda de cada nota', () => {
   it('`[j]` es la celda que el tablero pinta con `notes[j]`, en las 96 orientaciones', () => {
     // La propiedad que ata las dos puntas del modelo. El tablero deriva la nota de
-    // una celda por GRADO sobre el arpegio ascendente (spec 007) y la secuencia las
+    // una celda por GRADO sobre el arpegio ascendente y la secuencia las
     // reproduce en el orden de `notes`, con el retrogrado ya aplicado: si las dos
     // derivaciones no coinciden, la cabeza lectora enciende una celda y suena otra.
     // Es el bug de D9 visto desde adentro de la pieza, y esto es lo que impide que
@@ -297,7 +297,7 @@ describe('AC11 — `cellsByPlayOrder`: la celda de cada nota', () => {
   });
 });
 
-describe('AC3 — `noteAtCell`: que nota hay en una celda', () => {
+describe('`noteAtCell`: que nota hay en una celda', () => {
   it('es exactamente la que el tablero PINTA, en las 96 orientaciones', () => {
     // Los dos extremos de la misma cadena: `components/Board.tsx` la deriva a mano para
     // DIBUJAR la nota de una celda, y esta pura es la que la deriva para SONAR cuando el
@@ -340,7 +340,7 @@ describe('AC3 — `noteAtCell`: que nota hay en una celda', () => {
     expect(real.filter((n, k) => n !== espejado[k])).toHaveLength(4);
   });
 
-  it('AC16 (spec 017) — bajo `orden` devuelve la nota del regimen de la pieza, no la de `escala`', () => {
+  it('bajo `orden` devuelve la nota del regimen de la pieza, no la de `escala`', () => {
     // De `noteAtCell` sale el `Click.note` de un cruce: la altura que suena al PISAR una
     // celda ocupada. Si se quedara en `escala` mientras el tablero toca `orden`, la
     // celda diria una altura y pisarla sonaria otra — el bug que el docblock de la pura
@@ -378,7 +378,7 @@ describe('AC3 — `noteAtCell`: que nota hay en una celda', () => {
   });
 });
 
-describe('AC12 — las puertas siguen la melodia, tambien con reflexion (D9)', () => {
+describe('las puertas siguen la melodia, tambien con reflexion (D9)', () => {
   it('el caso testigo `L`/0/reflejada: entrada [0,0] y salida [1,3] — el 009 daba al reves', () => {
     // Medido con `describe_piece` y `simulate_board` antes de escribir el arreglo:
     // [1,3] es el grado 0 (D4) y [0,0] el grado 4 (B4); con retrogrado la primera
@@ -487,7 +487,7 @@ const ordenDe = (board: PlacedPiece[]): number[] =>
  * orden de colocacion. Es el caso concreto que hace audible la diferencia: mover una
  * pieza reordena la musica.
  *
- * Los numeros se movieron con el spec 011 —el 009 media 17 contra 22 y visitaba
+ * Los numeros se movieron al encarecer el cruce —antes median 17 contra 22 y visitaban
  * W, F, X, P— porque la matriz que ordena el circuito dejo de ser la distancia pelada:
  * ahora cada celda pisada suma `CROSS_COST`, asi que un tramo que atraviesa una pieza
  * puede perder contra uno mas largo que la rodea.
@@ -499,7 +499,7 @@ const CUATRO = [
   colocar('X', 0, false, 2, 2),
 ];
 
-describe('AC1 — el orden es el del circuito mas corto, no el de colocacion', () => {
+describe('el orden es el del circuito mas corto, no el de colocacion', () => {
   it('con cuatro piezas el circuito reordena la colocacion y sale mas barato', () => {
     expect(CUATRO.every((p, i) => isValid(p.cells, CUATRO.slice(0, i), GRID_DEFAULT))).toBe(true);
     expect(ordenDe(CUATRO)).toEqual([0, 3, 2, 1]);
@@ -533,13 +533,13 @@ describe('AC1 — el orden es el del circuito mas corto, no el de colocacion', (
   });
 });
 
-describe('AC3 — dos piezas adyacentes quedan contiguas', () => {
+describe('dos piezas adyacentes quedan contiguas', () => {
   it('con salto 1 no hay clicks y la nota siguiente cae un intervalo despues de la ultima', () => {
     // `L` sale por (2,0) y `N` entra por (3,0); `N` sale por (2,3) y `L` entra por
     // (1,3). Los dos tramos del circuito miden 1, asi que el patron queda contiguo en
     // los dos sentidos y no hay silencio en ninguna costura.
     //
-    // El par cambio con el spec 012 y no por gusto: con el mapeo del 007 el testigo era
+    // El par cambio y no por gusto: con el mapeo angular el testigo era
     // `F`(1,1) + `P` rot 90 (3,1), y hoy ese par mide 1 en un sentido y 6 en el otro.
     // Un tramo de ida y vuelta de largo 1 depende de donde caen las DOS puertas, asi que
     // mover el orden de las notas lo mueve.
@@ -637,13 +637,13 @@ describe('los offsets y los clicks', () => {
  * El testigo del cruce con altura: la `X` en (1,1), con la `F` y la `N` puestas de
  * forma que al circuito le salga mas barato atravesarla que rodearla.
  *
- * ## Por que este tablero y no el del spec 011
+ * ## Por que este tablero y no el
  *
- * Porque el 011 se apoyaba en una propiedad que el **spec 012 le saco a la `X`**: que su
+ * Porque el testigo viejo se apoyaba en una propiedad que **la `X` perdio**: que su
  * celda central fuera siempre una de sus dos puertas. Con el orden angular el grado 0 de
- * la `X` era su centro —estaba escrito como decision, D1 del 007— asi que todo tramo que
+ * la `X` era su centro —y estaba escrito como decision— asi que todo tramo que
  * entrara a la `X` cruzaba tres de sus celdas por mucho que subiera `CROSS_COST`: no
- * existia camino libre. Con el camino del 012 la `X` entra y sale por dos brazos
+ * existia camino libre. Con el arpegio caminando la pieza, la `X` entra y sale por dos brazos
  * opuestos, y su testigo viejo —`X`(4,2) + `F`(3,4) + `I`(5,0)— **dejo de cruzar
  * ninguna celda**: sus 10 clicks caen todos en celdas vacias.
  *
@@ -657,13 +657,13 @@ const CON_X = [colocar('X', 0, false, 1, 1), colocar('F', 0, false, 3, 2), coloc
 /** Manhattan crudo: solo para afirmar que dos celdas son vecinas en la grilla. */
 const manhattanEntre = (a: Cell, b: Cell): number => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]);
 
-describe('AC3 — el cruce lleva la altura de la celda que pisa', () => {
+describe('el cruce lleva la altura de la celda que pisa', () => {
   it('atravesar la X suena con las notas de la X, celda por celda', () => {
     expect(CON_X.every((p, i) => isValid(p.cells, CON_X.slice(0, i), GRID_DEFAULT))).toBe(true);
     const equis = CON_X[0];
     expect(equis.cells).toEqual([[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]]);
 
-    // Las puertas de la `X` son dos brazos OPUESTOS, no su centro (spec 012, D3).
+    // Las puertas de la `X` son dos brazos OPUESTOS, no su centro.
     expect(gates(equis)).toEqual({ entrada: [2, 1], salida: [1, 0] });
 
     const seq = buildSequence(CON_X, REGIMEN.escala, GRID_DEFAULT);
@@ -779,7 +779,7 @@ describe('determinismo', () => {
     // intervalos mas largo o mas corto segun como se armo. Sobre 120 tableros de 5 piezas
     // al azar pasaba en el 8,3 %; con los pasos como segundo criterio pasa en el 0 %.
     //
-    // El tablero es otro desde el spec 012, por el mismo motivo que el del test de
+    // El tablero es otro, por el mismo motivo que el del test de
     // arriba: el que estaba (N, V, Z, U, F) dejo de tener dos circuitos optimos cuando
     // las puertas se movieron, asi que ya no ejercia el desempate.
     const spec: [PieceKey, number, number, number][] = [
@@ -836,7 +836,7 @@ describe('determinismo', () => {
   });
 });
 
-describe('AC10 — el tablero lleno', () => {
+describe('el tablero lleno', () => {
   // ## Los dos presupuestos de abajo NO corren bajo coverage, y el motivo esta medido
   //
   // v8 instrumenta insertando contadores en cada rama, y estos dos tests son justamente
@@ -852,7 +852,7 @@ describe('AC10 — el tablero lleno', () => {
   // volvia a romper el presupuesto por contencion de CPU—. La env var la inyecta
   // `vite.config.ts`, que es el unico lugar que ve con que flags arranco vitest.
   //
-  // ## Y tampoco corren en CI, desde el spec 023, por la MISMA razon
+  // ## Y tampoco corren en CI, por la MISMA razon
   //
   // Es el segundo entorno donde el numero no habla del producto. Aca no es la
   // instrumentacion: es que el runner de Actions es una VM compartida sin numero propio.
@@ -903,14 +903,14 @@ describe('AC10 — el tablero lleno', () => {
     const mediana = corridas[10];
     // Se imprime a proposito: un AC de tiempo que solo dice "paso" no deja ver que el
     // margen se este comiendo. Medido en esta maquina: 2,0 ms, 2,5x por debajo del
-    // tope. Era 0,620 ms antes del spec 011 — la matriz de costos paso de 144 restas a
+    // tope. Era 0,620 ms antes — la matriz de costos paso de 144 restas a
     // 144 Dijkstras, y ese es el precio del recorrido que esquiva.
     console.log(`AC10 — mediana de 21 corridas con 12 piezas: ${mediana.toFixed(3)} ms`);
     expect(mediana).toBeLessThan(5);
   });
 
   it.skipIf(NO_ES_MEDIBLE)('031 AC6 — el MISMO presupuesto sobre el tablero de una pantalla de 1920x1080', () => {
-    // El presupuesto de arriba mide 12 piezas sobre 60 celdas. Desde el spec 031 el tablero
+    // El presupuesto de arriba mide 12 piezas sobre 60 celdas. El tablero
     // sale del viewport, asi que el peor caso realista de escritorio es **26 x 15 = 390
     // celdas**, 6,5 veces mas grande — y el Dijkstra de `routeBetween` es `O(N^2)`.
     //
@@ -958,7 +958,7 @@ describe('AC10 — el tablero lleno', () => {
   });
 
   it.skipIf(NO_ES_MEDIBLE)('AC8 — la matriz de 12x12 rutas se mantiene despreciable (mediana de 21 corridas)', () => {
-    // El pedazo que el spec 011 encarecio, medido aparte y con su propio tope: son las
+    // El pedazo que encarecio el cruce, medido aparte y con su propio tope: son las
     // 144 rutas con las que `buildSequence` arma la matriz que ordena el circuito. El
     // 009 hacia 144 restas; hoy son 144 Dijkstras sobre 60 celdas.
     //
@@ -1014,7 +1014,7 @@ describe('AC10 — el tablero lleno', () => {
 });
 
 /**
- * El muteo del spec 014: una pieza que ocupa su lugar y su tiempo en el circuito y no
+ * El muteo: una pieza que ocupa su lugar y su tiempo en el circuito y no
  * suena sus notas.
  *
  * Lo que estos tests fijan no es que el muteo "funcione" sino que **no cambie nada mas**.
@@ -1026,7 +1026,7 @@ describe('AC10 — el tablero lleno', () => {
 const mutando = (board: readonly PlacedPiece[], i: number): PlacedPiece[] =>
   board.map((p, k) => k === i ? { ...p, muted: true } : p);
 
-describe('AC5 — mutear no mueve el circuito', () => {
+describe('mutear no mueve el circuito', () => {
   it('mismo orden de visita, mismos offsets y mismo largo del ciclo', () => {
     const normal = buildSequence(CUATRO, REGIMEN.escala, GRID_DEFAULT);
     for (let i = 0; i < CUATRO.length; i++) {
@@ -1064,7 +1064,7 @@ describe('AC5 — mutear no mueve el circuito', () => {
   });
 });
 
-describe('AC6 — la pieza muteada emite cinco clicks mudos y ningun paso', () => {
+describe('la pieza muteada emite cinco clicks mudos y ningun paso', () => {
   it('los cinco caen donde estaban sus notas, celda por celda', () => {
     const normal = buildSequence(CUATRO, REGIMEN.escala, GRID_DEFAULT);
     const muteada = buildSequence(mutando(CUATRO, 0), REGIMEN.escala, GRID_DEFAULT);
@@ -1087,7 +1087,7 @@ describe('AC6 — la pieza muteada emite cinco clicks mudos y ningun paso', () =
   });
 });
 
-describe('AC18 — una sola pieza muteada va por el retorno temprano y tampoco suena', () => {
+describe('una sola pieza muteada va por el retorno temprano y tampoco suena', () => {
   it('cinco clicks mudos, cero pasos y el ciclo del arpegio', () => {
     // `n === 1` arma su `Step` sin pasar por el bucle (`sequence.ts`), asi que una
     // implementacion que solo tocara el bucle dejaria a este —el unico tablero que se
@@ -1103,10 +1103,10 @@ describe('AC18 — una sola pieza muteada va por el retorno temprano y tampoco s
   });
 });
 
-describe('AC17 — un cruce sobre una pieza muteada no suena', () => {
+describe('un cruce sobre una pieza muteada no suena', () => {
   it('los cruces sobre la X pierden su altura al mutearla', () => {
     // `CON_X` es el tablero donde el recorrido PISA la `X`, y esos cruces suenan la
-    // floritura del spec 011 — que es exactamente la nota que el muteo apaga.
+    // floritura — que es exactamente la nota que el muteo apaga.
     const normal = buildSequence(CON_X, REGIMEN.escala, GRID_DEFAULT);
     const conNota = normal.clicks.filter((c) => c.note !== undefined);
     // Guarda del propio test: si el tablero dejara de cruzar, los `expect` de abajo se
@@ -1128,7 +1128,7 @@ describe('AC17 — un cruce sobre una pieza muteada no suena', () => {
   });
 });
 
-describe('D4 del spec 009 — dos eventos no caen nunca en el mismo instante, tampoco con muteo', () => {
+describe('D4 — dos eventos no caen nunca en el mismo instante, tampoco con muteo', () => {
   it('ningun offset se repite entre clicks ni choca con una nota', () => {
     // La garantia es del 009 y este spec mete una clase nueva de click adentro del
     // intervalo que antes ocupaba un arpegio. Si dos coincidieran, el motor agendaria

@@ -28,7 +28,7 @@ const celdas = (n: number) => `calc(var(--cell) * ${n})`;
  * la excepcion declarada a D1, porque cambiaba una vez por ciclo. Dejo de valer cuando
  * el estreno paso a ser CELDA POR CELDA: son cinco cambios al ritmo del intervalo, o
  * sea exactamente la frecuencia que D1 mide y prohibe. La excepcion no se agrando: se
- * elimino, y hoy no hay nada del spec 010 en el arbol de React.
+ * elimino, y hoy no hay nada en el arbol de React.
  *
  * ## Va ARRIBA de las celdas, y eso necesita `z-10`
  *
@@ -51,13 +51,13 @@ const celdas = (n: number) => `calc(var(--cell) * ${n})`;
  * La alternativa era recalcular la clase de TODAS las celdas en cada cuadro: tocarlas a
  * todas para cambiar una. Aca el costo por cuadro es una lectura aritmetica y, cuando
  * la celda cambio, una escritura de `transform`. Eran sesenta cuando se midio, y desde el
- * spec 031 son hasta 390 en un escritorio — o sea que el argumento se hizo mas fuerte, no
+ * hoy son hasta 390 en un escritorio — o sea que el argumento se hizo mas fuerte, no
  * menos.
  *
  * El absoluto se posiciona contra el `relative` que envuelve la grilla (`Board.tsx`), asi
- * que queda alineado con las celdas por construccion. Hasta el spec 031 ese contenedor
- * ademas SCROLLEABA —y el argumento era que la capa scrolleaba con la grilla debajo de
- * `md`—; el `overflow-x-auto` se fue con ese spec y lo que queda es la mitad que siempre
+ * que queda alineado con las celdas por construccion. Ese contenedor llego a SCROLLEAR
+ * —y el argumento era que la capa scrolleaba con la grilla debajo de
+ * `md`—; el `overflow-x-auto` ya no esta y lo que queda es la mitad que siempre
  * importo: el posicionado.
  *
  * ## Que dibuja y que NO calcula (D5, AC4)
@@ -74,7 +74,7 @@ export default function Playhead() {
   const ref = useRef<HTMLDivElement>(null);
   // Dos refs para la cabeza y no una: el `transform` va en la caja de una celda —que es la
   // que se mueve sobre la grilla— y el borde en la baldosa de adentro, un aire mas chica
-  // por lado (`AIRE_RAZON`, 2 px al piso y 4,93 al techo desde el spec 021),
+  // por lado (`AIRE_RAZON`, 2 px al piso y 4,93 al techo),
   // que es la que tiene la forma y el redondeo de la celda. Dibujarlo en la caja externa
   // daria un rectangulo que pisa la separacion entre celdas.
   const resalteRef = useRef<HTMLDivElement>(null);
@@ -108,7 +108,7 @@ export default function Playhead() {
         style={{ width: celdas(1), height: celdas(1), padding: celdas(AIRE_RAZON), display: 'none' }}
       >
         {/* Misma caja que la baldosa de `Board.tsx` —el aire y el radio, los dos como razon
-            de `--cell` desde el spec 021— para que el borde cubra la celda exacta y no medio
+            de `--cell`— para que el borde cubra la celda exacta y no medio
             pixel afuera. Eran un `p-0.5` y un `rounded-lg` literales: con la baldosa vuelta
             proporcional y estos dos clavados, a celda 180 el anillo de la cabeza cubriria
             2 px de aire sobre una baldosa que tiene 4,93. */}

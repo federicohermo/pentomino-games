@@ -16,16 +16,16 @@ import type { PropsDeOrientacion } from '../components/types/panel.types.ts';
 /**
  * El shell, entero y en un navegador.
  *
- * Desde el spec 022 `App.tsx` no tiene un solo `useEffect` —los seis viven en
+ * `App.tsx` no tiene un solo `useEffect` —los seis viven en
  * `use-engine.ts` y `use-input.ts`— pero sigue siendo dueño de TODO el estado y de los
  * handlers que lo mueven, y eso es lo que no verificaba nada: el gesto de colocar, las
- * tres formas de editar en el tablero (spec 014), cuándo se dispara el arpegio de
+ * tres formas de editar en el tablero, cuándo se dispara el arpegio de
  * cortesía y cuándo no, y las tres derivaciones que AC15 del 017 obliga a llevar el
  * régimen.
  *
  * El motor va mockeado con un doble que RECUERDA si arrancó: es lo que hace verificable
  * que el botón de transporte refleje si el reloj arrancó de verdad y no si se lo apretó
- * —el ítem AC10 del spec 008, que esperó catorce specs—. Todo lo demás es real: el
+ * —el ítem AC10, que esperó catorce specs—. Todo lo demás es real: el
  * dominio, los tres componentes y el DOM.
  */
 const motor = vi.hoisted(() => {
@@ -48,7 +48,7 @@ const motor = vi.hoisted(() => {
 vi.mock('../audio/engine.ts', () => motor);
 
 /**
- * Cuantas veces se EJECUTA el panel de las doce miniaturas (AC6 y AC7 del spec 027).
+ * Cuantas veces se EJECUTA el panel de las doce miniaturas (AC6 y AC7).
  *
  * `hover` vive en `App.tsx`, asi que cada celda que el cursor cruza re-renderiza el arbol
  * entero — y `OrientationPanel` son 337 elementos (1 grilla + 12 x (boton + grilla + 25
@@ -84,7 +84,7 @@ vi.mock('../components/OrientationPanel.tsx', async (importActual) => {
   const memoizado = (c: unknown): c is { type: (props: { orientacion: PropsDeOrientacion }) => ReactNode } =>
     typeof c === 'object' && c !== null && 'type' in c && typeof c.type === 'function';
   if (!memoizado(real.default)) {
-    throw new Error('OrientationPanel dejo de estar memoizado: la medicion del spec 027 pasaria a medir el envoltorio.');
+    throw new Error('OrientationPanel dejo de estar memoizado: la medicion pasaria a medir el envoltorio.');
   }
   const interior = real.default.type;
   return {
@@ -100,7 +100,7 @@ const App = (await import('../App.tsx')).default;
 /**
  * El viewport de estos tests, y por que ahora hay uno.
  *
- * Desde el spec 031 el tablero sale del viewport, asi que el tamano de la ventana dejo de
+ * El tablero sale del viewport, asi que el tamano de la ventana dejo de
  * ser un detalle del runner: sin fijarlo, Playwright arranca en **414 x 896** —un telefono
  * en vertical— y el tablero queda de **6 columnas**, donde media docena de estos casos
  * apuntan a celdas que no existen. Se fija uno de escritorio, y las dimensiones esperadas
@@ -119,7 +119,7 @@ beforeEach(async () => {
 /**
  * Las celdas del tablero, en orden de indice.
  *
- * Por ROL y no por estructura desde el spec 026: la grilla dejo de ser hijos planos y paso
+ * Por ROL y no por estructura: la grilla dejo de ser hijos planos y paso
  * a ser `role="row"` con celdas adentro, asi que `div.grid > div` devuelve las filas. Y
  * cuantas son ya no se puede escribir: desde el 031 el tablero mide lo que entra en la
  * ventana del navegador de test.
@@ -128,7 +128,7 @@ const celdas = (c: HTMLElement) => [...c.querySelectorAll('[role="gridcell"]')] 
 /**
  * El ancho del tablero RENDERIZADO, leido del arbol de accesibilidad.
  *
- * No es una constante, y esa es la mitad del spec 031 que este archivo nota: la app
+ * No es una constante, y esa es la mitad que este archivo nota: la app
  * mide su contenedor y dibuja las celdas que entran, asi que el ancho depende del tamano
  * de la ventana del navegador de test y no de una constante. Leerlo de `aria-colcount` —el
  * mismo atributo que el 025 puso para el lector de pantalla— es lo que hace que estos
@@ -163,7 +163,7 @@ const notaDelFantasma = (c: HTMLElement) => {
  * limpio y el `keyup` es el que alterna, para que `Ctrl`+C no de vuelta la reflexion.
  *
  * Recibe el target porque los dos casos importan: sobre `window` es el atajo global del
- * spec 013, y sobre una celda es el mismo atajo con el tablero enfocado (026).
+ * la entrada directa, y sobre una celda es el mismo atajo con el tablero enfocado.
  */
 const tapDeModificador = (el: EventTarget, key: string) => {
   el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
@@ -294,7 +294,7 @@ describe('App — colocar', () => {
   });
 });
 
-describe('App — editar en el tablero (spec 014)', () => {
+describe('App — editar en el tablero', () => {
   const conUnaF = async () => {
     const vista = await render(<App />);
     click(celda(vista.container, 3, 2));
@@ -382,7 +382,7 @@ describe('App — el fantasma', () => {
 
 describe('App — el transporte', () => {
   it('el boton refleja si el reloj ARRANCO, no si se lo apreto', async () => {
-    // AC10 del spec 008, que espero catorce specs: la decision vive en
+    // AC10, que espero catorce specs: la decision vive en
     // `alternarTransporte` y aca se verifica el cableado contra un motor que contesta.
     const { container } = await render(<App />);
     await page.getByRole('button', { name: 'Reproducir' }).click();
@@ -413,7 +413,7 @@ describe('App — el transporte', () => {
     await page.getByRole('button', { name: 'Reproducir' }).click();
     motor.stopClock.mockClear();
 
-    // El boton perdio la palabra `Reset` con el spec 019 y quedo en `↺`: se lo busca por
+    // El boton perdio la palabra `Reset` y quedo en `↺`: se lo busca por
     // el nombre accesible nuevo, que dice las dos mitades que este test verifica.
     await page.getByRole('button', { name: 'Vaciar el tablero y frenar el transporte' }).click();
     expect(motor.stopClock).toHaveBeenCalled();
@@ -426,7 +426,7 @@ describe('App — el transporte', () => {
     await page.getByRole('slider').fill('128');
     await vi.waitFor(() => expect(motor.setBpm).toHaveBeenLastCalledWith(128));
 
-    // Con el spec 019 el recorrido dejo de ser una fila con etiqueta visible y paso a ser
+    // El recorrido dejo de ser una fila con etiqueta visible y paso a ser
     // el metronomo de la fila de transporte: se lo busca por su nombre accesible, que es
     // la misma etiqueta mudada a `aria-label`. Y sobre el MISMO render que el tempo: el
     // segundo `render(<App />)` que habia aca dejaba dos apps montadas, que con una
@@ -438,7 +438,7 @@ describe('App — el transporte', () => {
 
 describe('App — la orientacion, por panel y por gesto', () => {
   it('el panel ya no rota ni refleja: lo que hace es DECIR la orientacion', async () => {
-    // El spec 019 le saco a la tarjeta los cuatro botones de grados y el ON/OFF de
+    // La tarjeta perdio los cuatro botones de grados y el ON/OFF de
     // Reflexion, porque duplicaban la rueda, `Shift`, el boton derecho y `Ctrl`. Lo que
     // queda en su lugar es un lector: una linea de texto que no se puede apretar.
     //
@@ -451,7 +451,7 @@ describe('App — la orientacion, por panel y por gesto', () => {
     }
     expect(page.getByRole('button', { name: /^Reflexión$/ }).elements()).toHaveLength(0);
 
-    // El `<span>` de adentro y no el `<p>`: desde el spec 020 la linea comparte parrafo con
+    // El `<span>` de adentro y no el `<p>`: la linea comparte parrafo con
     // el boton `0°`, asi que el `textContent` del `<p>` dice `0°0°`.
     const linea = () => [...container.querySelectorAll('p > span')].find(e => /^\d+°/.test(e.textContent!))!;
     expect(linea().textContent).toBe('0°');
@@ -540,7 +540,7 @@ describe('App — la orientacion, por panel y por gesto', () => {
     // AC7 del 017: sin llevar el regimen a las tres derivaciones, cambiarlo no
     // re-derivaria el tablero.
     const { container } = await render(<App />);
-    // Se rota con `Shift` y no con el boton `90°`: el spec 019 lo borro. Lo que este test
+    // Se rota con `Shift` y no con el boton `90°`, que ya no existe. Lo que este test
     // mide no cambio — que el regimen llegue a las tres derivaciones — pero el gesto que
     // lo pone en una rotacion distinta de cero, si.
     tapDeModificador(window, 'Shift');
@@ -628,7 +628,7 @@ describe('App — la orientacion, por panel y por gesto', () => {
     expect(container.textContent).toContain('tónica');
   });
 
-  it('la LETRA elige la pieza, sin ir al panel (spec 018)', async () => {
+  it('la LETRA elige la pieza, sin ir al panel', async () => {
     // No es redundante con el test de `use-input`: lo que cubre de mas es el callback del
     // shell, que es el que traduce la pieza a la ranura de estado y que ningun test del
     // hook ejerce.
@@ -658,17 +658,17 @@ describe('App — la orientacion, por panel y por gesto', () => {
 describe('App — lo que llega al arbol de accesibilidad', () => {
   it('ningun boton de la app puede enviar un formulario', async () => {
     // Hoy no hay un solo `<form>` en el arbol, asi que no hay bug — y por eso mismo
-    // esta es la unica linea del spec 025 que nada mas falsea: existe para una
+    // esta es la unica linea que nada mas falsea: existe para una
     // regresion futura. El default de un `<button>` dentro de un formulario es
     // `submit`, y en esta app eso significa recargar la pagina perdiendo el tablero
-    // entero, sin deshacer (`specs/deuda.md`).
+    // entero, sin deshacer.
     //
     // Se afirma sobre la app COMPLETA y no componente por componente porque los botones
     // salen de tres archivos —doce miniaturas, el regimen en la tarjeta, y los tres del
     // transporte— y ninguno de los tres los tiene todos.
     //
-    // Eran 22 hasta el spec 019, que borro los cuatro grados y el ON/OFF de Reflexion y
-    // mudo el del recorrido: 12 + 2 + 3 = 17. El 020 devuelve UNO —el `0°` de la linea de
+    // Llegaron a ser 22, con los cuatro grados y el ON/OFF de Reflexion, y sin el del
+    // recorrido mudado: 12 + 2 + 3 = 17. La orientacion por pieza devuelve UNO —el `0°` de la linea de
     // orientacion— y son 18. El 021 suma los DOS encabezados de los flotantes, que pasan de
     // `<h2>` a `<button>` con `aria-expanded`: 20.
     const { container } = await render(<App />);
@@ -680,7 +680,7 @@ describe('App — lo que llega al arbol de accesibilidad', () => {
   });
 });
 
-describe('App — lo que cuesta mover el cursor (spec 027)', () => {
+describe('App — lo que cuesta mover el cursor', () => {
   /** Diez celdas interiores: dos filas de cinco, con el fantasma entero adentro del tablero. */
   const RECORRIDO = [2, 3].flatMap(y => [1, 2, 3, 4, 5].map(x => [x, y] as const));
 
@@ -719,14 +719,14 @@ describe('App — lo que cuesta mover el cursor (spec 027)', () => {
 
     // La memo no lo congelo: cuando la orientacion cambia DE VERDAD, se ejecuta. Sin esta
     // mitad, el cero de arriba lo cumpliria igual un panel roto. Se rota con `Shift`
-    // porque el spec 019 borro el boton `90°` que estaba escrito aca.
+    // porque el boton `90°` que estaba escrito aca ya no existe.
     tapDeModificador(window, 'Shift');
     await vi.waitFor(() => expect(panel.ejecuciones).toBe(1));
   });
 });
 
 /**
- * El teclado sobre el SHELL entero (spec 026).
+ * El teclado sobre el SHELL entero.
  *
  * `Board.browser.test.tsx` ya verifica el roving tabindex, las flechas, `Home`/`End` y las
  * cuatro acciones contra un `Board` suelto y con props fijas. Lo que solo existe ACA es lo
@@ -750,7 +750,7 @@ const tecla = (el: Element, key: string, init: KeyboardEventInit = {}) => {
 const aLaVista = (c: HTMLElement) =>
   c.querySelector('div.relative')!.scrollIntoView({ block: 'center' });
 
-describe('App — el tablero se toca con el teclado (spec 026)', () => {
+describe('App — el tablero se toca con el teclado', () => {
   it('desde la paleta, UN `Tab` entra al tablero y otro lo pasa de largo', async () => {
     // `Tab` de VERDAD, por Playwright, y no el conteo de cuantas celdas tienen `tabIndex`
     // distinto de -1: las dos cosas no son la misma. El conteo mide el DOM y seria cierto
@@ -788,7 +788,7 @@ describe('App — el tablero se toca con el teclado (spec 026)', () => {
     const origen = celda(container, 4, 2);
     origen.focus();
 
-    // **El oraculo cambio de forma con el spec 021, y hacia arriba.** Hasta ahi la pagina
+    // **El oraculo cambio de forma, y hacia arriba.** Antes la pagina
     // TENIA de donde scrollear —la app medía mas que el viewport— y lo que se afirmaba era
     // que las cuatro flechas no le hicieran perder esa posicion; sin esa premisa el par del
     // final habria sido trivialmente cierto. Hoy el contenedor raiz mide exactamente
@@ -899,8 +899,8 @@ describe('App — el tablero se toca con el teclado (spec 026)', () => {
     tecla(play, ' ');
     expect(motor.startClock).not.toHaveBeenCalled();
 
-    // Y con el foco en ningun lado, la barra sigue siendo del transporte: el spec 026 le
-    // saco UNA tecla en UN lugar, no la apago.
+    // Y con el foco en ningun lado, la barra sigue siendo del transporte: la celda le
+    // saca UNA tecla en UN lugar, no la apaga.
     play.blur();
     window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
     await vi.waitFor(() => expect(motor.startClock).toHaveBeenCalled());
@@ -910,7 +910,7 @@ describe('App — el tablero se toca con el teclado (spec 026)', () => {
   it('con una celda enfocada, `Shift` SI rota y `Ctrl` SI refleja', async () => {
     // Va separado del test de la barra a proposito: uno verifica que se apago, este que NO
     // se apago de mas. Ensanchar la guarda del listener global para que matchee la celda es
-    // lo tentador —es una linea— y apagaria los tres atajos del spec 013 para arreglar uno.
+    // lo tentador —es una linea— y apagaria los tres atajos para arreglar uno.
     const { container } = await render(<App />);
     const c = celda(container, 4, 3);
     c.focus();
@@ -928,7 +928,7 @@ describe('App — el tablero se toca con el teclado (spec 026)', () => {
     await vi.waitFor(() => expect(notaDelFantasma(container)).not.toBe(conRotacion));
   });
 
-  it('con una celda enfocada, la letra IGUAL elige la pieza (spec 018)', async () => {
+  it('con una celda enfocada, la letra IGUAL elige la pieza', async () => {
     // AC13: `targetEsCelda` apaga la barra y solo la barra. El `switch` del `onKeyDown` de
     // la celda cierra con `default: return`, asi que una letra no la maneja nadie mas y no
     // hay doble disparo que evitar — vetarla ahi apagaria el atajo justo donde mas sirve.
@@ -991,7 +991,7 @@ describe('App — el tablero se toca con el teclado (spec 026)', () => {
   });
 });
 
-describe('App — el fondo, un solo valor (spec 028)', () => {
+describe('App — el fondo, un solo valor', () => {
   // Hasta este spec NINGUN test miraba el fondo, asi que AC6 y AC9 se firmaban a ojo: el
   // color vivia dos veces —el hex a mano en el `body` y la clase de Tailwind que resuelve
   // al mismo hex en el `div` raiz— y nada ataba las dos copias. Un grep del hex tampoco lo
@@ -999,8 +999,8 @@ describe('App — el fondo, un solo valor (spec 028)', () => {
   // El hex no se escribe aca por eso mismo: su unica aparicion en `src/` es el token.
   it('el div raiz pinta lo mismo que el body, y ninguno de los dos es transparente', async () => {
     const { container } = await render(<App />);
-    // El primer hijo del contenedor y no `div.min-h-screen`: el spec 021 cambio esa clase
-    // por `h-[100dvh] overflow-hidden`. Buscarlo por posicion en vez de por una clase de
+    // El primer hijo del contenedor y no `div.min-h-screen`: esa clase paso a ser
+    // `h-[100dvh] overflow-hidden`. Buscarlo por posicion en vez de por una clase de
     // layout es lo que hace que este test siga midiendo el FONDO cuando el layout cambie.
     const raiz = container.firstElementChild!;
     const delDiv = getComputedStyle(raiz).backgroundColor;
@@ -1019,8 +1019,8 @@ describe('App — el fondo, un solo valor (spec 028)', () => {
   });
 });
 
-describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
-  it('AC1 — no scrollea ninguno de los dos ejes, en escritorio ni en telefono', async () => {
+describe('App — el tablero crece hasta la pantalla', () => {
+  it('no scrollea ninguno de los dos ejes, en escritorio ni en telefono', async () => {
     // La mitad del AC1 que solo se puede ver montando la app entera: el tablero mide lo que
     // el contenedor mide, y los dos flotantes van encima sin empujarlo. Se prueban los dos
     // extremos de la tabla del spec — el escritorio grande y el telefono en vertical, que
@@ -1039,7 +1039,7 @@ describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
     }
   });
 
-  it('AC2 — la grilla que se dibuja es la que sale del viewport', async () => {
+  it('la grilla que se dibuja es la que sale del viewport', async () => {
     // El extremo chico de la tabla: 5 columnas por 9 filas en un telefono en vertical,
     // contra las 26 x 15 de un escritorio. Es el numero que hasta el 031 era 10 x 6 en los
     // dos.
@@ -1052,7 +1052,7 @@ describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
     expect(celdas(container).length).toBe(esperado.w * esperado.h);
   });
 
-  it('AC5 — la pieza 13 no entra, y se dice', async () => {
+  it('la pieza 13 no entra, y se dice', async () => {
     // El tope que hasta el 031 lo garantizaba el area: con 154 celdas entrarian 30 piezas y
     // el circuito exacto es `O(n^2 * 2^n)`. Es el unico rechazo que no se explica solo —una
     // jugada invalida se ve, porque el fantasma sale rosa— asi que se anuncia.
@@ -1084,8 +1084,8 @@ describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
     expect(conPieza()).toBe(SHAPES.I.length * MAX_PIEZAS);
   });
 
-  it('AC8 — achicar la ventana no borra piezas: vuelven enteras al agrandarla', async () => {
-    // El repo no tiene deshacer (`specs/deuda.md`) y arrastrar el borde de una ventana no es
+  it('achicar la ventana no borra piezas: vuelven enteras al agrandarla', async () => {
+    // El repo no tiene deshacer y arrastrar el borde de una ventana no es
     // un gesto de edicion. La pieza que deja de entrar se guarda: no se dibuja, no suena, y
     // vuelve identica cuando hay lugar.
     const { container } = await render(<App />);
@@ -1118,7 +1118,7 @@ describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
     expect(nombres()).toEqual(antes);
   });
 
-  it('AC8 — la pieza que queda a medias tampoco recibe clicks: la celda vacia se comporta como vacia', async () => {
+  it('la pieza que queda a medias tampoco recibe clicks: la celda vacia se comporta como vacia', async () => {
     // El caso que el AC8 de arriba no toca: ahi la ventana deja la pieza ENTERA afuera, y
     // aca la deja **a medias** —dos celdas adentro de la grilla nueva y tres afuera—, que
     // es el unico estado donde el modelo y lo que se ve pueden discrepar. La pieza no se
@@ -1126,8 +1126,8 @@ describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
     // y si el shell consultara el ocupante sobre `placed` en vez de sobre lo visible, un
     // click ahi quitaria una pieza que no esta en pantalla y lo anunciaria.
     //
-    // No hay deshacer (`specs/deuda.md`): borrar por accidente lo que no se ve es
-    // exactamente el gesto que el spec 031 vino a hacer imposible.
+    // No hay deshacer: borrar por accidente lo que no se ve es
+    // exactamente el gesto que guardar la pieza entera hace imposible.
     const { container } = await render(<App />);
     const conPieza = () => celdas(container).filter(e => e.getAttribute('aria-label')!.includes('pieza')).length;
     const dicho = () => container.querySelector('[aria-live="polite"]')!.textContent;
@@ -1170,9 +1170,9 @@ describe('App — el tablero crece hasta la pantalla (spec 031)', () => {
     await vi.waitFor(() => expect(conPieza()).toBe(SHAPES.I.length));
   });
 
-  it('AC9 — achicar la ventana no deja al tablero sin ancla de tabulacion', async () => {
+  it('achicar la ventana no deja al tablero sin ancla de tabulacion', async () => {
     // El OTRO estado que la grilla nueva puede dejar apuntando afuera, y que no es una
-    // pieza: el cursor. Lo escriben el mouse y el foco (spec 026) y ninguno de los dos se
+    // pieza: el cursor. Lo escriben el mouse y el foco y ninguno de los dos se
     // entera de un `resize`, asi que el par guardado puede caer fuera de `dims`.
     //
     // `Board` ancla el roving tabindex en esa celda, o sea que si no se acota, NINGUNA

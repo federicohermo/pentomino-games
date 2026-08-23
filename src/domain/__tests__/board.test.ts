@@ -10,7 +10,7 @@ import type { PlacedPiece } from '../types/board.types.ts';
 /**
  * Todo este archivo mide el tablero de REFERENCIA, que es el de 10 x 6 de siempre.
  *
- * Desde el spec 031 el tablero sale del viewport, asi que las funciones lo reciben por
+ * El tablero sale del viewport, asi que las funciones lo reciben por
  * parametro y un test tiene que elegir uno. Se elige `GRID_DEFAULT` y no un tamano nuevo
  * porque los numeros que este archivo verifica —los 496 pares que acorta la costura, la
  * distancia maxima de 12, la tabla de PASOS— estan medidos sobre ese tablero: cambiarlo
@@ -27,9 +27,9 @@ const piezaEn = (id: string, cells: Cell[]): PlacedPiece =>
   ({ id, piece: 'I', rotation: 0, mirror: false, cells, muted: false });
 
 describe('cellsAt', () => {
-  it('AC8 — la celda de agarre cae exactamente donde se clickeo', () => {
+  it('la celda de agarre cae exactamente donde se clickeo', () => {
     // Es la propiedad que hace que colocar se sienta preciso, y la que sostiene la
-    // fase por pieza del spec 004: si el ancla se corriera, la columna leida
+    // fase por pieza: si el ancla se corriera, la columna leida
     // despues seria otra.
     for (const p of PIECES) {
       for (let rot = 0; rot < 4; rot++) {
@@ -70,19 +70,19 @@ describe('isValid', () => {
     expect(isValid([[0,0],[1,0],[2,0]], [], GRID_DEFAULT)).toBe(true);
   });
 
-  it('AC8 — rechaza por cada uno de los cuatro bordes', () => {
+  it('rechaza por cada uno de los cuatro bordes', () => {
     expect(isValid([[-1,0]], [], GRID_DEFAULT)).toBe(false);                 // izquierda
     expect(isValid([[0,-1]], [], GRID_DEFAULT)).toBe(false);                 // arriba
     expect(isValid([[GRID_W,0]], [], GRID_DEFAULT)).toBe(false);             // derecha
     expect(isValid([[0,GRID_H]], [], GRID_DEFAULT)).toBe(false);             // abajo
   });
 
-  it('AC8 — las esquinas del tablero son validas y sus vecinas de afuera no', () => {
+  it('las esquinas del tablero son validas y sus vecinas de afuera no', () => {
     expect(isValid([[0,0],[GRID_W-1,GRID_H-1]], [], GRID_DEFAULT)).toBe(true);
     expect(isValid([[GRID_W-1,GRID_H]], [], GRID_DEFAULT)).toBe(false);
   });
 
-  it('AC8 — rechaza el choque contra una pieza ya colocada', () => {
+  it('rechaza el choque contra una pieza ya colocada', () => {
     const placed = [piezaEn('1', [[2,2],[3,2],[4,2]])];
     expect(isValid([[4,2]], placed, GRID_DEFAULT)).toBe(false);              // se pisan en una celda
     expect(isValid([[2,2],[3,2],[4,2]], placed, GRID_DEFAULT)).toBe(false);  // se pisan enteras
@@ -116,7 +116,7 @@ describe('031 — `cabeEn`: si la pieza entra ENTERA en el tablero de ahora', ()
   });
 
   it('la que se pasa por UNA celda no entra, y por cualquiera de los cuatro bordes', () => {
-    // Es la mitad del spec 031 que decide que se dibuja: «tres celdas adentro y dos
+    // Es la mitad que decide que se dibuja: «tres celdas adentro y dos
     // afuera» tiene que dar false, o el tablero mostraria media pieza que el circuito no
     // visita.
     expect(cabeEn(piezaEn('a', [[3,0],[4,0],[5,0]]), { w: 5, h: 5 })).toBe(false);   // derecha
@@ -126,7 +126,7 @@ describe('031 — `cabeEn`: si la pieza entra ENTERA en el tablero de ahora', ()
   });
 
   it('la misma pieza entra o no segun el tablero, que es para lo que existe', () => {
-    // El caso que el spec 031 describe: la ventana se achica y la pieza deja de entrar sin
+    // El caso central: la ventana se achica y la pieza deja de entrar sin
     // que la pieza cambie. Achicar y volver a agrandar la devuelve.
     const alBorde = piezaEn('a', [[7,1],[8,1],[9,1]]);
     expect(cabeEn(alBorde, GRID_DEFAULT)).toBe(true);
@@ -156,21 +156,21 @@ describe('occupantAt', () => {
 });
 
 describe('occupantCellIndex', () => {
-  it('AC14 — sobre una celda ocupada devuelve el indice de esa celda dentro de la pieza', () => {
+  it('sobre una celda ocupada devuelve el indice de esa celda dentro de la pieza', () => {
     const a = piezaEn('a', [[1,1],[2,1],[3,1]]);
     expect(occupantCellIndex(a, 1, 1)).toBe(0);
     expect(occupantCellIndex(a, 2, 1)).toBe(1);
     expect(occupantCellIndex(a, 3, 1)).toBe(2);
   });
 
-  it('AC14 — sobre una celda que la pieza no ocupa devuelve -1', () => {
+  it('sobre una celda que la pieza no ocupa devuelve -1', () => {
     const a = piezaEn('a', [[1,1],[2,1]]);
     expect(occupantCellIndex(a, 0, 0)).toBe(-1);      // libre y lejos
     expect(occupantCellIndex(a, 3, 1)).toBe(-1);      // libre y pegada
     expect(occupantCellIndex(a, 1, 2)).toBe(-1);      // no confunde (x,y) con (y,x)
   });
 
-  it('AC14 — con dos piezas adyacentes el indice sale de la pieza consultada', () => {
+  it('con dos piezas adyacentes el indice sale de la pieza consultada', () => {
     // Es el caso que rompe una implementacion que buscara la celda en el tablero
     // entero: (3,1) y (4,1) son de `b` y su indice adentro de `b` no es el que
     // tendrian contando desde `a`.
@@ -183,7 +183,7 @@ describe('occupantCellIndex', () => {
     expect(occupantCellIndex(b, 2, 1)).toBe(-1);
   });
 
-  it('AC14 — compuesto con occupantAt: primero que pieza, despues que celda de esa pieza', () => {
+  it('compuesto con occupantAt: primero que pieza, despues que celda de esa pieza', () => {
     const a = piezaEn('a', [[1,1],[2,1]]);
     const b = piezaEn('b', [[3,1],[4,1]]);
     const ocupante = occupantAt([a, b], 4, 1) ?? a;   // el ?? no se ejerce: si diera null, el indice seria -1 y el test caeria igual
@@ -191,8 +191,8 @@ describe('occupantCellIndex', () => {
     expect(occupantCellIndex(ocupante, 4, 1)).toBe(1);
   });
 
-  it('AC14 — el indice sirve contra la forma canonica en las 96 orientaciones', () => {
-    // Es de lo que depende la derivacion celda→nota del spec 007: la celda k del
+  it('el indice sirve contra la forma canonica en las 96 orientaciones', () => {
+    // Es de lo que depende la derivacion celda→nota: la celda k del
     // tablero tiene que seguir siendo la celda k de SHAPES despues de rotar, reflejar
     // y trasladar. `cellsAt` es un `map`, asi que el indice sobrevive los tres pasos.
     for (const p of PIECES) {
@@ -240,7 +240,7 @@ const VECINAS = new Map<string, Cell[]>(
 const PASOS: number[][] = TODAS.map((a) => TODAS.map((b) => routeBetween(a, b, [], GRID_DEFAULT).steps));
 
 /**
- * La distancia del spec 009 en forma cerrada: Manhattan, o el mejor de los dos cruces
+ * La distancia en forma cerrada: Manhattan, o el mejor de los dos cruces
  * de la costura.
  *
  * Es el oraculo de lo que `routeBetween` tiene que seguir dando sobre el tablero vacio.
@@ -390,14 +390,14 @@ const todosLosMinimos = (a: Cell, b: Cell, board: readonly PlacedPiece[]): Cell[
 };
 
 describe('routeBetween — el tablero vacio', () => {
-  it('AC2 — las dos esquinas de la costura estan a un paso', () => {
+  it('las dos esquinas de la costura estan a un paso', () => {
     // Es la definicion del repliegue: (0,0) y (9,5) son las mas lejanas de la grilla y
     // la costura las vuelve vecinas. Un paso son cero celdas en el medio.
     expect(routeBetween([0, 0], [GRID_W - 1, GRID_H - 1], [], GRID_DEFAULT)).toEqual({ path: [], steps: 1, cost: 0, crossed: [] });
     expect(routeBetween([GRID_W - 1, GRID_H - 1], [0, 0], [], GRID_DEFAULT)).toEqual({ path: [], steps: 1, cost: 0, crossed: [] });
   });
 
-  it('AC2 — la distancia maxima del tablero es 12, no 14', () => {
+  it('la distancia maxima del tablero es 12, no 14', () => {
     // 14 es el diametro Manhattan de una grilla 10x6 sin costura. Con la arista extra
     // ningun par supera 12: el que era el par mas lejano ahora mide 1.
     //
@@ -458,7 +458,7 @@ describe('routeBetween — el tablero vacio', () => {
     expect(fallas).toEqual([]);
   });
 
-  it('AC4 — el camino tiene exactamente una celda menos que los pasos', () => {
+  it('el camino tiene exactamente una celda menos que los pasos', () => {
     // El invariante del largo del 009, ahora sobre la respuesta unica de D3: los tres
     // valores salen de la misma llamada, asi que no hay dos cuentas que atar.
     let aseverados = 0;
@@ -492,7 +492,7 @@ describe('routeBetween — el tablero vacio', () => {
     expect(routeBetween([0, 0], [3, 0], [], GRID_DEFAULT).path).toEqual([[1, 0], [2, 0]]);
   });
 
-  it('AC5 — el trazo cambio: gana el lexicograficamente menor y no "primero en X"', () => {
+  it('el trazo cambio: gana el lexicograficamente menor y no "primero en X"', () => {
     // Aca el 009 cambia, y va con el numero puesto. Antes el camino se trazaba primero
     // en X y despues en Y, y entre (0,0) y (3,2) daba [[1,0],[2,0],[3,0],[3,1]]. El
     // desempate de D7 compara las celdas como pares `(x, y)`, asi que prefiere la de X
@@ -537,7 +537,7 @@ describe('routeBetween — el tablero vacio', () => {
 });
 
 /**
- * El caso testigo del spec 011: la `P` rotada 1 en (3,2) y la `Y` rotada 1 en (7,2).
+ * El caso testigo: la `P` rotada 1 en (3,2) y la `Y` rotada 1 en (7,2).
  *
  * Es el tablero con el que el spec mostro el problema del 009: el tramo entre las dos
  * pisaba [7,1], que es la puerta por la que la `Y` estaba a punto de ENTRAR, o sea que
@@ -547,7 +547,7 @@ const TESTIGO_P = colocar('P', 'P', 1, false, 3, 2);
 const TESTIGO_Y = colocar('Y', 'Y', 1, false, 7, 2);
 const TESTIGO = [TESTIGO_P, TESTIGO_Y];
 
-describe('AC1 — el caso testigo: el recorrido deja de pisar la puerta de la pieza que sigue', () => {
+describe('el caso testigo: el recorrido deja de pisar la puerta de la pieza que sigue', () => {
   it('las dos piezas caen donde el spec las midio', () => {
     // Si esto se mueve, todo lo de abajo mide otro tablero.
     expect(TESTIGO_P.cells).toEqual([[3, 3], [4, 3], [3, 2], [4, 2], [3, 1]]);
@@ -610,7 +610,7 @@ const TABLEROS: { nombre: string; board: PlacedPiece[] }[] = [
   ...[1, 2, 3, 4, 5, 6].map((s) => ({ nombre: `azar-${s}`, board: tableroAlAzar(azar(s), 8) })),
 ];
 
-describe('AC2 — ningun cruce evitable, contrastado contra una implementacion de referencia', () => {
+describe('ningun cruce evitable, contrastado contra una implementacion de referencia', () => {
   it('los tableros de la muestra tienen piezas de verdad', () => {
     // El contraste de abajo seria vacuo sobre tableros vacios: sin celdas ocupadas los
     // pesos no existen y la referencia estaria midiendo la grilla pelada.
@@ -682,7 +682,7 @@ describe('AC2 — ningun cruce evitable, contrastado contra una implementacion d
   });
 });
 
-describe('AC5 — determinismo y desempate', () => {
+describe('determinismo y desempate', () => {
   it('el mismo tablero y el mismo par dan siempre la misma ruta', () => {
     // No hay `Math.random` ni fechas: la igualdad `peso + resto === restante` del
     // desempate es exacta, y el orden de las piezas en `placed` no puede cambiarla porque

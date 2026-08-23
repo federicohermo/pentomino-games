@@ -10,7 +10,7 @@ import type { PropsDeOrientacion } from './types/panel.types.ts';
 
 /**
  * Las doce miniaturas, cada una en la orientacion actual: elegir la pieza que va a la
- * mano (spec 016).
+ * mano.
  *
  * Presentacional: sin estado, sin efectos. Recibe UN objeto —el de la orientacion— y
  * nada mas.
@@ -19,7 +19,7 @@ import type { PropsDeOrientacion } from './types/panel.types.ts';
  * nada: es un hijo directo de la tarjeta, y agregarle un nodo cambiaria el ritmo
  * vertical con las clases intactas.
  *
- * Va envuelto en `memo` desde el spec 027, y el motivo es un numero. `hover` vive en
+ * Va envuelto en `memo`, y el motivo es un numero. `hover` vive en
  * `App.tsx`, asi que cada celda que el cursor cruza re-renderiza el arbol entero — y esto
  * son 337 elementos de los que ninguno depende del hover. Medido con `Profiler`, el commit
  * por celda cruzada pasa de 4,9 ms a 1,9 ms: el 61 % del trabajo era este subarbol
@@ -32,16 +32,16 @@ import type { PropsDeOrientacion } from './types/panel.types.ts';
  */
 export default memo(function OrientationPanel({ orientacion }: { orientacion: PropsDeOrientacion }) {
   const { selected, orientaciones, onSelect } = orientacion;
-  // La MISMA derivacion que la linea visible del panel, en el otro formato (spec 019). Los
+  // La MISMA derivacion que la linea visible del panel, en el otro formato. Los
   // dos textos no se pueden unificar —bajar este al visible le saca el sustantivo
   // "rotación" y le mete un separador que el lector de pantalla deletrea— pero el CALCULO
   // si, que era lo que estaba escrito dos veces y desde el 022 ni siquiera en el mismo
   // archivo.
   //
-  // Se compone DOCE veces y no una, y eso es el spec 020: cada boton dice SU orientacion,
-  // no la de la pieza en la mano. Hasta el 019 las doce miniaturas se dibujaban con el
-  // mismo par —medido, 11 de 12 se movian en cada cuarto de vuelta— y el `aria-label`
-  // repetia esa mentira al oido.
+  // Se compone DOCE veces y no una: cada boton dice SU orientacion,
+  // no la de la pieza en la mano. Con una orientacion global las doce miniaturas se
+  // dibujaban con el mismo par —medido, 11 de 12 se movian en cada cuarto de vuelta— y
+  // el `aria-label` repetia esa mentira al oido.
   const hablada = (o: Orientacion) => {
     const { grados, reflejada } = textoDeOrientacion(o.rotation, o.mirror);
     return `rotación ${grados}${reflejada === null ? '' : `, ${reflejada}`}`;
@@ -55,20 +55,19 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
        caja mas 2 de borde, y no el scroll: el `1fr` no produce scroll —el contenido se
        sale del PADDING del boton, que tiene `overflow: visible`— asi que un desborde no
        se ve como desborde sino como aire que desaparece. Es la metrica que atrapo el bug
-       del esquema anterior; la cronica esta en `specs/revisiones.md`, pase de
-       comentarios del 022.
+       del esquema anterior.
 
        **La tabla de columnas la resuelve el navegador y no un breakpoint**, y ese es el
-       cambio del spec 021. Hasta ahi eran cuatro escalones
+       cambio. Hasta ahi eran cuatro escalones
        —`grid-cols-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6`— atados al ancho del
        VIEWPORT, que era una buena aproximacion del ancho de esta caja mientras la caja era
-       una tarjeta de `md:col-span-4`. Con el dock del 021 dejaron de ser la misma variable:
+       una tarjeta de `md:col-span-4`. Con el dock dejaron de ser la misma variable:
        el dock mide `calc(var(--cell) * 2)` y el viewport puede estar en `xl` igual.
        Medido: a 1366 x 768 el breakpoint pedia SEIS columnas adentro de una caja de 256 px,
-       y con la celda al piso pedia tres adentro de 146. Desde el spec 031 la celda ronda
+       y con la celda al piso pedia tres adentro de 146. La celda ronda
        siempre los 73 px, asi que la caja ronda siempre los 146 y el desacople es total —el
        dock ya no cambia de ancho con el viewport, y el breakpoint sigue haciendolo.
-       Que a 146 entre una sola columna de miniaturas esta anotado en `specs/deuda.md`.
+       A 146 entra una sola columna de miniaturas, y eso sigue sin resolverse.
 
        `repeat(auto-fill, minmax(MINI_PISTA_PX, 1fr))` hace la cuenta contra la caja real.
        `MINI_PISTA_PX` sale de la caja del mini mas el `px-2` del boton mas su borde, o sea
@@ -89,11 +88,10 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
 
           Las celdas de la miniatura llevan borde: varios de los 12 colores (el amarillo
           de `V`, el lima de `F`) casi no se ven contra el gris claro del boton sin
-          apoyarse, y ademas es el idioma del tablero desde el 007, donde todas las
+          apoyarse, y ademas es el idioma del tablero, donde todas las
           baldosas tienen borde por el mismo motivo. El color del borde se INVIERTE con el
-          estado, y los numeros estan abajo, en la celda. Como se llego a esta forma —el
-          punto de color que habia antes del 016— esta en `specs/revisiones.md`, pase de
-          comentarios del 022.
+          estado, y los numeros estan abajo, en la celda. Antes de la miniatura esto era un
+          punto de color, que no decia la forma.
 
           La letra se queda abajo y en chico. No es decoracion: es el vocabulario con
           el que se habla de las piezas en `describe_piece`, en el `title` del tablero
@@ -102,7 +100,7 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
           tambien la orientacion, para que el lector de pantalla diga lo que el ojo
           ve: la miniatura muestra la orientacion ACTUAL, no la canonica. */}
       {(Object.keys(SHAPES) as PieceKey[]).map(key=> {
-        // La orientacion de ESTA pieza, no la de la que esta en la mano (spec 020). El
+        // La orientacion de ESTA pieza, no la de la que esta en la mano. El
         // `Record` tiene las doce ranuras garantizadas por su tipo, derivado de `SHAPES`,
         // asi que este acceso no puede dar `undefined`.
         const suya = orientaciones[key];
@@ -113,11 +111,10 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
         // mismo momento.
         const activo = selected === key;
         // `type="button"` y no el default, aca y en los otros cuatro sitios de JSX que
-        // renderizan los 17 botones de la app —eran siete sitios y 22 botones hasta que el
-        // 019 borro los cuatro grados y el ON/OFF de Reflexion—: hoy no hay un `<form>`,
+        // renderizan los 17 botones de la app: hoy no hay un `<form>`,
         // asi que no hay bug. Pero el default de un `<button>` DENTRO de un formulario es
         // `submit`, y en esta app eso significa recargar la pagina perdiendo el tablero
-        // entero, y no hay deshacer (`specs/deuda.md`). Va sin excepcion y sin discutir
+        // entero, y no hay deshacer. Va sin excepcion y sin discutir
         // caso por caso: un boton de esta app nunca envia nada.
         return (
           <button

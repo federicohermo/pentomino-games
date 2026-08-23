@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 /**
  * El color de fondo, en los cuatro lugares donde el repo lo escribe.
  *
- * El spec 028 lo unifico adentro de `src/`: hay UN token, `--color-fondo`, y de ahi
+ * Adentro de `src/` esta unificado: hay UN token, `--color-fondo`, y de ahi
  * salen el `body` y el `div` raiz de `App.tsx`. Pero afuera de `src/` quedan tres
  * copias mas y son INEVITABLES, no un descuido: el navegador parsea el manifest y la
  * `<meta name="theme-color">` sin CSS a la vista —el manifest lo lee para pintar el
@@ -41,7 +41,7 @@ const css = leer('src/styles/index.css');
 const manifest = leer('public/manifest.json');
 const html = leer('index.html');
 
-describe('el color de fondo esta sincronizado fuera de `src/` (spec 028)', () => {
+describe('el color de fondo esta sincronizado fuera de `src/`', () => {
   const token = color(css, /--color-fondo:\s*(#[0-9a-fA-F]{3,8})\s*;/, 'src/styles/index.css');
 
   it('el token existe y es un color escrito', () => {

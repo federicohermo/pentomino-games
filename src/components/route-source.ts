@@ -232,7 +232,7 @@ function construir(s: Sequence, placed: readonly PlacedPiece[]): Ruta {
   // test del 009— asi que el orden no cambia nada hoy, pero si alguna vez se pisaran, que
   // gane la nota es lo correcto: es lo que se escucha con altura.
   //
-  // `Click.note` (spec 011) distingue el cruce sobre celda ocupada del click mudo de
+  // `Click.note` distingue el cruce sobre celda ocupada del click mudo de
   // siempre: `routeBetween` no sabe que hay debajo del camino que traza (D5 — la vista
   // no elige su propio recorrido), asi que el mismo offset puede caer sobre una celda
   // vacia o sobre una pieza que no le toca sonar todavia. Cuando cae sobre una pieza,
@@ -242,7 +242,7 @@ function construir(s: Sequence, placed: readonly PlacedPiece[]): Ruta {
   }
 
   // `ids` y `porPieza` salen de `s.steps` y NO de `s.order`, asi que una pieza MUTEADA
-  // (spec 014) no entra a ninguno de los dos: no tiene velo de estreno. Es una decision
+  // no entra a ninguno de los dos: no tiene velo de estreno. Es una decision
   // y no un accidente de donde estaba escrito el `for` — el velo dice "esto todavia no
   // sono", y una pieza muteada no va a sonar nunca, asi que atenuarla hasta que le
   // "toque" prometeria algo que no va a pasar. Ademas la opacidad ya esta ocupada

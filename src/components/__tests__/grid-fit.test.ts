@@ -4,7 +4,7 @@ import { CELL_PX_OBJETIVO, NOTA_RAZON, PASO_RAZON } from '../constants/layout.co
 import { GRID_MIN } from '../../domain/constants/board.constants.ts';
 
 /**
- * La única parte del spec 031 que se puede verificar sin navegador: la fórmula.
+ * La única parte que se puede verificar sin navegador: la fórmula.
  *
  * El resto —que `--cell` se escriba con unidad, que un `resize` la reescriba, que las
  * dimensiones vuelvan como estado— es cableado y vive en `use-grid.browser.test.tsx`.

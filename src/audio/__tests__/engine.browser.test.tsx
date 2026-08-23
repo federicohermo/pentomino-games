@@ -521,7 +521,7 @@ describe('tick() — el despacho de las tres clases', () => {
   });
 
   it('con el grafo a medio construir, el motor NO dice que arranco', async () => {
-    // Este test afirmaba lo contrario hasta el spec 027, y el estado que describia era
+    // Este test llego a afirmar lo contrario, y el estado que describia era
     // alcanzable de verdad: si `createGain()` falla, `audio()` cae al `catch` y devuelve
     // null PERO `ctx` ya quedaba asignado, asi que el `if (ctx) return ctx` de la
     // llamada siguiente contestaba un contexto con `master` en null. Desde ahi

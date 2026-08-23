@@ -7,7 +7,7 @@ import { BASE_MAP, PENT_MAJOR, REGIMEN } from '../constants/music.constants.ts';
 import type { Cell } from '../types/transform.types.ts';
 import type { PieceKey } from '../types/pieces.types.ts';
 
-describe('AC6 — los cinco chequeos sobre las 96 combinaciones', () => {
+describe('los cinco chequeos sobre las 96 combinaciones', () => {
   it('orden del array', () => {
     const r = checkArrayOrder();
     expect(r.failures).toEqual([]);
@@ -45,7 +45,7 @@ describe('AC6 — los cinco chequeos sobre las 96 combinaciones', () => {
     expect(all.every(r => r.ok)).toBe(true);
   });
 
-  it('devuelven resultado en vez de lanzar: es lo que necesita el spec 006', () => {
+  it('devuelven resultado en vez de lanzar: es lo que necesita la tool', () => {
     // Si asertaran, la tool `check_invariants` no podria responder con el detalle.
     expect(() => checkAll()).not.toThrow();
     for (const r of checkAll()) expect(Array.isArray(r.failures)).toBe(true);
@@ -248,7 +248,7 @@ describe('los chequeos detectan una regresion', () => {
   });
 
   /**
-   * El chequeo que el spec 006 agrego y que el docblock de `checkNotes` explica: sin el,
+   * El chequeo que el docblock de `checkNotes` explica: sin el,
    * una formula de cuatro notas con `NOTES_PER_PIECE = 4` pasaba los cinco invariantes y
    * todos los tests, y la celda de grado 4 renderizaba `undefinedNaN`.
    *

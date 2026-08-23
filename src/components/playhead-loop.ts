@@ -12,7 +12,7 @@ import type { CeldaPorEstrenar } from './types/route.types.ts';
  * `react-refresh/only-export-components` prohibe que un `.tsx` exporte algo ademas del
  * componente, asi que mientras esto estuviera adentro de `Playhead.tsx` no se podia
  * exportar y, por lo tanto, no se podia testear — que es exactamente el argumento con el
- * que el spec 005 saco el dominio de `App.tsx` y el 022 saco la proyeccion al motor a
+ * que el dominio salio de `App.tsx` y la proyeccion al motor salio a
  * `engine-bridge.ts`. Es el mismo movimiento, aplicado al ultimo lugar donde quedaba
  * logica encerrada en un componente.
  *
@@ -84,7 +84,7 @@ export function iniciarCabeza(
       nodo.style.top = celdas(entrada.cell[1]);
       nodo.style.width = celdas(1);
       nodo.style.height = celdas(1);
-      // El aire y el radio de la baldosa, que hasta el spec 021 eran el `p-[2px]` y el
+      // El aire y el radio de la baldosa, que llegaron a ser el `p-[2px]` y el
       // `rounded-lg` de `VELO_CAJA`/`VELO_TAPA`. Bajaron aca porque pasaron a depender de
       // `--cell` y una clase de Tailwind no puede interpolarla: son la MISMA caja que la
       // baldosa de `Board.tsx`, y desalinearlos deja el velo cubriendo medio pixel afuera.
@@ -150,7 +150,7 @@ export function iniciarCabeza(
       if (!marca) {
         el.style.display = 'none';
       } else {
-        // Inline y no clases de Tailwind, y desde el spec 021 el sujeto cambio: las
+        // Inline y no clases de Tailwind, y el sujeto cambio con la celda variable: las
         // coordenadas ya no salen de una constante sino de `var(--cell)`, que es una
         // custom property que el navegador resuelve en cada elemento. La razon de fondo es
         // la misma —Tailwind escanea el fuente, una clase interpolada no se generaria— y

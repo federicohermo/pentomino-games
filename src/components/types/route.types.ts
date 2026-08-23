@@ -13,9 +13,9 @@ export type MarcaKind = (typeof MARCA)[keyof typeof MARCA];
  * notas, y `Click` lleva su celda pero por separado. Unir las dos cosas indexadas por
  * offset es trabajo de la UI, no del modelo.
  *
- * Hasta el spec 010 esto era un booleano (`nota`): dos casos con marca, y el
+ * Esto llego a ser un booleano (`nota`): dos casos con marca, y el
  * tercero —"no hay nada en este intervalo"— se expresaba con la ausencia de la marca,
- * asi que un booleano alcanzaba. El spec 011 agrega un caso ADENTRO de lo que antes
+ * asi que un booleano alcanzaba. El cruce agrega un caso ADENTRO de lo que antes
  * era "hay marca y suena": `routeBetween` puede cruzar una celda OCUPADA sin que sea
  * el turno de esa pieza, y ese cruce suena una floritura (`Click.note`) que no es ni
  * la nota propia de una pieza ni el click mudo de siempre. Tres casos con marca mas la
@@ -23,7 +23,7 @@ export type MarcaKind = (typeof MARCA)[keyof typeof MARCA];
  */
 export interface Marca {
   cell: Cell;
-  /** Nota de pieza, cruce con floritura o click mudo (D8, spec 011): los tres se ven distinto. */
+  /** Nota de pieza, cruce con floritura o click mudo: los tres se ven distinto. */
   kind: MarcaKind;
 }
 

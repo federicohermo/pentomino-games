@@ -3,7 +3,7 @@ import type { PieceKey } from '../../domain/types/pieces.types.ts';
 /**
  * El color de cada pieza: fondo y texto que va encima.
  *
- * Los 12 fondos salen de la lamina de referencia del spec 007 y estan MEDIDOS, no
+ * Los 12 fondos salen de la lamina de referencia y estan MEDIDOS, no
  * derivados: reproducirlos con una formula (rueda de matiz, HSL equiespaciado) da
  * otros colores y rompe la correspondencia con la lamina.
  *
@@ -20,7 +20,7 @@ import type { PieceKey } from '../../domain/types/pieces.types.ts';
  *
  * ## El criterio es APCA, no WCAG 2.1
  *
- * Hasta el spec 007 el `fg` se elegia con la razon de contraste de WCAG 2.1 (el
+ * El `fg` llego a elegirse con la razon de contraste de WCAG 2.1 (el
  * cociente de luminancias relativas, piso 4.5:1). Ese criterio se cambio despues
  * de MEDIR las 12 con los dos modelos, y el disparador fue mirar el tablero: los
  * fondos saturados de tono medio se veian pidiendo texto blanco mientras la tabla

@@ -21,8 +21,8 @@ export type Edicion = (typeof EDICION)[keyof typeof EDICION];
  */
 export interface EventoDeTecla {
   /**
-   * El `key` del DOM: `'Shift'`, `'Control'`, `' '` para la barra espaciadora y —desde el
-   * spec 018— cualquiera de las doce letras de pentominó, en minúscula o en mayúscula.
+   * El `key` del DOM: `'Shift'`, `'Control'`, `' '` para la barra espaciadora y
+   * cualquiera de las doce letras de pentominó, en minúscula o en mayúscula.
    */
   key: string;
   tipo: 'keydown' | 'keyup';
@@ -33,7 +33,7 @@ export interface EventoDeTecla {
    *
    * Obligatorios y sin `?`: un campo opcional deja que un llamador nuevo se olvide de
    * llenarlo y la guarda se apague sola, en silencio — el mismo criterio con el que el
-   * régimen del spec 017 se quedó sin default de parámetro.
+   * régimen se quedó sin default de parámetro.
    *
    * `shiftKey` **no** entra, y no es un olvido: ninguna decisión de estas puras lo mira.
    * `Shift`+`f` selecciona igual (AC3 del 018) porque la letra ensucia el tap y de eso ya
@@ -54,11 +54,11 @@ export interface EventoDeTecla {
    * las flechas**, y nada más.
    *
    * Es una pregunta DISTINTA de `targetEsControl`, no una versión más ancha de la misma, y
-   * ahí está la decisión del spec 026: `targetEsControl` apaga todas las teclas porque el
+   * ahí está la decisión: `targetEsControl` apaga todas las teclas porque el
    * evento entero es del navegador; esta apaga las que el tablero enfocado maneja por su
    * cuenta y **deja pasar el resto**. Con una celda enfocada, `Shift` tiene que seguir
-   * rotando y `Ctrl` reflejando — que es exactamente el gesto que el spec 013 fue a buscar,
-   * tocar sin ir al panel. Ensanchar `targetEsControl` para que también matcheara la celda
+   * rotando y `Ctrl` reflejando — que es exactamente el gesto que la entrada directa fue a
+   * buscar: tocar sin ir al panel. Ensanchar `targetEsControl` para que también matcheara la celda
    * arreglaba el doble disparo de la barra apagando los dos atajos por los que existe.
    *
    * De las tres teclas que nombra, esta pura sólo puede vetar la barra: el `Enter` y las

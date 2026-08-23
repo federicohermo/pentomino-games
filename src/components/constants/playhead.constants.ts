@@ -5,9 +5,8 @@ import { MARCA } from './route.constants.ts';
  *
  * Viven aca y no en `playhead-loop.ts` por la regla de `CLAUDE.md`: un `.ts` de capa
  * tiene funciones y nada mas. Mientras el bucle estuvo adentro de `Playhead.tsx` la
- * regla no llegaba —un `.tsx` es un componente, no un modulo de capa—; el spec 029 lo
- * saco a un `.ts` para poder testearlo, y con eso estos valores pasaron a estar donde
- * la regla mira.
+ * regla no llegaba —un `.tsx` es un componente, no un modulo de capa—; salieron a un
+ * `.ts` para poder testearlos, y con eso pasaron a estar donde la regla mira.
  *
  * Es el primer archivo de `constants/` que importa de otro en vez de importar solo
  * tipos, y es a proposito: `BORDE_POR_KIND` empareja los tres grosores con las tres
@@ -27,7 +26,7 @@ import { MARCA } from './route.constants.ts';
  * y ahi subir luminancia hace desaparecer la celda: el amarillo de `V` se va a blanco.
  * Un relleno oscuro funciona (medido: al 30 % el peor caso de las 12 piezas, la `W`,
  * da un delta de L* de 8,8 sobre un umbral de ~3) pero tapa la nota que la celda
- * muestra desde el spec 007, que es lo que hay que poder leer. El borde marca el limite
+ * muestra, que es lo que hay que poder leer. El borde marca el limite
  * sin pisar el contenido.
  *
  * ## Por que engorda para los DOS lados
@@ -43,7 +42,7 @@ import { MARCA } from './route.constants.ts';
  * pinta afuera sin agrandar nada. La medicion que lo encontro es del layout viejo —con
  * `CELL_PX` en 63, grilla de 630 x 378, la cabeza en (9,5) y `scale(1.10)`, el
  * `scrollHeight` del entonces `overflow-x-auto` de `Board` pasaba de 378 a 381 y aparecian
- * las dos barras de desplazamiento—, y desde el spec 031 ese contenedor ya no scrollea: el
+ * las dos barras de desplazamiento—, y ese contenedor ya no scrollea: el
  * desborde lo recorta el `overflow-hidden` del raiz, asi que hoy el sintoma no seria una
  * barra sino una celda cortada en el borde. El MECANISMO no cambio, y es lo que decide.
  *
@@ -56,7 +55,7 @@ export const BORDE_COLOR = '#0f172a';
 export const NOTA = { dentro: 3, fuera: 2 };
 
 /**
- * El cruce (spec 011, D8): la cabeza pasa sobre una celda OCUPADA que no es su turno
+ * El cruce: la cabeza pasa sobre una celda OCUPADA que no es su turno
  * pero que igual suena una floritura (`Click.note`) — ni la nota propia de una pieza
  * ni el click mudo de siempre, asi que su borde va en el escalon intermedio entre los
  * otros dos. Los tres numeros —3/2, 2/1, 2/0— estan fijados en DESIGN.md.
@@ -64,7 +63,7 @@ export const NOTA = { dentro: 3, fuera: 2 };
 export const CRUCE = { dentro: 2, fuera: 1 };
 
 /**
- * Nota fuerte, cruce intermedio, click tenue (D7 del spec 010 mas D8 del 011): si dos
+ * Nota fuerte, cruce intermedio, click tenue (D7 mas D8 del 011): si dos
  * de los tres se vieran igual, el recorrido mentiria sobre cual de las tres cosas paso.
  * El click engorda solo hacia adentro y la mitad — se lee como un roce.
  */
@@ -77,7 +76,7 @@ export const BORDE_POR_KIND = { [MARCA.nota]: NOTA, [MARCA.cruce]: CRUCE, [MARCA
  * Las clases del velo van como literales enteros y no armadas por concatenacion:
  * Tailwind escanea el fuente, asi que solo genera lo que aparece escrito completo.
  *
- * **Lo que ya NO esta aca es la geometria**, y ese es el cambio del spec 021. Hasta ahi
+ * **Lo que ya NO esta aca es la geometria**, y ese es el cambio. Hasta ahi
  * estas dos clases repetian el `p-[2px]` y el `rounded-lg` de la baldosa de `Board.tsx` a
  * proposito —es la misma caja, y poner los numeros a mano seria un segundo lugar donde
  * mantenerlos—. Con el 021 ese aire y ese radio pasaron a ser razones de `--cell`, y una

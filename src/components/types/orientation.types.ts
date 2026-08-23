@@ -10,9 +10,9 @@ import type { PieceKey } from '../../domain/types/pieces.types.ts';
  *
  * ## Qué cierra y qué no
  *
- * `specs/deuda.md` tiene abierta desde el spec 005 la entrada de «la rotación sin acotar»:
- * un `number` que se compara contra `0|1|2|3` en siete lugares. Este tipo **no la cierra,
- * la achica**, y la diferencia importa para el que la lea después.
+ * Queda abierta la deuda de «la rotación sin acotar»: un `number` que se compara contra
+ * `0|1|2|3` en siete lugares. Este tipo **no la cierra, la achica**, y la diferencia
+ * importa para el que la lea después.
  *
  * Lo que queda abierto es el tramo de `domain/`: `rotateN`, `arpeggioFor` y
  * `PlacedPiece.rotation` siguen tomando `number`, y ése es el que cruza el borde de
@@ -21,7 +21,7 @@ import type { PieceKey } from '../../domain/types/pieces.types.ts';
  *
  * Lo que sí cierra es la **vía**: la rotación entra al modelo desde `Orientacion`, así que
  * con la fuente acotada `domain/` ya no puede recibir un valor fuera de `0..3` por acá. El
- * escenario concreto lo documentó el spec 017: con un índice de más, `base[j + rot]` daba
+ * escenario concreto está medido: con un índice de más, `base[j + rot]` daba
  * `undefined`, `midiName` no explotaba y la celda del tablero pintaba `undefinedNaN`.
  */
 export type Rotacion = (typeof ROTACION)[keyof typeof ROTACION];
@@ -33,7 +33,7 @@ export interface Orientacion {
 }
 
 /**
- * La orientación de cada una de las doce piezas, desde el spec 020.
+ * La orientación de cada una de las doce piezas.
  *
  * ## Por qué NO vive en `domain/types/`
  *
@@ -44,7 +44,7 @@ export interface Orientacion {
  * una preferencia de quien toca y no un hecho del tablero.
  *
  * Que los dos tipos lleven los mismos dos campos es real y está anotado en
- * `specs/deuda.md`: unificarlos es un refactor de `domain/` que cruza el borde de paquete
+ * unificarlos es un refactor de `domain/` que cruza el borde de paquete
  * con beneficio cero de comportamiento.
  */
 export type MemoriaDeOrientacion = Record<PieceKey, Orientacion>;

@@ -27,7 +27,7 @@ import type { Cell } from '../../domain/types/transform.types.ts';
  *
  * ## `--cell` la escribe el test, y eso es parte de lo que verifica
  *
- * Desde el spec 021 el tamano de celda no es una constante: viaja por una custom property
+ * El tamano de celda no es una constante: viaja por una custom property
  * que `use-cell-px.ts` cuelga del contenedor RAIZ de la app. `Board` se monta solo aca, sin
  * ese contenedor, asi que sin un `--cell` puesto `repeat(10, var(--cell))` es invalido y la
  * grilla colapsa a una columna. Escribirla sobre el nodo que monta el test es lo que ademas
@@ -81,7 +81,7 @@ const props = (over: Partial<Props> = {}): Props => ({
 /**
  * Las 60 celdas exteriores, en orden de indice: `i = y * GRID_W + x`.
  *
- * Por ROL y no por estructura desde el spec 026: la grilla dejo de ser 60 hijos planos y
+ * Por ROL y no por estructura: la grilla dejo de ser 60 hijos planos y
  * paso a ser seis `role="row"` de diez, asi que `div.grid > div` devuelve las seis filas.
  * El rol ademas sobrevive a que alguien vuelva a mover el `gridTemplateColumns` de nivel,
  * que es exactamente el cambio que rompio este selector.
@@ -98,7 +98,7 @@ describe('Board', () => {
     const { container } = await render(<Board {...props()} />);
     expect(celdas(container).length).toBe(GRID_W * GRID_H);
 
-    // Al piso y al techo: la celda sigue al valor, que es lo que el spec 021 promete y lo
+    // Al piso y al techo: la celda sigue al valor, que es lo que la custom property promete y lo
     // que una constante no podia decir.
     for (const px of [CELL_PX_OBJETIVO, 180]) {
       conCelda(container, px);
@@ -157,8 +157,8 @@ describe('Board', () => {
     }
   });
 
-  it('AC1 — la grilla mide lo que dicen `dims` y `--cell`, y nada scrollea', async () => {
-    // Lo que este test verificaba hasta el spec 031 era lo contrario: que el tablero
+  it('la grilla mide lo que dicen `dims` y `--cell`, y nada scrollea', async () => {
+    // Lo que este test llego a verificar era lo contrario: que el tablero
     // SCROLLEARA cuando no entraba, para no achicar la celda. Hoy no puede no entrar
     // —`grillaPara` elige `cols` y `rows` contra la caja, asi que `cols * cell <= vw`— y
     // lo que hay que fijar es que no quede una sola forma de scrollear: ni el tablero, ni
@@ -329,7 +329,7 @@ describe('Board', () => {
 });
 
 /**
- * El teclado (spec 026): el tablero es UNA parada de tabulacion, adentro se mueve con las
+ * El teclado: el tablero es UNA parada de tabulacion, adentro se mueve con las
  * flechas, y las cuatro acciones salen de la misma pura que el click.
  *
  * Necesita navegador de verdad y no jsdom por lo mismo que las mediciones de arriba: lo
@@ -494,7 +494,7 @@ describe('Board — el teclado y el foco', () => {
     const conFoco = await render(<Board {...props({ hover: [4, 2] as Cell, focoEnTablero: true })} />);
     const enfocada = enIndice(conFoco.container, 4, 2);
     expect(enfocada.style.outline).toContain('calc(');
-    // Desde el spec 021 el anillo es una RAZON de la celda, asi que se lee el COMPUTADO y
+    // El anillo es una RAZON de la celda, asi que se lee el COMPUTADO y
     // no la cadena escrita: comparar el literal ataria el test a la sintaxis del `calc()`
     // en vez de a lo que el anillo mide. Se verifica al TECHO, que es donde el bug vive: con
     // los dos anchos clavados en 2 px, a celda 180 el aire mide 4,93 y las dos bandas caen
