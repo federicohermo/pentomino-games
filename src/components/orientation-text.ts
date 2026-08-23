@@ -40,8 +40,8 @@
  * `aria-label` la vuelve una frase larga en una fila que tiene que entrar en un renglón.
  *
  * Lo que sí se comparte es la DERIVACIÓN —el `* 90` y la condición del espejo—, que es lo
- * que estaba escrito dos veces: desde que el spec 022 partió la tarjeta, las dos copias ni
- * siquiera comparten archivo. Cada `.tsx` compone su formato con estos dos pedazos.
+ * que estaba escrito dos veces: partida la tarjeta, las dos copias ni siquiera comparten
+ * archivo. Cada `.tsx` compone su formato con estos dos pedazos.
  *
  * El tipo va inline en la firma y no en `components/types/`: no es un tipo de props que
  * dos componentes se pasen, es la forma del retorno de una función. El precedente es

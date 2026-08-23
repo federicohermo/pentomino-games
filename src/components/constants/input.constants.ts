@@ -3,7 +3,7 @@
  * por colocar, alternar su reflexión, alternar el transporte, o **seleccionar** otra
  * pieza.
  *
- * `seleccionar` la agrega el spec 018 y es la primera que no sale de un modificador: las
+ * `seleccionar` es la unica que no sale de un modificador: las
  * doce letras eligen su pentominó. Va acá adentro y no como una cuarta rama suelta del
  * cableado porque la decisión de QUÉ gesto es sigue siendo una sola pregunta —la que
  * contesta `accionDeTecla`—, y sacarla de esta tabla la partiría en dos lugares.
@@ -15,7 +15,7 @@
  *
  * No hay una quinta acción `no-hacer-nada`: la ausencia de acción es `null`, y eso deja
  * que el llamador use el mismo valor para decidir si hace `preventDefault` — si el
- * handler se saltea el evento, el navegador tiene que quedárselo entero (D4, spec 013).
+ * handler se saltea el evento, el navegador tiene que quedárselo entero.
  */
 export const ACCION = {
   rotar: 'rotar',

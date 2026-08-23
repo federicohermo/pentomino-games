@@ -21,8 +21,8 @@ export type Edicion = (typeof EDICION)[keyof typeof EDICION];
  */
 export interface EventoDeTecla {
   /**
-   * El `key` del DOM: `'Shift'`, `'Control'`, `' '` para la barra espaciadora y —desde el
-   * spec 018— cualquiera de las doce letras de pentominó, en minúscula o en mayúscula.
+   * El `key` del DOM: `'Shift'`, `'Control'`, `' '` para la barra espaciadora y
+   * cualquiera de las doce letras de pentominó, en minúscula o en mayúscula.
    */
   key: string;
   tipo: 'keydown' | 'keyup';
@@ -57,8 +57,8 @@ export interface EventoDeTecla {
    * ahí está la decisión: `targetEsControl` apaga todas las teclas porque el
    * evento entero es del navegador; esta apaga las que el tablero enfocado maneja por su
    * cuenta y **deja pasar el resto**. Con una celda enfocada, `Shift` tiene que seguir
-   * rotando y `Ctrl` reflejando — que es exactamente el gesto que el spec 013 fue a buscar,
-   * tocar sin ir al panel. Ensanchar `targetEsControl` para que también matcheara la celda
+   * rotando y `Ctrl` reflejando — que es exactamente el gesto que la entrada directa fue a
+   * buscar: tocar sin ir al panel. Ensanchar `targetEsControl` para que también matcheara la celda
    * arreglaba el doble disparo de la barra apagando los dos atajos por los que existe.
    *
    * De las tres teclas que nombra, esta pura sólo puede vetar la barra: el `Enter` y las

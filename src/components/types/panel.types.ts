@@ -3,7 +3,7 @@ import type { RegimenDeRotacion } from '../../domain/types/music.types.ts';
 import type { MemoriaDeOrientacion } from './orientation.types.ts';
 
 /**
- * Los dos objetos de props de la tarjeta de piezas, que hasta el spec 022 eran
+ * Los dos objetos de props de la tarjeta de piezas, que llegaron a ser
  * dieciséis props planas sobre `PiecePalette`.
  *
  * Adentro hay dos paneles distintos —la orientación de la pieza en la mano y el
@@ -26,7 +26,7 @@ import type { MemoriaDeOrientacion } from './orientation.types.ts';
 export interface PropsDeOrientacion {
   selected: PieceKey;
   /**
-   * Las DOCE orientaciones y no la de la seleccionada, desde el spec 020.
+   * Las DOCE orientaciones y no la de la seleccionada.
    *
    * Baja entera porque la grilla de miniaturas necesita las doce: cada botón se dibuja en
    * **su** orientación recordada, que es de lo que trata ese spec. Y los lectores que sólo

@@ -17,10 +17,10 @@ import { encolar, reiniciar } from './route-source.ts';
  * que la pantalla: tempo, clicks, la secuencia contra el tablero, y la limpieza al
  * desmontar.
  *
- * Estaban en `App.tsx` hasta el spec 022 y se mudaron ENTEROS, en el mismo orden y con
- * sus docblocks: son argumentos ya medidos —D5 del 009, la limpieza sincrónica bajo
- * StrictMode, por qué el desmontaje usa `DEFAULT_REGIMEN`— y re-derivarlos es la forma
- * más fácil de perderlos.
+ * Estaban en `App.tsx` y se mudaron ENTEROS, en el mismo orden y con
+ * sus docblocks: son argumentos ya medidos —el empalme al cierre de ciclo, la limpieza
+ * sincrónica bajo StrictMode, por qué el desmontaje usa `DEFAULT_REGIMEN`— y
+ * re-derivarlos es la forma más fácil de perderlos.
  *
  * `secuencia` entra POR PARÁMETRO y este hook no la vuelve a derivar. Es lo que
  * garantiza que `encolar` y `setSequence` sigan viendo la MISMA instancia: si el hook
@@ -101,7 +101,7 @@ export function useMotorSincronizado({ secuencia, placed, tempo, clicks }: Recon
   // `setSequence` deja de hacer falta — colocar o quitar con el transporte
   // parado igual deja la secuencia lista para cuando arranque.
   //
-  // `setSequence` no interrumpe el ciclo en curso (D5, spec 009): la secuencia
+  // `setSequence` no interrumpe el ciclo en curso: la secuencia
   // nueva entra recién al cerrar el circuito activo, así que reordenar el
   // tablero puede tardar hasta un ciclo completo en escucharse — 7,5 s con 8
   // piezas a 110 bpm. Es el precio de que el circuito se pueda reordenar entero
@@ -127,9 +127,9 @@ export function useMotorSincronizado({ secuencia, placed, tempo, clicks }: Recon
     // `placed` esta en las dependencias aunque `secuencia` ya se derive de el, y no agrega
     // ni una corrida: `secuencia` es un `useMemo` sobre `[placed, regimen]`, asi que cada
     // vez que cambia `placed` cambia tambien `secuencia`. La implicacion va en UN solo
-    // sentido —desde el spec 017 `secuencia` puede cambiar sola, si cambio el regimen— y
+    // sentido —`secuencia` puede cambiar sola, si cambio el regimen— y
     // alcanza, porque lo que hay que descartar es una corrida de mas y no una de menos.
-    // El comentario decia `[placed]` a secas, que era cierto antes del 017 y ya no.
+    // El comentario decia `[placed]` a secas, que dejo de ser cierto con el regimen.
     //
     // Y evita callar la regla de exhaustividad con un disable, que taparia el dia en que
     // alguien desacople las dos.

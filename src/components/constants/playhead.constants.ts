@@ -5,9 +5,8 @@ import { MARCA } from './route.constants.ts';
  *
  * Viven aca y no en `playhead-loop.ts` por la regla de `CLAUDE.md`: un `.ts` de capa
  * tiene funciones y nada mas. Mientras el bucle estuvo adentro de `Playhead.tsx` la
- * regla no llegaba —un `.tsx` es un componente, no un modulo de capa—; el spec 029 lo
- * saco a un `.ts` para poder testearlo, y con eso estos valores pasaron a estar donde
- * la regla mira.
+ * regla no llegaba —un `.tsx` es un componente, no un modulo de capa—; salieron a un
+ * `.ts` para poder testearlos, y con eso pasaron a estar donde la regla mira.
  *
  * Es el primer archivo de `constants/` que importa de otro en vez de importar solo
  * tipos, y es a proposito: `BORDE_POR_KIND` empareja los tres grosores con las tres
@@ -27,7 +26,7 @@ import { MARCA } from './route.constants.ts';
  * y ahi subir luminancia hace desaparecer la celda: el amarillo de `V` se va a blanco.
  * Un relleno oscuro funciona (medido: al 30 % el peor caso de las 12 piezas, la `W`,
  * da un delta de L* de 8,8 sobre un umbral de ~3) pero tapa la nota que la celda
- * muestra desde el spec 007, que es lo que hay que poder leer. El borde marca el limite
+ * muestra, que es lo que hay que poder leer. El borde marca el limite
  * sin pisar el contenido.
  *
  * ## Por que engorda para los DOS lados
@@ -43,7 +42,7 @@ import { MARCA } from './route.constants.ts';
  * pinta afuera sin agrandar nada. La medicion que lo encontro es del layout viejo —con
  * `CELL_PX` en 63, grilla de 630 x 378, la cabeza en (9,5) y `scale(1.10)`, el
  * `scrollHeight` del entonces `overflow-x-auto` de `Board` pasaba de 378 a 381 y aparecian
- * las dos barras de desplazamiento—, y desde el spec 031 ese contenedor ya no scrollea: el
+ * las dos barras de desplazamiento—, y ese contenedor ya no scrollea: el
  * desborde lo recorta el `overflow-hidden` del raiz, asi que hoy el sintoma no seria una
  * barra sino una celda cortada en el borde. El MECANISMO no cambio, y es lo que decide.
  *

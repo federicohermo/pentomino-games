@@ -9,11 +9,11 @@ import type { PieceKey } from '../domain/types/pieces.types.ts';
  * sobre el nodo del tablero.
  *
  * Van en un archivo y como dos funciones: comparten `tapLimpio`, pero siguen sin
- * compartir target ni dependencias. Estaban en `App.tsx` hasta el spec 022.
+ * compartir target ni dependencias. Estaban en `App.tsx`.
  *
  * Los gestos que gobiernan la pieza POR COLOCAR se atan a la mano que ya está sobre el
- * tablero, para no pagar un viaje al panel por cada cambio de orientación — y desde el
- * spec 018 tampoco por cada cambio de PIEZA, que era el último control que obligaba a
+ * tablero, para no pagar un viaje al panel por cada cambio de orientación — ni por cada
+ * cambio de PIEZA, que era el último control que obligaba a
  * soltar el tablero. La DECISIÓN
  * de cada uno sigue viviendo en `components/input.ts` —donde se puede testear sin jsdom—
  * y acá queda solo el cableado: estos dos hooks no toman ninguna decisión propia.
@@ -61,7 +61,7 @@ interface Acciones {
  *
  * Las teclas del tablero enfocado —las flechas, `Home`/`End` y el `Enter`— NO pasan por
  * acá: las maneja el `onKeyDown` de la propia celda, porque necesitan saber CUÁL celda
- * tiene el foco y este listener de `window` no lo sabe. Lo único que el spec 026 le pide a
+ * tiene el foco y este listener de `window` no lo sabe. Lo único que se le pide a
  * este hook es que se corra: `targetEsCelda` le devuelve la barra al tablero sin tocar
  * `Shift` ni `Ctrl`, que con una celda enfocada siguen rotando y reflejando.
  *
@@ -94,8 +94,8 @@ export function useAtajosDeTeclado(acciones: Acciones, tapLimpio: RefObject<bool
       const evento = {
         key: e.key, tipo, repeat: e.repeat,
         // Los tres modificadores salen del `KeyboardEvent` que los dos handlers ya
-        // reciben: no hay información nueva que sacar del DOM, sólo campos que hasta el
-        // spec 018 nadie miraba.
+        // reciben: no hay información nueva que sacar del DOM, sólo campos que antes
+        // nadie miraba.
         ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey,
         targetEsControl: esControl(e.target),
         targetEsCelda: esCelda(e.target),
@@ -185,8 +185,8 @@ export function useRuedaRota(
       if (e.ctrlKey) return;
       // Un `deltaY` de 0 es un scroll horizontal puro, que no rota (lo dice también
       // `rotacionPorRueda`). Sale antes del `preventDefault` porque no hay nada nuestro que
-      // hacer con ese gesto, así que el navegador se lo queda entero. Hasta el spec 031 el
-      // motivo era más concreto —este nodo era el `overflow-x-auto` con el que se recorría
+      // hacer con ese gesto, así que el navegador se lo queda entero. El
+      // motivo llegó a ser más concreto —este nodo era el `overflow-x-auto` con el que se recorría
       // la grilla debajo de `md`, y frenarlo lo dejaba sin scroll—; ya no scrollea, y
       // tragarse un default que no se usa sigue sin tener nada a favor.
       if (e.deltaY === 0) return;

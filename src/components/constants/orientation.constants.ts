@@ -9,7 +9,7 @@ import type { Orientacion, MemoriaDeOrientacion } from '../types/orientation.typ
  * precedente exacto es `ACCION` en `input.constants.ts` y `MARCA` en `route.constants.ts`.
  *
  * Las claves nombran el ángulo y los valores son los índices que `rotateN` cuenta, que es
- * el orden en que el spec 001 los fijó: un cuarto de vuelta en sentido horario por unidad.
+ * el orden que fija `rotateN`: un cuarto de vuelta en sentido horario por unidad.
  */
 export const ROTACION = { cero: 0, noventa: 1, ciento_ochenta: 2, doscientos_setenta: 3 } as const;
 

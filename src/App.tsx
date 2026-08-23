@@ -569,8 +569,8 @@ export default function App(){
             commit entero de la app: mediana de 4,9 ms por celda cruzada contra 1,9 ms con la
             barrera puesta. Son 3,0 ms —el 61 %— gastados en el subarbol que no puede haber
             cambiado, a la frecuencia del MOUSE, que arrastrandose sobre el tablero es una
-            celda por cuadro dibujado. Es el mismo criterio con el que el spec 010 saco a
-            `Spectrum` y a `Playhead` de React; a este le alcanza con un `memo`.
+            celda por cuadro dibujado. Es el mismo criterio con el que salieron
+            `Spectrum` y `Playhead` de React; a este le alcanza con un `memo`.
 
             El array de dependencias que el comentario viejo temia no es deuda a mano:
             `react-hooks/exhaustive-deps` lo verifica en el lint, asi que un campo nuevo en
@@ -632,8 +632,8 @@ export default function App(){
           boardRef={boardRef}
         />
 
-        {/* La señal que sale por el master, como franja flotante abajo a la izquierda desde
-            el spec 021. No recibe props: lee del motor por su cuenta, para que dibujar a 60
+        {/* La señal que sale por el master, como franja flotante abajo a la izquierda.
+            No recibe props: lee del motor por su cuenta, para que dibujar a 60
             fps no re-renderice nada de acá.
 
             La posición sale de la medición igual que la del dock: `3 × 1` celdas en la

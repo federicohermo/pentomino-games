@@ -39,7 +39,7 @@ import { grillaPara } from './grid-fit.ts';
  * Porque tienen que ser el mismo número. El contenedor raíz mide `100dvh` de alto, y
  * `innerHeight` en iOS incluye la barra del navegador: si la fórmula recibe uno y la caja
  * tiene el otro, la grilla se calcula contra un alto que el contenedor no tiene y desborda
- * unos píxeles sin que nada falle — y desde el spec 031 desbordar no tiene red, porque el
+ * unos píxeles sin que nada falle — y desbordar no tiene red, porque el
  * `overflow-x-auto` de `Board` se fue. Leyendo `clientWidth`/`clientHeight` del propio
  * nodo, el número que entra a la fórmula **es** el que la caja mide.
  *

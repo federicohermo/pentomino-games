@@ -14,8 +14,7 @@ import type { PlacedPiece } from '../domain/types/board.types.ts';
  * jsdom: no hay `KeyboardEvent` ni `MouseEvent` que fabricar, y tampoco hay forma de
  * montar un componente para dispararlos. Recibiendo los campos que importan, las
  * guardas quedan testeadas de verdad y lo único que queda sin red es que el cableado de
- * `use-input.ts` los llene bien — que es exactamente lo que las tareas `[M]`
- * verifican en el
+ * `use-input.ts` los llene bien — que es lo único que hay que verificar a mano en el
  * navegador.
  *
  * ## Por qué viven acá y no en `App.tsx`
@@ -23,7 +22,7 @@ import type { PlacedPiece } from '../domain/types/board.types.ts';
  * `react-refresh/only-export-components` prohíbe que un `.tsx` exporte algo que no sea
  * el componente, así que una pura escrita adentro de `App.tsx` no se puede exportar y
  * por lo tanto no se puede testear. Es el mismo movimiento con el que `cell-text.ts`
- * salió de `Board.tsx` en el spec 012, y por el mismo motivo: ahí vivía el bug.
+ * salió de `Board.tsx`, y por el mismo motivo: ahí vivía el bug.
  *
  * De los seis criterios que estas puras cubren, el que justifica el archivo es
  * AC6: en macOS `Ctrl`+click ES el click derecho, y este repo se desarrolla en Windows,
@@ -40,7 +39,7 @@ import type { PlacedPiece } from '../domain/types/board.types.ts';
  * deja `deltaY` en 0— y girar ahí sería rotar sin que nadie lo haya pedido. El cableado
  * de `use-input.ts` además **sale antes** en ese caso, o sea sin `preventDefault`: no hay
  * nada nuestro que hacer con un gesto horizontal, así que el navegador se lo queda entero.
- * Hasta el spec 031 el motivo era más fuerte —el nodo que escucha la rueda era el
+ * El motivo llegó a ser más fuerte —el nodo que escucha la rueda era el
  * `overflow-x-auto` con el que se recorría la grilla debajo de `md`, y frenarlo dejaba sin
  * scroll al único elemento que lo tenía—; ese contenedor ya no scrollea, pero tragarse un
  * default que no se usa sigue sin tener a favor nada.
@@ -61,7 +60,7 @@ export function rotacionPorRueda(rotation: Rotacion, deltaY: number): Rotacion {
  * El cuarto de vuelta siguiente: el gesto de `Shift`.
  *
  * Delega en `rotacionPorRueda` con un `deltaY` positivo en vez de repetir el `+ 4` y el
- * `% 4`, y no es un rodeo: hasta el spec 020 el shell escribía `(rotation + 1) % 4`
+ * `% 4`, y no es un rodeo: el shell llegó a escribir `(rotation + 1) % 4`
  * inline, o sea que la misma aritmética modular vivía en dos lugares con **una sola** de
  * las dos copias protegida contra el resto negativo. Acá el `Shift` es literalmente la
  * rueda hacia abajo —que es lo que hace, y lo que los dos gestos del 013 prometen—, así
@@ -74,7 +73,7 @@ export function siguienteRotacion(rotation: Rotacion): Rotacion {
 /**
  * Si este `keydown` ABRE un tap limpio. Si no, ensucia el que hubiera abierto.
  *
- * El spec 013 describe la regla como «arranca en `true` con el `keydown` del
+ * La regla se suele describir como «arranca en `true` con el `keydown` del
  * modificador», y así escrita tiene un agujero que el código destapa: `Ctrl`+`Shift`
  * son DOS keydown de modificador seguidos, así que los dos abrirían tap y al soltarlos
  * la pieza rotaría y se reflejaría sola. No es un caso inventado — `Ctrl`+`Shift` es el
@@ -83,7 +82,7 @@ export function siguienteRotacion(rotation: Rotacion): Rotacion {
  *
  * De ahí la condición completa: un modificador abre tap solo si **ningún otro**
  * modificador estaba abajo. `Alt` y `Meta` cuentan aunque no sean nuestros — `Alt` lo
- * reserva el spec 014 para mutear, y `Meta` es el modificador de los atajos de macOS.
+ * reserva el muteo, y `Meta` es el modificador de los atajos de macOS.
  */
 export function abreTapLimpio(e: EventoDeModificador): boolean {
   const otroAbajo = (e.key !== 'Shift' && e.shiftKey)
@@ -141,7 +140,7 @@ export function piezaDeTecla(key: string): PieceKey | null {
  *    porque el `Ctrl`+click de macOS necesita que el `keyup` sea el que alterna (D2).
  * 4. **La barra sigue en `keydown`** — es donde el navegador scrollea, así que es el
  *    único momento en que un `preventDefault` sirve de algo.
- * 5. **`targetEsCelda` veta a la barra, y sólo a la barra** — desde el spec 026 el tablero
+ * 5. **`targetEsCelda` veta a la barra, y sólo a la barra** — el tablero
  *    es una parada de tabulación y la barra sobre una celda enfocada coloca o quita la
  *    pieza. Sin esta guarda, un solo golpe haría las dos cosas: alternar el transporte por
  *    acá y editar por el `onKeyDown` de la celda. Que viva adentro de la rama de la barra

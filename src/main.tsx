@@ -10,7 +10,7 @@ import App from './App.tsx';
 //
 // Con `jsx: "react-jsx"` el import default de React no hace falta.
 //
-// El `!` se queda, y es una de las DOS que el spec 027 dejo en codigo de produccion —la
+// El `!` se queda, y es una de las DOS que hay en codigo de produccion —la
 // otra es el `queue.shift()!` del BFS de `domain/invariants.ts`, anotada igual—: es el
 // idiom de la plantilla de Vite sobre un `#root` que el propio `index.html` garantiza,
 // o sea el caso donde el dato que TypeScript no puede ver esta escrito dos archivos mas

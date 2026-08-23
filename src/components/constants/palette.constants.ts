@@ -20,7 +20,7 @@ import type { PieceKey } from '../../domain/types/pieces.types.ts';
  *
  * ## El criterio es APCA, no WCAG 2.1
  *
- * Hasta el spec 007 el `fg` se elegia con la razon de contraste de WCAG 2.1 (el
+ * El `fg` llego a elegirse con la razon de contraste de WCAG 2.1 (el
  * cociente de luminancias relativas, piso 4.5:1). Ese criterio se cambio despues
  * de MEDIR las 12 con los dos modelos, y el disparador fue mirar el tablero: los
  * fondos saturados de tono medio se veian pidiendo texto blanco mientras la tabla

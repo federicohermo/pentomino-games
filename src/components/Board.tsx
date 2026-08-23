@@ -16,7 +16,7 @@ import {
 
 /**
  * Lo que mide `n` celdas, en CSS. Es la unica forma en que este archivo habla de tamanos
- * desde el spec 021: el numero vive en la custom property `--cell`, que escribe
+ * el numero vive en la custom property `--cell`, que escribe
  * `use-grid.ts` sobre el contenedor raiz y que hereda hasta aca.
  *
  * Va por estilo inline y nunca por clase, y eso no es preferencia: Tailwind escanea el
@@ -29,7 +29,7 @@ import Playhead from './Playhead.tsx';
 /**
  * Panel central: la grilla del tablero con el fantasma de previsualizacion.
  *
- * Presentacional: sin estado, sin efectos — y desde el spec 026 con una sola linea
+ * Presentacional: sin estado, sin efectos — y con una sola linea
  * imperativa, el `.focus()` con el que las flechas mueven el cursor. No la contradice:
  * cambiar el `tabIndex` no mueve el foco del DOM, asi que sin esa llamada el `0` y el foco
  * real se separan a la primera flecha. Es React pidiendole foco a un nodo que React
@@ -100,7 +100,7 @@ import Playhead from './Playhead.tsx';
  *
  * ## La celda que todavia no se estreno la tapa `Playhead`, no este archivo
  *
- * Desde el spec 009 una pieza recien colocada no entra al recorrido hasta que el ciclo
+ * Una pieza recien colocada no entra al recorrido hasta que el ciclo
  * cierra, y despues todavia tiene que llegarle su turno. Esa espera se dibuja atenuando
  * la celda, pero NO desde aca: el velo son nodos propios que `Playhead.tsx` crea encima
  * de la grilla, porque el estreno es celda por celda —cinco cambios al ritmo del
@@ -204,7 +204,7 @@ export default function Board({
     // llegar nunca a la pagina; `Alt`+`Enter` es la via garantizada y es la que hay que
     // documentar. Las dos combinaciones quedan escritas —el navegador que si las entregue
     // las va a ejecutar— y la comprobacion en una ventana real queda [M]. Mismo trato que
-    // el `Ctrl`+click de macOS que el spec 013 documento en vez de fingir que no existe.
+    // el `Ctrl`+click de macOS, que esta documentado en vez de fingir que no existe.
     //
     // Sin `preventDefault` para la barra: su default —scrollear la pagina— ya lo frena
     // `frenaElDefault` desde el listener global, que a proposito NO se veta con
@@ -226,7 +226,7 @@ export default function Board({
     }
     // Frena el default SIEMPRE, tambien en el borde donde el destino termina siendo la
     // misma celda: sin esto la flecha scrollea la pagina. Mismo trato que la rueda y por
-    // el mismo motivo. Hasta el spec 031 tambien scrolleaba el `overflow-x-auto` del
+    // el mismo motivo. Llego a scrollear tambien el `overflow-x-auto` del
     // tablero, que ya no existe.
     e.preventDefault();
     // Se ACOTA en vez de salir por un `if`: en el borde la flecha deja el foco donde
@@ -263,9 +263,9 @@ export default function Board({
     if (!e.currentTarget.contains(e.relatedTarget)) onFoco(null);
   };
 
-  // La TARJETA se fue con el spec 021, y con ella la tabla de repartos de columnas que
-  // vivia aca: siete specs de mediciones sobre `col-span-7`, `col-span-8` y `col-span-9`
-  // para repartir un `max-w-6xl` entre dos tarjetas. Ya no hay dos tarjetas ni hay
+  // La TARJETA se fue, y con ella la tabla de repartos de columnas que
+  // vivia aca: una cadena larga de mediciones sobre `col-span-7`, `col-span-8` y
+  // `col-span-9` para repartir un `max-w-6xl` entre dos tarjetas. Ya no hay dos tarjetas ni hay
   // `max-w-6xl`: el tablero ES la pantalla y los dos paneles flotan encima.
   //
   // Lo que reemplaza a esa cadena entera son dos numeros que salen del mismo lugar:
@@ -276,8 +276,8 @@ export default function Board({
   // a 46,8, y el tablero dejaba de leerse como un instrumento denso.
   return (
     <div className="w-full h-full flex items-center justify-center">
-      {/* **Sin `overflow-x-auto`, sin `max-h-full` y sin `w-max`** — el spec 031 se los
-          llevo a los tres, y con ellos la unica forma que este componente tenia de
+      {/* **Sin `overflow-x-auto`, sin `max-h-full` y sin `w-max`** — se fueron los tres,
+          y con ellos la unica forma que este componente tenia de
           scrollear. Existian para el caso "la grilla no entra", que era real mientras el
           tablero media 10 x 6 celdas de 73 px pasara lo que pasara: abajo de 730 px de
           viewport se salia por el borde derecho, y en un viewport apaisado y bajo se salia
@@ -286,12 +286,12 @@ export default function Board({
           El `overflow-hidden` del contenedor raiz pasa de ser la red a ser la garantia. */}
       {/* La cabeza lectora se monta ACA, dentro del `relative` que envuelve la grilla: un
           absoluto se posiciona contra la caja de padding de su contenedor posicionado, asi
-          que queda alineada con las celdas por construccion y no por aritmetica. Hasta el
-          spec 031 el mismo argumento decia «el contenedor que SCROLLEA», que era la mitad
-          que ese spec se llevo — ya no scrollea nada. Se importa
+          que queda alineada con las celdas por construccion y no por aritmetica. Este
+          mismo argumento llego a decir «el contenedor que SCROLLEA», y ya no scrollea
+          nada. Se importa
           directo y no llega por una ranura de `children`: `Playhead` no recibe props, o
-          sea que no le pide nada a `App`, y una ranura generica reabriria la puerta que
-          el review del 007 cerro midiendo. */}
+          sea que no le pide nada a `App`, y una ranura generica reabriria una puerta que
+          se cerro midiendo. */}
       {/* Los dos gestos enganchan ACA y no en el `.grid` de adentro ni en
           la tarjeta: este div cubre exactamente el area del tablero, mientras que la
           tarjeta se comeria el `p-4`. El argumento decia ademas «incluida la franja que
@@ -311,7 +311,7 @@ export default function Board({
       <div ref={boardRef} className="relative" onContextMenu={onContextMenu}>
         <Playhead />
         {/* FILAS DE VERDAD y no `display: contents` sobre filas ficticias. `role="grid"`
-            exige `role="row"`, y hasta el spec 026 esto eran 60 hijos planos dentro de un
+            exige `role="row"`, y esto llego a ser 60 hijos planos dentro de un
             solo CSS grid. La tecnica de mantener el DOM plano y poner `display: contents`
             en el envoltorio tiene historial de SACAR el nodo del arbol de accesibilidad en
             varios navegadores — o sea que fallaria en silencio, solo en algunos, y
@@ -428,7 +428,7 @@ export default function Board({
             // constante, y Tailwind escanea el fuente: un `outline-[${N}px]` interpolado no
             // se generaria. El reparto de las dos bandas esta en `layout.constants.ts`.
             //
-            // Desde el spec 021 los dos son RAZONES de la celda y no dos numeros de 2 px, y
+            // Los dos son RAZONES de la celda y no dos numeros de 2 px, y
             // el motivo es el reparto mismo: las bandas se miden en «aires» —una sobre el
             // aire, la siguiente sobre la baldosa— y el aire dejo de ser fijo. Con los dos
             // clavados en 2 px, a celda 180 el aire mide 4,93 y las dos bandas caen adentro
@@ -448,8 +448,8 @@ export default function Board({
                    `-1`, asi que el tablero es UNA parada de tabulacion y no una por celda.
                    Una por celda lo convertiria en una trampa de salida: todo lo que venga
                    detras quedaria a esa cantidad de pulsaciones, y el `Shift`+`Tab` de
-                   vuelta costaria lo mismo. Eran sesenta cuando el spec 026 lo midio y
-                   desde el 031 son hasta 390, o sea que el argumento se hizo mas fuerte.
+                   vuelta costaria lo mismo. Eran sesenta cuando se midio y hoy son hasta
+                   390, o sea que el argumento se hizo mas fuerte.
 
                    El `0` lo tiene que llevar SIEMPRE alguna celda, o el tablero se cae del
                    orden de tabulacion entero. De ahi el `?? [0, 0]` de arriba para el
@@ -518,7 +518,7 @@ export default function Board({
                    nota entra en la baldosa pero el paso va abreviado a `#3`, y sobre
                    el fantasma las dos son lo que decide la jugada. Sale del MISMO
                    `cell` que se pinta, asi que no puede decir una nota y mostrar otra.
-                   Desde el spec 026 ES accesibilidad, y por eso dejo de ser lo unico: la
+                   ES accesibilidad, y por eso dejo de ser lo unico: la
                    celda es un `role="gridcell"` con `tabIndex` y con `aria-label`, o sea
                    que recibe foco y tiene nombre. El `title` pasa a ser el ECO de ese
                    nombre —el canal del mouse, mas corto porque el ojo ya ve el color y la
@@ -526,10 +526,7 @@ export default function Board({
                    paso, es el que anuncia el lector de pantalla al entrar el foco.
                    Los dos numeros del paso son el MISMO indice del dominio, sin renumerar,
                    justamente para que el tooltip no diga `paso 1` sobre una celda que
-                   pinta `#0`. Hasta este spec este parrafo decia lo contrario y remitia a
-                   una deuda que ya no existe: el hueco del teclado estaba anotado en
-                   `specs/deuda.md` —no en `specs/log.md`, como decia— y lo cerro este
-                   mismo spec. */
+                   pinta `#0`. */
                 title={cell ? `(${x},${y}) · ${cell.note} · paso ${cell.step}` : `(${x},${y})`}
               >
                 {/* La baldosa: el padding del contenedor hace la separacion y el
@@ -550,7 +547,7 @@ export default function Board({
                     no usa, los 19 px entran con 2,3 px de separacion medidos.
 
                     Los cuatro numeros de esta baldosa —la reserva, el aire, el redondeo y
-                    la posicion del `#N`— pasaron a RAZONES con el spec 021, no solo las dos
+                    la posicion del `#N`— pasaron a RAZONES, no solo las dos
                     fuentes. Si crecieran solo las letras, a celda 180 la nota quedaria
                     apretada contra un aire de 2 px y un redondeo de 8, y la baldosa dejaria
                     de leerse como una ficha para leerse como un casillero — que es
@@ -559,7 +556,7 @@ export default function Board({
 
                     El `pb` no mueve el `#N`: un absolute se posiciona contra la caja
                     de PADDING del contenedor, asi que el padding no lo empuja. */}
-                {/* El borde de 1 px es el UNICO numero fijo que sobrevive al spec 021, y
+                {/* El borde de 1 px es el UNICO numero fijo que sobrevive a la celda variable, y
                     hay que decirlo o el proximo que lea el archivo lo va a leer como un
                     olvido. Dos razones:
                     (a) un filete de 1 px es un DELIMITADOR y no un elemento tipografico
@@ -570,10 +567,9 @@ export default function Board({
                     (b) un borde en `calc()` da pixeles fraccionarios que el navegador
                     redondea distinto por arista, y sobre celdas ADYACENTES eso se ve
                     como un enrejado irregular — el artefacto mas visible posible justo en
-                    el elemento que mas se repite, que desde el spec 031 son hasta 390
-                    veces y no 60.
-                    El mismo argumento cubre por analogia los otros filetes que este spec
-                    tampoco convierte, y por eso van nombrados: el `border-2 border-dashed`
+                    el elemento que mas se repite, que son hasta 390 veces y no 60.
+                    El mismo argumento cubre por analogia los otros filetes que tampoco
+                    se convierten, y por eso van nombrados: el `border-2 border-dashed`
                     de `VELO_TAPA` y los tres escalones de grosor de la cabeza (3/2, 2/1,
                     2/0) que `DESIGN.md` fija. Son GRADOS del mismo filete: si el borde base
                     se queda en 1 px, lo que lo engorda se queda tambien, o el escalon deja

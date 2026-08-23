@@ -11,7 +11,7 @@ import type { PieceKey } from '../domain/types/pieces.types.ts';
  * Vive acá y no adentro de `PiecePalette.tsx` por el motivo de siempre:
  * `react-refresh/only-export-components` prohíbe que un `.tsx` exporte algo que no sea
  * el componente, y el centrado es aritmética que se equivoca en silencio. Es el mismo
- * movimiento con el que salió `cell-text.ts` en el spec 012.
+ * movimiento con el que salió `cell-text.ts`.
  *
  * ## Por qué la caja es fija, y por qué mide 5
  *
@@ -21,7 +21,7 @@ import type { PieceKey } from '../domain/types/pieces.types.ts';
  * bug que `PiecePalette.tsx` ya documenta para su línea de notas — un panel de control
  * que se acomoda solo cuando lo tocás mueve el botón justo cuando vas a apretarlo.
  *
- * Desde el spec 020 cada pieza recuerda **su** orientación, así que las doce cambian por
+ * Cada pieza recuerda **su** orientación, así que las doce cambian por
  * separado: rotar la `I` sola alcanzaría para descuadrar a sus once vecinas. La caja fija
  * es lo que hace que esa independencia no cueste layout.
  *

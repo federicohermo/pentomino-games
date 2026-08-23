@@ -97,7 +97,7 @@ export interface CeldaOcupada {
  * `(3,2)` se lee raro -un lector de pantalla dice "parentesis, tres, coma, dos,
  * parentesis" o se lo salta entero segun el motor-, asi que fila y columna se
  * cuentan desde 1 (persona, no indice) y van en frases separadas por comas, sin
- * parentesis ni signos. Mismo idioma que ya uso el spec 016 en
+ * parentesis ni signos. Mismo idioma que el de las miniaturas en
  * `OrientationPanel.tsx` -`"F, rotación 90°, reflejada"`-: una lista de hechos
  * dicha en voz, con el estado que aplica pegado al sustantivo que modifica
  * (`"reflejada"` ahi, `"muteada"` aca) en vez de un campo aparte. La letra de la
