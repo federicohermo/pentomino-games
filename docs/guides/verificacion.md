@@ -1,0 +1,127 @@
+# Verificación
+
+Todo lo que `pnpm verify` hace y por qué tiene la forma que tiene. Es el detalle que
+[`CLAUDE.md`](../../CLAUDE.md) resume en cinco líneas: allá vive la afirmación y el número medido,
+acá el razonamiento que los produjo.
+
+Nada de esto es preferencia. Cada decisión llegó midiendo, y varias llegaron después de que algo
+fallara **en verde** — que es el modo de falla que este documento persigue de punta a punta.
+
+## `pnpm verify` es el nodo de convergencia
+
+Corre `lint ‖ typecheck ‖ suite ‖ mcp:test` en paralelo y es lo que hay que correr antes de un PR.
+Medido con caché caliente: **41,2 s en serie contra 23,7 s en paralelo**, y un nodo rojo devuelve
+exit 1.
+
+**Y desde el spec 023 no depende de que alguien se acuerde:** `.github/workflows/verify.yml` lo corre
+sobre cada `pull_request` y cada push a `main`, con Chromium instalado por el propio workflow.
+
+El workflow corre el **script**, no la lista de nodos, y el porqué está comentado ahí: la forma exacta
+de `verify` ya costó dos trampas, y enumerarla en el YAML crearía un segundo lugar donde vive. La
+evidencia no es hipotética — el 029 le cambió `test` por `suite`, y un workflow con la lista habría
+seguido en verde sin el gate de coverage.
+
+### Su forma exacta tiene dos cosas que no son cosméticas
+
+`pnpm --filter "{.}" run --parallel "/^(…)$/"`, y las dos se descubrieron fallando en verde:
+
+- **`--filter "{.}"` es obligatorio.** `--parallel` es un flag recursivo de workspace y **excluye el
+  paquete raíz**: sin el filtro corre solo los scripts de `mcp-server` y reporta éxito sin haber
+  tocado `lint`, `typecheck` ni `test` de la app. El filtro va **por ruta** (`{.}`) y no por nombre,
+  para que renombrar el paquete no lo deje mudo otra vez.
+- **El `$` del regex tampoco es decorativo:** sin él el patrón también engancha `test:watch` y arranca
+  un segundo vitest. Medido: en shell no interactiva no cuelga —vitest sin TTY no entra en modo watch
+  y termina igual—, así que el costo visible es trabajo duplicado. En una terminal interactiva sí
+  queda esperando. El ancla borra la pregunta.
+
+## `suite` son DOS pasadas de vitest, en secuencia y no en paralelo
+
+Spec 029: primero `test` sin instrumentar y después `coverage`, con umbral **100** en las cuatro
+métricas. Los dos motivos están medidos y ninguno es preferencia:
+
+- **Instrumentar es medir el instrumento.** v8 inserta contadores en cada rama y los dos presupuestos
+  de performance del 009 pasan de 1,8 ms a **11,3 ms** contra un techo de 5. Se saltean bajo coverage
+  con `skipIf`, y el presupuesto se verifica en la pasada limpia — **la local**. Desde el 023 el mismo
+  `skipIf` los saltea también cuando `CI` está puesta, por el mismo motivo con otra cara: el runner de
+  Actions dio **8,4 ms y 15,7 ms** en dos corridas del mismo commit, o sea que no es una máquina lenta
+  con un número propio sino una VM sin número, y no hay techo que ahí signifique algo. El precio, que
+  el `skipIf` dice al lado: **estos dos presupuestos no los verifica la CI**, los verifica el `verify`
+  de tu máquina.
+- **Y en secuencia porque en paralelo el presupuesto también se cae, por otra razón.** Con cinco
+  procesos pesados compitiendo por CPU la mediana sube igual y `verify` daba rojo sin que nada
+  estuviera mal — el mismo modo de falla que el comentario de AC8 en `sequence.test.ts` ya
+  documentaba cuando subió su techo de 2 a 4. Encadenarlas deja **cuatro** nodos concurrentes, o sea
+  la misma contención que había antes del 029, y el presupuesto vuelve a medir lo que dice medir.
+
+### Por qué el umbral es 100 y no 95
+
+Un umbral más bajo es un presupuesto de deuda **sin dueño**: nadie sabe cuáles son las líneas que el
+margen permite, así que nadie las revisa. Y su corolario: **cero comentarios que saltean una rama**,
+por el mismo argumento que «cero `any`». Si una rama parece inalcanzable, se borra o se vuelve
+alcanzable — las cuatro que aparecieron están anotadas en el research del 029, y desde el spec 032 lo
+verifica `no-warning-comments` con los tres términos.
+
+Y el 023 encontró la quinta, que sólo se ve corriendo el gate en **otra** máquina: un comparador
+`a.name < b.name ? -1 : 1` dentro de `walk()` cubría sus dos ramas en Windows y una sola en el runner,
+porque **cuál lado se ejecuta depende del orden en que el filesystem entrega las entradas** —NTFS
+alfabético, ext4 por hash— y `mcp:test` daba `99.64%`. El umbral 100 pasaba por el sistema de archivos
+de quien lo corriera. La salida no fue un ignore sino borrar la rama: el comparador es aritmético
+(`Number(a > b) - Number(a < b)`), que además deja el orden total.
+
+## El nodo que más creció es `lint`
+
+Lo pagó el spec 030: el linting con tipos lo llevó de ~2,5 s a **11,0 s**. Se pagó con la medición al
+lado —`recommendedTypeChecked` sobre el repo entero da 100 hallazgos y 97 son un solo patrón de
+`node:test`— y ya se recortó lo que no valía: `import-x/no-cycle` costaba **15 s más** y encontraba
+cero ciclos, así que no está.
+
+Aun así el reloj de `verify` no lo manda el lint sino **`suite`, con 19,4 s**: el 030 se escribió
+previendo ser el nodo más lento de los cuatro y el 029 lo desbancó antes de que ninguno de los dos se
+mergeara. Es el dato de cada uno medido sin el otro — el par de arriba está medido con los dos
+puestos.
+
+Desde el spec 032 `lint` también lintea los **162 `.md`** del repo, en dos carriles: el preset
+completo sobre la documentación viva, y sólo las reglas que cazan un error de **renderizado** sobre
+`specs/[0-9]*/**`, porque la Desviación 2 de [`specs/README.md`](../../specs/README.md) dice que un
+spec mergeado no se reescribe. El detalle de los dos carriles está en `eslint.config.js`, al lado de
+cada bloque.
+
+## Los tests de `src/` son dos proyectos de Vitest y un solo comando
+
+Spec 029. El corte no es por capa sino por lo que el test necesita:
+
+- **`node`** — `environment: 'node'` contra `node-web-audio-api`. El dominio es puro y el audio tiene
+  una implementación nativa de Web Audio, así que corre ahí sin adaptación.
+- **`browser`** — Chromium de verdad, por Playwright, para los archivos `*.browser.test.tsx`. Entra
+  porque jsdom no puede: `Spectrum.tsx` necesita canvas 2D, `createLinearGradient`, `ResizeObserver`,
+  `matchMedia` y un `getBoundingClientRect` con números, y `audio/engine.ts` necesita
+  `new AudioContext()` y `window.setInterval`. Cubrirlos con jsdom exigiría mockear exactamente el
+  código que se quiere cubrir, que es cobertura sin verificación.
+
+El discriminante es el **sufijo** y no una carpeta: un test de `Board.tsx` que necesita navegador
+sigue siendo un test de `Board.tsx` y vive al lado.
+
+**Chromium no está en el lockfile**: un clone nuevo necesita `pnpm exec playwright install chromium`
+antes del primer `verify`. En CI eso no hace falta acordárselo: el workflow del 023 lo instala con
+`--with-deps`, que el runner de Ubuntu necesita para las librerías de sistema.
+
+Los del MCP server son de `node --test`, en su propio paquete, y desde el 029 corren con los
+`--test-coverage-*=100` de node.
+
+## El gestor es pnpm
+
+Fijado en `packageManager` y versionado en `pnpm-lock.yaml`. **No usar npm**: instalaría un
+`node_modules` plano y dejaría un `package-lock.json` que Netlify puede llegar a preferir. La config
+de pnpm vive en `pnpm-workspace.yaml`, no en el `package.json`.
+
+`node_modules` es **estricto**: solo se puede importar lo declarado en `package.json`. Un import de
+una dependencia transitiva que con npm andaba, acá falla — es a propósito, y es la red que atrapa los
+imports fantasma antes de que lleguen a producción.
+
+## Versión de Node
+
+Node ≥ 20.19 o ≥ 22.12 — lo exige Vite 7 y desde el spec 023 lo declara **nuestro propio** `engines`,
+no el de Vite: con Node 18 el gestor lo dice al instalar, en vez de que se entere el build.
+
+El MCP server pide **≥ 22.18** porque corre TypeScript sin compilar; es un piso de tooling, vive en el
+`engines` del server —que es quien lo necesita— y con Node 20 solo se pierde el server.

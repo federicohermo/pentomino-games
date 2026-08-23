@@ -19,7 +19,7 @@ El global construye el grafo con un nodo por encabezado y advierte que *"un graf
 trabajo que se pisa"*. En este repo, desde el spec 011, la declaración viene por tarea
 ([`specs/README.md`](../../../specs/README.md#formato-de-una-tarea)):
 
-```
+```markdown
 - [ ] T012 [P] [M] Descripción, con la ruta del archivo que toca
 ```
 

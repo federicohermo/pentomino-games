@@ -22,101 +22,28 @@ pregunta es si vuelve al instrumento más expresivo, no más difícil.
 
 ## Comandos
 
-La lista está en `package.json`. Lo que ese archivo no dice:
+La lista está en `package.json`. Lo que ese archivo no dice está en
+[docs/guides/verificacion.md](./docs/guides/verificacion.md), entero. Lo que hay que saber antes de
+abrirlo:
 
-**`pnpm verify` es el nodo de convergencia** — corre `lint ‖ typecheck ‖ suite ‖ mcp:test` en paralelo y
-es lo que hay que correr antes de un PR. Medido con caché caliente: 41,2 s en serie contra 23,7 s en
-paralelo, y un nodo rojo devuelve exit 1.
-
-**Y desde el spec 023 no depende de que alguien se acuerde:** `.github/workflows/verify.yml` lo corre
-sobre cada `pull_request` y cada push a `main`, con Chromium instalado por el propio workflow. El
-workflow corre el **script**, no la lista de nodos, y el porqué está comentado ahí: la forma exacta de
-`verify` ya costó dos trampas, y enumerarla en el YAML crearía un segundo lugar donde vive. La
-evidencia no es hipotética — el 029 le cambió `test` por `suite` y un workflow con la lista habría
-seguido en verde sin el gate de coverage.
-
-**`suite` son DOS pasadas de vitest, en secuencia y no en paralelo** (spec 029): primero `test` sin
-instrumentar y después `coverage`, con umbral **100** en las cuatro métricas. Los dos motivos están
-medidos y ninguno es preferencia:
-
-- **Instrumentar es medir el instrumento.** v8 inserta contadores en cada rama y los dos presupuestos
-  de performance del 009 pasan de 1,8 ms a **11,3 ms** contra un techo de 5. Se saltean bajo coverage
-  con `skipIf`, y el presupuesto se verifica en la pasada limpia — **la local**. Desde el 023 el mismo
-  `skipIf` los saltea también cuando `CI` está puesta, por el mismo motivo con otra cara: el runner de
-  Actions dio **8,4 ms y 15,7 ms** en dos corridas del mismo commit, o sea que no es una máquina lenta
-  con un número propio sino una VM sin número, y no hay techo que ahí signifique algo. El precio, que
-  el `skipIf` dice al lado: **estos dos presupuestos no los verifica la CI**, los verifica el `verify`
-  de tu máquina.
-- **Y en secuencia porque en paralelo el presupuesto también se cae, por otra razón.** Con cinco
-  procesos pesados compitiendo por CPU la mediana sube igual y `verify` daba rojo sin que nada
-  estuviera mal — el mismo modo de falla que el comentario de AC8 en `sequence.test.ts` ya
-  documentaba cuando subió su techo de 2 a 4. Encadenarlas deja **cuatro** nodos concurrentes, o sea
-  la misma contención que había antes del 029, y el presupuesto vuelve a medir lo que dice medir.
-
-El umbral es 100 y no 95 porque un umbral más bajo es un presupuesto de deuda **sin dueño**: nadie
-sabe cuáles son las líneas que el margen permite, así que nadie las revisa. Y su corolario: **cero
-`/* v8 ignore */`**, por el mismo argumento que «cero `any`». Si una rama parece inalcanzable, se
-borra o se vuelve alcanzable — las cuatro que aparecieron están anotadas en el research del 029.
-
-Y el 023 encontró la quinta, que sólo se ve corriendo el gate en **otra** máquina: un comparador
-`a.name < b.name ? -1 : 1` dentro de `walk()` cubría sus dos ramas en Windows y una sola en el runner,
-porque **cuál lado se ejecuta depende del orden en que el filesystem entrega las entradas** —NTFS
-alfabético, ext4 por hash— y `mcp:test` daba `99.64%`. El umbral 100 pasaba por el sistema de archivos
-de quien lo corriera. La salida no fue un ignore sino borrar la rama: el comparador es aritmético
-(`Number(a > b) - Number(a < b)`), que además deja el orden total.
-
-**El nodo que más creció es `lint`**, y lo pagó el spec 030: el linting con tipos lo llevó de ~2,5 s a
-**11,0 s**. Se pagó con la medición al lado —`recommendedTypeChecked` sobre el repo entero da 100
-hallazgos y 97 son un solo patrón de `node:test`— y ya se recortó lo que no valía: `import-x/no-cycle`
-costaba **15 s más** y encontraba cero ciclos, así que no está. Aun así el reloj de `verify` no lo manda
-el lint sino **`suite`, con 19,4 s**: el 030 se escribió previendo ser el nodo más lento de los cuatro y
-el 029 lo desbancó antes de que ninguno de los dos se mergeara. Es el dato de cada uno medido sin el
-otro — el par de arriba está medido con los dos puestos.
-
-Su forma exacta —`pnpm --filter "{.}" run --parallel "/^(…)$/"`— tiene dos cosas que **no** son
-cosméticas, y las dos se descubrieron fallando en verde:
-
-- **`--filter "{.}"` es obligatorio.** `--parallel` es un flag recursivo de workspace y **excluye el
-  paquete raíz**: sin el filtro corre solo los scripts de `mcp-server` y reporta éxito sin haber tocado
-  `lint`, `typecheck` ni `test` de la app. El filtro va **por ruta** (`{.}`) y no por nombre, para que
-  renombrar el paquete no lo deje mudo otra vez.
-- **El `$` del regex tampoco es decorativo:** sin él el patrón también engancha `test:watch` y arranca
-  un segundo vitest. Medido: en shell no interactiva no cuelga —vitest sin TTY no entra en modo watch y
-  termina igual—, así que el costo visible es trabajo duplicado. En una terminal interactiva sí queda
-  esperando. El ancla borra la pregunta.
-
-**El gestor es pnpm**, fijado en `packageManager` y versionado en `pnpm-lock.yaml`. No usar npm:
-instalaría un `node_modules` plano y dejaría un `package-lock.json` que Netlify puede llegar a
-preferir. La config de pnpm vive en `pnpm-workspace.yaml`, no en el `package.json`.
-
-`node_modules` es **estricto**: solo se puede importar lo declarado en `package.json`. Un import de una
-dependencia transitiva que con npm andaba, acá falla — es a propósito, y es la red que atrapa los
-imports fantasma antes de que lleguen a producción.
-
-Los tests de `src/` son **dos proyectos de Vitest y un solo comando** (spec 029). El corte no es por
-capa sino por lo que el test necesita:
-
-- **`node`** — `environment: 'node'` contra `node-web-audio-api`. El dominio es puro y el audio tiene
-  una implementación nativa de Web Audio, así que corre ahí sin adaptación.
-- **`browser`** — Chromium de verdad, por Playwright, para los archivos `*.browser.test.tsx`. Entra
-  porque jsdom no puede: `Spectrum.tsx` necesita canvas 2D, `createLinearGradient`, `ResizeObserver`,
-  `matchMedia` y un `getBoundingClientRect` con números, y `audio/engine.ts` necesita
-  `new AudioContext()` y `window.setInterval`. Cubrirlos con jsdom exigiría mockear exactamente el
-  código que se quiere cubrir, que es cobertura sin verificación.
-
-El discriminante es el **sufijo** y no una carpeta: un test de `Board.tsx` que necesita navegador
-sigue siendo un test de `Board.tsx` y vive al lado. **Chromium no está en el lockfile**: un clone
-nuevo necesita `pnpm exec playwright install chromium` antes del primer `verify`. En CI eso no hace
-falta acordárselo: el workflow del 023 lo instala con `--with-deps`, que el runner de Ubuntu necesita
-para las librerías de sistema.
-
-Los del MCP server son de `node --test`, en su propio paquete, y desde el 029 corren con los
-`--test-coverage-*=100` de node.
-
-Node ≥ 20.19 o ≥ 22.12 — lo exige Vite 7 y desde el spec 023 lo declara **nuestro propio**
-`engines`, no el de Vite: con Node 18 el gestor lo dice al instalar, en vez de que se entere el build.
-El MCP server pide **≥ 22.18** porque corre TypeScript sin compilar; es un piso de tooling, vive en el
-`engines` del server —que es quien lo necesita— y con Node 20 solo se pierde el server.
+- **`pnpm verify` es el nodo de convergencia** y es lo que hay que correr antes de un PR: corre
+  `lint ‖ typecheck ‖ suite ‖ mcp:test` en paralelo —23,7 s contra 41,2 s en serie— y desde el spec
+  023 lo corre además GitHub Actions sobre cada PR, llamando al **script** y no a la lista de nodos.
+- **`suite` son dos pasadas de vitest en secuencia**, y la segunda tiene el gate de coverage con
+  umbral **100** en las cuatro métricas. Las dos cosas —dos pasadas, y en secuencia— existen porque
+  instrumentar rompe los presupuestos de performance del 009, medido.
+- **Cero excepciones al umbral**: ni un comentario que saltee una rama. Si parece inalcanzable, se
+  borra o se vuelve alcanzable. Desde el 032 lo verifica `no-warning-comments`.
+- **`lint` también lintea los 162 `.md`** desde el 032, en dos carriles: preset completo en la
+  documentación viva, y sólo las reglas de **renderizado** en `specs/[0-9]*/**`, porque un spec
+  mergeado no se reescribe.
+- **Los tests de `src/` son dos proyectos de Vitest**, `node` y `browser`. El discriminante es el
+  **sufijo** `*.browser.test.tsx` y no una carpeta. **Chromium no está en el lockfile**: un clone
+  nuevo necesita `pnpm exec playwright install chromium` antes del primer `verify`.
+- **El gestor es pnpm y no npm** — npm dejaría un `package-lock.json` que Netlify puede preferir. Y
+  `node_modules` es **estricto**: importar una dependencia transitiva falla, a propósito.
+- **Node ≥ 20.19 o ≥ 22.12**, declarado en nuestro propio `engines`. El MCP server pide **≥ 22.18**
+  porque corre TypeScript sin compilar, y ese piso vive en el `engines` del server.
 
 ---
 
@@ -124,7 +51,7 @@ El MCP server pide **≥ 22.18** porque corre TypeScript sin compilar; es un pis
 
 `src/` son cuatro capas en carpetas, con **una sola dirección de dependencia**:
 
-```
+```text
 types/ ← constants/ ← módulos              types/ no importa nada de afuera de types/
 transform.ts ← board.ts                    domain/ no importa nada de fuera de domain/
              ← music.ts ← invariants.ts    audio/  no importa nada de fuera de audio/
@@ -154,75 +81,42 @@ Detalle en [docs/architecture/overview.md](./docs/architecture/overview.md).
 
 ## Reglas que valen en todo el repo
 
-Las de cada capa se cargan solas al tocar sus archivos (`.claude/rules/`). Estas valen siempre, y el
-porqué de cada una está en [docs/guides/conventions.md](./docs/guides/conventions.md). En
-`.claude/skills/` viven además las especializaciones de `/spec-review` y `/spec-implement`: esos
-skills globales son el piso genérico, y las locales cablean las rutas de `specs/` y el formato de
-tarea del repo. Los dos `-batch` no tienen contraparte global y son de acá:
-`/spec-review-batch` revisa un **lote** en paralelo —un agente por spec, sin worktrees, más uno de
-coherencia que mira el lote entero y caza las contradicciones entre specs—; `/spec-implement-batch` reparte el lote en carriles —uno
-por cadena de dependencias— y corre cada carril en su worktree. En ese orden: un cruce detectado como
-texto cuesta un párrafo y detectado en dos carriles cuesta un rebase.
+Las de cada capa se cargan solas al tocar sus archivos (`.claude/rules/`). Estas valen siempre, y
+**el porqué de cada una está en [docs/guides/conventions.md](./docs/guides/conventions.md)** — acá
+está la regla y quién la verifica, que es lo que hace falta antes de escribir una línea.
 
-El tercero cierra la vuelta del otro lado: `/pr-review-batch` revisa los **PR abiertos** de GitHub
-—un agente por PR en su worktree—, arregla, corre `pnpm verify` y pushea. Es de acá y no genérico
-porque las cuatro cosas que un review de PR necesita son propias del repo: los PR salen de
-`mcp__github__` y no de `gh`, que no está en el PATH; los criterios de aceptación salen de
-`specs/NNN-*/spec.md` y no de un ticket; el cierre es `pnpm verify` y no `npm run verify`; y **las
-ramas se apilan**, así que el diff va contra el `base.ref` del PR y nunca contra `main`.
+En `.claude/skills/` viven las especializaciones de `/spec-review` y `/spec-implement` —los globales
+son el piso genérico; las locales cablean las rutas de `specs/` y el formato de tarea— y los tres
+`-batch`, que son de acá: `/spec-review-batch` y `/spec-implement-batch` revisan e implementan un
+lote en paralelo, y `/pr-review-batch` cierra la vuelta sobre los PR abiertos. En ese orden: un
+cruce detectado como texto cuesta un párrafo, y detectado en dos carriles cuesta un rebase.
 
-Estas son las reglas:
+Estas son las reglas. Casi todas las verifica `pnpm lint` desde el spec 030 — antes eran prosa, y la
+mitad estaba desincronizada:
 
-- **La dirección de dependencia la verifica el linter**, no la revisión. Desde el spec 030 se prohíbe
-  por **ruta** y no por el string del import: `import-x/no-restricted-paths` con una zona por arista
-  —las cuatro capas, `mcp-server/`, y `DOMAIN_INTERNO` módulo por módulo adentro de `domain/`—, todas
-  en una sola regla. Dejó de ser una red: la ruta se resuelve contra el filesystem, así que un
-  `domain/sub/x.ts` nuevo queda cubierto sin tocar la config, y ya no hay `../` que contar ni tres
-  formas del mismo specifier que listar. Lo único que quedó en `no-restricted-imports` son los
-  **paquetes** —React para las dos capas puras, y los de estado global—, porque un paquete de npm no
-  tiene ruta en el repo.
-- **Sin barrels, con extensión explícita, sin alias.** Todo import local lleva extensión
-  (`./domain/transform.ts`) — omitirla **no rompe la app**, porque Vite resuelve igual, así que el
-  error sería invisible del lado del navegador y solo aparecería al cargar `domain/` con node crudo.
-  Desde el 030 **lo verifica el linter** (`no-restricted-syntax`), que es lo que permitió que la
-  dirección interna de `domain/` deje de listar las tres formas de escribir el mismo import. El
-  selector nombra las **cuatro** formas de referir un módulo —`import`, `import()`, `export … from` y
-  `export * from`—: cubrir solo la primera lo devolvía a ser una red, y las otras tres existen en el
-  repo.
-- **Los módulos no declaran constantes.** Un `.ts` de capa tiene funciones y nada más; los valores
-  fijos van a `<capa>/constants/` y los tipos a `<capa>/types/`. El motivo es medible: antes había
-  cuatro pares de números que tenían que coincidir y nada sincronizaba. Lo verifica el linter **en
-  `domain/` y en `audio/`, no en `components/`**, y la línea es la del motivo: el problema medido es
-  un valor que existe dos veces, y una constante privada de un solo componente no puede
-  desincronizarse con nada. Las siete de `Spectrum.tsx` y `Playhead.tsx` se quedan donde están, con
-  los docblocks que explican el mecanismo de dibujo al lado del dibujo.
+- **La dirección de dependencia se prohíbe por ruta**, no por el string del import
+  (`import-x/no-restricted-paths`). Una carpeta nueva queda cubierta sola.
+- **Sin barrels, con extensión explícita, sin alias.** Todo import local lleva `.ts`/`.tsx`.
+  Omitirla **no rompe la app** —Vite resuelve igual— así que el error sería invisible hasta cargar
+  `domain/` con node crudo.
+- **Los módulos no declaran constantes.** Los valores fijos van a `<capa>/constants/` y los tipos a
+  `<capa>/types/`. Verificado en `domain/` y `audio/`, **no** en `components/`: el problema medido
+  es un valor que existe dos veces, y una constante privada de un componente no puede
+  desincronizarse con nada.
 - **Español** en comentarios, commits y specs.
-- **Cero `enum`.** El `erasableSyntaxOnly` del tsconfig los rechaza —y es la misma opción que permite
-  que node cargue `src/domain/` sin compilar—, y desde el 030 también el linter, con el motivo del
-  repo en el mensaje. Conjunto cerrado = const-object + union type derivado.
-- **Cero `any` y cero `@ts-ignore`.** Los tres que hubo estaban tapando problemas de diseño, no de
-  tipos. Si aparece la tentación de uno nuevo, sospechar del diseño antes que de TypeScript. Su
-  contraparte lint es `noInlineConfig`: **no hay `eslint-disable`**, porque silenciar la regla es la
-  otra forma de tapar el problema. Si hace falta una excepción real, va como override por archivo en
-  `eslint.config.js` —que se ve en el diff y se explica— y no como un comentario suelto.
-- **La aserción no nula (`!`) es de la misma familia, y el spec 027 la nombró.** Un `!` es un `any`
-  chiquito: le dice al compilador que se calle sin darle un motivo. La regla es que **en código de
-  producción cada una viene con el comentario que dice por qué el compilador no puede verlo**, y que
-  antes de escribirla se pruebe el `const` — el `!` de `engine.ts` existía sólo porque TypeScript
-  pierde el estrechamiento al entrar al closure de un `forEach` cuando la variable es un `let` de
-  módulo, y salió gratis con una `const` local. Quedan **dos**, las dos anotadas: la de `main.tsx`
-  (el idiom de Vite sobre un `#root` que el propio `index.html` garantiza) y la de
-  `domain/invariants.ts` (el `queue.shift()!` de un BFS, dentro de un `while` que ya garantiza la
-  cola no vacía). **No** vale para los tests, donde el `!` sobre un `find` o un `querySelector` que
-  el propio test acaba de fijar es la forma de que el test **falle** si el nodo no está — hay 66 en
-  `src/**/__tests__/` y son deliberadas.
-- **Sin estado global.** Ni Context, ni Redux, ni Zustand — y desde el 030 lo verifica el linter, por
-  el paquete y por la llamada a `createContext`.
-- **Nada de `.only` ni `.skip` en un test.** Es la misma familia de bug que el `--filter "{.}"` y el
-  `$` del regex: fallar en verde. En `src/` los rechaza `@vitest/eslint-plugin`, más el test sin una
-  sola aserción; en `mcp-server/` —que corre con `node --test`, donde ese plugin no llega— los rechaza
-  un selector de `no-restricted-syntax`. El test sin aserción ahí no tiene equivalente barato y queda
-  afuera.
+- **Cero `enum`.** Lo rechaza `erasableSyntaxOnly` —la misma opción que deja a node cargar
+  `src/domain/` sin compilar— y también el linter. Conjunto cerrado = const-object + union derivado.
+- **Cero `any` y cero `@ts-ignore`.** Los tres que hubo tapaban problemas de diseño, no de tipos.
+  Su contraparte es `noInlineConfig`: **no hay `eslint-disable`**. Una excepción real va como
+  override por archivo en `eslint.config.js`, que se ve en el diff y se explica.
+- **La aserción no nula (`!`) es de la misma familia**: un `any` chiquito. Antes de escribir una,
+  probar el `const`. Quedan **tres** en producción, las tres como override con su motivo — y esa
+  lista es la única fuente del número, que mientras vivió acá se desincronizó dos veces. En los
+  tests sí valen, y son deliberadas.
+- **Nada de saltear una rama de coverage.** Si parece inalcanzable, se borra o se vuelve alcanzable.
+- **Sin estado global.** Ni Context, ni Redux, ni Zustand.
+- **Nada de `.only` ni `.skip` en un test**, ni un test sin una sola aserción. Es la misma familia
+  de bug que el `--filter "{.}"`: fallar en verde.
 - **Los comentarios explican el porqué**, no el qué: una decisión, una restricción, un bug evitado.
 - **Los borrados van en su propio commit**, para que revertirlos sea trivial.
 
@@ -268,6 +162,7 @@ así — eso vive en los comentarios, no en la salida de una tool.
 | Capa de audio | [docs/architecture/audio.md](./docs/architecture/audio.md) | Grafo Web Audio, ADSR, scheduler con lookahead, reconciliación de loops |
 | Lenguaje visual | [DESIGN.md](./DESIGN.md) | Los 12 colores y su tónica, el contraste como test, qué muestra una celda y qué no se comunica con color |
 | Inicio rápido | [docs/guides/quickstart.md](./docs/guides/quickstart.md) | Setup, comandos, flujos típicos |
+| Verificación | [docs/guides/verificacion.md](./docs/guides/verificacion.md) | `verify` entero: los cuatro nodos, las dos pasadas de `suite`, el umbral 100, los dos proyectos de Vitest y los dos carriles de Markdown |
 | Convenciones | [docs/guides/conventions.md](./docs/guides/conventions.md) | Organización de `src/`, TypeScript, geometría, estado, comentarios |
 | Troubleshooting | [docs/guides/troubleshooting.md](./docs/guides/troubleshooting.md) | Errores reales ya pisados en este repo |
 | MCP server de dominio | [docs/guides/mcp-domain.md](./docs/guides/mcp-domain.md) | Las seis tools: cinco que ejecutan el dominio o lo leen, y la que escribe |

@@ -339,3 +339,35 @@ explique `verify`, y `quickstart.md` sólo lista comandos— más lo que ya est�
 `@eslint/markdown` es el plugin **oficial** de ESLint, entra con `extends: ['markdown/recommended']` en
 la flat config que ya existe, y hereda gratis el `--max-warnings 0` y el `noInlineConfig` que el 030
 puso.
+
+## 9. Lo que costó, medido al implementar (T024)
+
+El spec dejó este hueco a propósito: **el precio se mide al implementar, no antes.** Todo lo de acá
+es de la misma máquina y la misma sesión, con caché caliente, el 2026-08-23.
+
+| Nodo | Antes | Después | Δ |
+|---|---|---|---|
+| `lint` | **13,6 s** | **16,1 s** | +2,5 s (+18 %) |
+| `suite` | 3,0 s el proyecto `node` solo | **33,8 s** el nodo entero | — |
+| `typecheck` | — | 3,6 s | sin cambio |
+| `mcp:test` | — | 8,0 s | sin cambio |
+| **`verify`** | — | **37,8 s** | — |
+
+**El «antes» de `lint` está medido hoy y no copiado del 030.** Se corrió el mismo `eslint .` con
+`--ignore-pattern "**/*.md"`, o sea el repo de hoy sin Markdown, porque comparar contra los 11,0 s
+que registró el 030 no diría nada: es otra máquina, otro momento y otra carga. Lo que el número de
+acá afirma es sólo esto: **linteear los 162 `.md` cuesta 2,5 s.**
+
+### La decisión de meter Markdown en `lint` no se reabre
+
+Era la condición que el plan puso: se reabre si `lint` desbanca a `suite` como nodo más lento. No lo
+hace, y no por poco — **33,8 s contra 16,1 s**, o sea que `suite` sigue mandando el reloj de `verify`
+por más del doble. Con los 2,5 s de Markdown adentro, `lint` sigue siendo el segundo.
+
+### Y una advertencia sobre el número de `suite`
+
+Los 33,8 s no se comparan con los 19,4 s que anotó el 030. No es una regresión de este spec: es otra
+corrida en otra máquina, y este mismo `verify` dio **38,3 s** en su primera pasada por el
+`Re-optimizing dependencies` de Vite y 37,8 s en la segunda. Lo que sí es de este spec son **14 tests
+nuevos** (577 → 591), y el proyecto `node` entero —los cuatro nuevos incluidos— corre en 3,0 s: el
+reloj de `suite` lo manda el proyecto de navegador, como desde el 029.

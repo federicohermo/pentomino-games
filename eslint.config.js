@@ -1,4 +1,5 @@
 import js from '@eslint/js'
+import markdown from '@eslint/markdown'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
@@ -113,6 +114,52 @@ const ZONAS = [
  * Un `export { x }` sin `from` tiene `source: null`, asi que el atributo no matchea y no
  * dispara. Un `import(variable)` tampoco: sin `source.value` no hay string que juzgar.
  */
+/**
+ * Las reglas del preset de Markdown que cazan un error de RENDERIZADO: las que hacen que
+ * GitHub muestre algo distinto de lo que el autor escribio. Ninguna es de estilo.
+ *
+ * Existen como lista con nombre porque el carril de los specs congelados las **reenciende
+ * una por una** despues de apagar el preset entero, y no al reves. La diferencia no es
+ * cosmetica: en flat config un override REEMPLAZA, asi que una lista por exclusion dejaria
+ * entrar sola cualquier regla nueva que el preset agregue en una version futura — y eso
+ * seria un `pnpm lint` en rojo sobre 29 specs cerrados, que la Desviacion 2 de
+ * `specs/README.md` prohibe reescribir. Es la misma forma que `REGLAS_DEL_REPO`, y por el
+ * mismo motivo.
+ */
+const RENDERIZADO = {
+  // La que encontro el bug: una fila con mas celdas de las que declara el encabezado
+  // pierde las de mas AL RENDERIZAR, en silencio. `specs/027/research.md:112` descartaba
+  // su tercera columna por dos barras sin escapar.
+  'markdown/table-column-count': 'error',
+  // `#Titulo` sin espacio no es un encabezado: sale como texto plano.
+  'markdown/no-missing-atx-heading-space': 'error',
+  // `(texto)[url]` esta dado vuelta y no renderiza como enlace.
+  'markdown/no-reversed-media-syntax': 'error',
+  // `** texto **` con espacios adentro no renderiza en negrita.
+  'markdown/no-space-in-emphasis': 'error',
+  // Un enlace o una imagen sin destino no llevan a ningun lado.
+  'markdown/no-empty-links': 'error',
+  'markdown/no-empty-images': 'error',
+  'markdown/no-empty-definitions': 'error',
+  // De dos definiciones con la misma etiqueta, la segunda se ignora sin avisar.
+  'markdown/no-duplicate-definitions': 'error',
+  // Una URL que parece una referencia se resuelve como referencia y apunta a otro lado.
+  'markdown/no-reference-like-urls': 'error',
+  'markdown/no-invalid-label-refs': 'error',
+}
+
+/**
+ * Todas las reglas del preset de Markdown, en `off`. Se deriva del preset —y no de una
+ * lista escrita a mano— justamente para que una regla que `@eslint/markdown` agregue en una
+ * version futura entre APAGADA en el carril de los specs congelados, en vez de entrar sola
+ * y poner en rojo 29 specs que no se pueden reescribir.
+ */
+const PRESET_MARKDOWN_APAGADO = Object.fromEntries(
+  markdown.configs.recommended
+    .flatMap((c) => Object.keys(c.rules ?? {}))
+    .map((regla) => [regla, 'off']),
+)
+
 const NODOS_CON_RUTA = ['ImportDeclaration', 'ImportExpression', 'ExportNamedDeclaration', 'ExportAllDeclaration']
 
 /** El specifier local al que le falta la extension. */
@@ -324,7 +371,69 @@ export default tseslint.config([
       }],
 
       'no-restricted-syntax': ['error', ...REGLAS_DEL_REPO],
+
+      // La asercion no nula es un `any` chiquito: le dice al compilador que se calle sin
+      // darle un motivo. `CLAUDE.md` la prohibe desde el spec 027 y hasta hoy no la
+      // verificaba nadie, con el resultado esperable — el archivo decia que quedaban DOS
+      // en produccion y son TRES.
+      //
+      // La regla se apaga en dos lugares y en ninguno mas, los dos abajo con su motivo.
+      // Ese par de overrides pasa a ser la UNICA fuente del numero: mientras el conteo
+      // vivio en la prosa de `CLAUDE.md` se desincronizo, que es exactamente el modo de
+      // falla que el 030 vino a cerrar para las otras seis reglas.
+      '@typescript-eslint/no-non-null-assertion': 'error',
+
+      // El corolario del umbral 100, que hasta el 032 era prosa. Si una rama parece
+      // inalcanzable la salida es borrarla o volverla alcanzable, nunca pedirle al
+      // proveedor de coverage que la saltee: un umbral con escapes es un umbral mas bajo
+      // sin dueno, que es el argumento con el que el 029 rechazo el 95.
+      //
+      // `location: 'anywhere'` y no el default `start`: los tres terminos aparecen en
+      // medio de una frase, no encabezando el comentario.
+      //
+      // Los tres terminos viven en la config y NO en este docblock, y esa perifrasis es
+      // obligada: el bloque `**/*.js` de arriba lintea este mismo archivo, y la regla
+      // mira texto y no sintaxis, asi que **deletrear un termino para explicar por que no
+      // usarlo lo viola igual**. Es el precio de una regla textual y se paga una vez —
+      // `vite.config.ts` pagaba el suyo desde el 029 y lo arreglo este spec.
+      'no-warning-comments': ['error', {
+        terms: ['v8 ignore', 'c8 ignore', 'istanbul ignore'],
+        location: 'anywhere',
+      }],
     },
+  },
+
+  {
+    // Las TRES aserciones no nulas de produccion, cada una con el motivo por el que el
+    // compilador no puede verlo. Van como override por archivo y no como comentario
+    // suelto porque `noInlineConfig` no admite `eslint-disable`, y porque `CLAUDE.md` ya
+    // predice este mecanismo palabra por palabra: «va como override por archivo en
+    // `eslint.config.js` —que se ve en el diff y se explica— y no como un comentario
+    // suelto».
+    //
+    // Antes de agregar una cuarta, probar el `const`: la que habia en `engine.ts` existia
+    // solo porque TypeScript pierde el estrechamiento al entrar al closure de un
+    // `forEach` cuando la variable es un `let` de modulo, y salio gratis con una `const`
+    // local (spec 027).
+    //
+    // - `main.tsx`         el idiom de Vite sobre un `#root` que el propio `index.html`
+    //                      garantiza.
+    // - `invariants.ts`    el `queue.shift()!` de un BFS, dentro de un `while` que ya
+    //                      garantiza la cola no vacia.
+    // - `Board.tsx`        el ancestro `[role="grid"]` existe por construccion: el
+    //                      handler esta en un descendiente de esa grilla. El `if`
+    //                      alternativo seria una rama inalcanzable, y el umbral 100 no
+    //                      deja cubrirla.
+    files: ['src/main.tsx', 'src/domain/invariants.ts', 'src/components/Board.tsx'],
+    rules: { '@typescript-eslint/no-non-null-assertion': 'off' },
+  },
+
+  {
+    // En un test el `!` sobre un `find` o un `querySelector` que el propio test acaba de
+    // fijar es la forma de que el test **falle** si el nodo no esta, que es justo lo que
+    // se quiere. `CLAUDE.md` ya las declara deliberadas.
+    files: ['src/**/__tests__/**/*.{ts,tsx}', 'mcp-server/**/__tests__/**/*.ts'],
+    rules: { '@typescript-eslint/no-non-null-assertion': 'off' },
   },
 
   {
@@ -437,6 +546,69 @@ export default tseslint.config([
         selector: 'CallExpression[callee.object.name=/^(test|it|describe|suite)$/][callee.property.name=/^(only|skip)$/]',
         message: 'Nada de .only ni .skip: dejan pasar la suite en verde. Arreglar el test o borrarlo.',
       }],
+    },
+  },
+
+  {
+    // CARRIL A — la documentacion viva: `CLAUDE.md`, `README.md`, `DESIGN.md`, `docs/**`,
+    // `.claude/**`, `mcp-server/**` y los tres registros de `specs/`. Preset completo.
+    //
+    // Puede cumplir una regla de estilo porque se mantiene al dia por definicion, que es
+    // justo lo contrario de un spec mergeado. El carril B de abajo la acota.
+    //
+    // **El `extends` va con el OBJETO y no con el string `'markdown/recommended'`**, y no
+    // es preferencia: este archivo se arma con `tseslint.config()`, que tira ante un string
+    // ahi —«This is a feature of eslint's defineConfig() helper and is not supported by
+    // typescript-eslint»—. O sea que la forma que documenta `@eslint/markdown`, que asume
+    // `defineConfig`, no falla al lintear un `.md`: falla al CARGAR la config, y se cae
+    // `pnpm lint` entero.
+    files: ['**/*.md'],
+    plugins: { markdown },
+    language: 'markdown/gfm',
+    languageOptions: {
+      // Sin esto el `---` del frontmatter se lee como contenido y los `name:` y
+      // `description:` de adentro salen como encabezados. Medido: 22 falsos positivos, y
+      // los 22 son comentarios YAML de los archivos de `.claude/`.
+      frontmatter: 'yaml',
+    },
+    extends: [markdown.configs.recommended],
+    rules: {
+      // Apagada en los DOS carriles, y no porque moleste: en este repo **no puede
+      // acertar**. Lo que dispara la regla es el formato de tarea que `specs/README.md`
+      // documenta —el `[P]` y el `[M]` de cada `- [ ] T012 [P] [M] texto`—, que para
+      // Markdown es una referencia de etiqueta sin definir. Medido: 341 hallazgos, 191 de
+      // `[P]`, 131 de `[M]` y el resto prosa entre corchetes.
+      'markdown/no-missing-label-refs': 'off',
+
+      // Tambien apagada, y esta con un motivo mas fuerte: **arreglar lo que marca lo
+      // rompe de verdad**. Su slugger no coincide con el de GitHub sobre un encabezado
+      // con backticks y guion bajo, asi que declara roto el unico enlace de
+      // `docs/guides/mcp-domain.md` que apunta a `#find_symbol`, que en GitHub resuelve.
+      // Lo que si se verifica —enlaces y anclas, con el slugger correcto— es
+      // `src/__tests__/enlaces-resueltos.test.ts`, que ademas cubre los enlaces a OTRO
+      // archivo, que esta regla no mira.
+      'markdown/no-missing-link-fragments': 'off',
+    },
+  },
+
+  {
+    // CARRIL B — los specs congelados. Apaga el preset entero y reenciende POR NOMBRE solo
+    // las reglas de renderizado.
+    //
+    // El motivo es la Desviacion 2 de `specs/README.md`: «un spec mergeado no se reescribe;
+    // aca son ADR: registro de que se decidio y con que evidencia, con fecha». El preset
+    // completo sobre `specs/` da 483 hallazgos, y aplicarlo obligaria a reescribir 29 specs
+    // cerrados para satisfacer una regla de estilo. Un error de RENDERIZADO es otra cosa:
+    // no reescribe una decision, destapa contenido que hoy GitHub descarta.
+    //
+    // El glob es `specs/[0-9]*` y no `specs/**`: los tres registros —`README.md`, `log.md`
+    // y `revisiones.md`— son documentacion viva y se quedan en el carril A.
+    files: ['specs/[0-9]*/**/*.md'],
+    rules: {
+      // Apagar el preset se deriva del preset y no de una lista escrita a mano, para que
+      // una regla nueva en una version futura entre apagada en vez de entrar sola.
+      ...PRESET_MARKDOWN_APAGADO,
+      ...RENDERIZADO,
     },
   },
 ])
