@@ -16,12 +16,17 @@ una persona y no bloquea el cierre.
       nombra (los 5 los exige el gate de AC3): `src/audio/constants/{engine,scheduler,voice}.constants.ts`,
       `src/domain/types/music.types.ts` y `mcp-server/src/symbols.ts` — **AC10**
 - [ ] T004 [P] `CLAUDE.md`: «Quedan **dos**» → «**tres**», nombrando `components/Board.tsx` y su motivo
-      (el ancestro existe por construcción; el `if` alternativo sería rama inalcanzable), y «66» → «100»
-      —medido con la regla y partido por paquete, no a ojo: el 66 salió de un conteo a mano— — **AC10**
-- [ ] T005 Los 23 fences sin lenguaje del carril A (13 en `docs/`, 8 en `.claude/`, 1 en la raíz,
-      1 en `mcp-server/`). Sólo se agrega el lenguaje: no se toca el contenido. **Sin `[P]`: el de la
-      raíz es `CLAUDE.md:127` y el de `mcp-server/` es `README.md:25`, así que comparte archivo con
-      T004** — **AC1**
+      (el ancestro existe por construcción; el `if` alternativo sería rama inalcanzable), y «66» → «100».
+      **El número se escribe junto con la regla que lo produce**, porque sin ella no se reproduce: un
+      conteo por línea da 92 y uno por ocurrencia da entre 99 y 101 según qué se acepte después del
+      `!`. El 66 salió de un conteo a mano, y T020 todavía dice 95: los tres números son del mismo
+      conjunto — **AC10**
+- [ ] T005 Los **26** fences sin lenguaje del carril A (13 en `docs/`, 8 en `.claude/`, 1 en la raíz,
+      1 en `mcp-server/` y **3 en los registros de `specs/`** —`README.md:16` y `:44`,
+      `revisiones.md:913`—, que el research no contaba y el carril A sí incluye). Sólo se agrega el
+      lenguaje: no se toca el contenido. **Sin `[P]`: el de la raíz es `CLAUDE.md:127` y el de
+      `mcp-server/` es `README.md:25`, así que comparte archivo con T004; los 3 nuevos comparten
+      `specs/README.md` con T026** — **AC1**
 
 ## Paso 2 — Markdown en `pnpm lint`
 
@@ -40,7 +45,7 @@ una persona y no bloquea el cierre.
       renderizado. Por nombre y no por exclusión, por el mismo motivo que `REGLAS_DEL_REPO`: en flat
       config el override reemplaza, y una lista por exclusión deja entrar sola cualquier regla nueva
       del preset — **AC1**
-- [ ] T010 Verificar que `pnpm lint` **sin globs** levanta **todos** los `.md` —hoy 159, y ESLint 9 sí
+- [ ] T010 Verificar que `pnpm lint` **sin globs** levanta **todos** los `.md` —hoy 162, y ESLint 9 sí
       entra a los dot-directories: `.claude/` incluido, verificado enumerándolos—: sin un bloque que matchee
       `**/*.md`, ESLint ignora Markdown aunque el plugin esté cargado. Se comprueba rompiendo un
       archivo a propósito y viendo el rojo — **AC1**
@@ -51,9 +56,12 @@ Sólo llevan `[P]` las cuatro que **estrenan** un archivo. T013 comparte
 `mapa-de-directorios.test.ts` con T012, y T016–T018 comparten `specs-convencion.test.ts` con T015:
 abanicarlas es el conflicto que aparece recién al escribir.
 
-- [ ] T011 [P] `src/__tests__/enlaces-resueltos.test.ts`: todo enlace relativo de los 155 `.md` resuelve
-      —archivo y ancla, propia y ajena—. El slug se calcula **sin colapsar espacios** (`/\s/g`, no
-      `/\s+/g`): con el `+` daba 4 falsos positivos sobre encabezados con `→`, que generan dos guiones — **AC2**
+- [ ] T011 [P] `src/__tests__/enlaces-resueltos.test.ts`: todo enlace relativo de los **162** `.md`
+      resuelve —archivo y ancla, propia y ajena—. El slug se calcula **sin colapsar espacios**
+      (`/\s/g`, no `/\s+/g`): con el `+` daba 4 falsos positivos sobre encabezados con `→`, que generan
+      dos guiones. Y **el `_` se conserva**: si al limpiar el backtick del encabezado se lo lleva
+      —`/[`*_]/g` en vez de `/[`*]/g`— reaparece el único falso positivo del research, el enlace de
+      `docs/guides/mcp-domain.md:186`. Reproducido el 2026-08-23; con las dos reglas puestas, 0 rotos — **AC2**
 - [ ] T012 [P] `src/__tests__/mapa-de-directorios.test.ts`: todo archivo de producción de `src/**` y de
       `mcp-server/src/*.ts` está nombrado en `docs/architecture/directory-structure.md`. Excluye
       `__tests__/`, `__screenshots__/` y `mcp-server/src/tools/*` — el doc los documenta a nivel de
@@ -69,19 +77,24 @@ abanicarlas es el conflicto que aparece recién al escribir.
       fecha ISO, estado en el conjunto cerrado que `log.md` declara arriba de su tabla — **AC8.3, AC8.4**
 - [ ] T017 Mismo archivo: **toda** línea que empieza como checkbox en un `tasks.md` parsea con el
       formato documentado. Es lo que cierra el descarte silencioso de `parseTasks`
-      (`mcp-server/src/specs.ts:113`): hoy una tarea mal escrita baja el total de `spec_status` sin
-      avisar. Medido: 0 malformadas sobre 1 601 — **AC8.5**
+      (`mcp-server/src/specs.ts:220`): hoy una tarea mal escrita baja el total de `spec_status` sin
+      avisar. Medido el 2026-08-23: 0 malformadas sobre 1 637 — **AC8.5**
 - [ ] T018 Mismo archivo: IDs `T###` únicos dentro de su spec, y **sin** exigir consecutividad ni
-      ruta de archivo, con los números en el comentario: 17 de 22 specs tienen IDs no consecutivos y
-      585 de 1 601 tareas no tienen ID, que es correcto porque `specs/README.md` los pide «en specs
-      nuevos» — **AC9**
+      ruta de archivo, con los números y **la regla que los produce** en el comentario: ordenados los
+      `T###` de un spec, ¿avanzan de a uno? — 4 de 23 no (012, 022, 029 y 033, que numeran por bloques
+      de diez), y 585 de 1 637 tareas no tienen ID, que es correcto porque `specs/README.md` los pide
+      «en specs nuevos» — **AC9**
 
-## Paso 4 — Las dos reglas de TypeScript (paralelo con el 2 y el 3)
+## Paso 4 — Las dos reglas de TypeScript (paralelo con el 3, **no** con el 2)
+
+**No con el 2**: T007–T009 y T019–T022 escriben los seis `eslint.config.js`. Abanicarlos es el
+conflicto que aparece recién al escribir, que es justo lo que `[P]` existe para evitar.
 
 - [ ] T019 `@typescript-eslint/no-non-null-assertion: 'error'` en el bloque `**/*.{ts,tsx}` — **AC5**
 - [ ] T020 Override que la apaga en `src/**/__tests__/**` y `mcp-server/**/__tests__/**`: ahí el `!`
       sobre un `find` o un `querySelector` que el propio test acaba de fijar es la forma de que el test
-      **falle** si el nodo no está. Son 95 y son deliberadas — **AC5**
+      **falle** si el nodo no está. Son ~100 —el mismo conjunto que T004 y el mismo número: decían 95
+      acá y 100 allá— y son deliberadas — **AC5**
 - [ ] T021 Override por archivo para las **tres** de producción —`src/main.tsx`,
       `src/domain/invariants.ts`, `src/components/Board.tsx`— con el docblock que dice el motivo de cada
       una. La lista pasa a ser la única fuente del número: `CLAUDE.md` decía «dos» y eran tres — **AC5**
@@ -93,7 +106,8 @@ abanicarlas es el conflicto que aparece recién al escribir.
 
 ## Paso 5 — Verificar y documentar
 
-- [ ] T023 `pnpm verify` verde. **Cuatro** nodos, ni uno más — **AC11**
+- [ ] T023 `pnpm verify` verde **salvo `claude-md-acotado.test.ts`**, que T014 deja rojo a propósito
+      hasta el Paso 6. **Cuatro** nodos, ni uno más. El verde entero es T034, y no puede ser éste — **AC11**
 - [ ] T024 Medir `lint` y `suite` con caché caliente, antes y después, y escribir los cuatro números en
       `research.md`. Si `lint` desbancara a `suite` como nodo más lento, anotarlo; si lo desbancara por
       mucho, reabrir la decisión de meter Markdown ahí
@@ -103,12 +117,14 @@ abanicarlas es el conflicto que aparece recién al escribir.
       congela los specs, y las dos se leen juntas — **AC12**
 - [ ] T027 [P] `CLAUDE.md`: el régimen nuevo, corto, en la sección de reglas y en la de comandos
 - [ ] T028 [P] `docs/guides/conventions.md`: las dos reglas de TypeScript nuevas, con su motivo
-- [ ] T029 [P] `specs/deuda.md`: la leniencia de `parseTasks`, anotada con el motivo por el que hoy no
-      se arregla (el gate de T017 la deja sin consecuencia)
+- [ ] T029 [P] **GitHub Issue** por la leniencia de `parseTasks`, con el motivo por el que hoy no se
+      arregla (el gate de T017 la deja sin consecuencia). **No es `specs/deuda.md`: ese archivo ya no
+      existe** —la deuda sin spec se mudó a Issues en el PR #44, y el `CLAUDE.md` de hoy lo dice—
 - [ ] T030 [P] `specs/log.md`: la fila del 032 **ya existe** (la commiteó `d0541e6`), así que la tarea
       es **corregirla**, no agregarla — repite los datos que este review corrigió: `Board.tsx:246` (es
-      `:252`), «de **284**» (son 286), «24 de **311**» (es de 314), «**66**→**95**» (es 100), «cinco
-      hallazgos» (son cuatro) y el ancla de `mcp-domain.md`, que no está rota
+      `:252`), «de **284**» (son **294**, no 286: el 033 le sumó ocho), «24 de **311**» (es de 314),
+      «**66**→**95**» (es 100), «**4 archivos de `src/`**» (son 5, con `mcp-server/src/symbols.ts`),
+      «cinco hallazgos» (son cuatro) y el ancla de `mcp-domain.md`, que no está rota
 
 ## Paso 6 — `CLAUDE.md` bajo 200 líneas (commit propio)
 

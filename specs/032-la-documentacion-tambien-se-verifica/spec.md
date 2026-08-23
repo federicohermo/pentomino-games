@@ -28,14 +28,14 @@
 > slug carácter por carácter en vez de describirlo.
 >
 > **El precio se mide al implementar y se anota en [`research.md`](./research.md)**, no acá: los dos
-> nodos que toca son `lint` (159 archivos `.md` más) y `suite` (cuatro tests más), y el spec sólo se
+> nodos que toca son `lint` (162 archivos `.md` más) y `suite` (cuatro tests más), y el spec sólo se
 > cierra si `verify` sigue mandado por `suite` — si el Markdown lo diera vuelta habría que reabrir la
 > decisión de meterlo en `lint`.
 
 ## Problema
 
-`pnpm verify` tiene cuatro nodos y ninguno mira un `.md`. El repo tiene **159** archivos Markdown
-—20 599 bytes sólo en `CLAUDE.md`— y toda la documentación que gobierna cómo se trabaja acá vive en
+`pnpm verify` tiene cuatro nodos y ninguno mira un `.md`. El repo tiene **162** archivos Markdown
+—21 490 bytes sólo en `CLAUDE.md`— y toda la documentación que gobierna cómo se trabaja acá vive en
 ellos. Hoy la única verificación que los toca es indirecta y de tres valores puntuales:
 `nombre-sincronizado.test.ts` compara el nombre de la app entre `manifest.json`, `index.html` y
 `README.md`, y `fondo-sincronizado.test.ts` hace lo mismo con el color de fondo.
@@ -49,7 +49,7 @@ La lista de lo que hoy no verifica nadie, con lo que ya se rompió:
 
 | Lo que la documentación afirma | Qué lo verifica hoy | Ya está roto |
 |---|---|---|
-| Sus enlaces relativos apuntan a algo | nadie | no (0 de 159 archivos) |
+| Sus enlaces relativos apuntan a algo | nadie | no (0 de 162 archivos) |
 | Sus tablas tienen las columnas que dicen | nadie | **sí** (1) |
 | `directory-structure.md` es el mapa de `src/` y de `mcp-server/src/` | nadie | **sí** (5 archivos) |
 | «Quedan **dos** aserciones no nulas, las dos anotadas» | nadie | **sí** (son 3) |
@@ -57,15 +57,16 @@ La lista de lo que hoy no verifica nadie, con lo que ya se rompió:
 | «Cero `/* v8 ignore */`» | nadie | **sí** (1: `vite.config.ts:155`) |
 | Los specs tienen sus cuatro archivos y su fila en `log.md` | nadie | no |
 | El formato de tarea de `specs/README.md` | `parseTasks`, **que descarta en silencio** | no |
-| `CLAUDE.md` bajo 200 líneas (convención de Anthropic) | nadie | **sí** (286) |
+| `CLAUDE.md` bajo 200 líneas (convención de Anthropic) | nadie | **sí** (294) |
 
 Los dos últimos merecen su párrafo.
 
-**`parseTasks` no valida: cuenta lo que matchea.** `mcp-server/src/specs.ts:113` tiene el regex del
+**`parseTasks` no valida: cuenta lo que matchea.** `mcp-server/src/specs.ts:220` tiene el regex del
 formato de tarea, y una línea que empieza con `- [ ]` y no matchea **no se cuenta y no avisa**. O sea
 que una tarea mal escrita baja el total de `spec_status` sin que nada diga nada: es exactamente la
 familia «fallar en verde» que este repo ya se comió dos veces con el `--filter "{.}"` y con el `$` del
-regex de `verify`. Hoy hay **cero** líneas malformadas en los 32 specs —1 601 tareas parseadas—, así
+regex de `verify`. Hoy hay **cero** líneas malformadas en los 33 specs —1 637 tareas parseadas, re-medido el
+2026-08-23 después del merge del 033—, así
 que el gate entra gratis y a partir de ahí la tool es correcta **por construcción** y no por suerte.
 
 **Y `CLAUDE.md` viola la única convención que Anthropic publica para él y que es mecanizable.** La
@@ -73,7 +74,7 @@ documentación de Claude Code lo dice en dos lugares distintos —`docs/en/memor
 `docs/en/features-overview`—: el archivo se carga entero en el contexto **al arranque de cada sesión y
 persiste en cada request**, así que la recomendación es mantenerlo **bajo 200 líneas** y mover el
 material de referencia a reglas con `paths` (que este repo ya tiene: `.claude/rules/`) o a `docs/`.
-Hoy son **286**, un 43 % por encima. Y no es una regla ajena que llega de afuera: el propio
+Hoy son **294**, un 47 % por encima. Y no es una regla ajena que llega de afuera: el propio
 `CLAUDE.md` la escribe en su segunda línea —«Es un *cheat sheet*: lo que no se puede averiguar mirando
 un archivo. El detalle vive en `docs/`»— y después no la cumple. Las 100 líneas de `## Comandos` son
 el detalle, no el cheat sheet.
@@ -101,17 +102,22 @@ que el repo ya tiene escritas.
 
 `specs/README.md` **Desviación 2** dice: *«Un spec mergeado no se reescribe. Acá son ADR: registro de
 qué se decidió y con qué evidencia, con fecha.»* Y el preset `markdown/recommended` sobre los 133
-archivos de `specs/` da **483 hallazgos**. Aplicarlo entero obligaría a reescribir 29 specs cerrados
+archivos de `specs/` da **483 hallazgos** —medidos antes del merge del 033, que le sumó cuatro
+archivos al carril B: el número se re-mide en T024 y la conclusión no cambia—. Aplicarlo entero
+obligaría a reescribir 29 specs cerrados
 para satisfacer una regla de estilo, que es exactamente lo que la Desviación 2 prohíbe.
 
 La salida no es apagar el linter en `specs/` ni relajar la Desviación: es cortar por **qué caza cada
 regla**.
 
 - **Carril A — documentación viva** (`CLAUDE.md`, `README.md`, `DESIGN.md`, `docs/**`, `.claude/**`,
-  `mcp-server/**`, y los tres registros `specs/{README,log,deuda,revisiones}.md`):
+  `mcp-server/**`, y los tres registros `specs/{README,log,revisiones}.md` —`deuda.md` ya no
+  existe: la deuda sin spec vive en GitHub Issues desde el PR #44—):
   `markdown/recommended` completo. Es documentación que se mantiene al día por definición —lo dice la
-  propia Desviación 2— así que puede cumplir una regla de estilo. **Costo medido: 23 hallazgos**, los
-  23 de `fenced-code-language`.
+  propia Desviación 2— así que puede cumplir una regla de estilo. **Costo medido: 26 hallazgos**,
+  los 26 de `fenced-code-language`. Re-medido el 2026-08-23: los 23 del `research.md` dejaban afuera
+  los **3 de los registros** —`specs/README.md:16` y `:44`, `specs/revisiones.md:913`—, que este
+  mismo carril incluye. No es deriva del 033: faltaban desde el research.
 - **Carril B — specs congelados** (`specs/[0-9]*/**`): sólo las reglas que cazan un **error de
   renderizado**, o sea las que hacen que GitHub muestre algo distinto de lo que el autor escribió.
   Ninguna regla de estilo. **Costo medido: 1 hallazgo**, y es un bug real —
@@ -136,7 +142,7 @@ Dos reglas del preset se apagan **en los dos carriles**, con la medición al lad
 **AC1.** `pnpm lint` lintea **todos** los `.md` del repo con `@eslint/markdown`, con
 `frontmatter: 'yaml'` y el régimen de dos carriles descrito arriba. El carril B lista sus reglas **por
 nombre**, no por exclusión: agregar una regla nueva al preset no puede colarse sola en los specs
-congelados. El AC no fija el número de archivos —hoy son **159**, y este spec agrega el suyo— porque
+congelados. El AC no fija el número de archivos —hoy son **162**— porque
 un conteo escrito a mano es exactamente lo que el AC10 viene a borrar; lo que se verifica es que el
 bloque `**/*.md` exista y que `eslint .` los levante sin pasarle un glob.
 
@@ -154,7 +160,9 @@ con el falso positivo que produce:
   corrida del research— declara roto el único enlace de `docs/guides/mcp-domain.md:164` que apunta
   ahí, y «arreglarlo» lo rompería de verdad.
 
-**Con las dos reglas puestas: 0 rotos sobre los 159 `.md`.** Es lo que hace que esta verificación
+**Con las dos reglas puestas: 0 rotos sobre los 162 `.md`.** Re-verificado el 2026-08-23 contra el
+`main` de hoy, con el 033 ya mergeado —y la segunda regla se ganó el lugar dos veces: un slugger que
+borra el `_` junto con los backticks vuelve a declarar roto ese mismo enlace de `mcp-domain.md`. Es lo que hace que esta verificación
 entre como gate — y también lo que la deja sin hallazgo propio: entra como no-regresión, no como
 arreglo.
 
@@ -186,8 +194,11 @@ sobrevive, la cadena literal no—, y la misma trampa aplica al docblock que la 
 `eslint.config.js`: **explicar la regla no puede violarla**. Es el precio de una regla que mira texto
 y no sintaxis, y se paga una vez.
 
-**AC7.** `CLAUDE.md` queda **bajo 200 líneas** (hoy 286) y un test lo verifica, con la cita de la convención en
-el mensaje de falla. El detalle que sale **no se borra**: se muda a `docs/`, que es donde el propio
+**AC7.** `CLAUDE.md` queda **bajo 200 líneas** (hoy **294**, no 286: el 033 le sumó ocho) y un test lo
+verifica, con la cita de la convención en el mensaje de falla. **El margen del Paso 6 se achicó con
+eso**: los dos recortes que planea —`## Comandos` de 98 a ~25 y `## Reglas` de 74 a ~50— dejan **197**,
+tres líneas bajo el techo en vez de las once que dejaban con 286. Si el recorte sale corto, el que
+sigue es `## Arquitectura` (30 líneas, y `docs/architecture/overview.md` ya tiene su detalle). El detalle que sale **no se borra**: se muda a `docs/`, que es donde el propio
 `CLAUDE.md` dice que vive, y queda enlazado desde el cheat sheet.
 
 **AC8.** Un test verifica la convención de `specs/`, en los seis puntos que `specs/README.md`
@@ -204,10 +215,13 @@ documenta y que hoy no verifica nadie:
 6. los IDs `T###` son únicos dentro de su spec.
 
 **AC9.** El test de AC8 **no** exige IDs consecutivos ni una ruta de archivo por tarea, aunque Spec
-Kit pida las dos cosas. Medido: **17 de los 22** specs con IDs los tienen no consecutivos, y 585 de
-las 1 601 tareas no tienen ID —lo cual es correcto, porque `specs/README.md` marca el ID como
+Kit pida las dos cosas. Medido el 2026-08-23, con la regla de conteo escrita al lado porque el
+número no se reproduce sin ella —ordenar los `T###` de un spec y preguntar si avanzan de a uno—:
+**4 de los 23** specs con IDs tienen huecos (012, 022, 029 y 033, que numeran por bloques de diez), y
+585 de las 1 637 tareas no tienen ID —lo cual es correcto, porque `specs/README.md` marca el ID como
 obligatorio *«en specs nuevos»* y los diez primeros son anteriores a la convención—. Un gate que
-falla sobre 17 specs cerrados es un gate que se apaga a la semana.
+falla sobre specs cerrados es un gate que se apaga a la semana —y la consecutividad no es lo único:
+el gate tampoco puede exigir que el ID arranque en `T001`.
 
 **AC10.** Los cinco hallazgos reales de la tabla de arriba quedan **arreglados**, no anotados como
 deuda: la tabla del 027, el comentario de `vite.config.ts:155`, los **5** archivos que faltan en
@@ -240,8 +254,9 @@ rechazó el umbral de coverage al 95. La superficie que **sí** se verifica es e
 
 **No entra: cambiar `parseTasks`.** La tool sigue descartando en silencio la línea que no matchea. Con
 el gate de AC8.5 arriba, en el repo no puede haber una: la leniencia deja de tener consecuencia y
-tocar el server sería mover el arreglo lejos del problema. Queda anotado en `deuda.md` por si algún
-día `specs/` deja de ser la única fuente.
+tocar el server sería mover el arreglo lejos del problema. Queda anotado como **GitHub Issue** por si
+algún día `specs/` deja de ser la única fuente: `specs/deuda.md` ya no existe —la deuda sin spec se
+mudó a Issues en el PR #44—.
 
 **No entra: verificar que el español de los comentarios sea español**, ni que un párrafo de `docs/`
 describa el comportamiento que el código tiene hoy. Lo primero no es automatizable y `CLAUDE.md` ya lo
