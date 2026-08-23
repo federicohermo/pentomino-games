@@ -70,9 +70,19 @@ arista que —dice el propio texto— «ningún import delata».
 `marcar` (una tarea pasa a `[x]`) y `seguimiento` (agrega un `T0NN` al `## Seguimiento` de un spec).
 Los IDs son **estables**: `seguimiento` sigue contando y nunca reusa uno libre.
 
-**AC4.** Ninguna de las cinco skills nombra `tasks.md` ni `plan.md` **como ruta a abrir o escribir**.
-Verificable: las menciones que quedan son prosa —el contrato de formato, los ejemplos— y no
-operaciones de archivo.
+**AC4.** Ningún `.md` de las cinco skills nombra `tasks.md` ni `plan.md` **como ruta a abrir o
+escribir**. Verificable: las menciones que quedan son prosa —el contrato de formato, los ejemplos— y
+no operaciones de archivo.
+
+Los dos `scripts/*.sh` —`spec-review-batch/scripts/lote.sh` y
+`spec-implement-batch/scripts/matriz.sh`— quedan **afuera del AC**, y el motivo no es que se hayan
+pasado por alto: son **bash**, y bash no puede llamar una tool MCP. La indirección no los alcanza
+mientras la matriz se inyecte con `` !`...` `` al cargar el skill, así que migrarlos no es reescribir
+un `grep` sino mover el bloque del script al skill, que es un cambio de forma y va en su propio spec.
+El precio queda escrito en el **T044** y hay que decirlo: con `specs/` en el `.gitignore` (T040) los
+dos leen un directorio vacío y **no fallan** — el mismo «fallar en verde» que este spec vino a
+cerrar, corrido de lugar. Lo que sí se cerró es el tercer bloque de `lote.sh`, los `X → Y`: la tool
+ya los devuelve en `cruces`, así que era además una segunda fuente del mismo dato con otro regex.
 
 **AC5.** `parseTasks` y `parseLog` **no cambian de firma**. Siguen tomando un `string`. Es lo que
 mantiene barato el spec siguiente.
