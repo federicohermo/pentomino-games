@@ -3,7 +3,7 @@ import type { PieceKey } from '../../domain/types/pieces.types.ts';
 /**
  * El color de cada pieza: fondo y texto que va encima.
  *
- * Los 12 fondos salen de la lamina de referencia del spec 007 y estan MEDIDOS, no
+ * Los 12 fondos salen de la lamina de referencia y estan MEDIDOS, no
  * derivados: reproducirlos con una formula (rueda de matiz, HSL equiespaciado) da
  * otros colores y rompe la correspondencia con la lamina.
  *

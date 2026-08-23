@@ -1,7 +1,7 @@
 /**
  * La orientación de la pieza en la mano, dicha en palabras.
  *
- * Existe porque la miniatura del spec 016 **no puede decirla entera**, y está medido: de
+ * Existe porque la miniatura **no puede decirla entera**, y está medido: de
  * las 96 combinaciones de pieza × rotación × reflexión, **29 suenan distinto sin verse
  * distinto** (el 30 %, repartido en 6 de las 12 piezas). La `I` tiene dos formas para
  * cuatro rotaciones y la `X` una sola para las cuatro; la reflexión no le agrega ni una

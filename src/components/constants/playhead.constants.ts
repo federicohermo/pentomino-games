@@ -64,7 +64,7 @@ export const NOTA = { dentro: 3, fuera: 2 };
 export const CRUCE = { dentro: 2, fuera: 1 };
 
 /**
- * Nota fuerte, cruce intermedio, click tenue (D7 del spec 010 mas D8 del 011): si dos
+ * Nota fuerte, cruce intermedio, click tenue (D7 mas D8 del 011): si dos
  * de los tres se vieran igual, el recorrido mentiria sobre cual de las tres cosas paso.
  * El click engorda solo hacia adentro y la mitad — se lee como un roce.
  */
@@ -77,7 +77,7 @@ export const BORDE_POR_KIND = { [MARCA.nota]: NOTA, [MARCA.cruce]: CRUCE, [MARCA
  * Las clases del velo van como literales enteros y no armadas por concatenacion:
  * Tailwind escanea el fuente, asi que solo genera lo que aparece escrito completo.
  *
- * **Lo que ya NO esta aca es la geometria**, y ese es el cambio del spec 021. Hasta ahi
+ * **Lo que ya NO esta aca es la geometria**, y ese es el cambio. Hasta ahi
  * estas dos clases repetian el `p-[2px]` y el `rounded-lg` de la baldosa de `Board.tsx` a
  * proposito —es la misma caja, y poner los numeros a mano seria un segundo lugar donde
  * mantenerlos—. Con el 021 ese aire y ese radio pasaron a ser razones de `--cell`, y una

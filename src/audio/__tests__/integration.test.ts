@@ -24,7 +24,7 @@ describe('scheduler + sintesis integrados', () => {
   it('los disparos se oyen donde el scheduler dijo (+-6 ms)', async () => {
     const state: ClockState = { origin: 0.5, scheduledUntil: 0 };
     // Una sola nota: hit y onset coinciden por construccion. Y un ciclo de 16
-    // intervalos es un compas exacto, o sea el periodo de antes del spec 009: a
+    // intervalos es un compas exacto, o sea el periodo de antes: a
     // 120 bpm da los mismos 2 s que este test medía con `phase`.
     const hits = collectHits(0, 5, 120, { steps: [{ offset: 0, notes: [A4] }], clicks: [], length: 16 }, state);
     expect(hits).toHaveLength(3);
@@ -84,7 +84,7 @@ describe('scheduler + sintesis integrados', () => {
     const rel = RELEASE_INTERVALS * interval;
     const state: ClockState = { origin: 0.2, scheduledUntil: 0 };
     // Una pieza y, cuatro intervalos despues, el recorrido pisando una celda ocupada
-    // que suena F5 (MIDI 77) — el caso testigo del spec 011.
+    // que suena F5 (MIDI 77) — el caso testigo.
     const hits = collectHits(0, 8 * interval, bpm, {
       steps: [{ offset: 0, notes: [A4] }],
       clicks: [{ offset: 4, note: 77 }],

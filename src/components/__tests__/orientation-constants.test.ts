@@ -3,7 +3,7 @@ import { ROTACION, ORIENTACION_INICIAL, ORIENTACIONES_INICIALES } from '../const
 import { SHAPES } from '../../domain/constants/pieces.constants.ts';
 
 /**
- * La memoria de orientación del spec 020, en el proyecto `node`: el módulo es puro y no
+ * La memoria de orientación, en el proyecto `node`: el módulo es puro y no
  * toca el DOM.
  *
  * Lo que hay para verificar es la **derivación**. `ORIENTACIONES_INICIALES` sale de

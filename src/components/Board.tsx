@@ -271,7 +271,7 @@ export default function Board({
   // Lo que reemplaza a esa cadena entera son dos numeros que salen del mismo lugar:
   // `components/grid-fit.ts` mira el viewport y contesta CUANTAS celdas entran y CUANTO
   // mide cada una. La grilla mide `dims.w x --cell` por `dims.h x --cell` y llena la
-  // pantalla creciendo en CANTIDAD y no en tamano — que es la correccion del spec 031 al
+  // pantalla creciendo en CANTIDAD y no en tamano — que es la correccion al
   // 021, donde crecia la baldosa: a 1920 x 1080 quedaba en 180 px con el nombre de la nota
   // a 46,8, y el tablero dejaba de leerse como un instrumento denso.
   return (
@@ -292,11 +292,11 @@ export default function Board({
           directo y no llega por una ranura de `children`: `Playhead` no recibe props, o
           sea que no le pide nada a `App`, y una ranura generica reabriria la puerta que
           el review del 007 cerro midiendo. */}
-      {/* Los dos gestos del spec 013 enganchan ACA y no en el `.grid` de adentro ni en
+      {/* Los dos gestos enganchan ACA y no en el `.grid` de adentro ni en
           la tarjeta: este div cubre exactamente el area del tablero, mientras que la
           tarjeta se comeria el `p-4`. El argumento decia ademas «incluida la franja que
           queda a la derecha cuando la grilla scrollea debajo de `md`», y esa franja se fue
-          con el `overflow-x-auto` del spec 031: hoy este div y el `.grid` miden lo mismo,
+          con el `overflow-x-auto`: hoy este div y el `.grid` miden lo mismo,
           asi que la eleccion dejo de cambiar nada y se queda por no mover el nodo del
           `ref`.
 
@@ -323,7 +323,7 @@ export default function Board({
             Dejarlo arriba pondria `dims.h` filas dentro de una grilla de `dims.w`
             columnas, que es el pixel que AC11 prohibe. El contenedor sigue siendo grid con su
             columna implicita —una fila por renglon, ancho de contenido—. El `w-max` que
-            tenia se fue con el `overflow-x-auto` del spec 031: sostenia el ancho de una
+            tenia se fue con el `overflow-x-auto`: sostenia el ancho de una
             grilla que podia ser mas ancha que su caja, y ya no puede serlo.
 
             `Playhead` no se entera: se posiciona con `transform` en pixeles contra el

@@ -326,7 +326,7 @@ describe('degreeByCellIndex', () => {
   });
 
   it('el arpegio recorre las 12 piezas enteras, sin pasar por encima de ninguna celda', () => {
-    // El pedido del spec 012: de una nota a la siguiente se llega a una celda que se
+    // El pedido: de una nota a la siguiente se llega a una celda que se
     // TOCA con la anterior. Ortogonal donde la forma da; en diagonal en las cuatro que
     // no pueden —`F`, `T`, `Y` y `X`, cuyo grafo de celdas es un arbol con un nodo de
     // 3 o 4 vecinos—. Que la diagonal sea la excepcion y no la regla lo prueba
@@ -481,7 +481,7 @@ describe('el mapeo se arrastra por indice sobre las 96 orientaciones', () => {
     // camino: por eso el recalculo sigue dando otra permutacion en mas de la mitad de
     // las orientaciones, y escribir el AC3 como
     // `degreeByCellIndex(formaTransformada) == mapeo canonico` daria un test rojo y no
-    // una verificacion. Eran 75 con el orden angular del spec 007 y son 53 con el
+    // una verificacion. Eran 75 con el orden angular y son 53 con el
     // camino del 012: baja porque el camino en si es invariante —rotar y reflejar
     // preservan la adyacencia— y lo unico que se mueve es por que punta se entra.
     let distintas = 0;
@@ -556,7 +556,7 @@ describe('la reflexion no cambia la nota de una celda', () => {
 /**
  * AC8 — el mapeo celda→nota, congelado: rotacion 0, octava 4, sin reflejar.
  *
- * **La fuente es la tabla medida del spec 012** (`research.md` §5), no la lamina de
+ * **La fuente es la tabla medida** (`research.md` §5), no la lamina de
  * referencia del 007: el 012 cambia que celda es dueña de cada grado en 9 de las 12
  * piezas, asi que la lamina dejo de describir esto. Lo que la lamina sigue fijando —y
  * este spec no toca— es que CINCO notas tiene cada pieza; lo que cambio es cual de sus
@@ -591,7 +591,7 @@ const TONICA_EN: Record<PieceKey, number> = {
 };
 
 describe('la referencia congelada', () => {
-  it('las 12 piezas suenan celda por celda como la tabla del spec 012', () => {
+  it('las 12 piezas suenan celda por celda como la tabla', () => {
     for (const p of PIECES) {
       const leida = SHAPES[p].map((_, k) => midiName(notaDeCelda(p, 0, k, REGIMEN.escala)));
       expect(leida).toEqual(REFERENCIA[p].map(([, nombre]) => nombre));

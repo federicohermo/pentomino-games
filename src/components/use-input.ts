@@ -5,7 +5,7 @@ import { ACCION } from './constants/input.constants.ts';
 import type { PieceKey } from '../domain/types/pieces.types.ts';
 
 /**
- * Los dos efectos de entrada directa del spec 013: el teclado sobre `window` y la rueda
+ * Los dos efectos de entrada directa: el teclado sobre `window` y la rueda
  * sobre el nodo del tablero.
  *
  * Van en un archivo y como dos funciones: comparten `tapLimpio`, pero siguen sin

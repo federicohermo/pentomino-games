@@ -12,7 +12,7 @@ import type { PropsDeOrientacion } from '../types/panel.types.ts';
 import type { MemoriaDeOrientacion, Orientacion } from '../types/orientation.types.ts';
 
 /**
- * Las doce miniaturas del spec 016.
+ * Las doce miniaturas.
  *
  * Lo que se verifica es lo que el archivo ARGUMENTA con mediciones y hasta hoy sostenia
  * solo un comentario: que la caja de 5×5 sea FIJA —o sea que rotar no mueva un pixel de
@@ -151,7 +151,7 @@ describe('OrientationPanel', () => {
       }
     }
 
-    // AC12 del spec 020: con las doce en orientaciones DISTINTAS tampoco se mueve, que es
+    // AC12: con las doce en orientaciones DISTINTAS tampoco se mueve, que es
     // el caso que hasta este spec no podia existir. Las ocho combinaciones repartidas
     // entre doce botones incluyen a la `I` acostada al lado de la `I` parada… salvo que
     // hay una sola `I`, asi que el peor caso real es cada pieza en su peor forma a la vez.

@@ -28,7 +28,7 @@ const celdas = (n: number) => `calc(var(--cell) * ${n})`;
  * la excepcion declarada a D1, porque cambiaba una vez por ciclo. Dejo de valer cuando
  * el estreno paso a ser CELDA POR CELDA: son cinco cambios al ritmo del intervalo, o
  * sea exactamente la frecuencia que D1 mide y prohibe. La excepcion no se agrando: se
- * elimino, y hoy no hay nada del spec 010 en el arbol de React.
+ * elimino, y hoy no hay nada en el arbol de React.
  *
  * ## Va ARRIBA de las celdas, y eso necesita `z-10`
  *

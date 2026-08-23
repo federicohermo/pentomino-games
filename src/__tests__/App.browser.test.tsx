@@ -25,7 +25,7 @@ import type { PropsDeOrientacion } from '../components/types/panel.types.ts';
  *
  * El motor va mockeado con un doble que RECUERDA si arrancó: es lo que hace verificable
  * que el botón de transporte refleje si el reloj arrancó de verdad y no si se lo apretó
- * —el ítem AC10 del spec 008, que esperó catorce specs—. Todo lo demás es real: el
+ * —el ítem AC10, que esperó catorce specs—. Todo lo demás es real: el
  * dominio, los tres componentes y el DOM.
  */
 const motor = vi.hoisted(() => {
@@ -48,7 +48,7 @@ const motor = vi.hoisted(() => {
 vi.mock('../audio/engine.ts', () => motor);
 
 /**
- * Cuantas veces se EJECUTA el panel de las doce miniaturas (AC6 y AC7 del spec 027).
+ * Cuantas veces se EJECUTA el panel de las doce miniaturas (AC6 y AC7).
  *
  * `hover` vive en `App.tsx`, asi que cada celda que el cursor cruza re-renderiza el arbol
  * entero — y `OrientationPanel` son 337 elementos (1 grilla + 12 x (boton + grilla + 25
@@ -84,7 +84,7 @@ vi.mock('../components/OrientationPanel.tsx', async (importActual) => {
   const memoizado = (c: unknown): c is { type: (props: { orientacion: PropsDeOrientacion }) => ReactNode } =>
     typeof c === 'object' && c !== null && 'type' in c && typeof c.type === 'function';
   if (!memoizado(real.default)) {
-    throw new Error('OrientationPanel dejo de estar memoizado: la medicion del spec 027 pasaria a medir el envoltorio.');
+    throw new Error('OrientationPanel dejo de estar memoizado: la medicion pasaria a medir el envoltorio.');
   }
   const interior = real.default.type;
   return {
@@ -128,7 +128,7 @@ const celdas = (c: HTMLElement) => [...c.querySelectorAll('[role="gridcell"]')] 
 /**
  * El ancho del tablero RENDERIZADO, leido del arbol de accesibilidad.
  *
- * No es una constante, y esa es la mitad del spec 031 que este archivo nota: la app
+ * No es una constante, y esa es la mitad que este archivo nota: la app
  * mide su contenedor y dibuja las celdas que entran, asi que el ancho depende del tamano
  * de la ventana del navegador de test y no de una constante. Leerlo de `aria-colcount` —el
  * mismo atributo que el 025 puso para el lector de pantalla— es lo que hace que estos
@@ -382,7 +382,7 @@ describe('App — el fantasma', () => {
 
 describe('App — el transporte', () => {
   it('el boton refleja si el reloj ARRANCO, no si se lo apreto', async () => {
-    // AC10 del spec 008, que espero catorce specs: la decision vive en
+    // AC10, que espero catorce specs: la decision vive en
     // `alternarTransporte` y aca se verifica el cableado contra un motor que contesta.
     const { container } = await render(<App />);
     await page.getByRole('button', { name: 'Reproducir' }).click();
@@ -658,7 +658,7 @@ describe('App — la orientacion, por panel y por gesto', () => {
 describe('App — lo que llega al arbol de accesibilidad', () => {
   it('ningun boton de la app puede enviar un formulario', async () => {
     // Hoy no hay un solo `<form>` en el arbol, asi que no hay bug — y por eso mismo
-    // esta es la unica linea del spec 025 que nada mas falsea: existe para una
+    // esta es la unica linea que nada mas falsea: existe para una
     // regresion futura. El default de un `<button>` dentro de un formulario es
     // `submit`, y en esta app eso significa recargar la pagina perdiendo el tablero
     // entero, sin deshacer (`specs/deuda.md`).
@@ -910,7 +910,7 @@ describe('App — el tablero se toca con el teclado', () => {
   it('con una celda enfocada, `Shift` SI rota y `Ctrl` SI refleja', async () => {
     // Va separado del test de la barra a proposito: uno verifica que se apago, este que NO
     // se apago de mas. Ensanchar la guarda del listener global para que matchee la celda es
-    // lo tentador —es una linea— y apagaria los tres atajos del spec 013 para arreglar uno.
+    // lo tentador —es una linea— y apagaria los tres atajos para arreglar uno.
     const { container } = await render(<App />);
     const c = celda(container, 4, 3);
     c.focus();

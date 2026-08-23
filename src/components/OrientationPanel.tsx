@@ -59,7 +59,7 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
        comentarios del 022.
 
        **La tabla de columnas la resuelve el navegador y no un breakpoint**, y ese es el
-       cambio del spec 021. Hasta ahi eran cuatro escalones
+       cambio. Hasta ahi eran cuatro escalones
        —`grid-cols-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6`— atados al ancho del
        VIEWPORT, que era una buena aproximacion del ancho de esta caja mientras la caja era
        una tarjeta de `md:col-span-4`. Con el dock del 021 dejaron de ser la misma variable:

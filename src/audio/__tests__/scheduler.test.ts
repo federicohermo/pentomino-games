@@ -23,11 +23,11 @@ const seq = (
   clicks: Sequence['clicks'] = [],
 ): Sequence => ({ steps, clicks, length });
 
-/** Un ciclo de 16 intervalos es exactamente un compas: el periodo de antes del spec 009. */
+/** Un ciclo de 16 intervalos es exactamente un compas: el periodo de antes. */
 const UN_COMPAS = 16;
 
 /**
- * El cursor de compas del spec 002, copiado tal cual, como oraculo de
+ * El cursor de compas, copiado tal cual, como oraculo de
  * no-regresion del reloj por origen.
  *
  * Es codigo muerto en produccion a proposito: la unica forma de afirmar que la

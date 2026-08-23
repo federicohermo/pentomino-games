@@ -8,7 +8,7 @@ import { grillaPara } from './grid-fit.ts';
  * Mide el contenedor raíz y contesta **cuánto mide el tablero**, escribiendo de paso el
  * tamaño de celda en la custom property `--cell`.
  *
- * Es el tercer hook de entrada de `components/`, junto a los dos del spec 022, y está acá
+ * Es el tercer hook de entrada de `components/`, junto a los dos, y está acá
  * por la misma regla: **el listener global vive en un hook de `components/`, en un efecto
  * propio**, con el `ref` creado en el shell. `App.tsx` no declara un solo `useEffect` desde
  * el 022 y este spec no lo cambia — lo único que agrega al shell es un `ref` y una llamada.
@@ -30,7 +30,7 @@ import { grillaPara } from './grid-fit.ts';
  *   `resize` que no agrega ni saca una celda no re-renderiza nada.
  *
  * Esa herencia es también lo que decide **sobre qué nodo** se escribe `--cell`: el
- * contenedor raíz y no el del tablero. Los dos flotantes del spec 021 son `fixed` y viven
+ * contenedor raíz y no el del tablero. Los dos flotantes son `fixed` y viven
  * fuera de `Board`, así que sus cajas —medidas en celdas— no resolverían `var(--cell)` si
  * colgara de ahí.
  *

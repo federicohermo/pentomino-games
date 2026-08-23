@@ -29,7 +29,7 @@ const piezaEn = (id: string, cells: Cell[]): PlacedPiece =>
 describe('cellsAt', () => {
   it('la celda de agarre cae exactamente donde se clickeo', () => {
     // Es la propiedad que hace que colocar se sienta preciso, y la que sostiene la
-    // fase por pieza del spec 004: si el ancla se corriera, la columna leida
+    // fase por pieza: si el ancla se corriera, la columna leida
     // despues seria otra.
     for (const p of PIECES) {
       for (let rot = 0; rot < 4; rot++) {
@@ -116,7 +116,7 @@ describe('031 — `cabeEn`: si la pieza entra ENTERA en el tablero de ahora', ()
   });
 
   it('la que se pasa por UNA celda no entra, y por cualquiera de los cuatro bordes', () => {
-    // Es la mitad del spec 031 que decide que se dibuja: «tres celdas adentro y dos
+    // Es la mitad que decide que se dibuja: «tres celdas adentro y dos
     // afuera» tiene que dar false, o el tablero mostraria media pieza que el circuito no
     // visita.
     expect(cabeEn(piezaEn('a', [[3,0],[4,0],[5,0]]), { w: 5, h: 5 })).toBe(false);   // derecha
@@ -192,7 +192,7 @@ describe('occupantCellIndex', () => {
   });
 
   it('el indice sirve contra la forma canonica en las 96 orientaciones', () => {
-    // Es de lo que depende la derivacion celda→nota del spec 007: la celda k del
+    // Es de lo que depende la derivacion celda→nota: la celda k del
     // tablero tiene que seguir siendo la celda k de SHAPES despues de rotar, reflejar
     // y trasladar. `cellsAt` es un `map`, asi que el indice sobrevive los tres pasos.
     for (const p of PIECES) {
@@ -240,7 +240,7 @@ const VECINAS = new Map<string, Cell[]>(
 const PASOS: number[][] = TODAS.map((a) => TODAS.map((b) => routeBetween(a, b, [], GRID_DEFAULT).steps));
 
 /**
- * La distancia del spec 009 en forma cerrada: Manhattan, o el mejor de los dos cruces
+ * La distancia en forma cerrada: Manhattan, o el mejor de los dos cruces
  * de la costura.
  *
  * Es el oraculo de lo que `routeBetween` tiene que seguir dando sobre el tablero vacio.
@@ -537,7 +537,7 @@ describe('routeBetween — el tablero vacio', () => {
 });
 
 /**
- * El caso testigo del spec 011: la `P` rotada 1 en (3,2) y la `Y` rotada 1 en (7,2).
+ * El caso testigo: la `P` rotada 1 en (3,2) y la `Y` rotada 1 en (7,2).
  *
  * Es el tablero con el que el spec mostro el problema del 009: el tramo entre las dos
  * pisaba [7,1], que es la puerta por la que la `Y` estaba a punto de ENTRAR, o sea que

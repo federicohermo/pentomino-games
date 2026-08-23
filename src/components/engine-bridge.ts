@@ -23,7 +23,7 @@ import type { SequenceDelMotor, MotorDeTransporte } from './types/engine.types.t
 /**
  * La `Sequence` del dominio, como la espera el motor.
  *
- * Acá se PROYECTA, no se traduce (D7, D8, AC12 del spec 009). `offset`, `notes` y la
+ * Acá se PROYECTA, no se traduce (D7, D8, AC12). `offset`, `notes` y la
  * `note` MIDI del cruce viajan tal cual; lo que se cae es `pieceId` —el motor no
  * tiene a quién devolvérselo— y `cell` en los clicks: el motor no puede ver `Cell`,
  * que vive en `domain/` y el override de eslint sobre `audio/**` lo prohíbe importar

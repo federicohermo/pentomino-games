@@ -6,7 +6,7 @@ import { CELL_PX_OBJETIVO } from './constants/layout.constants.ts';
  * Lo que hay que dibujar para llenar un viewport de `vw × vh` con celdas de unos 73 px:
  * cuántas entran y cuánto mide cada una.
  *
- * Reemplaza a `cellPxPara` del spec 021, y el cambio es de qué se despeja. Aquel tenía el
+ * Reemplaza a `cellPxPara`, y el cambio es de qué se despeja. Aquel tenía el
  * tablero fijo en 10 × 6 y despejaba el TAMAÑO de la celda, que en un escritorio se iba a
  * 180 px; éste tiene la celda fija en 73 y despeja la CANTIDAD.
  *

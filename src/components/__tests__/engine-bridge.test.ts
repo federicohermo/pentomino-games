@@ -85,7 +85,7 @@ describe('AC2/AC3 — proyectarAlMotor deja caer lo que el motor no puede ver', 
     for (const { c, i } of conNota) {
       const destino = proyectada.clicks[i];
       // Campo por campo y no con un literal igual al de la proyeccion: el oraculo de AC1
-      // del spec 022 es `grep` de ese literal sobre `src/`, y tiene que devolver UNA
+      // es `grep` de ese literal sobre `src/`, y tiene que devolver UNA
       // linea. Un test que lo reprodujera textualmente lo volveria inutil.
       expect(destino.offset).toBe(c.offset);
       expect(destino.note).toBe(c.note);
@@ -146,7 +146,7 @@ describe('alternarTransporte devuelve lo que el motor dice, no lo que se le pidi
     expect(pedidos).toEqual(['frenar']);
   });
 
-  it('AC10 del spec 008 — se pidió arrancar y el reloj NO arrancó: devuelve `false`', () => {
+  it('AC10 — se pidió arrancar y el reloj NO arrancó: devuelve `false`', () => {
     // La rama que el ítem de deuda más viejo del repo esperaba desde el spec 008, y la
     // que pedía «extraer el handler de `App.tsx` o agregar testing-library». Acá se
     // cierra por la primera vía: `arrancar` es un no-op silencioso cuando el motor no

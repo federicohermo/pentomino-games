@@ -12,7 +12,7 @@ import type { PieceKey } from '../../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../../domain/types/board.types.ts';
 
 /**
- * Las decisiones de los cinco gestos del spec 013 y del sexto que agregó el 018 —la letra
+ * Las decisiones de los cinco gestos y del sexto que agregó el 018 —la letra
  * que elige la pieza—. Lo que NO está acá es el cableado
  * —que `components/use-input.ts` mire bien el `e.target`, que el `preventDefault` frene el scroll de
  * verdad—: eso queda en las tareas `[M]` del navegador, porque el repo no monta
@@ -276,7 +276,7 @@ describe('las teclas que no son nuestras', () => {
 
 describe('`Ctrl`+click en macOS es el click derecho', () => {
   /*
-   * Este es el único criterio del spec 013 que NO se puede ver a ojo desde Windows, que
+   * Este es el único criterio que NO se puede ver a ojo desde Windows, que
    * es donde se desarrolla el repo: acá `Ctrl`+click es un click común y las dos filas
    * de la tabla no se cruzan nunca. En macOS el sistema lo traduce a `contextmenu` con
    * `ctrlKey: true`, y sin la guarda el `keyup` de `Ctrl` alterna la reflexión y este

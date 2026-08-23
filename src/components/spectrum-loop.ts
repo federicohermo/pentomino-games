@@ -8,7 +8,7 @@ import { BAR_COUNT, GAP, MIN_BAR, IDLE_TEXT } from './constants/spectrum.constan
  * Vive en un `.ts` por la misma regla que `playhead-loop.ts`:
  * `react-refresh/only-export-components` prohibe que un `.tsx` exporte algo ademas del
  * componente, asi que mientras esto estuviera adentro del componente no se podia
- * exportar y, por lo tanto, no se podia testear. Es el movimiento del spec 005 aplicado
+ * exportar y, por lo tanto, no se podia testear. Es el movimiento aplicado
  * al ultimo componente que todavia guardaba logica.
  *
  * El dibujo sigue siendo imperativo y NO pasa por estado: 60 renders por segundo de

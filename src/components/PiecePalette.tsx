@@ -102,7 +102,7 @@ export default function PiecePalette({ orientacion, transporte, abierto, onToggl
             etiqueta que era de arriba.
 
             Y no se borra, aunque la tentación sea la misma que con los grados. El
-            precedente es el `T070` del spec 011: propuso borrar el botón de los clicks y el
+            precedente es el `T070`: propuso borrar el botón de los clicks y el
             015 lo cerró con un «no» porque era la única forma de encender el recorrido. Acá
             está peor: la rotación y la reflexión sobreviven al borrado porque tienen dos
             gestos directos cada una, y el régimen no tiene ninguno. Borrarlo lo dejaría

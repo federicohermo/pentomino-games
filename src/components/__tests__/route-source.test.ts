@@ -10,7 +10,7 @@ import type { PlacedPiece } from '../../domain/types/board.types.ts';
 import { GRID_DEFAULT } from '../../domain/constants/board.constants.ts';
 
 /**
- * `route-source.ts` es donde vive AC9 del spec 010 —que la cabeza dibuje el circuito
+ * `route-source.ts` es donde vive AC9 —que la cabeza dibuje el circuito
  * que SUENA y no el que esta encolado— y es una maquina de estados con dos colas, un
  * contador ajeno y un velo que se recalcula en los dos bordes. Nada de eso lo mira
  * `pnpm verify` si no se lo testea: el modulo no tiene tipos que lo aten y su unico
@@ -287,7 +287,7 @@ describe('la cabeza recorre la pieza muteada, con el borde del click', () => {
 });
 
 /**
- * El velo huerfano del spec 027, y su mitad que NO hay que arreglar.
+ * El velo huerfano, y su mitad que NO hay que arreglar.
  *
  * Este modulo avanza solo cuando `cycleGeneration()` sube, y ese contador lo mueve el
  * reloj. Con el transporte parado nada avanza, pero `encolar` igual recomputa el velo

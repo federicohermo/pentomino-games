@@ -15,7 +15,7 @@ import App from './App.tsx';
 // idiom de la plantilla de Vite sobre un `#root` que el propio `index.html` garantiza,
 // o sea el caso donde el dato que TypeScript no puede ver esta escrito dos archivos mas
 // alla y no en la cabeza de nadie. Va anotado porque sin esto la proxima lectura lo
-// cuenta como deuda otra vez — que es literalmente como llego a la lista del spec 027.
+// cuenta como deuda otra vez — que es literalmente como llego a la lista.
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

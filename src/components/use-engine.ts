@@ -25,7 +25,7 @@ import { encolar, reiniciar } from './route-source.ts';
  * `secuencia` entra POR PARÁMETRO y este hook no la vuelve a derivar. Es lo que
  * garantiza que `encolar` y `setSequence` sigan viendo la MISMA instancia: si el hook
  * llamara a `buildSequence` por su cuenta, el dibujo y el sonido podrían quedar mirando
- * circuitos distintos sin que nada falle, que es exactamente lo que D5 del spec 009
+ * circuitos distintos sin que nada falle, que es exactamente lo que D5
  * existe para cerrar. El shell deriva la regla; el hook recibe el resultado.
  *
  * Es un `.ts` y no un `.tsx`, así que `react-refresh/only-export-components` no lo mira
@@ -113,7 +113,7 @@ export function useMotorSincronizado({ secuencia, placed, tempo, clicks }: Recon
   //
   // Las celdas no se pierden: siguen en la secuencia del dominio, y por eso este efecto
   // encola en DOS colas con la misma `secuencia`. Leerlas de `placed` —que es lo que
-  // decía este comentario antes del spec 010— no alcanza, y ese es justo el punto de
+  // decía este comentario antes— no alcanza, y ese es justo el punto de
   // AC9: `placed` es el tablero de AHORA, o sea la ruta PENDIENTE, mientras que la
   // cabeza tiene que dibujar la que está sonando. Quien guarda el par es
   // `components/route-source.ts`, y hace su swap cuando el motor reporta el suyo.

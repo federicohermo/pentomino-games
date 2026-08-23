@@ -4,7 +4,7 @@ import { useAtajosDeTeclado, useRuedaRota } from '../use-input.ts';
 import type { RefObject } from 'react';
 
 /**
- * Los dos efectos de entrada del spec 013, con eventos de VERDAD.
+ * Los dos efectos de entrada, con eventos de VERDAD.
  *
  * Es el archivo que mas necesitaba un navegador y el que peor lo tenia: sus decisiones
  * viven en `components/input.ts` —puras, testeadas en node— pero el CABLEADO no, y el

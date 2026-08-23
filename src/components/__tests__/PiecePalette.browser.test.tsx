@@ -8,7 +8,7 @@ import type { PropsDeOrientacion, PropsDeTransporte } from '../types/panel.types
 import type { MemoriaDeOrientacion } from '../types/orientation.types.ts';
 
 /**
- * La tarjeta de piezas despues del spec 019: las doce miniaturas, la fila del regimen, la
+ * La tarjeta de piezas despues: las doce miniaturas, la fila del regimen, la
  * orientacion en texto y el transporte.
  *
  * Este archivo se reescribio con el 019 y la mitad de lo que verifica es un BORRADO. Eso
@@ -197,7 +197,7 @@ describe('PiecePalette', () => {
     expect(conReflexion.container.textContent).toContain('180° · reflejada');
     await conReflexion.unmount();
 
-    // AC9 del spec 020: dice la de la PIEZA EN LA MANO, no una global. Con la misma
+    // AC9: dice la de la PIEZA EN LA MANO, no una global. Con la misma
     // memoria y otro `selected`, la linea cambia — que es lo que hace visible la memoria.
     const otra = memoria({ F: { rotation: 2, mirror: true }, T: { rotation: 1, mirror: false } });
     const { container } = await render(

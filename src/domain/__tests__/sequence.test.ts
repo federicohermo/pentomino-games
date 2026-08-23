@@ -96,7 +96,7 @@ const misma = (a: Cell, b: Cell): boolean => a[0] === b[0] && a[1] === b[1];
  * Un teselado del tablero entero con las 12 piezas, escrito a mano.
  *
  * No sale de colocar al azar: teselar 10x6 con las 12 piezas es un exact cover, y
- * 200 intentos aleatorios dieron 0 tableros completos (`research.md` del spec 009).
+ * 200 intentos aleatorios dieron 0 tableros completos (`research.md`).
  * Sus PREFIJOS son tableros validos de 1 a 12 piezas, y con eso alcanza para las
  * propiedades que hay que medir sobre muchos tableros sin meter azar en un test.
  */
@@ -202,7 +202,7 @@ describe('las puertas de una pieza', () => {
           // Los dos lados se derivan POR GRADO y sin retrogrado, a proposito: lo que
           // este test mide es `degreeByCellIndex` sobre la forma canonica contra la
           // transformada, no las puertas. Pasarlo por `puertas` mezclaria la
-          // reflexion del spec 010 y el 74 dejaria de decir lo que dice.
+          // reflexion y el 74 dejaria de decir lo que dice.
           const naive = degreeByCellIndex(shape);
           const canonicos = degreeByCellIndex(SHAPES[k]);
           const canonico = [p.cells[canonicos.indexOf(0)], p.cells[canonicos.indexOf(CELLS_PER_PIECE - 1)]];
@@ -235,7 +235,7 @@ describe('las puertas de una pieza', () => {
  * La nota que `Board.tsx` pinta en una celda de la pieza: grado POR INDICE sobre la
  * forma canonica y el arpegio ASCENDENTE, sin retrogrado.
  *
- * Es la cadena del spec 007 replicada a mano —`occupantCellIndex` -> `degreeByCellIndex`
+ * Es la cadena replicada a mano —`occupantCellIndex` -> `degreeByCellIndex`
  * -> `notesForRotation`— y no una llamada a la pura que se esta verificando: si el
  * oraculo saliera de `cellsByPlayOrder`, el test seria una tautologia.
  */
@@ -637,7 +637,7 @@ describe('los offsets y los clicks', () => {
  * El testigo del cruce con altura: la `X` en (1,1), con la `F` y la `N` puestas de
  * forma que al circuito le salga mas barato atravesarla que rodearla.
  *
- * ## Por que este tablero y no el del spec 011
+ * ## Por que este tablero y no el
  *
  * Porque el 011 se apoyaba en una propiedad que el **spec 012 le saco a la `X`**: que su
  * celda central fuera siempre una de sus dos puertas. Con el orden angular el grado 0 de
@@ -903,7 +903,7 @@ describe('el tablero lleno', () => {
     const mediana = corridas[10];
     // Se imprime a proposito: un AC de tiempo que solo dice "paso" no deja ver que el
     // margen se este comiendo. Medido en esta maquina: 2,0 ms, 2,5x por debajo del
-    // tope. Era 0,620 ms antes del spec 011 — la matriz de costos paso de 144 restas a
+    // tope. Era 0,620 ms antes — la matriz de costos paso de 144 restas a
     // 144 Dijkstras, y ese es el precio del recorrido que esquiva.
     console.log(`AC10 — mediana de 21 corridas con 12 piezas: ${mediana.toFixed(3)} ms`);
     expect(mediana).toBeLessThan(5);
@@ -1014,7 +1014,7 @@ describe('el tablero lleno', () => {
 });
 
 /**
- * El muteo del spec 014: una pieza que ocupa su lugar y su tiempo en el circuito y no
+ * El muteo: una pieza que ocupa su lugar y su tiempo en el circuito y no
  * suena sus notas.
  *
  * Lo que estos tests fijan no es que el muteo "funcione" sino que **no cambie nada mas**.
@@ -1106,7 +1106,7 @@ describe('una sola pieza muteada va por el retorno temprano y tampoco suena', ()
 describe('un cruce sobre una pieza muteada no suena', () => {
   it('los cruces sobre la X pierden su altura al mutearla', () => {
     // `CON_X` es el tablero donde el recorrido PISA la `X`, y esos cruces suenan la
-    // floritura del spec 011 — que es exactamente la nota que el muteo apaga.
+    // floritura — que es exactamente la nota que el muteo apaga.
     const normal = buildSequence(CON_X, REGIMEN.escala, GRID_DEFAULT);
     const conNota = normal.clicks.filter((c) => c.note !== undefined);
     // Guarda del propio test: si el tablero dejara de cruzar, los `expect` de abajo se
@@ -1128,7 +1128,7 @@ describe('un cruce sobre una pieza muteada no suena', () => {
   });
 });
 
-describe('D4 del spec 009 — dos eventos no caen nunca en el mismo instante, tampoco con muteo', () => {
+describe('D4 — dos eventos no caen nunca en el mismo instante, tampoco con muteo', () => {
   it('ningun offset se repite entre clicks ni choca con una nota', () => {
     // La garantia es del 009 y este spec mete una clase nueva de click adentro del
     // intervalo que antes ocupaba un arpegio. Si dos coincidieran, el motor agendaria

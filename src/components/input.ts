@@ -14,7 +14,7 @@ import type { PlacedPiece } from '../domain/types/board.types.ts';
  * jsdom: no hay `KeyboardEvent` ni `MouseEvent` que fabricar, y tampoco hay forma de
  * montar un componente para dispararlos. Recibiendo los campos que importan, las
  * guardas quedan testeadas de verdad y lo único que queda sin red es que el cableado de
- * `use-input.ts` los llene bien — que es exactamente lo que las tareas `[M]` del spec 013
+ * `use-input.ts` los llene bien — que es exactamente lo que las tareas `[M]`
  * verifican en el
  * navegador.
  *
@@ -58,7 +58,7 @@ export function rotacionPorRueda(rotation: Rotacion, deltaY: number): Rotacion {
 }
 
 /**
- * El cuarto de vuelta siguiente: el gesto de `Shift` del spec 013.
+ * El cuarto de vuelta siguiente: el gesto de `Shift`.
  *
  * Delega en `rotacionPorRueda` con un `deltaY` positivo en vez de repetir el `+ 4` y el
  * `% 4`, y no es un rodeo: hasta el spec 020 el shell escribía `(rotation + 1) % 4`
@@ -211,7 +211,7 @@ export function accionDeTecla(e: EventoDeTecla): Accion | null {
  * es un efecto que nadie pidió.
  *
  * Los modificadores no aparecen acá: `Shift` y `Control` sueltos no tienen ningún
- * default que frenar, ni al bajar ni al soltar. Y las doce letras del spec 018 tampoco: son
+ * default que frenar, ni al bajar ni al soltar. Y las doce letras tampoco: son
  * el tercer caso y el primero del lado inverso —hay acción y NO hay que frenar nada—, que
  * es todo AC6 del 018: una letra suelta no tiene default que frenar, y frenarlo igual sería
  * quitarle al navegador un evento que no es nuestro.
@@ -261,7 +261,7 @@ export function esLaPiezaEnLaMano(ocupante: PlacedPiece | null, selected: PieceK
 /**
  * Qué le pide al tablero un click sobre la celda `(x, y)`, o `null` si no pide nada.
  *
- * Las cuatro ramas de la tabla del spec 014, con `Alt` significando "muteado" en los dos
+ * Las cuatro ramas de la tabla, con `Alt` significando "muteado" en los dos
  * lados del gesto:
  *
  * ```
