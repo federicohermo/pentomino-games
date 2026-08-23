@@ -46,7 +46,7 @@
 - [x] T032 Confirmar que no se tocó un solo archivo de `src/` — **AC8**
 - [ ] T033 [M] Correr `/spec-implement` sobre este mismo spec: es el primer consumidor de la tool que
       acaba de escribir, y si algo no cierra se ve ahí
-- [ ] T034 Actualizar la fila del 033 en `specs/log.md` a `Implementado` — **queda abierta a
+- [x] T034 Actualizar la fila del 033 en `specs/log.md` a `Implementado` — **queda abierta a
       propósito**: el estado lo mueve el merge. Y en este spec la nota es doble, porque el registro
       acaba de demostrar que ese mecanismo falló **diez de diez veces**
 - [x] T035 Commit, push y PR contra `origin`
