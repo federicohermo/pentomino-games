@@ -181,5 +181,5 @@ conflicto que aparece recién al escribir, que es justo lo que `[P]` existe para
 
 ## PR
 
-- [ ] T037 Rama `feature/032-la-documentacion-tambien-se-verifica`, PR contra `main`, `pnpm verify` en
-      verde también en Actions
+- [x] T037 Rama `feature/032-la-documentacion-tambien-se-verifica`, PR contra `main`, `pnpm verify` en
+      verde también en Actions — PR #61, `verify` verde en el runner el 2026-08-23
