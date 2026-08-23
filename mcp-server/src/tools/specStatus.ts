@@ -6,9 +6,10 @@ import { SPECS_DIR } from './specsDir.ts';
 /**
  * Las `citas` se piden, no vienen puestas.
  *
- * Medido sobre los 33 specs de hoy: la respuesta entera pesa **29.019 bytes** y
- * las citas suman **49.670** — un 2,7x — para una lectura que siempre se hace
- * sobre UN spec. Acotada, el peor spec del repo (el 005) aporta 4.153.
+ * Medido sobre los 33 specs de hoy: la respuesta entera pesa **29.742 bytes** y
+ * las citas suman **84.097** —o sea que ponerlas la lleva a **3,8x**— para una
+ * lectura que siempre se hace sobre UN spec. Acotada, la respuesta mediana son
+ * 3.135 bytes y el peor spec del repo —el 021— **7.962**.
  *
  * Se OMITE el campo en vez de mandarlo vacio: un `citas: []` se lee como "esta
  * tarea no nombra ningun archivo", que es falso, y una respuesta que miente
@@ -25,7 +26,7 @@ function sinCitas(s: SpecStatus): SpecStatus {
 
 const inputSchema = z.object({
   spec: z.string().optional()
-    .describe('Un spec: su número ("33" o "033") o el nombre de su carpeta. Acota la respuesta a ese spec y le agrega `citas`. Sin él vienen los 33 specs, sin `citas`.'),
+    .describe('Un spec: su número ("33" o "033") o el nombre de su carpeta. Acota la respuesta a ese spec y le agrega `citas`. Sin él vienen todos los specs, sin `citas`.'),
 });
 
 /**
@@ -65,7 +66,7 @@ export const crearSpecStatus = (specsDir: string) => defineTool({
       return json({
         specs: specs.map(sinCitas),
         totales,
-        nota: 'Sin `spec` las `citas` no viajan: son 49.670 bytes contra los 29.019 de esta respuesta. Pedir un spec para tenerlas.',
+        nota: 'Sin `spec` las `citas` no viajan: son 84.097 bytes contra los 29.742 de esta respuesta. Pedir un spec para tenerlas.',
       });
     }
 

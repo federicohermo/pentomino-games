@@ -901,7 +901,7 @@ describe('spec_status y spec_write — sobre un registro fabricado', () => {
   }
 
   test('sin `spec` vienen todos y las citas NO viajan', () => {
-    // Medido sobre el repo real: las citas son 49.670 bytes contra los 29.019
+    // Medido sobre el repo real: las citas son 84.097 bytes contra los 29.742
     // que la respuesta ya pesa, para una lectura que siempre es sobre UN spec.
     con((_raiz, status) => {
       const r = call(status, {});

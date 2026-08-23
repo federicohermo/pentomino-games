@@ -34,8 +34,9 @@ trabajo que se pisa"*. En este repo, desde el spec 011, la declaración viene po
 
 **La declaración se lee con `spec_status`, no abriendo el archivo.** Con el argumento `spec` la
 respuesta se acota a ese spec y suma `citas`: por tarea, los archivos que nombra entre backticks, con
-su línea. Eso es la materia prima del fake-edge test ya parseada, y acotada pesa 2.814 bytes contra
-los 30.421 del registro entero. `cruces` da los pares `X → Y` que la tarea declara —`de` y `a` son
+su línea. Eso es la materia prima del fake-edge test ya parseada, y acotada pesa 3.135 bytes —el peor
+spec, el 021, 7.962— contra los 29.742 del registro entero. `cruces` da los pares `X → Y` que la
+tarea declara **en su propia línea**, no en su prosa de abajo —`de` y `a` son
 string, que en este repo hay un `4,0 → 11,8`— y `proximaId` dice cuál falta de verdad, con
 `Seguimiento`, `[M]` y los specs terminales ya descontados.
 

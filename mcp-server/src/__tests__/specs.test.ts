@@ -323,7 +323,7 @@ const CITAS = `# Tareas — Citas y cruces
 - [ ] T002 [P] La regla de \`calibracion.md:21\` sobre el falso positivo
 - [x] T003 \`CELL_PX\` va de 63 a 71, y el ancho de 44 → **63**
 - [ ] T004 Una tarea larga que cita abajo
-      en \`docs/architecture/audio.md:154\` y sigue
+      en \`docs/architecture/audio.md:154\`, que el spec anterior movió de 8 → 9 ms, y sigue
 - [ ] Sin ID, pero cita \`App.tsx\` igual
 
 ## Seguimiento (no bloquea)
@@ -343,8 +343,8 @@ describe('parseTasks — citas', () => {
   });
 
   test('un backtick que no es un archivo no es una cita', () => {
-    // `CELL_PX` es el caso medido: sin la lista de extensiones entraban 847
-    // supuestas citas donde hay 803.
+    // `CELL_PX` es el caso medido: sin la lista de extensiones entraban 1.547
+    // supuestas citas donde hay 1.388.
     const archivos = parseTasks(CITAS).citas?.map(c => c.archivo) ?? [];
     assert.ok(!archivos.includes('CELL_PX'));
   });
@@ -379,6 +379,16 @@ describe('parseTasks — cruces', () => {
       { tarea: 'T003', de: '44', a: '63' },
       { tarea: 'T005', de: '4,0', a: '11,8' },
     ]);
+  });
+
+  test('un `X → Y` en una continuación no es un cruce', () => {
+    // La asimetría con las citas, y está medida: correr el patrón también sobre
+    // las continuaciones da 25 pares en el repo donde hay 7. Una continuación es
+    // la prosa que justifica la tarea, y sus números con flecha son frecuencias
+    // (`2 → 0.6461`) o números de spec (`002 → 43`), no constantes que el spec
+    // mueva. Una cita falsa hace que la skill abra el archivo para desconfiar; un
+    // cruce falso le inventa una dependencia dura entre dos specs.
+    assert.deepEqual(parseTasks(CITAS).cruces.filter(c => c.tarea === 'T004'), []);
   });
 
   test('los valores viajan como string: la coma decimal es real', () => {

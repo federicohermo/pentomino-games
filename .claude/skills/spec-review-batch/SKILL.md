@@ -112,7 +112,9 @@ cada agente, o el lote devuelve una avalancha de citas rotas falsas.
    pareados y con la tarea que los declara al lado—, que es la arista que ningún import delata. Vienen
    como **string** y no como número a propósito: hay pares con coma decimal (`4,0 → 11,8`,
    `0,02 → 0,05`) que un `Number()` convierte en `NaN`. Son **7 en todo el repo**, o sea que cruzarlos
-   a mano es barato — lo caro era encontrarlos.
+   a mano es barato — lo caro era encontrarlos. Los 7 salen de la **línea de la tarea** y no de su
+   prosa de abajo: contando también las continuaciones son 25, y los 18 de más son frecuencias y
+   números de spec que inventarían una dependencia dura donde no hay ninguna.
 3. Contrastá contra «Dependencias entre specs» del `log.md`. Ese texto dice qué quiso el autor; la
    matriz dice qué archivos se pisan. **Si difieren, eso es hallazgo** y se edita el `log.md`.
 4. Un spec que **declara tolerar** llegar antes que su dependencia sale de la cadena: es permiso
@@ -223,9 +225,11 @@ diseños, frená con `AskUserQuestion`: un párrafo ahora contra dos ramas rebas
 ## Paso 5 — Aplicar lo compartido y reportar
 
 El padre aplica las ediciones fuera-de-carpeta que juntó en el Paso 3, **una por hallazgo** y en serie,
-para que el `git diff` se lea. La serie dejó de ser sólo legibilidad: `spec_write` deriva el `T0NN` del
-mayor que ya hay en el archivo, así que dos seguimientos disparados a la vez sobre el mismo spec están
-mirando el mismo máximo. **No commitea.**
+para que el `git diff` se lea, y las llamadas a `spec_write` van también de a una — aunque el motivo
+no es el que parece. **No hay carrera**: el handler de la tool es síncrono y el server es un solo
+proceso, así que el leer-modificar-escribir del `tasks.md` no se interrumpe y dos seguimientos no
+pueden derivar el mismo `T0NN`. Lo que la serie compra es el **orden**: los IDs quedan en el orden en
+que se decidieron los hallazgos y no en el que contestaron las llamadas. **No commitea.**
 
 El reporte, en este orden:
 

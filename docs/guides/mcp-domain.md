@@ -107,7 +107,7 @@ pongo en `x=1` y otra pieza en `x=5`?"*
 |---|---|---|
 | Leyendo el código: `domain/{transform,music,board,sequence}` + sus `constants/` y `types/` + `audio/scheduler` + sus constantes | 48.565 | ~12.141 |
 | Con las tools: `describe_piece` (621) + `simulate_board` (2.064) | **2.685** | **~671** |
-| Catálogo de las seis tools, una vez por sesión | 13.115 | ~3.279 |
+| Catálogo de las seis tools, una vez por sesión | 13.118 | ~3.280 |
 
 Las dos primeras filas se re-midieron con el spec 009 y **la brecha se ensanchó**: la respuesta de
 `simulate_board` creció de 1.189 a 2.064 bytes porque ahora lleva el camino de cada salto, pero el

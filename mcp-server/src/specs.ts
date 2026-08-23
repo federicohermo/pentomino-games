@@ -84,8 +84,8 @@ export interface Cruce {
  * linea opcional pegada atras.
  *
  * La lista de extensiones no es decorativa. Sin ella entran `` `CELL_PX` `` y
- * `` `vitest@^4.1.10` `` —medido sobre los 33 `tasks.md`: 847 supuestas citas
- * contra 803 reales—, y una cita que no es un archivo es exactamente la clase de
+ * `` `vitest@^4.1.10` `` —medido sobre los 33 `tasks.md`: 1.547 supuestas citas
+ * contra 1.388 reales—, y una cita que no es un archivo es exactamente la clase de
  * ruido que hace que la skill vuelva a abrir el archivo para desconfiar.
  */
 const CITA = /`([^`\s]*?[\w.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|md|json|css|html|yml|yaml))(?::(\d+)(?:-\d+)?)?`/g;
@@ -107,16 +107,36 @@ const CITA = /`([^`\s]*?[\w.-]+\.(?:ts|tsx|js|jsx|mjs|cjs|md|json|css|html|yml|y
 const CRUCE = /[*`_]*(\d+(?:[.,]\d+)?)[*`_]*\s*→\s*[*`_]*(\d+(?:[.,]\d+)?)[*`_]*/g;
 
 /**
- * Saca las citas y los cruces de un tramo de texto de tarea.
+ * Saca las citas de un tramo de texto de tarea.
  *
- * Recibe los acumuladores en vez de devolver: se llama una vez por la linea de la
+ * Recibe el acumulador en vez de devolver: se llama una vez por la linea de la
  * tarea y una vez por cada continuacion, y las de una continuacion son de la
  * tarea de arriba. Es el mismo recorrido de `parseTasks`, no una segunda pasada.
  */
-function extraer(texto: string, tarea: string | null, citas: Cita[], cruces: Cruce[]): void {
+function extraerCitas(texto: string, tarea: string | null, citas: Cita[]): void {
   for (const m of texto.matchAll(CITA)) {
     citas.push({ tarea, archivo: m[1], linea: m[2] === undefined ? null : Number(m[2]) });
   }
+}
+
+/**
+ * Saca los cruces, y **solo de la linea de la tarea** — no de sus continuaciones.
+ *
+ * La asimetria con `extraerCitas` esta medida y es el motivo de que sean dos
+ * funciones y no una. Una continuacion es donde vive la prosa que justifica la
+ * tarea, y esa prosa tiene numeros con flecha que no son constantes que el spec
+ * mueva: sobre los 33 `tasks.md`, correr `CRUCE` tambien sobre las continuaciones
+ * da **25** pares donde hay **7**, y los 18 de mas son ruido —`2 → 0.6461` es una
+ * frecuencia, `002 → 43` son dos numeros de spec, y una misma tarea aporta
+ * `3 → 0` y `0 → 3`—. Filtrando por posicion quedan exactamente los 7 que
+ * `spec-review-batch/cruces.md` documenta, casos testigo incluidos.
+ *
+ * Por que aca se filtra y en las citas no: una cita que no es un archivo hace que
+ * la skill vuelva a abrir el archivo para desconfiar; un cruce que no es un cruce
+ * le inventa una **dependencia dura entre dos specs**, que es lo que decide el
+ * orden de un lote. El segundo falso positivo es mucho mas caro que el primero.
+ */
+function extraerCruces(texto: string, tarea: string | null, cruces: Cruce[]): void {
   for (const m of texto.matchAll(CRUCE)) cruces.push({ tarea, de: m[1], a: m[2] });
 }
 
@@ -148,11 +168,14 @@ export interface TasksInfo {
   proximaId: string | null;
   /**
    * Los archivos que cada tarea nombra. Opcional porque `spec_status` las omite
-   * cuando responde por los 33 specs: pesan 49.670 bytes sobre los 29.019 que la
+   * cuando responde por los 33 specs: pesan 84.097 bytes sobre los 29.742 que la
    * respuesta ya pesa, y son una lectura que siempre se hace sobre UN spec.
    */
   citas?: Cita[];
-  /** Los `X → Y` de cada tarea. Son 7 en todo el repo: viajan siempre. */
+  /**
+   * Los `X → Y` de cada tarea. Son 7 en todo el repo —solo de la linea de la
+   * tarea, ver `extraerCruces`—: viajan siempre.
+   */
   cruces: Cruce[];
 }
 
@@ -227,7 +250,8 @@ export function parseTasks(md: string): TasksInfo {
 
       abierta = [t[4].trim()];
       idAbierto = t[2] ?? null;
-      extraer(t[4], idAbierto, citas, cruces);
+      extraerCitas(t[4], idAbierto, citas);
+      extraerCruces(t[4], idAbierto, cruces);
       // La primera sin marcar que no es de seguimiento ni pide una persona se
       // queda como `proxima`, y sigue abierta para recibir sus continuaciones.
       if (!marcada && !enSeguimiento && !esManual) {
@@ -242,7 +266,8 @@ export function parseTasks(md: string): TasksInfo {
 
     if (abierta && continuacion.test(line)) {
       abierta.push(line.trim());
-      extraer(line, idAbierto, citas, cruces);
+      // Las citas si, los cruces no: el porque esta en `extraerCruces`.
+      extraerCitas(line, idAbierto, citas);
     } else if (line.trim() === '') abierta = null;
   }
 
