@@ -80,11 +80,19 @@ previendo ser el nodo más lento de los cuatro y el 029 lo desbancó antes de qu
 mergeara. Es el dato de cada uno medido sin el otro — el par de arriba está medido con los dos
 puestos.
 
-Desde el spec 032 `lint` también lintea los **162 `.md`** del repo, en dos carriles: el preset
+Desde el spec 032 `lint` también lintea **todos los `.md`** del repo, en dos carriles: el preset
 completo sobre la documentación viva, y sólo las reglas que cazan un error de **renderizado** sobre
 `specs/[0-9]*/**`, porque la Desviación 2 de [`specs/README.md`](../../specs/README.md) dice que un
 spec mergeado no se reescribe. El detalle de los dos carriles está en `eslint.config.js`, al lado de
-cada bloque.
+cada bloque. El conteo de archivos **no se escribe acá a propósito**: es exactamente la clase de
+número que envejece con el `.md` siguiente, y el que lo verifica es `eslint .` sin glob.
+
+**Markdown cuesta 2,5 s**, y el «antes» hubo que re-medirlo: comparar contra los 11,0 s del 030 no
+decía nada —otra máquina, otro momento—, así que el 032 corrió `eslint .` con
+`--ignore-pattern "**/*.md"` en la misma sesión, **13,6 → 16,1 s**. `suite` seguía mandando el reloj
+con 33,8 s, más del doble. La regla que deja eso escrito vale para todos los números de esta página:
+**un número de performance de un spec viejo no sirve como línea de base**, y los pares de arriba lo
+son sólo dentro de su propia medición.
 
 ## Los tests de `src/` son dos proyectos de Vitest y un solo comando
 

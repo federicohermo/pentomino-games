@@ -285,7 +285,11 @@ mal, pero es la clase de cosa que alguien "arregla" por error.
 
 ## Estado
 
-- **Sin estado global.** No hay Context, Redux ni Zustand. Todo es `useState` local en `App`.
+- **Sin estado global.** No hay Context, Redux ni Zustand. Todo es `useState` local en `App`. Desde
+  el spec 030 lo verifica el linter y por **dos** caminos, porque uno solo no alcanza: el paquete
+  —Redux, Zustand y compañía, con `no-restricted-imports`— y la **llamada** a `createContext`, que es
+  la mitad que el paquete no ataja: importar `react` en `components/` es legítimo, así que lo que hay
+  que prohibir ahí es la llamada y no el import.
 - **Lo que no es estado de UI, no va en estado.** El contador de ids vive en un `useRef` porque
   cambiarlo no debe re-renderizar. El `AudioContext` y la secuencia del motor —la activa y la
   pendiente— viven en singletons de módulo porque hay uno por pestaña, no uno por componente.
@@ -324,6 +328,28 @@ la limpieza tiene que ganarle al re-montaje, tiene que ser sincrónica — es el
 desmontaje de `use-engine.ts`, que llama a `stopClock()` y entrega una secuencia vacía con
 `setSequence()`. Ver
 [audio.md](../architecture/audio.md#reconciliación-de-loops).
+
+## Tests
+
+### Nada de `.only` ni `.skip`, ni un test sin una sola aserción
+
+Es la misma familia de bug que el `--filter "{.}"` y el `$` del regex de `verify`: **fallar en
+verde**. Un `.only` olvidado deja pasar la suite entera sin que nada avise, y un test sin `expect` es
+un archivo que suma al conteo y no verifica nada.
+
+Desde el spec 030 lo verifica el linter, y hace falta **una regla por runner** porque ninguna de las
+dos alcanza al otro:
+
+| Dónde | Quién lo caza |
+|---|---|
+| `src/**/__tests__/` | `@vitest/eslint-plugin` — `no-focused-tests` (con `fixable: false`, para que `--fix` no borre el `.only` en silencio), `no-disabled-tests` y `expect-expect` |
+| `mcp-server/**/__tests__/` | un selector de `no-restricted-syntax`: ahí corre `node --test` y el plugin de Vitest no lo mira |
+
+**El test sin una sola aserción queda afuera en `mcp-server/`, y es a propósito:** con `node:test` no
+hay un `expect` que contar, así que no tiene equivalente barato. Y antes del selector un `.skip` ahí
+fallaba igual, pero **por accidente** —lo cazaba `no-floating-promises`, porque `allowForKnownSafeCalls`
+nombra `test`/`describe`/`it` y no sus miembros—, o sea que el mensaje hablaba de promesas sin esperar
+y no del motivo, y bastaba un `void` para silenciarlo sin que nada dijera nada.
 
 ## Comentarios
 

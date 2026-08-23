@@ -163,7 +163,7 @@ describe('los enlaces relativos de la documentacion resuelven', () => {
       }
     }
 
-    // La lista entera y no el primero: son 162 archivos, y un gate que dice «fallo»
+    // La lista entera y no el primero: son todos los `.md` del repo, y un gate que dice «fallo»
     // sin decir donde es un gate que se apaga.
     expect(rotos, `enlaces a un archivo que no existe:\n${rotos.join('\n')}`).toEqual([]);
   });
