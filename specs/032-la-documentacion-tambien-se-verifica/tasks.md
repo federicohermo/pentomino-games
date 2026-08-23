@@ -144,6 +144,15 @@ conflicto que aparece recién al escribir, que es justo lo que `[P]` existe para
 - [ ] T036 [M] Verificar en una sesión nueva que el `CLAUDE.md` recortado sigue alcanzando: lo que se
       fue a `docs/` tiene que ser lo que no se necesita para arrancar
 
+- [ ] T038 **Tres de sus gates miran archivos que el spec siguiente saca del repo, y dos fallarían en
+      verde.** El T040 del 033 gitignorea `tasks.md` y `plan.md`; de este spec, el **T015** (los cuatro
+      archivos por carpeta) pasaría a **fallar** —ve dos—, y el **T017** (toda línea checkbox parsea) y
+      el **T018** (IDs únicos) pasarían a leer un directorio vacío y **pasar sin verificar nada**. Es la
+      misma familia que el T044 del 033 ya dejó declarada para `lote.sh` y `matriz.sh`. No cambia el
+      orden —los otros nueve ACs son independientes de la mudanza, y el gate de enlaces (AC2) es
+      justamente la red que el spec siguiente necesita para mover rutas sin romper nada en silencio—
+      pero el 034 nace debiendo re-apuntar estos tres al backend, y este renglón es de donde lo saca.
+
 ## PR
 
 - [ ] T037 Rama `feature/032-la-documentacion-tambien-se-verifica`, PR contra `main`, `pnpm verify` en
