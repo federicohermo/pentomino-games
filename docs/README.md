@@ -22,7 +22,7 @@ secuencia de cinco notas derivada de su identidad y su orientación.
 
 ### Specs
 - [specs/log.md](../specs/log.md) — Registro de specs, con estados y dependencias
-- [specs/deuda.md](../specs/deuda.md) — Lo registrado que todavía no tiene spec
+- [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues) — Lo registrado que todavía no tiene spec
 - [specs/revisiones.md](../specs/revisiones.md) — Qué se aprendió escribiendo o revisando cada spec
 - [specs/README.md](../specs/README.md) — Convención de formato y flujo de trabajo
 

@@ -21,7 +21,7 @@ buscar la deuda ahí la deja fuera del review entero. El registro está partido 
 | Archivo | Qué tiene | Para qué eje |
 |---|---|---|
 | `specs/log.md` | La tabla de specs con su estado, y las dependencias entre specs | Alcance, colisión de número |
-| `specs/deuda.md` | **La deuda registrada sin spec.** Es el mapa síntoma → deuda del eje D | D · Deuda |
+| **GitHub Issues** (`mcp__github__list_issues`) | **La deuda registrada sin spec.** Es el mapa síntoma → deuda del eje D | D · Deuda |
 | `specs/revisiones.md` | Qué se aprendió escribiendo o revisando cada spec, con fecha. Acá está el "esto ya se probó y no funcionó" | D · Deuda, y anclaje |
 | `specs/README.md` | Solo la convención de formato y el flujo | F · Estructura |
 

@@ -63,7 +63,7 @@ Formato en `specs/README.md`. `[P]` = paralelizable dentro de su bloque; `[M]` =
 - [ ] T027 [M] Los nueve viewports de la tabla, a ojo, sin una barra de scroll — incluido el móvil
 - [ ] T028 [M] Escuchar un tablero de 12 piezas repartidas en una pantalla grande: la música cambia de
       carácter sin que cambie el modelo, y hay que decidir si eso está bien
-- [ ] T029 PR contra `fix/celda-vuelve-al-tamano-de-antes` (o contra `main` si ese ya mergeó)
+- [x] T029 PR contra `fix/celda-vuelve-al-tamano-de-antes` (o contra `main` si ese ya mergeó)
 
 ## Correcciones del review (post-implementación)
 

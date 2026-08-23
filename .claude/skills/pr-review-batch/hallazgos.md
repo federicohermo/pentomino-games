@@ -52,9 +52,9 @@ De ahí las dos sondas, en este orden, las dos baratas:
    número que el research, gana el research y el doc es el hallazgo.
 2. **Buscá el gemelo del párrafo que el PR sí actualizó.** Un cambio acá se anuncia en dos o tres
    registros a la vez —`CLAUDE.md`, `docs/architecture/directory-structure.md`, `README.md`,
-   `specs/deuda.md`, `specs/log.md`— y es habitual que actualicen uno y se olviden del resto.
+   `specs/log.md`— y es habitual que actualicen uno y se olviden del resto.
    Grepeá la clave del cambio (el número del spec, el nombre del archivo, la cifra vieja) contra esos
-   cinco. Los tres hallazgos de conteo de archivos de la corrida salieron todos así.
+   cuatro. Los tres hallazgos de conteo de archivos de la corrida salieron todos así.
 
 Un comentario o un doc que ya contradice al código de al lado es **🔴, no 🟡**: el repo trata la prosa
 como parte del contrato, y `CLAUDE.md` se carga en cada sesión.

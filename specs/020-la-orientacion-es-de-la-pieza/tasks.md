@@ -297,7 +297,7 @@ este spec falsifica es la deuda que `d936597` y `eb154a0` ya tuvieron que pagar 
 ## PR
 
 - [x] T028 Rama `feature/020-la-orientacion-es-de-la-pieza`
-- [ ] T029 Actualizar la fila del 020 en `specs/log.md` a `Implementado`
+- [x] T029 Actualizar la fila del 020 en `specs/log.md` a `Implementado`
 - [x] T030 Anotar en `specs/revisiones.md` si el spec salió distinto de lo previsto
 
 ## Seguimiento (no bloquea)

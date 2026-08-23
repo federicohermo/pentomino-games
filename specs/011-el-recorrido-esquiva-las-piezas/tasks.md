@@ -149,7 +149,7 @@
 - [ ] T048 [M] Tablero de 4-5 piezas con la cabeza lectora andando, recorriendo P = 1, 2, 3, 5
 - [ ] T049 [M] Lo que hay que escuchar no es cuántos cruces, sino **si el rodeo se lee como rodeo o como que el
       instrumento se colgó**
-- [ ] T050 El valor elegido queda escrito con su motivo
+- [x] T050 El valor elegido queda escrito con su motivo
 
 ## Documentación
 - [x] T051 [P] `.claude/rules/audio.md`: la línea «un click puede caer sobre una pieza — los 21 del ciclo, en el
@@ -168,7 +168,7 @@
       **ya existe** —se escribió en el review de este spec, porque el 010 no había documentado nada— y su
       tabla de escalones tiene hoy dos filas más una cita en bloque que declara la tercera como pendiente
       de este spec. La tarea es agregar la fila con sus dos números y **borrar la cita**
-- [ ] T056 [P] `specs/log.md`: estado del 011, y nota de revisión con **cómo se encontró** — mirando la cabeza
+- [x] T056 [P] `specs/log.md`: estado del 011, y nota de revisión con **cómo se encontró** — mirando la cabeza
       lectora del 010, no leyendo código. Es el segundo hallazgo que sale del mismo lugar
 
 ## Verificación
@@ -214,7 +214,7 @@
       baja al 9,9 % y el ciclo crece 7,1 %. Prohibir de hecho (61) lo lleva a 0 % pero cuesta +19,3 % de
       ciclo y admite rodeos de +20 intervalos, que es el síntoma que T049 existe para juzgar. La tabla
       completa está en el docblock de la constante
-- [ ] T077 **El `onsets` de `simulate_board` sumaba mal y nadie lo veía**: contaba los cruces con altura
+- [x] T077 **El `onsets` de `simulate_board` sumaba mal y nadie lo veía**: contaba los cruces con altura
       dentro de `clicks`, así que `notes + clicks !== total` y el propio comentario del campo decía que
       si difieren «o se duplicó un onset o dos eventos colisionaron». Se partió en `clicks` y `crosses`.
       Queda sin marcar solo porque conviene mirarlo en la revisión: es cambio de contrato de la tool

@@ -141,7 +141,7 @@ los cuatro van **destilados**, no como rutas a leer:
 - **Las convenciones verificables, ≤40 líneas**: `CLAUDE.md` más los `.claude/rules/` de las capas que
   el lote toca. Con la línea de [`hallazgos.md`](./hallazgos.md) marcada: qué verifica ya el linter y
   qué no.
-- **El mapa síntoma → deuda** de `specs/deuda.md`.
+- **El mapa síntoma → deuda**, que sale de los **issues abiertos** (`mcp__github__list_issues`).
 - Lo que `specs/revisiones.md` registra como *ya se probó y no funcionó* para el área del lote.
 - **La cadena de bases del Paso 0**, con **las cinco cláusulas del Paso 0 bis literales** y **la lista
   caliente medida**. Las tres cosas son del padre y ninguna la puede derivar el agente: la cadena

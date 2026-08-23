@@ -84,7 +84,8 @@ Es el ahorro propio del batch: sin esto, N reviews lo re-derivan N veces desde f
 los cuatro se pasan **destilados**, no como rutas a leer:
 
 - `spec_status` con los N números — estado, hechas/total y `pendientes` de todo el lote en una consulta.
-- **El mapa síntoma → deuda** de `specs/deuda.md`, que es el eje D entero.
+- **El mapa síntoma → deuda**, que sale de los **issues abiertos** (`mcp__github__list_issues`) y es
+  el eje D entero.
 - Lo que `specs/revisiones.md` registra como *ya se probó y no funcionó* para el área del lote.
 - Las convenciones verificables, **≤40 líneas**: `CLAUDE.md` + `.claude/rules/` de las capas que el lote
   toca.
@@ -161,9 +162,9 @@ espera de vuelta—:
 Y este contrato, que es lo propio del batch:
 
 > **No escribís fuera de `specs/<NNN>-*/`.** Ni `docs/`, ni `.claude/rules/`, ni `CLAUDE.md`, ni
-> `specs/log.md`, ni `specs/revisiones.md`, ni `deuda.md`, ni el `tasks.md` de otro spec. Los tocan los
+> `specs/log.md`, ni `specs/revisiones.md`, ni el `tasks.md` de otro spec. Los tocan los
 > N a la vez y no hay merge que lo arregle. Devolvelos como **edición propuesta**, con `path:línea` y
-> el texto exacto.
+> el texto exacto. **Tampoco abrís ni cerrás issues**, por lo mismo: el padre los consolida.
 
 Y devuelve dos cosas: su reporte, comprimido a **40–60 líneas** —veredicto en la primera, después los
 bloqueantes con evidencia, y lo editado a conteos—, y esa lista de ediciones propuestas afuera. Sin la

@@ -299,7 +299,7 @@ T021 no puede dar verde, y el umbral de coverage es 100. **AC16**.
 ## PR
 
 - [x] T027 Rama `feature/019-el-panel-se-queda-sin-botones`
-- [ ] T028 Actualizar la fila del 019 en `specs/log.md` a `Implementado`
+- [x] T028 Actualizar la fila del 019 en `specs/log.md` a `Implementado`
 - [x] T029 Anotar en `specs/revisiones.md` si el spec salió distinto de lo previsto
 
 ## Seguimiento (no bloquea)

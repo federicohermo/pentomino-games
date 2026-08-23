@@ -88,7 +88,7 @@ persona y no bloquea el cierre.
 ## Verificación y PR
 
 - [x] T060 `pnpm verify` en verde con sus cuatro nodos (ver T005)
-- [ ] T061 Commit, push y PR contra `origin`
+- [x] T061 Commit, push y PR contra `origin`
 - [ ] T062 [M] Code review del PR
 
 ## Seguimiento (no bloquea)

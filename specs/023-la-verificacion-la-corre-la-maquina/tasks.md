@@ -137,7 +137,7 @@ una persona y no bloquea el cierre.
       se implemente esto, entonces sí. **Resuelto al implementar: NO.** El 028 corre en otro carril del
       mismo lote y no estaba mergeado; el `README.md` sigue siendo las 69 líneas de la plantilla de
       Vite. Queda para el 028, que es quien va a tener dónde apoyarlo
-- [ ] T023 Actualizar la fila del 023 en `specs/log.md` a `Implementado` — **queda abierta a propósito**:
+- [x] T023 Actualizar la fila del 023 en `specs/log.md` a `Implementado` — **queda abierta a propósito**:
       en este repo el estado del spec lo mueve el **merge**, no la rama
 - [x] T024 PR contra `main` — [#26](https://github.com/federicohermo/pentomino-games/pull/26)
 

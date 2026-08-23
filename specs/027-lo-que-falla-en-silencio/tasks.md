@@ -112,7 +112,7 @@ tocan.
 - [x] T027 `specs/deuda.md`: nada que borrar —ninguno de los cinco estaba registrado— pero sí anotar el
       que este spec **no** cierra, si el paso 4 termina en «no se memoiza»: queda el número y la puerta
       abierta para el 019/020
-- [ ] T028 Actualizar la fila del 027 en `specs/log.md` a `Implementado` — **queda abierta a propósito**:
+- [x] T028 Actualizar la fila del 027 en `specs/log.md` a `Implementado` — **queda abierta a propósito**:
       el estado lo mueve el merge
 - [x] T029 PR contra `main`
 

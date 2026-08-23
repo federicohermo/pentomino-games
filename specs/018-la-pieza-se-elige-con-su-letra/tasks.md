@@ -167,5 +167,5 @@ una persona y no bloquea el cierre.
 ## PR
 
 - [x] T023 Rama `feature/018-la-pieza-se-elige-con-su-letra`
-- [ ] T024 Actualizar la fila del 018 en `specs/log.md` a `Implementado`
+- [x] T024 Actualizar la fila del 018 en `specs/log.md` a `Implementado`
 - [x] T025 Anotar en `specs/revisiones.md` si el spec salió distinto de lo previsto
