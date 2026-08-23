@@ -6,8 +6,8 @@ import type { Cell } from './types/transform.types.ts';
  * INVARIANTE que no hay que romper: las tres son `map`, asi que **la celda del
  * indice `k` sigue siendo la misma celda logica despues de transformar**.
  * `ANCHOR_INDEX` depende de esto —guarda la celda de agarre como indice, no como
- * coordenada—, igual que la fase por pieza del spec 004, que lee la columna del
- * ancla por indice sobre `PlacedPiece.cells`. Filtrar, ordenar o reagrupar celdas
+ * coordenada—, y todo lo que resuelva un indice contra `PlacedPiece.cells` tambien.
+ * Filtrar, ordenar o reagrupar celdas
  * dentro de estas funciones rompe la colocacion de piezas **sin ningun error
  * visible**.
  *
@@ -103,7 +103,7 @@ function manhattan(a: Cell, b: Cell): number { return Math.abs(a[0]-b[0]) + Math
  *
  * Con esta relacion las 12 piezas se recorren enteras. Con la ortogonal pura eran 8,
  * y las 4 que faltaban no era por el algoritmo sino por la forma: su grafo de celdas
- * es un arbol con un nodo de 3 o 4 vecinos (spec 012, `research.md` §2).
+ * es un arbol con un nodo de 3 o 4 vecinos.
  */
 function seTocan(a: Cell, b: Cell): boolean {
   return Math.max(Math.abs(a[0]-b[0]), Math.abs(a[1]-b[1])) === 1;
@@ -128,7 +128,7 @@ function lex(a: readonly number[], b: readonly number[]): number {
  *
  * `tiebreak[k]` es el rango de la celda `k` para desempatar, menor gana. Entra por
  * parametro y no se calcula aca porque el criterio es musical —hoy es el orden
- * angular del spec 007— y `music.ts` esta aguas abajo: esta capa no puede importarlo
+ * angular— y `music.ts` esta aguas abajo: esta capa no puede importarlo
  * y no tiene por que saber que existe un grado.
  *
  * ## Los cuatro criterios, en orden

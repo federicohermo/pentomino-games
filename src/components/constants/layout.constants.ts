@@ -2,10 +2,9 @@
  * El tamano de celda OBJETIVO, en px, y lo unico que queda de la larga historia de
  * `CELL_PX`.
  *
- * Desde el spec 031 el tablero no tiene un tamano fijo en celdas: la grilla es la que entra
- * en el viewport a este tamano. O sea que este numero ya no decide cuanto mide el tablero
- * —eso lo decide la pantalla— sino **que tan grande se ve una baldosa**, que es lo unico
- * que siempre decidio de verdad.
+ * El tablero no tiene un tamano fijo en celdas: la grilla es la que entra en el viewport a
+ * este tamano. O sea que este numero no decide cuanto mide el tablero —eso lo decide la
+ * pantalla— sino **que tan grande se ve una baldosa**, que es lo unico que decide de verdad.
  *
  * ```
  * 1. cuantas entran           c0 = max(GRID_MIN.w, round(vw / CELL_PX_OBJETIVO))
@@ -42,8 +41,7 @@
  *
  * ## Por que 73 y no 60
  *
- * Es el numero que el 021 midio como PISO y este spec convierte en objetivo, y el
- * argumento no cambio: es **tipografico**. El piso viejo era 60 y estaba medido con un
+ * El argumento es **tipografico**. El candidato anterior era 60 y estaba medido con un
  * `Range` sobre el nodo de texto a la fuente que se renderiza —los nombres con sostenido,
  * `D#4`, todos iguales porque `tabular-nums` iguala los digitos, ocupan 35,4 px a los 19 px
  * que la celda usaba—, pero valia con la fuente clavada en 19 px. Con la tipografia
@@ -61,9 +59,9 @@ export const CELL_PX_OBJETIVO = 73;
  *
  * Cada una es `medida_de_hoy / CELL_PX_OBJETIVO`, con el denominador tomado del SIMBOLO y
  * no escrito a mano: asi el 73 vive en un solo lugar. A `--cell = 73` las seis dan de
- * vuelta el numero exacto que la baldosa tenia antes del spec 021, que es lo que sostiene
- * que la baldosa se vea **igual** — y lo que evita tener que remedir el aire alrededor del
- * texto, la trampa que el docblock de arriba nombra.
+ * vuelta el numero exacto que la baldosa tenia cuando cada medida era un px clavado, que es
+ * lo que sostiene que la baldosa se vea **igual** — y lo que evita tener que remedir el aire
+ * alrededor del texto, la trampa que el docblock de arriba nombra.
  *
  * Se consumen como `calc(var(--cell) * RAZON)` y por estilo inline, nunca como clase:
  * Tailwind escanea el fuente y una clase interpolada no se genera.
@@ -95,8 +93,8 @@ export const PASO_DERECHA_RAZON = 6 / CELL_PX_OBJETIVO;
    dejo de existir cuando el fantasma del tablero paso a mostrar la nota de cada
    celda.
 
-   El spec 016 **no deshace ese retiro**, y conviene que quede escrito porque se le
-   parece. Aquel panel se fue por repetir las NOTAS —el fantasma las dice mejor,
+   La miniatura de la paleta **no deshace ese retiro**, y conviene que quede escrito
+   porque se le parece. Aquel panel se fue por repetir las NOTAS —el fantasma las dice mejor,
    sobre la celda donde van a caer— y la miniatura de la paleta no dice ni una nota
    ni un `#N` (D7): dice la FORMA, que es lo que aquel retiro se llevo puesto de
    paso y lo unico que el fantasma no puede contestar, porque para verlo ya hay que
@@ -110,12 +108,11 @@ export const PASO_DERECHA_RAZON = 6 / CELL_PX_OBJETIVO;
  * orientaciones: el maximo en un eje lo pone sola la `I` —5×1 acostada, 1×5 parada— y
  * ninguna otra pieza pasa de 4×2 ni de 3×3. Con 4 la `I` no entra.
  *
- * **Con el spec 020 la caja fija pasa a ser MAS necesaria, no menos.** Hasta ahi las doce
- * miniaturas se dibujaban en la misma orientacion, asi que si una fila se descuadraba al
- * rotar se descuadraba entera y de una vez. Hoy cada pieza recuerda la suya y las doce
- * cambian por separado: sin la caja fija, rotar la `I` sola movería a sus once vecinas de
- * la grilla. El argumento esta duplicado en `piece-mini.ts` y en `DESIGN.md`, y los tres
- * tienen que decir lo mismo.
+ * **Con la orientacion por pieza la caja fija es MAS necesaria, no menos.** Si las doce
+ * miniaturas compartieran una orientacion, una fila que se descuadra al rotar se descuadra
+ * entera y de una vez. Como cada pieza recuerda la suya y las doce cambian por separado,
+ * sin la caja fija rotar la `I` sola moveria a sus once vecinas de la grilla. El argumento
+ * esta duplicado en `piece-mini.ts` y en `DESIGN.md`, y los tres tienen que decir lo mismo.
  *
  * **No se toma `CELLS_PER_PIECE` de `domain/`**, aunque valga 5 tambien. Son dos
  * numeros distintos que coinciden por casualidad: aquel dice cuantas celdas tiene una
@@ -129,17 +126,17 @@ export const MINI_BOX = 5;
  * El lado de una celda de la miniatura, en px.
  *
  * **El argumento con el que este numero se eligio ya no existe**, y conviene decirlo antes
- * que nada porque era el argumento entero. Hasta el spec 021 la paleta era una tarjeta en
- * una fila de dos, asi que su alto fijaba el alto de la fila y `CELL_PX` salia de ahi: seis
- * columnas de 8 px eran las que dejaban la paleta lo bastante compacta como para no
- * robarle alto al tablero. Con el 021 no hay fila, no hay tarjeta y `CELL_PX` sale del
- * viewport; la paleta es un dock `fixed` que flota encima y no le quita un pixel a nadie.
+ * que nada porque era el argumento entero. La paleta era una tarjeta en una fila de dos, asi
+ * que su alto fijaba el alto de la fila y el tamano de celda salia de ahi: seis columnas de
+ * 8 px eran las que dejaban la paleta lo bastante compacta como para no robarle alto al
+ * tablero. Hoy no hay fila, no hay tarjeta y el tamano de celda sale del viewport; la paleta
+ * es un dock `fixed` que flota encima y no le quita un pixel a nadie.
  *
  * Lo que decide el numero ahora es la CAJA DEL DOCK, que mide `calc(var(--cell) * 2)` de
  * ancho — 146 px en el peor caso, que es el piso. Ahi adentro tienen que entrar las doce
  * miniaturas con su letra, y la tabla de columnas se resuelve contra el ancho real del
- * contenedor (`OrientationPanel.tsx`) y no contra el breakpoint del viewport, que despues
- * del 021 ya no dice nada sobre cuanto mide esta caja.
+ * contenedor (`OrientationPanel.tsx`) y no contra el breakpoint del viewport, que no dice
+ * nada sobre cuanto mide esta caja.
  *
  * 8 px se queda porque sigue siendo el mas chico que deja leer la FORMA: con `MINI_BOX = 5`
  * la caja mide 40 px de lado, y a menos que eso las piezas de tres celdas de ancho dejan de
@@ -155,9 +152,9 @@ export const MINI_CELL_PX = 8;
  * `px-2` del boton que la contiene (8 por lado) mas su borde (1 por lado). Si alguno de
  * los dos numeros de arriba cambia, este lo sigue solo.
  *
- * Existe desde el spec 021 y reemplaza a la tabla de breakpoints que `OrientationPanel`
- * tenia: hasta ahi las columnas salian del ancho del VIEWPORT, que era una buena
- * aproximacion del ancho de la tarjeta mientras la tarjeta ocupaba una columna del grid.
+ * Reemplaza a la tabla de breakpoints que `OrientationPanel` tenia: ahi las columnas salian
+ * del ancho del VIEWPORT, que era una buena aproximacion del ancho de la tarjeta mientras la
+ * tarjeta ocupaba una columna del grid.
  * Con el dock son dos variables distintas —el dock mide `calc(var(--cell) * 2)`, o sea
  * entre 146 y 360 px, mientras el viewport puede estar en `xl`— y la aproximacion se cae:
  * a 1366 x 768 el breakpoint pedia SEIS columnas adentro de una caja de 256 px. Con
@@ -171,8 +168,7 @@ export const TEMPO_MIN = 60;
 export const TEMPO_MAX = 160;
 
 /**
- * Los dos anchos del anillo de foco de la celda, **como razon de la celda** — el spec 026,
- * vuelto proporcional por el 021.
+ * Los dos anchos del anillo de foco de la celda, **como razon de la celda**.
  *
  * ## Por que son DOS y no uno
  *
@@ -192,7 +188,7 @@ export const TEMPO_MAX = 160;
  *   1 → 2 aires  banda CLARA    sobre el borde negro de la baldosa y el arranque de su color
  * ```
  *
- * **Y por eso son razones y no dos numeros de 2 px**, que es lo que eran hasta el spec 021.
+ * **Y por eso son razones y no dos numeros de 2 px.**
  * El reparto de arriba no dice «2 px»: dice «una banda sobre el aire y la siguiente sobre la
  * baldosa», o sea que los dos numeros son el aire dicho dos veces. Con el aire vuelto
  * proporcional y estos dos clavados en 2, a celda 180 el aire mide 4,93 px y las DOS bandas
@@ -215,11 +211,10 @@ export const TEMPO_MAX = 160;
  * justamente lo que estos dos numeros existen para evitar. Hacia adentro no hay
  * competencia: la oscura cae en el aire, que no lo pinta nadie.
  *
- * Y de paso resuelve solo lo que AC7 manda medir: dibujado hacia adentro el anillo no
- * asoma ni un pixel fuera de la caja, asi que no puede agrandar la region scrolleable ni
- * quedar recortado en las celdas del borde. Cuando se escribio, quien recortaba era el
- * `overflow-x-auto` de `Board`; el spec 031 se lo llevo y hoy quien recorta es el
- * `overflow-hidden` del contenedor raiz — el anillo sigue sin llegarle, por lo mismo.
+ * Y de paso resuelve solo el recorte: dibujado hacia adentro el anillo no asoma ni un pixel
+ * fuera de la caja, asi que no puede agrandar la region scrolleable ni quedar recortado en
+ * las celdas del borde. Quien recorta es el `overflow-hidden` del contenedor raiz, y el
+ * anillo no le llega.
  */
 export const ANILLO_FOCO_OSCURO_RAZON = AIRE_RAZON;
 export const ANILLO_FOCO_CLARO_RAZON = AIRE_RAZON;

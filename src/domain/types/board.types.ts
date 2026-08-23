@@ -9,7 +9,7 @@ import type { PieceKey } from './pieces.types.ts';
  * lo mismo, asi que el campo solo agregaba la posibilidad de que se contradijeran. Nada
  * impedia construir una pieza con `rotation: 1` y las notas de la rotacion 0, y ahi el
  * tablero —que ya derivaba, ver `Board.tsx`— y el motor —que leia el campo— decian cosas
- * distintas. Su retiro estaba anotado en el seguimiento del 001, el 007, el 009 y el 010.
+ * distintas.
  *
  * `cells` en cambio NO es derivable de las demas: depende de donde se hizo click, que es
  * informacion que solo existe en el gesto.
@@ -33,7 +33,7 @@ export interface PlacedPiece {
    * muteada" —`false` y ausente— y este repo ya pago ese error una vez: en `Click.note`
    * la AUSENCIA del campo significa algo distinto de un `undefined` explicito, y hay un
    * ternario puesto a proposito en `proyectarAlMotor` (`components/engine-bridge.ts`) para no
-   * producir el tercer estado — y que desde el spec 022 tiene test. Acá no hay nada que la
+   * producir el tercer estado — y que tiene test. Acá no hay nada que la
    * ausencia pueda significar, asi que no se le da la
    * oportunidad.
    */
@@ -43,11 +43,11 @@ export interface PlacedPiece {
 /**
  * Cuánto mide el tablero, en celdas.
  *
- * **Es un parámetro y no una constante**, y ese es el spec 031. Hasta ahí el tablero medía
- * `GRID_W × GRID_H` = 10 × 6 y las funciones del dominio lo leían de
- * `constants/board.constants.ts`; desde el 031 mide lo que entra en la pantalla —26 × 15 en
- * un escritorio de 1920 × 1080— y quien lo sabe es la capa que ve el viewport, que es
- * `components/`. El dominio no puede leerlo de ningún lado: se lo tienen que decir.
+ * **Es un parámetro y no una constante.** El tablero medía `GRID_W × GRID_H` = 10 × 6 y las
+ * funciones del dominio lo leían de `constants/board.constants.ts`; hoy mide lo que entra
+ * en la pantalla —26 × 15 en un escritorio de 1920 × 1080— y quien lo sabe es la capa que
+ * ve el viewport, que es `components/`. El dominio no puede leerlo de ningún lado: se lo
+ * tienen que decir.
  *
  * Lo reciben las tres funciones que miran el tablero como un todo —`isValid`,
  * `routeBetween` y `buildSequence`— y de ahí baja solo. `music.ts`, `transform.ts` e
@@ -55,7 +55,7 @@ export interface PlacedPiece {
  * tablero.
  *
  * `readonly` en los dos campos por la regla de siempre: nunca mutar lo que ya se entregó a
- * React, y esto viaja como prop desde el spec 031.
+ * React, y esto viaja como prop.
  */
 export interface Dims {
   readonly w: number;
@@ -66,7 +66,7 @@ export interface Dims {
  * Lo que contesta una consulta de ruta: el camino entre dos celdas, lo que pisa en el
  * medio, cuántos intervalos dura y cuánto costó elegirlo.
  *
- * **`cost` y `steps` no son el mismo número desde el spec 011**, y por eso viajan los dos:
+ * **`cost` y `steps` no son el mismo número**, y por eso viajan los dos:
  * un cruce cuesta `CROSS_COST` pero dura UN intervalo. El costo ordena —es con lo que el
  * circuito elige entre dos caminos— y los pasos miden el tiempo. Confundirlos estira el
  * ciclo justo donde no hay nada que esperar.

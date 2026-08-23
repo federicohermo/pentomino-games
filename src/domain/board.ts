@@ -7,18 +7,18 @@ import { CROSS_COST } from './constants/board.constants.ts';
  * hay —y por donde— entre dos celdas.
  *
  * Todas reciben todo por parametro en vez de cerrar sobre estado: es lo que las
- * hace testeables y lo que evita que el spec 006 tenga que reimplementar la regla
+ * hace testeables y lo que evita que el MCP server tenga que reimplementar la regla
  * de colocacion en su propio modulo.
  *
- * **Desde el spec 031 eso incluye cuanto mide el tablero.** Este archivo importaba
- * `GRID_W`/`GRID_H` y ya no: las dimensiones llegan como `Dims` porque salen del viewport,
+ * **Eso incluye cuanto mide el tablero.** Este archivo no importa ninguna dimension:
+ * las dimensiones llegan como `Dims` porque salen del viewport,
  * y el viewport lo ve `components/`. Es la misma regla de siempre llevada hasta el final —
  * el dominio no lee nada de afuera, ni siquiera una constante que resulto no serlo.
  */
 
 /**
  * Los dos extremos de la costura: el tablero se repliega sobre si mismo y `(0,0)`
- * queda adyacente a `(w-1, h-1)` (spec 009, D2).
+ * queda adyacente a `(w-1, h-1)`.
  *
  * Es UNA arista extra, no un toroide ni envoltura de todo el borde: ningun otro
  * par de celdas del borde se toca de mas. Medido sobre los 3.600 pares del tablero de
@@ -26,11 +26,11 @@ import { CROSS_COST } from './constants/board.constants.ts';
  *
  * El orden ya NO lo lee nadie. Mientras la ruta se elegia con formula cerrada, los
  * dos extremos eran dos rutas distintas —`viaStart` y `viaEnd`— y habia que saber
- * cual era cual. Con `routeBetween` (spec 011) la costura es una arista mas del
+ * cual era cual. Con `routeBetween` la costura es una arista mas del
  * grafo y se recorre en los dos sentidos sin nombre propio, asi que los dos son
  * intercambiables: lo unico que importa es que sean estas dos celdas.
  *
- * **Es una funcion desde el spec 031 y era la constante `SEAM`.** Dejo de poder ser un
+ * **Es una funcion y no una constante.** Dejo de poder ser un
  * valor cuando las dimensiones dejaron de ser constantes: la costura son las dos esquinas
  * opuestas del tablero que haya, no dos coordenadas fijas. Vive en este archivo y no en
  * `constants/` por la regla del repo —un `.ts` de capa tiene funciones, `constants/` tiene
@@ -61,7 +61,7 @@ export function cellsAt(shape: readonly Cell[], anchorIndex: number, x: number, 
 /**
  * Dentro del tablero y sin solaparse con lo ya colocado.
  *
- * **`placed` tiene que ser el tablero ENTERO y no lo que se ve.** Desde el spec 031 el
+ * **`placed` tiene que ser el tablero ENTERO y no lo que se ve.** El
  * tablero se achica con la ventana y las piezas que dejan de entrar se guardan sin
  * dibujarse; una de esas puede tener celdas adentro de la grilla nueva —«no entra entera»
  * no es «esta toda afuera»— y colocar encima dejaria dos piezas solapadas en cuanto la
@@ -79,15 +79,15 @@ export function isValid(cells: Cell[], placed: readonly PlacedPiece[], dims: Dim
 /**
  * Si la pieza entra ENTERA en un tablero de `dims`.
  *
- * Es el otro lado del parrafo de `isValid`, y el spec 031 lo necesita porque el tablero
+ * Es el otro lado del parrafo de `isValid`, y hace falta porque el tablero
  * cambia de tamano con la ventana: la pieza que deja de entrar no se borra —el repo no
  * tiene deshacer, y arrastrar el borde de una ventana no es un gesto de edicion— sino que
  * se guarda entera y deja de dibujarse, de sonar y de recibir clicks, y vuelve igual
  * cuando hay lugar otra vez.
  *
  * **Entera y no en parte**: una pieza con tres celdas adentro y dos afuera tampoco entra.
- * Media pieza pintada seria una pieza que el tablero muestra y el circuito no visita, que
- * es la clase de discrepancia que D5 del 009 existe para cerrar.
+ * Media pieza pintada seria una pieza que el tablero muestra y el circuito no visita, y
+ * lo que se ve y lo que suena no pueden discrepar.
  *
  * Se implementa sobre `isValid` con el tablero vacio y no repitiendo los cuatro limites:
  * «entra en el tablero» es exactamente la primera mitad de «la jugada es legal», y
@@ -105,8 +105,8 @@ export function cabeEn(p: PlacedPiece, dims: Dims): boolean {
 /**
  * La pieza que ocupa `(x, y)`, o null.
  *
- * Recorre todas las piezas y todas sus celdas, y eso esta MEDIDO desde el cierre de
- * los seguimientos del 009 y el 010, que pedian saber si aguantaba que el tablero se
+ * Recorre todas las piezas y todas sus celdas, y eso esta MEDIDO porque hacia falta
+ * saber si aguantaba que el tablero se
  * dibujara al ritmo del intervalo: con las 12 piezas colocadas —el maximo, y el peor
  * caso porque no queda ninguna celda vacia que corte antes— un render entero del
  * tablero de referencia son 60 llamadas y **4,1 us** en total (p95 7,4 us), o sea
@@ -114,14 +114,14 @@ export function cabeEn(p: PlacedPiece, dims: Dims): boolean {
  * 93,75 ms: aunque se la llamara una vez por celda y por intervalo, sobraria por cuatro
  * ordenes de magnitud.
  *
- * **El costo es por CELDA, asi que el tablero del spec 031 lo escala y no lo cambia.** El
+ * **El costo es por CELDA, asi que un tablero mas grande lo escala y no lo cambia.** El
  * tope de piezas sigue siendo 12 (`MAX_PIEZAS`), que es lo que fija el peor caso de cada
  * llamada; lo que crece es cuantas veces se llama: 390 celdas en un escritorio de
  * 1920 x 1080 son 6,5 veces las 60 de arriba, o sea ~27 us por render y el 0,16 % del
  * cuadro. Sigue sobrando por tres ordenes.
  *
- * O sea que el indice por celda que la tarea preveia no hace falta, y el que dibuja a
- * ritmo de intervalo —la cabeza lectora del 010— igual no la usa: lee la tabla por
+ * O sea que un indice por celda no hace falta, y el que dibuja a
+ * ritmo de intervalo —la cabeza lectora— igual no la usa: lee la tabla por
  * offset de `components/route-source.ts`, y no por costo sino porque tiene que dibujar
  * la ruta que suena y no la del tablero de ahora.
  */
@@ -141,10 +141,10 @@ export function occupantAt(placed: readonly PlacedPiece[], x: number, y: number)
  *
  * Existe para que la derivacion celda→nota no viva adentro de `Board.tsx`. El
  * argumento no es de costo —cinco comparaciones por celda es irrelevante, midiera el
- * tablero 60 celdas o las 390 del spec 031— sino de cobertura: cuando se escribio,
+ * tablero 60 celdas o 390— sino de cobertura: cuando se escribio,
  * `components/` no tenia tests, asi que un `findIndex` ahi adentro dejaba verificado solo
  * por captura el unico paso del que depende lo que se ve, y una captura no distingue un
- * mapeo correcto de uno corrido en uno. Los specs 024 y 029 le dieron tests a la capa,
+ * mapeo correcto de uno corrido en uno. Hoy la capa tiene tests,
  * pero la pura sigue siendo mas barata de agotar que un render.
  *
  * El indice que devuelve sirve directamente contra la forma CANONICA gracias al
@@ -206,11 +206,11 @@ function neighborsOf(n: number, out: number[], w: number, h: number): number {
 /**
  * El camino de costo minimo entre `a` y `b`, con lo que pisa en el medio.
  *
- * Reemplaza a `cellDistance` y `pathBetween` del spec 009, que eran dos lecturas de
+ * Reemplaza a `cellDistance` y `pathBetween`, que eran dos lecturas de
  * la misma decision de ruta pero no miraban el tablero: el camino ignoraba las piezas
  * colocadas, asi que los clicks del recorrido caian encima de la que acababa de
  * sonar. Ahora el grafo tiene PESOS —una celda vacia cuesta 1 y una ocupada
- * `CROSS_COST` (spec 011, D1)— y las tres respuestas salen de UNA sola llamada (D3):
+ * `CROSS_COST`— y las tres respuestas salen de UNA sola llamada:
  * la cantidad de clicks, el instante de la nota siguiente y las celdas que se pisan
  * no pueden discrepar porque son el mismo dato leido tres veces.
  *
@@ -261,7 +261,7 @@ export function routeBetween(a: Cell, b: Cell, placed: readonly PlacedPiece[], d
  *
  * Es la misma respuesta que `routeBetween` —de hecho es su implementacion— pero atada a
  * `(placed, dims)` de entrada, y esa atadura es lo que la hace barata: **la caché de
- * distancias por destino** (spec 031). Y esa es la unica razon por la que existe como
+ * distancias por destino**. Y esa es la unica razon por la que existe como
  * factory en vez de un cuarto parametro opcional: el `Map` no puede sobrevivir a un cambio
  * del tablero, y la unica forma de garantizarlo sin acordarse de invalidarlo es que viva en
  * el closure de un tablero.
@@ -287,8 +287,8 @@ export function routeBetween(a: Cell, b: Cell, placed: readonly PlacedPiece[], d
  * 53 x 30 (4K)     1.590         —       30,9 ms
  * ```
  *
- * El 4K sigue fuera del presupuesto del AC10 del 009 y esta anotado en `specs/deuda.md` con
- * la salida identificada: los pesos son solo dos (1 y `CROSS_COST`), asi que una cola de
+ * El 4K sigue fuera del presupuesto de 5 ms, con la salida ya identificada y sin hacer:
+ * los pesos son solo dos (1 y `CROSS_COST`), asi que una cola de
  * baldes baja el `O(N^2)` de la busqueda lineal del minimo a `O(N * C)`.
  *
  * **No cambia una sola ruta**, y eso esta verificado y no argumentado: el test de AC7 en

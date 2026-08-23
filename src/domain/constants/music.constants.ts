@@ -8,7 +8,7 @@ export const PENT_MINOR: number[] = [0,3,5,7,10];
 export const PENT_BLUES5: number[] = [0,3,5,6,7];
 
 /**
- * Los dos regimenes de rotacion del spec 017: QUE cambia la rotacion.
+ * Los dos regimenes de rotacion: QUE cambia la rotacion.
  *
  * - `escala` — el de siempre: elige entre las cuatro formulas de arriba, o sea que
  *   rotar cambia QUE NOTAS suena la pieza y no toca el orden.
@@ -49,7 +49,7 @@ export const DEFAULT_REGIMEN = REGIMEN.escala;
  *
  * Coincide con `CELLS_PER_PIECE` y **ya no es una coincidencia**: son 5 notas
  * porque la escala es pentatonica y 5 celdas porque la pieza es un pentomino,
- * pero desde el spec 007 `degreeByCellIndex` empareja las dos listas y cada
+ * pero `degreeByCellIndex` empareja las dos listas y cada
  * celda tiene su nota.
  *
  * O sea que los dos numeros pasaron de coincidir a tener que coincidir: una

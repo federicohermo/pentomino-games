@@ -11,10 +11,10 @@ import { PASOS_MAX } from './constants/sequence.constants.ts';
 /**
  * El tablero como recorrido: de un conjunto de piezas colocadas a una secuencia.
  *
- * El eje X dejo de ser tiempo (spec 004). Ahora un circuito cerrado visita las
+ * El eje X no es tiempo. Un circuito cerrado visita las
  * piezas una por una, y el tiempo lo da el ORDEN de la visita mas lo que cuesta
  * llegar de una a la siguiente. Todo es aritmetica sobre enteros —la unidad es el
- * intervalo del spec 008, una celda recorrida— porque convertir a segundos es del
+ * intervalo, una celda recorrida— porque convertir a segundos es del
  * motor: asi el mismo tablero suena siempre igual y mover el tempo estira el patron
  * en vez de reordenarlo.
  */
@@ -45,7 +45,7 @@ import { PASOS_MAX } from './constants/sequence.constants.ts';
  *
  * Existe porque `Step` no lleva celdas: ir de la nota `j` a la celda donde se ve era
  * una derivacion que solo estaba adentro de `gates`, y para los grados 0 y 4 nada
- * mas. Es lo unico que el spec 010 le agrega al dominio, y no reabre D5 del 009: un
+ * mas. No reabre la regla de que el recorrido lo decide la geometria: un
  * mapeo grado->celda no es un camino ni una distancia.
  */
 export function cellsByPlayOrder(p: PlacedPiece): Cell[] {
@@ -60,8 +60,8 @@ export function cellsByPlayOrder(p: PlacedPiece): Cell[] {
 /**
  * Las dos puertas de una pieza: por donde entra el recorrido y por donde sale.
  *
- * Se leen del ORDEN DE REPRODUCCION, no de los grados 0 y 4 (spec 010, D8). El 009
- * los derivaba por su cuenta y nunca miro la reflexion: con `mirror` la primera nota
+ * Se leen del ORDEN DE REPRODUCCION, no de los grados 0 y 4. Derivarlos por separado
+ * hacia que nadie mirara la reflexion: con `mirror` la primera nota
  * que suena es la del grado 4, asi que entrada y salida quedaban EXACTAMENTE
  * invertidas respecto de la melodia en la mitad del espacio de colocacion. Medido
  * sobre `L`/0/reflejada en (1,1): el circuito entraba por [1,3] —el grado 0, que es
@@ -69,11 +69,8 @@ export function cellsByPlayOrder(p: PlacedPiece): Cell[] {
  * hasta pegarse a la entrada para que lo primero que sonara estuviera en la punta
  * opuesta de la pieza.
  *
- * Con UNA sola derivacion las dos no pueden discrepar, que es el mismo argumento con
- * el que el 009 hizo que la cantidad de clicks se lea del largo del camino en vez de
- * calcularse. **Cambia las distancias y por lo tanto el circuito**: todo tablero con
- * piezas reflejadas suena distinto desde este commit. Es un arreglo del 009 y no una
- * decision del 010.
+ * Con UNA sola derivacion las dos no pueden discrepar, que es el mismo argumento por
+ * el que la cantidad de clicks se lee del largo del camino en vez de calcularse.
  *
  * Las dos nunca son la misma celda: son dos grados distintos de la misma pieza. Hoy
  * no es lo que protege a `routeBetween` de recibir `a === b` —de eso se encargan que
@@ -97,9 +94,9 @@ export function gates(p: PlacedPiece): { entrada: Cell; salida: Cell } {
 /**
  * El MIDI de la celda `cell` de la pieza `p`, o `null` si `p` no la ocupa.
  *
- * Es la derivacion celda-a-nota del spec 007 convertida en pura del dominio, y no tres
+ * Es la derivacion celda-a-nota, pura del dominio y no tres
  * lineas adentro de `buildSequence`: por la misma razon por la que `cellsByPlayOrder`
- * salio de adentro de `gates` en el 010 —una derivacion escondida en su unico
+ * salio de adentro de `gates` —una derivacion escondida en su unico
  * consumidor no se puede contrastar contra nada— y porque `components/Board.tsx` hace
  * exactamente esta cadena para PINTAR la nota de una celda. Si las dos se corrieran, la
  * celda diria una altura y pisarla sonaria otra.
@@ -114,7 +111,7 @@ export function gates(p: PlacedPiece): { entrada: Cell; salida: Cell } {
  *   arpegio invertido da la nota espejada. `arpeggioFor` responde en que ORDEN suenan
  *   las notas; esta responde que nota hay en una celda, que es otra pregunta.
  *
- * Y una tercera desde el spec 017: el REGIMEN se PROPAGA, no se fija aca. De esta
+ * Y una tercera: el REGIMEN se PROPAGA, no se fija aca. De esta
  * funcion sale el `Click.note` de `clickEn`, o sea la altura que suena al CRUZAR una
  * celda ocupada, y tambien el `crossed` que reporta `simulate_board`. Si se quedara en
  * `escala` mientras la pieza toca `orden`, la celda diria una altura y pisarla sonaria
@@ -135,9 +132,9 @@ export function noteAtCell(p: PlacedPiece, cell: Cell, regimen: RegimenDeRotacio
  * Que `note` FALTE es lo que dice "no hay nota que dar", asi que no hay un `note: null`
  * intermedio que alguien pueda leer como un tercer estado (ver `Click`).
  *
- * La condicion del muteo no es una simetria decorativa: la altura del cruce es la
- * floritura del spec 011, o sea exactamente la nota que el muteo apago. Sin ella una
- * pieza muteada seguiria sonando cada vez que el recorrido la pisa — y el 011 midio que
+ * La condicion del muteo no es una simetria decorativa: la altura del cruce es
+ * exactamente la nota que el muteo apago. Sin ella una
+ * pieza muteada seguiria sonando cada vez que el recorrido la pisa — y esta medido que
  * el cruce sobrevive en el 32 % de los tableros de tres piezas, asi que es uno de cada
  * tres y no un caso raro. El cruce no desaparece: sigue siendo un click, mudo, igual que
  * sobre una celda vacia. Lo unico que cambia es su `kind` del lado de la UI.
@@ -178,7 +175,7 @@ function clicksDeMuteada(p: PlacedPiece, offset: number): Click[] {
  *
  * ## Por que hacen falta dos criterios y no alcanza con el costo
  *
- * Hasta el spec 011 el costo de un tramo ERA su cantidad de pasos, asi que empatar en
+ * Mientras el costo de un tramo ERA su cantidad de pasos, empatar en
  * costo era empatar en duracion y desempatar por indice no cambiaba nada de lo que se
  * oia. El peso rompio esa identidad: un cruce cuesta `CROSS_COST` pero sigue durando UN
  * intervalo, asi que dos circuitos pueden costar lo mismo y durar distinto.
@@ -189,8 +186,8 @@ function clicksDeMuteada(p: PlacedPiece, offset: number): Click[] {
  * que el mismo tablero sonaba con un ciclo de 37 o de 41 intervalos segun en que orden
  * se hubieran puesto las piezas. Sobre 120 tableros de 5 piezas pasaba en el 8,3 %.
  *
- * Eso contradecia lo que el 009 promete y el 011 no queria tocar: **el recorrido lo
- * decide la geometria**. Con los pasos como segundo criterio la eleccion vuelve a ser
+ * Eso contradecia la regla central del recorrido: **lo decide la
+ * geometria**. Con los pasos como segundo criterio la eleccion vuelve a ser
  * geometrica, y ademas es la correcta musicalmente: a igual costo, el ciclo mas corto.
  *
  * El indice sigue siendo el TERCER criterio, y ahi si es inofensivo: dos circuitos que
@@ -311,7 +308,7 @@ function shortestCircuit(cost: readonly (readonly number[])[]): number[] {
  *
  * ## El costo ordena, los pasos miden el tiempo
  *
- * Desde el spec 011 son DOS numeros y no dos lecturas del mismo: un tramo que pisa una
+ * Son DOS numeros y no dos lecturas del mismo: un tramo que pisa una
  * pieza cuesta `CROSS_COST` de mas por celda pisada, pero sigue durando un intervalo
  * por paso. El costo entra en la matriz que ordena el circuito —es lo que hace que el
  * recorrido prefiera rodear— y los pasos, y solo ellos, entran en los offsets.
@@ -321,12 +318,12 @@ function shortestCircuit(cost: readonly (readonly number[])[]): number[] {
  * camino que se agenda es el que el circuito eligio, y la cantidad de clicks no se
  * calcula sino que es el largo de ese camino (D8).
  *
- * El `regimen` (spec 017) atraviesa la funcion sin decidir nada: gobierna que notas
+ * El `regimen` atraviesa la funcion sin decidir nada: gobierna que notas
  * dispara cada pieza y que altura suena un cruce, y no toca el circuito ni las puertas
- * ni los offsets. Es a proposito — el 017 corre el arpegio y no la entrada, justamente
- * para no reordenar el tablero al cambiar de regimen (D1).
+ * ni los offsets. Es a proposito — corre el arpegio y no la entrada, justamente
+ * para no reordenar el tablero al cambiar de regimen.
  *
- * ## La pieza muteada ocupa su lugar y su tiempo, y no suena (spec 014)
+ * ## La pieza muteada ocupa su lugar y su tiempo, y no suena
  *
  * El muteo entra DESPUES de que el circuito esta elegido, y eso no es un detalle de
  * implementacion: es la propiedad. `puertas`, `rutas` y `circuito` no miran `muted`, asi
@@ -347,8 +344,13 @@ export function buildSequence(placed: readonly PlacedPiece[], regimen: RegimenDe
 
   // Con UNA pieza no hay salto: el ciclo es su arpegio y vuelve a empezar contiguo.
   // **El recorrido existe ENTRE piezas, y con una sola no hay entre**, asi que no hay
-  // clicks que emitir. Como se llego a eso —el plan del 009 decia otra cosa y se cambio
-  // despues de escucharlo— esta en `specs/revisiones.md`, pase de comentarios del 022.
+  // clicks que emitir. La alternativa era el salto de la pieza a si misma, de su salida
+  // (grado 4) a su entrada (grado 0), y **se descarto escuchandola**: con la `Z` en
+  // `(0,1)(1,1)(1,0)(2,0)(3,0)` ese salto mide 3 y su camino es `[[2,0],[1,0]]`, o sea
+  // que los dos clicks caian SOBRE la propia pieza que acababa de sonar. No se oia un
+  // recorrido sino dos golpes encima del arpegio. Que hoy `routeBetween` rodee las
+  // piezas le saca el sintoma y no el motivo: esos clicks caerian en celdas vacias y
+  // seguirian sobrando.
   //
   // El ciclo mide `CELLS_PER_PIECE` y no `CELLS_PER_PIECE - 1`: las cinco notas
   // abarcan 4 intervalos, asi que con largo 4 la ultima nota de una vuelta y la
@@ -377,7 +379,7 @@ export function buildSequence(placed: readonly PlacedPiece[], regimen: RegimenDe
   // `placed` entero y no "las demas piezas": un tramo puede pisar tambien a las dos que
   // une, y esquivarlas es igual de deseable.
   // Un rutador y no `n^2` llamadas sueltas a `routeBetween`: adentro se acuerda de las
-  // distancias por destino, que son `n` y no `n^2` (spec 031). Con 12 piezas eso es 12
+  // distancias por destino, que son `n` y no `n^2`. Con 12 piezas eso es 12
   // Dijkstras en vez de 144, y es lo que hace que un tablero de 390 celdas entre en el
   // mismo presupuesto que tenia el de 60. El argumento entero esta en `board.ts`.
   const ruta = rutador(placed, dims);

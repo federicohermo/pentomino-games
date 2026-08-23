@@ -34,7 +34,7 @@ export interface Step {
  * se ilumina y la que suena salgan del MISMO dato (D8).
  *
  * `note` es el MIDI de la celda pisada cuando el recorrido no pudo esquivar una
- * pieza (spec 011), y no esta cuando la celda estaba vacia. Es opcional y NO una
+ * pieza, y no esta cuando la celda estaba vacia. Es opcional y NO una
  * union discriminada, y aca esa es la forma correcta justamente por la `cell`: la
  * altura es un DERIVADO de ella —`noteAtCell` del ocupante, o nada si no hay
  * ocupante—, asi que "sin `note`" significa exactamente "esa celda estaba vacia" y
@@ -51,11 +51,11 @@ export interface Click {
 /**
  * Una pieza dentro del circuito, suene o no: cuando le toca.
  *
- * Es lo que `steps` dejo de poder contestar cuando el spec 014 hizo que una pieza
- * MUTEADA no emita `Step`. El muteo no la saca del recorrido —sigue ocupando su lugar y
+ * Es lo que `steps` no puede contestar, porque una pieza MUTEADA no emite `Step`. El
+ * muteo no la saca del recorrido —sigue ocupando su lugar y
  * su tiempo, y el circuito la sigue visitando—, asi que leer el orden de visita de
- * `steps` pasaria por alto justamente a las piezas que no suenan. Antes del 014 las dos
- * listas eran la misma y por eso `order` no existia.
+ * `steps` pasaria por alto justamente a las piezas que no suenan. Sin muteo las dos
+ * listas son la misma, que es por lo que este campo no siempre existio.
  *
  * `offset` esta acá y en `Step` para las piezas que suenan, y no pueden discrepar: las
  * dos salen de la MISMA variable del mismo bucle de `buildSequence`, en la misma
@@ -75,10 +75,10 @@ export interface Visita {
  * a empezar. Sin ese salto el loop se cerraria antes de tiempo y la costura se
  * escucharia.
  *
- * `order` lleva TODAS las piezas y `steps` solo las que suenan: desde el spec 014 una
+ * `order` lleva TODAS las piezas y `steps` solo las que suenan: una
  * pieza muteada esta en el primero y no en el segundo. Con el tablero sin mutear nada
  * son la misma lista en el mismo orden, que es lo que hace que `order` se pueda comparar
- * campo por campo entre las dos versiones de un tablero (AC5).
+ * campo por campo entre las dos versiones de un tablero.
  */
 export interface Sequence {
   steps: Step[];

@@ -5,10 +5,10 @@ import type { VoiceOpts } from '../types/voice.types.ts';
  * arpegio al colocar y el loop—, porque los dos terminan en `scheduleVoice`.
  *
  * Ya NO trae el release. Lo traia —0,12 s absolutos— y era lo unico del modelo
- * temporal que habia quedado fuera de las unidades musicales del spec 008: 0,48
- * intervalos a 60 bpm pero 1,28 a 160, o sea que el solape del arpegio crecia con
- * el tempo en vez de quedarse quieto. Hoy es `RELEASE_INTERVALS` y viaja como
- * parametro, por la misma razon por la que `dur` no tiene default.
+ * temporal que habia quedado fuera de las unidades musicales: 0,48 intervalos a
+ * 60 bpm pero 1,28 a 160, o sea que el solape del arpegio crecia con el tempo en
+ * vez de quedarse quieto. Hoy es `RELEASE_INTERVALS` y viaja como parametro, por
+ * la misma razon por la que `dur` no tiene default.
  *
  * Lo que queda aca es lo que NO depende del tempo: attack y decay son el
  * transitorio del instrumento —su identidad perceptual es la brevedad absoluta,
@@ -29,19 +29,19 @@ export const DEFAULT_VOICE: Required<VoiceOpts> = {
  * que un valor en segundos se estira o se pisa con la nota siguiente segun el
  * tempo. Quien la use la multiplica por `intervalDuration(bpm)`.
  *
- * UNO y no dos, que es lo que preveia el plan del spec 008: con dos, la nota
- * dura exactamente el doble de lo que tarda en llegar la siguiente, asi que el
- * arpegio suena con 2,88 voces encimadas de forma permanente —medido a 110 bpm,
- * contando `(NOTE_INTERVALS * intervalo + release) / intervalo`—. Con uno la nota
- * termina justo cuando entra la que sigue y lo unico que se solapa es la cola del
- * release: 1,88 voces, contra las 3,13 de antes del spec. El arpegio se escucha
- * como cinco notas y no como un acorde desplegado.
+ * UNO y no dos: con dos, la nota dura exactamente el doble de lo que tarda en
+ * llegar la siguiente, asi que el arpegio suena con 2,88 voces encimadas de forma
+ * permanente —medido a 110 bpm, contando
+ * `(NOTE_INTERVALS * intervalo + release) / intervalo`—. Con uno la nota termina
+ * justo cuando entra la que sigue y lo unico que se solapa es la cola del release:
+ * 1,88 voces, contra las 3,13 de la duracion fija que habia antes. El arpegio se
+ * escucha como cinco notas y no como un acorde desplegado.
  *
- * A 100 bpm da 1 * 0.15 = 0.150 s, contra los 0.350 s de antes del spec.
+ * A 100 bpm da 1 * 0.15 = 0.150 s, contra los 0.350 s de aquella duracion fija.
  *
- * El release tambien esta en intervalos desde el cierre de los seguimientos del 008
- * (`RELEASE_INTERVALS`), asi que las 1,88 voces son las mismas a cualquier tempo. Antes
- * eran 0,12 s absolutos y el solape crecia con el bpm.
+ * El release tambien esta en intervalos (`RELEASE_INTERVALS`), asi que las 1,88 voces
+ * son las mismas a cualquier tempo. Cuando eran 0,12 s absolutos el solape crecia con
+ * el bpm.
  */
 export const NOTE_INTERVALS = 1;
 
@@ -53,8 +53,9 @@ export const NOTE_INTERVALS = 1;
  * el arpegio se espesaba al acelerar — las voces simultaneas son
  * `(NOTE_INTERVALS * intervalo + release) / intervalo`, o sea `1 + release/intervalo`:
  * con el release en segundos ese cociente crece con el bpm, y a 160 bpm daba 2,28
- * contra las 1,88 de 110. Justo lo que el spec 008 arreglo para el espaciado y para
- * la duracion, sobreviviendo en el ultimo numero que nadie habia mirado.
+ * contra las 1,88 de 110. Es el mismo defecto que ya se habia corregido para el
+ * espaciado y para la duracion, sobreviviendo en el ultimo numero que nadie habia
+ * mirado.
  *
  * **0,88 y no un valor redondo**: es exactamente `0.12 / intervalDuration(110)`, o sea
  * el release que ya sonaba al tempo por defecto (`15 / 110 = 0,13636 s` de intervalo).
@@ -73,11 +74,11 @@ export const RELEASE_INTERVALS = 0.88;
  * `RELEASE_INTERVALS` de una nota: lo que cambia es el cuerpo, no el timbre.
  *
  * En intervalos y no en segundos como `CLICK_SECONDS`. Lo que sostiene la excepcion del
- * click es la brevedad ABSOLUTA sola: desde el spec 015 el click SI tiene altura —una
- * campana fija en `CLICK_MIDI`—, asi que el motivo viejo ("no tiene altura") ya no
- * aplica y no se puede seguir citando. Lo que separa a los dos sigue en pie igual: el
- * click es una marca y su altura nunca cambia, mientras que la del cruce es la nota de
- * la celda que se piso (D5 del spec 011), o sea MODELO. Por eso su precedente es
+ * click es la brevedad ABSOLUTA sola: el click SI tiene altura —una campana fija en
+ * `CLICK_MIDI`—, asi que el motivo que se suele suponer ("no tiene altura") no aplica y
+ * no se puede citar. Lo que separa a los dos sigue en pie igual: el click es una marca y
+ * su altura nunca cambia, mientras que la del cruce es la nota de la celda que se piso,
+ * o sea MODELO. Por eso su precedente es
  * `NOTE_INTERVALS` y tiene que mantener su relacion con el pulso a cualquier tempo.
  * Quien la multiplica por `intervalDuration(bpm)` es `engine.ts`, que es donde vive el
  * bpm.
@@ -117,13 +118,13 @@ export const DEFAULT_VELOCITY = 0.8;
  *
  * Pero no mas bajo, y eso tambien esta medido: un ciclo de 8 piezas tiene 40 notas y
  * ~15 clicks, o sea que el click es minoria pero no ruido de fondo. Si no se
- * escucha, el recorrido se vuelve inaudible y el spec pierde su razon de ser.
+ * escucha, el recorrido se vuelve inaudible y pierde su razon de ser.
  *
  * Ademas el click dura `CLICK_SECONDS` (50 ms) contra los ~136 ms de una nota a 110
  * bpm, y un transitorio tan corto ya se percibe bastante mas debil que una nota
  * sostenida de la misma amplitud: bajar el numero seria descontar dos veces lo mismo.
  *
- * **Y hay un argumento en contra que el render offline no cierra** (spec 015): a igual
+ * **Y hay un argumento en contra que el render offline no cierra**: a igual
  * pico, la campana tiene 15% MENOS de RMS que el ruido que reemplazo (0,0141 contra
  * 0,0167) pero vive en la banda de maxima sensibilidad del oido (`CLICK_MIDI`), asi
  * que puede percibirse mas FUERTE aun midiendo menos. Los dos efectos apuntan en
@@ -138,7 +139,7 @@ export const CLICK_VELOCITY = 0.25;
  *
  * El cruce es una floritura: tiene que oirse mas presente que un click —lleva altura,
  * y si no se identifica como nota no se entiende que se piso una celda de una pieza—
- * pero mas al fondo que la nota de la pieza cuyo turno es (D5 del spec 011). O sea que
+ * pero mas al fondo que la nota de la pieza cuyo turno es. O sea que
  * el numero esta acotado por los dos que ya existen: `CLICK_VELOCITY` (0,25) y
  * `DEFAULT_VELOCITY` (0,8).
  *
@@ -162,7 +163,7 @@ export const GRACE_VELOCITY = 0.45;
 /**
  * La ALTURA del click, en MIDI. 96 = `C7` = 2 093,0 Hz.
  *
- * Desde el spec 015 el click es una campana de altura fija y ya no ruido blanco. Que
+ * El click es una campana de altura fija y no ruido blanco. Que
  * tenga altura no lo convierte en una linea melodica: lo que dibuja una linea es tener
  * alturas DISTINTAS, y esta nunca cambia. Un metronomo tiene altura y no toca nada.
  *
@@ -238,8 +239,8 @@ export const CLICK_SECONDS = 0.05;
  *
  * **Es un piso para el `vel` de `scheduleClick`, no solo un destino.** La rampa es
  * exponencial, asi que solo cae si arranca POR ENCIMA de este valor: con un `vel` menor
- * la misma llamada se vuelve un swell en vez de una campana, y con `vel = 0` tira —la
- * rampa lineal a 0 que habia hasta el spec 015 aguantaba cualquier amplitud y esta no—.
+ * la misma llamada se vuelve un swell en vez de una campana, y con `vel = 0` tira —una
+ * rampa lineal a 0 aguantaria cualquier amplitud y esta no—.
  * Hoy no es alcanzable: el unico llamador de produccion es `engine.ts`, que usa el
  * default `CLICK_VELOCITY` (0,25), 2 500 veces este numero. Queda escrito porque el dia
  * que alguien agregue un llamador con volumen propio —una pieza muteada mas suave, por
