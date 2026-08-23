@@ -234,13 +234,16 @@ Estas son las reglas:
 reales**: no hay build y no hay artefacto que regenerar. Si alguien cambia `notesForRotation`, la tool
 responde distinto en la consulta siguiente. `find_symbol` es la única que mira el código como texto, y
 también construye su índice **en la consulta** — nada se persiste, así que sigue sin haber staleness.
+Y desde el spec 033 hay una que **escribe**, `spec_write`, que es la única: `tasks.md` no es un archivo
+que se lee sino una **interfaz**, y cinco skills la implementaban a mano hasta que la tool existió.
 
 | Tool | Preguntarle antes de |
 |---|---|
 | `describe_piece` | derivar a mano una rotación, una escala o un retrógrado |
 | `simulate_board` | recorrer el lookahead a mano para saber qué suena junto |
 | `check_invariants` | y después de tocar geometría, `SHAPES` o el modelo musical |
-| `spec_status` | leer `log.md` y todos los `tasks.md` para saber qué falta de verdad |
+| `spec_status` | leer `log.md` y todos los `tasks.md` para saber qué falta de verdad, qué archivos cita una tarea o qué `X → Y` mueve |
+| `spec_write` | abrir un `tasks.md` para marcar una casilla o anotar seguimiento — es la única que escribe |
 | `find_symbol` | `grep` para ubicar un símbolo, o abrir un archivo para ver una firma |
 
 Su `usedBy` incluye a `mcp-server/`, que importa 31 símbolos del dominio: tocar una firma de `domain/`
@@ -267,7 +270,7 @@ así — eso vive en los comentarios, no en la salida de una tool.
 | Inicio rápido | [docs/guides/quickstart.md](./docs/guides/quickstart.md) | Setup, comandos, flujos típicos |
 | Convenciones | [docs/guides/conventions.md](./docs/guides/conventions.md) | Organización de `src/`, TypeScript, geometría, estado, comentarios |
 | Troubleshooting | [docs/guides/troubleshooting.md](./docs/guides/troubleshooting.md) | Errores reales ya pisados en este repo |
-| MCP server de dominio | [docs/guides/mcp-domain.md](./docs/guides/mcp-domain.md) | Las cuatro tools que ejecutan el dominio |
+| MCP server de dominio | [docs/guides/mcp-domain.md](./docs/guides/mcp-domain.md) | Las seis tools: cinco que ejecutan el dominio o lo leen, y la que escribe |
 | Deploy | [docs/infra/deploy.md](./docs/infra/deploy.md) | Netlify, `publish = "dist"`, versión de Node |
 
 **Trabajo planificado:** [specs/log.md](./specs/log.md) —registro y dependencias— y el porqué de cada

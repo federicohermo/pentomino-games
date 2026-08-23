@@ -22,7 +22,7 @@ server sin configurar nada.
 compilar, quitando los tipos. Es tooling de desarrollo — no entra al bundle ni al deploy, así que con
 Node 20 el server no arranca y **el repo sigue funcionando igual**.
 
-## Las cinco tools
+## Las seis tools
 
 | Tool | Responde | En lugar de |
 |---|---|---|
@@ -30,7 +30,8 @@ Node 20 el server no arranca y **el repo sigue funcionando igual**.
 | `describe_piece` | forma transformada, dos ASCII —uno con el ancla marcada, otro con el **paso** de cada celda—, tónica, escala, `cellMap` (grado **y** paso por celda) y las 5 notas con el retrógrado aplicado | componer cuatro puras a mano sobre cinco pares de coordenadas |
 | `simulate_board` | validez de cada colocación, el orden del circuito con sus saltos, y la línea de tiempo de notas y clicks que produce el recorrido | leer el scheduler y recorrer el lookahead a mano, o escuchar |
 | `check_invariants` | los cinco chequeos de `domain/invariants.ts`, con contraejemplos y el espacio del modelo (96 orientaciones) | correr los tests y leer la salida |
-| `spec_status` | por spec: estado, tareas hechas/total, cuántas de las abiertas no son deuda (`Seguimiento`, `[M]`, spec terminal) y la próxima que de verdad falta | leer `log.md` + todos los `tasks.md`, que crecen con cada spec |
+| `spec_status` | por spec: estado, tareas hechas/total, cuántas de las abiertas no son deuda (`Seguimiento`, `[M]`, spec terminal), la próxima que de verdad falta, y los `cruces` `X → Y` de sus tareas. Con `spec`, ese solo y con las `citas` de cada tarea | leer `log.md` + todos los `tasks.md`, que crecen con cada spec |
+| `spec_write` | **escribe**: `marcar` pasa una tarea a `[x]`, `seguimiento` agrega un `T0NN` al `## Seguimiento` con el ID que sigue | abrir el `tasks.md` y editarlo a mano, que en un worktree con `specs/` ignorado falla en verde |
 
 **Ninguna de las cuatro de dominio reimplementa nada.** `simulate_board` llama a `cellsAt`/`isValid` de
 `domain/board.ts` y a `buildSequence` de `domain/sequence.ts` para armar el circuito; `check_invariants`
@@ -42,6 +43,17 @@ respuestas.
 vez de ejecutarlo**, porque "dónde está X y quién lo usa" no se contesta ejecutando nada. Mantiene la
 propiedad que importa igual — construye el índice **en la consulta** y no lo persiste, así que no hay
 artefacto que regenerar ni que pueda quedar viejo.
+
+`spec_write` es la otra, y en el eje contrario: **es la única que escribe.** Entró con el
+[spec 033](../../specs/033-el-archivo-deja-de-ser-la-interfaz/spec.md), que terminó la indirección que
+el repo tenía a medio construir — `tasks.md` no es un archivo que se lee sino una **interfaz**, y
+hasta ese spec cinco skills la implementaban a mano. Dos de ellas corren cada agente en su propio
+worktree, y `git worktree add` hace checkout de lo **trackeado**: el día que `specs/` entre al
+`.gitignore`, un agente que abre el archivo no lo encuentra, **no falla, y sigue**. Tiene dos
+operaciones y ninguna más, y las dos garantizan algo que editar el archivo a mano no garantiza: el ID
+de `seguimiento` nunca reusa uno libre, y `marcar` **falla** si la tarea no existe o ya estaba marcada.
+Y escribe en el registro **central** aunque quien la llame esté en un worktree — con el precio escrito
+en la D1 del spec: el hallazgo deja de viajar en el diff del PR.
 
 ## Cuándo preferirlas a leer el código
 
@@ -68,7 +80,8 @@ Preguntar en vez de leer cuando la pregunta es:
   orden del circuito, sus saltos y el largo del ciclo. Es lo que el
   [spec 009](../../specs/009-el-tablero-como-recorrido/spec.md) hizo audible.
 - *¿Rompí algo del modelo?* → `check_invariants`, antes y después de tocar geometría o piezas.
-- *¿En qué quedó el trabajo planificado?* → `spec_status`.
+- *¿En qué quedó el trabajo planificado?* → `spec_status`. Y para **marcar** una tarea o anotar un
+  hallazgo en el `## Seguimiento`, `spec_write` — no abrir el `tasks.md`.
 - *¿Dónde está `cellsAt` y quién lo usa?* → `find_symbol`, **no `grep`**. Trae la firma, así que no hay
   que abrir el archivo, y `usedBy` sale del grafo de imports: un archivo que lo llama quince veces
   aparece una vez, y un homónimo de otro módulo no aparece.
@@ -94,13 +107,16 @@ pongo en `x=1` y otra pieza en `x=5`?"*
 |---|---|---|
 | Leyendo el código: `domain/{transform,music,board,sequence}` + sus `constants/` y `types/` + `audio/scheduler` + sus constantes | 48.565 | ~12.141 |
 | Con las tools: `describe_piece` (621) + `simulate_board` (2.064) | **2.685** | **~671** |
-| Catálogo de las cinco tools, una vez por sesión | 6.787 | ~1.697 |
+| Catálogo de las seis tools, una vez por sesión | 13.115 | ~3.279 |
 
 Las dos primeras filas se re-midieron con el spec 009 y **la brecha se ensanchó**: la respuesta de
 `simulate_board` creció de 1.189 a 2.064 bytes porque ahora lleva el camino de cada salto, pero el
 código a leer creció mucho más —de 14.999 a 48.565— y encima ya no alcanza con esos archivos, porque
-el orden y los silencios salen de `sequence.ts`. La fila del catálogo es la medición del spec 006 y no
-se volvió a tomar: se serializa a través del SDK y no con el mismo método que las otras dos.
+el orden y los silencios salen de `sequence.ts`. La fila del catálogo se volvió a tomar con el spec
+033 —eran 6.787 con cinco tools— y sigue con la misma salvedad que traía: se serializa a través del
+SDK, no con el mismo método que las otras dos. Que casi se haya duplicado no es sólo la tool nueva:
+las descripciones son donde vive el criterio de cuándo preferir la tool, y son lo que se paga una vez
+por sesión para ahorrar en cada pregunta.
 
 **94% menos por pregunta**, y el catálogo se paga con la primera. Lo que no aparece en la tabla es lo
 que más importa: leyendo el código, la respuesta todavía hay que **derivarla a mano** —tres rotaciones,
