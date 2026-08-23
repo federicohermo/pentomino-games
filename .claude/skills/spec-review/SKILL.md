@@ -43,6 +43,13 @@ formato de [`specs/README.md`](../../../specs/README.md#formato-de-una-tarea):
 - [ ] T012 [P] [M] Descripción, con la ruta del archivo que toca
 ```
 
+**Esas tareas se le piden a `spec_status` con el argumento `spec`, no abriendo el archivo.** Acotada
+así, la respuesta trae ese spec solo y suma `citas`: por tarea, los archivos que nombra entre
+backticks, con su línea y con su `T0NN` —o `null` en los specs anteriores a la convención—. Pesa
+3.135 bytes de mediana —7.962 el peor— contra los 29.742 del registro entero, y llega parseada, que es
+la diferencia que importa:
+cruzar archivos a ojo sobre el texto crudo es justo donde se escapa el choque del tercer punto.
+
 Al revisar, verificá:
 
 - **Cada tarea lleva su `T0NN`**, sin duplicados ni saltos, y **los IDs no se renumeraron** respecto
@@ -51,10 +58,12 @@ Al revisar, verificá:
   marcado como tal: no es material de loop" — `[M]` es cómo se marca acá. Una tarea que dice
   *escuchar*, *a oído*, *a ojo*, *captura*, *GIF* o *en el navegador* y **no** lleva `[M]` es un
   hallazgo: sin el marcador, `spec_status` la reporta como trabajo pendiente para siempre.
-- **`[P]` no miente.** Dos tareas `[P]` del mismo bloque no pueden tocar el mismo archivo. Es el
-  hallazgo más caro de los tres, porque `spec-implement` las abanica en paralelo y el conflicto
-  aparece recién al escribir.
-- Las de `## Seguimiento (no bloquea)` son deuda anotada a propósito y **no** cuentan como pendientes.
+- **`[P]` no miente.** Dos tareas `[P]` del mismo bloque no pueden tocar el mismo archivo — y eso lo
+  contesta `citas`: el choque es un `archivo` que aparece bajo dos `tarea` distintas. Es el hallazgo
+  más caro de los tres, porque `spec-implement` las abanica en paralelo y el conflicto aparece recién
+  al escribir.
+- Las de `## Seguimiento (no bloquea)` son deuda anotada a propósito y **no** cuentan como pendientes
+  — `spec_status` ya las separa en `seguimiento`, así que la cuenta no hay que rehacerla.
 
 Los specs 001–010 son anteriores a esta convención y **no se reescriben** (ver abajo): no lleves su
 falta de IDs como hallazgo.
@@ -80,7 +89,7 @@ y no puede quedar viejo:
 
 | En vez de | Usá |
 |---|---|
-| Leer `log.md` y los once `tasks.md` para saber en qué quedó cada spec | `spec_status` — devuelve estado, hechas/total, y `pendientes`, que descuenta `Seguimiento`, `[M]` y specs terminales |
+| Leer `log.md` y los `tasks.md` para saber en qué quedó cada spec, o abrir uno para auditarle las tareas | `spec_status` — estado, hechas/total y `pendientes`, que descuenta `Seguimiento`, `[M]` y specs terminales; con el argumento `spec`, ese spec solo más `citas` y `cruces` |
 | Derivar a mano una rotación, una escala o un retrógrado que el spec afirma | `describe_piece` |
 | Recorrer el lookahead a mano para saber qué suena junto | `simulate_board` |
 | Verificar que el spec no rompe geometría, `SHAPES` o el modelo musical | `check_invariants`, **en proceso fresco** — el MCP de la sesión cachea los módulos y contesta con el código viejo |

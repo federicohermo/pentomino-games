@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { parseLog, parseTasks, readSpecStatus } from '../specs.ts';
+import {
+  agregarSeguimiento, buscarSpec, marcarTarea, parseLog, parseTasks, readSpecStatus,
+  type SpecStatus,
+} from '../specs.ts';
 
 /**
  * Sobre strings fijos y NO sobre los archivos del repo: si estos tests leyeran
@@ -103,7 +106,7 @@ describe('parseTasks', () => {
     const t = parseTasks('## A\n- [x] una\n- [x] otra\n');
     assert.deepEqual(t, {
       hechas: 2, total: 2, seguimiento: 0, manual: 0, pendientes: 0,
-      proxima: null, proximaId: null,
+      proxima: null, proximaId: null, citas: [], cruces: [],
     });
   });
 
@@ -130,7 +133,7 @@ describe('parseTasks', () => {
   test('un tasks.md sin checkboxes devuelve ceros, no falla', () => {
     assert.deepEqual(parseTasks('# Tareas\n\nTodavía nada.\n'), {
       hechas: 0, total: 0, seguimiento: 0, manual: 0, pendientes: 0,
-      proxima: null, proximaId: null,
+      proxima: null, proximaId: null, citas: [], cruces: [],
     });
   });
 
@@ -306,5 +309,256 @@ describe('readSpecStatus', () => {
     } finally {
       rmSync(raiz, { recursive: true, force: true });
     }
+  });
+});
+
+/**
+ * Las dos lecturas que el spec 033 le agrega al parseo, y que son lo que hoy
+ * cinco skills sacan abriendo el archivo por su cuenta.
+ */
+const CITAS = `# Tareas — Citas y cruces
+
+## Paso 1
+- [ ] T001 Tocar \`mcp-server/src/specs.ts\` y su test \`specs.test.ts\`
+- [ ] T002 [P] La regla de \`calibracion.md:21\` sobre el falso positivo
+- [x] T003 \`CELL_PX\` va de 63 a 71, y el ancho de 44 → **63**
+- [ ] T004 Una tarea larga que cita abajo
+      en \`docs/architecture/audio.md:154\`, que el spec anterior movió de 8 → 9 ms, y sigue
+- [ ] Sin ID, pero cita \`App.tsx\` igual
+
+## Seguimiento (no bloquea)
+- [ ] T005 El presupuesto pasa de 4,0 → 11,8 ms
+`;
+
+describe('parseTasks — citas', () => {
+  test('saca los archivos que cada tarea nombra, con su línea cuando la trae', () => {
+    const { citas } = parseTasks(CITAS);
+    assert.ok(citas !== undefined);
+
+    assert.deepEqual(citas.slice(0, 3), [
+      { tarea: 'T001', archivo: 'mcp-server/src/specs.ts', linea: null },
+      { tarea: 'T001', archivo: 'specs.test.ts', linea: null },
+      { tarea: 'T002', archivo: 'calibracion.md', linea: 21 },
+    ]);
+  });
+
+  test('un backtick que no es un archivo no es una cita', () => {
+    // `CELL_PX` es el caso medido: sin la lista de extensiones entraban 1.547
+    // supuestas citas donde hay 1.388.
+    const archivos = parseTasks(CITAS).citas?.map(c => c.archivo) ?? [];
+    assert.ok(!archivos.includes('CELL_PX'));
+  });
+
+  test('la cita de una continuación es de la tarea de arriba, no de ninguna nueva', () => {
+    const cita = parseTasks(CITAS).citas?.find(c => c.archivo === 'docs/architecture/audio.md');
+    assert.deepEqual(cita, { tarea: 'T004', archivo: 'docs/architecture/audio.md', linea: 154 });
+  });
+
+  test('una tarea sin ID cita igual, y la cita lo dice', () => {
+    // Los specs anteriores a la convención no llevan ID y no se reescriben
+    // (desviación 2): devolver `null` es decirlo, no perderlo.
+    const cita = parseTasks(CITAS).citas?.find(c => c.archivo === 'App.tsx');
+    assert.deepEqual(cita, { tarea: null, archivo: 'App.tsx', linea: null });
+  });
+
+  test('el falso positivo de `calibracion.md:21` se devuelve, no se filtra', () => {
+    // Una tarea nombra un archivo también cuando lo que hay que hacer es
+    // actualizar el doc que lo enumera. La tool devuelve el dato; filtrar por el
+    // verbo es de quien lee, y por eso ese archivo sigue siendo una cita.
+    const archivos = parseTasks('## X\n- [ ] T001 Agregar la fila de `pieces.ts` a `directory-structure.md`\n')
+      .citas?.map(c => c.archivo);
+    assert.deepEqual(archivos, ['pieces.ts', 'directory-structure.md']);
+  });
+});
+
+describe('parseTasks — cruces', () => {
+  test('saca los pares `X → Y` con el énfasis de markdown puesto', () => {
+    // Medido sobre el repo: sin tolerar los asteriscos salen 2 pares donde hay 7,
+    // y los que faltan son justo los casos testigo de `cruces.md`.
+    assert.deepEqual(parseTasks(CITAS).cruces, [
+      { tarea: 'T003', de: '44', a: '63' },
+      { tarea: 'T005', de: '4,0', a: '11,8' },
+    ]);
+  });
+
+  test('un `X → Y` en una continuación no es un cruce', () => {
+    // La asimetría con las citas, y está medida: correr el patrón también sobre
+    // las continuaciones da 25 pares en el repo donde hay 7. Una continuación es
+    // la prosa que justifica la tarea, y sus números con flecha son frecuencias
+    // (`2 → 0.6461`) o números de spec (`002 → 43`), no constantes que el spec
+    // mueva. Una cita falsa hace que la skill abra el archivo para desconfiar; un
+    // cruce falso le inventa una dependencia dura entre dos specs.
+    assert.deepEqual(parseTasks(CITAS).cruces.filter(c => c.tarea === 'T004'), []);
+  });
+
+  test('los valores viajan como string: la coma decimal es real', () => {
+    // `Number('4,0')` es NaN, y un NaN acá se lee como "no hay cruce".
+    const [cruce] = parseTasks('## X\n- [ ] T001 De 0,02 → 0,05\n').cruces;
+    assert.deepEqual(cruce, { tarea: 'T001', de: '0,02', a: '0,05' });
+  });
+
+  test('un `tasks.md` sin ningún cruce devuelve la lista vacía, no undefined', () => {
+    assert.deepEqual(parseTasks(TASKS).cruces, []);
+    assert.deepEqual(parseTasks(MARCADAS).cruces, []);
+  });
+});
+
+describe('buscarSpec', () => {
+  const specs = [
+    { id: '033', dir: '033-el-archivo', fecha: null, estado: null, titulo: null, tareas: null, notas: [] },
+    { id: '7', dir: '007-nota-por-celda', fecha: null, estado: null, titulo: null, tareas: null, notas: [] },
+  ] satisfies SpecStatus[];
+
+  test('lo encuentra por carpeta, por id y por número sin ceros', () => {
+    assert.equal(buscarSpec(specs, '033-el-archivo')?.dir, '033-el-archivo');
+    assert.equal(buscarSpec(specs, '033')?.dir, '033-el-archivo');
+    assert.equal(buscarSpec(specs, '33')?.dir, '033-el-archivo');
+  });
+
+  test('el prefijo de la carpeta manda cuando el log escribió el id sin ceros', () => {
+    // Pasa de verdad: la fila del log puede decir `[7]` y la carpeta `007-`. Sin
+    // esta rama, pedir "007" no encuentra el spec que tiene esa carpeta.
+    assert.equal(buscarSpec(specs, '007')?.dir, '007-nota-por-celda');
+    assert.equal(buscarSpec(specs, '7')?.dir, '007-nota-por-celda');
+  });
+
+  test('lo que no es un spec devuelve null, no el primero', () => {
+    assert.equal(buscarSpec(specs, '999'), null);
+    assert.equal(buscarSpec(specs, 'el-archivo'), null);
+    assert.equal(buscarSpec([], '033'), null);
+  });
+});
+
+/** Con CRLF a propósito: es como están los archivos de este repo en Windows. */
+const PARA_ESCRIBIR = [
+  '# Tareas — Ejemplo',
+  '',
+  '## Paso 1',
+  '- [ ] T001 La primera',
+  '- [x] T002 La segunda, ya hecha',
+  '  - [ ] T003 Una anidada',
+  '',
+  '## Seguimiento (no bloquea)',
+  '- [ ] T010 Deuda anotada',
+  '',
+  '## Notas',
+  'Prosa que no es una tarea.',
+  '',
+].join('\r\n');
+
+describe('marcarTarea', () => {
+  test('marca la tarea y no toca ninguna otra línea', () => {
+    const r = marcarTarea(PARA_ESCRIBIR, 'T001');
+    assert.ok(r.ok);
+    assert.equal(r.tarea, 'T001');
+    assert.equal(r.linea, 4);
+    assert.equal(r.texto, 'La primera');
+
+    // El diff de marcar una casilla tiene que ser de UNA línea: cortar por
+    // `\n` y pegar por `\n` reescribiría las trece.
+    const antes = PARA_ESCRIBIR.split('\r\n');
+    const despues = r.md.split('\r\n');
+    assert.equal(despues.length, antes.length);
+    assert.deepEqual(despues.filter((l, i) => l !== antes[i]), ['- [x] T001 La primera']);
+    assert.equal(r.md.length, PARA_ESCRIBIR.length);
+  });
+
+  test('llega a las anidadas, que también son tareas', () => {
+    const r = marcarTarea(PARA_ESCRIBIR, 'T003');
+    assert.ok(r.ok);
+    assert.ok(r.md.includes('  - [x] T003 Una anidada'));
+  });
+
+  test('una tarea ya marcada FALLA en vez de decir que escribió', () => {
+    // Es el modo de falla que la tool entera viene a cerrar: marcar lo que no se
+    // hizo es lo que este repo acaba de arreglar en `log.md`.
+    const r = marcarTarea(PARA_ESCRIBIR, 'T002');
+    assert.equal(r.ok, false);
+    assert.ok(!r.ok && r.motivo.includes('ya estaba marcada'));
+    assert.ok(!r.ok && r.motivo.includes('linea 5'));
+  });
+
+  test('una tarea que no existe FALLA, y dice cuál', () => {
+    const r = marcarTarea(PARA_ESCRIBIR, 'T900');
+    assert.equal(r.ok, false);
+    assert.ok(!r.ok && r.motivo.includes('T900'));
+  });
+});
+
+describe('agregarSeguimiento', () => {
+  test('el ID sigue contando desde el mayor del archivo entero', () => {
+    // No desde el mayor de la sección ni desde el primer hueco: un ID reusado
+    // rompe la referencia que otra tarea le hacía (`specs/README.md`).
+    const r = agregarSeguimiento(PARA_ESCRIBIR, 'Un hallazgo');
+    assert.ok(r.ok);
+    assert.equal(r.tarea, 'T011');
+    assert.ok(r.md.includes('- [ ] T011 Un hallazgo'));
+  });
+
+  test('nunca reusa un ID libre', () => {
+    // Con T001 y T010 puestos, los ocho del medio están libres y ninguno se usa.
+    const r = agregarSeguimiento('## Paso\n- [x] T001 Una\n\n## Seguimiento\n- [ ] T010 Deuda\n', 'x');
+    assert.ok(r.ok);
+    assert.equal(r.tarea, 'T011');
+  });
+
+  test('cae al final de la sección, no debajo del encabezado', () => {
+    const r = agregarSeguimiento(PARA_ESCRIBIR, 'Un hallazgo');
+    assert.ok(r.ok);
+    assert.equal(r.linea, 10);
+    const lineas = r.md.split('\r\n');
+    assert.deepEqual(lineas.slice(7, 11), [
+      '## Seguimiento (no bloquea)',
+      '- [ ] T010 Deuda anotada',
+      '- [ ] T011 Un hallazgo',
+      '',
+    ]);
+    // Y el `## Notas` de abajo sigue intacto: el recorrido corta en el
+    // encabezado siguiente.
+    assert.ok(r.md.includes('## Notas\r\nProsa que no es una tarea.'));
+  });
+
+  test('conserva el CRLF del archivo', () => {
+    const r = agregarSeguimiento(PARA_ESCRIBIR, 'Un hallazgo');
+    assert.ok(r.ok);
+    assert.ok(!/[^\r]\n/.test(r.md), 'no quedó ningún LF suelto');
+  });
+
+  test('una sección vacía recibe la tarea, no un segundo encabezado', () => {
+    const r = agregarSeguimiento('## Paso\n- [x] T001 Una\n\n## Seguimiento (no bloquea)\n', 'Un hallazgo');
+    assert.ok(r.ok);
+    assert.equal(r.md.match(/## Seguimiento/g)?.length, 1);
+    assert.equal(r.md, '## Paso\n- [x] T001 Una\n\n## Seguimiento (no bloquea)\n- [ ] T002 Un hallazgo\n');
+  });
+
+  test('un spec sin la sección la estrena', () => {
+    // Medido: uno de los 33 —el 018— no la tiene, así que fallar ahí sería
+    // negarse a anotar deuda justo donde no hay ninguna anotada.
+    const r = agregarSeguimiento('## Paso\n- [x] T001 Una\n', 'Un hallazgo');
+    assert.ok(r.ok);
+    assert.equal(r.tarea, 'T002');
+    assert.equal(r.linea, 6);
+    assert.equal(r.md, '## Paso\n- [x] T001 Una\n\n## Seguimiento (no bloquea)\n\n- [ ] T002 Un hallazgo\n');
+  });
+
+  test('un archivo de una sola línea y sin salto final también', () => {
+    // `partir` no encuentra ningún terminador del que copiar el estilo.
+    const r = agregarSeguimiento('- [ ] T001 Sola', 'Un hallazgo');
+    assert.ok(r.ok);
+    assert.equal(r.md, '- [ ] T001 Sola\n\n## Seguimiento (no bloquea)\n\n- [ ] T002 Un hallazgo\n');
+  });
+
+  test('sin ninguna tarea numerada arranca en T001', () => {
+    const r = agregarSeguimiento('## Paso\n- [x] Sin ID\n', 'El primero');
+    assert.ok(r.ok);
+    assert.equal(r.tarea, 'T001');
+  });
+
+  test('pasado T999 FALLA en vez de escribir un ID que el parser no lee', () => {
+    // `parseTasks` casa `T\d{3}`: un T1000 sería invisible para la tool que lo
+    // acaba de escribir, que es la peor forma de perderlo.
+    const r = agregarSeguimiento('## Seguimiento\n- [ ] T999 La última\n', 'Un hallazgo');
+    assert.equal(r.ok, false);
+    assert.ok(!r.ok && r.motivo.includes('T999'));
   });
 });

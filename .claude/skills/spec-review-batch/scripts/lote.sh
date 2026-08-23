@@ -10,7 +10,7 @@
 # cargado y no cuesta un turno de tool. Por eso entiende las tres formas: recibe crudo lo
 # que el usuario tipeo.
 #
-# Emite tres bloques, y ninguno es una conclusion:
+# Emite dos bloques, y ninguno es una conclusion:
 #
 #   1. matriz archivo x spec   — que archivo tocan dos o mas specs. Dice donde mirar, nada mas:
 #                                dos specs en regiones lejanas del mismo archivo no se contradicen.
@@ -18,14 +18,15 @@
 #                                decide si los dos specs escriben la misma funcion o no, y es
 #                                tambien donde se ve si el de abajo cita una linea que el de
 #                                arriba reescribe: esa cita esta podrida por construccion.
-#   3. numeros que un spec mueve — cada `X -> Y` de cada tasks.md. Cruzar los Y de un spec contra
-#                                los X del resto es la unica forma de cazar la arista que no tiene
-#                                import que la delate: dos specs que mueven la misma constante y
-#                                el de abajo partiendo del valor de main en vez del que le dejan.
+#
+# Habia un tercero —los `X -> Y` de cada tasks.md— y lo saco el spec 033: eso ahora lo devuelve
+# `spec_status` en `cruces`, ya pareado y con la tarea al lado. Dos fuentes del mismo dato con
+# regex distintos es la forma de que el SKILL.md diga una cosa y el agente lea otra, que es
+# exactamente lo que paso hasta este review: el skill ya decia que los cruces salen de la tool y
+# el script los seguia emitiendo.
 #
 # Lo que NO hace, a proposito: decidir. Filtrar las menciones que vienen de tareas de
-# documentacion, o los `X -> Y` que son pares de una tabla y no una constante, depende del verbo
-# de la tarea — y un script que lo adivine se equivoca en silencio.
+# documentacion depende del verbo de la tarea — y un script que lo adivine se equivoca en silencio.
 set -eu
 
 # Entiende las TRES formas del `argument-hint` del skill, no solo los numeros sueltos, y esa
@@ -94,11 +95,4 @@ awk '{ c[$2]++ } END { for (f in c) if (c[f] > 1) print f }' "$pares" | sort | w
   for n in "$@"; do
     grep -nF "$f" "$(dir_de "$n")/tasks.md" | sed "s|^|  $n:|" || true
   done
-done
-
-echo
-echo "== numeros que un spec mueve (cruzar los Y contra los X del resto) =="
-for n in "$@"; do
-  grep -nE '[0-9]+([,.][0-9]+)?[ ]*→[ ]*[*`]*[0-9]+([,.][0-9]+)?' "$(dir_de "$n")/tasks.md" \
-    | cut -c1-160 | sed "s|^|  $n:|" || true
 done
