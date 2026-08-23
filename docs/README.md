@@ -13,6 +13,7 @@ secuencia de cinco notas derivada de su identidad y su orientación.
 
 ### Guías de Desarrollo
 - [Inicio Rápido](./guides/quickstart.md) — Setup y comandos
+- [Verificación](./guides/verificacion.md) — `pnpm verify` entero: por qué cada nodo tiene la forma que tiene
 - [Convenciones de Código](./guides/conventions.md) — Organización de `src/`, geometría, comentarios, estado
 - [Troubleshooting](./guides/troubleshooting.md) — Errores reales que ya se pisaron en este repo
 - [MCP server de dominio](./guides/mcp-domain.md) — Las cuatro tools que ejecutan el dominio, y cuándo preferirlas a leer el código

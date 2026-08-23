@@ -156,6 +156,54 @@ Tone, con su `@ts-ignore` por los tipos de constructor genérico, y se fue con T
 Los tres estaban tapando un problema de diseño, no de tipos. **Si aparece la tentación de uno nuevo,
 sospechar del diseño antes que de TypeScript.**
 
+Su contraparte en el linter es `noInlineConfig`: **no hay `eslint-disable` en el repo**, porque
+silenciar la regla es la otra forma de tapar el problema. Si hace falta una excepción real, va como
+**override por archivo** en `eslint.config.js` —que se ve en el diff y se explica— y no como un
+comentario suelto.
+
+### La aserción no nula (`!`) es de la misma familia
+
+Un `!` es un `any` chiquito: le dice al compilador que se calle **sin darle un motivo**. El spec 027
+la nombró y el 032 la convirtió en gate — `@typescript-eslint/no-non-null-assertion` en `error`.
+
+**Antes de escribir una, probar el `const`.** El `!` que había en `audio/engine.ts` existía sólo
+porque TypeScript pierde el estrechamiento al entrar al closure de un `forEach` cuando la variable es
+un `let` de módulo; salió gratis con una `const` local, sin discutir con el compilador.
+
+En producción quedan **tres**, y las tres viven como override por archivo en `eslint.config.js` con
+el motivo escrito al lado:
+
+| Archivo | Por qué el compilador no puede verlo |
+|---|---|
+| `src/main.tsx` | El idiom de Vite sobre un `#root` que el propio `index.html` garantiza |
+| `src/domain/invariants.ts` | El `queue.shift()!` de un BFS, dentro de un `while` que ya garantiza la cola no vacía |
+| `src/components/Board.tsx` | El ancestro `[role="grid"]` existe por construcción: el handler vive en un descendiente de esa grilla. El `if` alternativo sería una rama inalcanzable, y el umbral 100 no deja cubrirla |
+
+**En los tests no vale**, y la regla está apagada ahí: el `!` sobre un `find` o un `querySelector` que
+el propio test acaba de fijar es la forma de que el test **falle** si el nodo no está. Son 102, en 100
+líneas, y son deliberadas.
+
+Esa lista de overrides es ahora la **única fuente** del número. Mientras vivió en la prosa de
+`CLAUDE.md` se desincronizó dos veces: decía «dos» cuando eran tres, y «66» cuando eran 102. Y el
+número **se escribe junto con la regla que lo produce**, porque sin ella no se reproduce — se cuenta
+por *ocurrencia*, corriendo la regla con sus tres overrides apagados; por línea da 100, porque hay dos
+líneas con dos `!`.
+
+### Nada de saltear una rama de coverage
+
+El corolario del umbral 100, que hasta el spec 032 era prosa y ahora lo verifica `no-warning-comments`
+con los tres términos de los proveedores de coverage y `location: 'anywhere'`.
+
+Si una rama parece inalcanzable, la salida es **borrarla o volverla alcanzable**, nunca pedirle al
+proveedor que la saltee: un umbral con escapes es un umbral más bajo y sin dueño, que es exactamente
+el argumento con el que el 029 rechazó el 95.
+
+**La regla mira texto y no sintaxis, y eso tiene un precio que se paga una vez:** deletrear uno de los
+términos *para explicar por qué no usarlo* la viola igual. Por eso los tres términos literales viven
+en `eslint.config.js` y en ningún comentario del repo — `vite.config.ts`, `specStatus.ts` y
+`specWrite.ts` los escribían los tres, y los tres se reescribieron nombrando el mecanismo en vez del
+término.
+
 ### Tipos de dominio
 
 ```ts

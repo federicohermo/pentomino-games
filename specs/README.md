@@ -39,6 +39,26 @@ specs/<NNN>-<descripcion-kebab>/
 > **Desviación 3.** Este repo no tiene tablero de Jira, así que el segmento de ticket de la convención
 > original (`specs/<NNN>-<TICKET>-<descripcion>/`) se omite siempre.
 
+> **Desviación 4.** Desde el spec 032 los `.md` entran a `pnpm lint`, y los specs lo hacen **en su
+> propio carril**: se apaga el preset entero y se reenciende, por nombre, sólo lo que caza un error de
+> **renderizado** — una tabla que descarta celdas, un encabezado que no renderiza, un enlace dado
+> vuelta. Ninguna regla de estilo.
+>
+> Se lee junto con la Desviación 2 y sale de ella. El preset completo sobre `specs/` da **483**
+> hallazgos, y aplicarlo obligaría a reescribir 29 specs cerrados para satisfacer una regla de
+> estilo, que es exactamente lo que la Desviación 2 prohíbe. Un error de renderizado es otra cosa: no
+> reescribe una decisión, **destapa contenido que GitHub hoy esconde**. Con el carril puesto, el costo
+> medido fue **1 hallazgo**, y era un bug real —`027/research.md:112` perdía una celda de tabla por
+> dos barras sin escapar—.
+>
+> El carril **reenciende por nombre y no excluye por nombre**, por el mismo motivo que
+> `REGLAS_DEL_REPO` en `eslint.config.js`: en flat config un override *reemplaza*, así que una lista
+> por exclusión dejaría entrar sola cualquier regla que el preset agregue más adelante — y eso sería
+> `pnpm lint` en rojo sobre specs que no se pueden tocar.
+>
+> Los tres registros de acá —este `README.md`, `log.md` y `revisiones.md`— **no** están en ese carril:
+> son documentación viva y se mantienen al día, así que van con el preset completo.
+
 ## Formato de una tarea
 
 ```markdown
