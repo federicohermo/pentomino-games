@@ -49,7 +49,7 @@
 - [ ] T034 Actualizar la fila del 033 en `specs/log.md` a `Implementado` — **queda abierta a
       propósito**: el estado lo mueve el merge. Y en este spec la nota es doble, porque el registro
       acaba de demostrar que ese mecanismo falló **diez de diez veces**
-- [ ] T035 Commit, push y PR contra `origin`
+- [x] T035 Commit, push y PR contra `origin`
 - [ ] T036 [M] Code review del PR
 
 ## Seguimiento (no bloquea)
