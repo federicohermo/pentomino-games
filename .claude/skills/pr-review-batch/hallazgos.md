@@ -123,15 +123,20 @@ un PR que cambia una firma tiene una arista que ningún import de `src/` delata.
 |---|---|
 | 🔴 Bloqueante | **se arregla siempre** |
 | 🟡 con fix acotado que no toca lo que el PR garantiza | se arregla |
-| 🟡 cuyo fix pelea con un AC o con el invariante del propio PR | **no se toca** — se declara y se escribe como `T0NN` en el `## Seguimiento (no bloquea)` del `tasks.md` de ese spec |
+| 🟡 cuyo fix pelea con un AC o con el invariante del propio PR | **no se toca** — se declara y se escribe al `## Seguimiento (no bloquea)` de ese spec con `mcp__pentomino-domain__spec_write` (`op: "seguimiento"`); el `T0NN` lo numera la tool |
 | 🟡 preexistente que el diff solo agrava | se arregla **solo** si el archivo ya está tocado por el PR |
 | AC que pide una persona (`[M]`) | no se puede arreglar — se declara pendiente |
 
 **El `## Seguimiento` es el destino, no el chat.** Un 🟡 que no se aplica y solo se cuenta en el
-reporte se pierde con la conversación; escrito como tarea sobrevive al merge y `spec_status` lo
-descuenta.
+reporte se pierde con la conversación; escrito con `spec_write` sobrevive **aunque el PR no se
+mergee** —la escritura es al registro central y no al worktree— y `spec_status` lo descuenta. El
+`texto` tiene que decir qué se encontró y con qué evidencia: es lo único que va a quedar cuando el
+diff ya no esté. Y el precio de esa centralización, que está en el `SKILL.md`: el reviewer del PR
+**ya no lo ve en el diff**, así que va sí o sí al reporte.
 
 **Propagá cada fix a todo lo que lo describe.** Un cambio de firma toca el código **y** el `spec.md`,
-el `plan.md`, el `tasks.md` y cada doc que muestre el snippet viejo. Un fix de código que deja
-mintiendo a la doc del propio PR es medio fix — y en este repo es exactamente el hallazgo que más
-apareció.
+cada doc que muestre el snippet viejo, y las tareas del spec que lo nombran. Eso último no se busca
+abriendo archivos: `spec_status` acotado al spec devuelve las `citas` —qué tarea nombra qué archivo y
+en qué línea—, y como la tool sólo sabe marcar y agregar seguimiento, una tarea cuyo texto quedó viejo
+se anota con `op: "seguimiento"` en vez de reescribirse. Un fix de código que deja mintiendo a la doc
+del propio PR es medio fix — y en este repo es exactamente el hallazgo que más apareció.

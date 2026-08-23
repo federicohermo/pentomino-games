@@ -14,6 +14,7 @@ allowed-tools:
   - Edit
   - AskUserQuestion
   - mcp__pentomino-domain__spec_status
+  - mcp__pentomino-domain__spec_write
   - mcp__pentomino-domain__find_symbol
   - Bash(git status:*)
   - Bash(git worktree list:*)
@@ -42,7 +43,7 @@ allowed-tools:
 Un review de spec audita **uno** contra el repo. Este audita **N contra el repo y entre sí**.
 
 Lo segundo es el entregable: una contradicción entre dos specs del lote no la ve ningún review suelto,
-porque cada uno mira un archivo. Y acá sale barata — arreglarla es editar un `tasks.md`. La misma
+porque cada uno mira un archivo. Y acá sale barata — arreglarla es una llamada a `spec_write`. La misma
 contradicción sobrevive intacta hasta que dos ramas del lote se pisan, y ahí ya cuesta un rebase.
 
 ## Por qué no hay worktrees
@@ -76,14 +77,19 @@ necesita el 019 *escrito*, y ya lo está. Por eso el ancho es N aunque el `log.m
   mezclan con trabajo previo y el `git diff` deja de ser el registro del review — que es lo único que
   lo hace auditable. Ofrecé commitear primero o correr `--dry`.
 - **Loop activo.** `git worktree list`: el spec que tenga un worktree abierto cae a `--dry` **él solo**,
-  no el lote. Al resto no se le mueve el piso por un vecino.
+  no el lote. Al resto no se le mueve el piso por un vecino. Y `--dry` ahora quiere decir **no llamar a
+  `spec_write`**: la tool escribe en el registro central y no en el árbol de quien la llama, así que un
+  worktree abierto ya no contiene la escritura como la contenía un `Edit`.
 
 ## Paso 1 — El preámbulo, destilado una vez
 
 Es el ahorro propio del batch: sin esto, N reviews lo re-derivan N veces desde frío. Cuatro insumos, y
 los cuatro se pasan **destilados**, no como rutas a leer:
 
-- `spec_status` con los N números — estado, hechas/total y `pendientes` de todo el lote en una consulta.
+- `spec_status` **sin argumento** — estado, hechas/total, `pendientes` y `cruces` de **todos** los specs
+  en una consulta, y te quedás con los N. No toma una lista: acotarla cuesta una llamada por spec y lo
+  único que agrega son las `citas`, que el preámbulo no usa. La respuesta entera pesa ~29 KB justamente
+  porque no las trae.
 - **El mapa síntoma → deuda**, que sale de los **issues abiertos** (`mcp__github__list_issues`) y es
   el eje D entero.
 - Lo que `specs/revisiones.md` registra como *ya se probó y no funcionó* para el área del lote.
@@ -99,13 +105,17 @@ pregunta está mal formulada para todos menos el primero: el 020 cita cosas que 
 cada agente, o el lote devuelve una avalancha de citas rotas falsas.
 
 1. **La matriz ya está arriba**, inyectada por [`scripts/lote.sh`](./scripts/lote.sh) al cargar este
-   archivo: matriz archivo × spec, las líneas de tarea que citan cada archivo compartido, y **los
-   `X → Y` de cada `tasks.md`**, que es la arista que ningún import delata. No la vuelvas a pedir por
-   Bash — ya la tenés. Si arriba salió un mensaje de uso en vez de la matriz, el lote está mal
-   escrito y eso se resuelve en el Paso 0.
-2. Contrastá contra «Dependencias entre specs» del `log.md`. Ese texto dice qué quiso el autor; la
+   archivo: matriz archivo × spec y las líneas de tarea que citan cada archivo compartido. No la
+   vuelvas a pedir por Bash — ya la tenés. Si arriba salió un mensaje de uso en vez de la matriz, el
+   lote está mal escrito y eso se resuelve en el Paso 0.
+2. **Los `X → Y` salen del campo `cruces` del `spec_status` del Paso 1** —`{tarea, de, a}`, ya
+   pareados y con la tarea que los declara al lado—, que es la arista que ningún import delata. Vienen
+   como **string** y no como número a propósito: hay pares con coma decimal (`4,0 → 11,8`,
+   `0,02 → 0,05`) que un `Number()` convierte en `NaN`. Son **7 en todo el repo**, o sea que cruzarlos
+   a mano es barato — lo caro era encontrarlos.
+3. Contrastá contra «Dependencias entre specs» del `log.md`. Ese texto dice qué quiso el autor; la
    matriz dice qué archivos se pisan. **Si difieren, eso es hallazgo** y se edita el `log.md`.
-3. Un spec que **declara tolerar** llegar antes que su dependencia sale de la cadena: es permiso
+4. Un spec que **declara tolerar** llegar antes que su dependencia sale de la cadena: es permiso
    escrito, no un olvido.
 
 Con el orden en mano, el eje A cambia de forma para todo spec que no sea el primero:
@@ -162,9 +172,15 @@ espera de vuelta—:
 Y este contrato, que es lo propio del batch:
 
 > **No escribís fuera de `specs/<NNN>-*/`.** Ni `docs/`, ni `.claude/rules/`, ni `CLAUDE.md`, ni
-> `specs/log.md`, ni `specs/revisiones.md`, ni el `tasks.md` de otro spec. Los tocan los
+> `specs/log.md`, ni `specs/revisiones.md`. Los tocan los
 > N a la vez y no hay merge que lo arregle. Devolvelos como **edición propuesta**, con `path:línea` y
 > el texto exacto. **Tampoco abrís ni cerrás issues**, por lo mismo: el padre los consolida.
+>
+> **Y «otro spec» ya no es una ruta sino un argumento: `spec_write` sólo con tu propio número.**
+> Cuando escribir en el spec del vecino era abrir un archivo suyo, respetar la carpeta propia alcanzaba
+> para que no pasara. Con la tool el spec ajeno es el parámetro `spec` de una llamada que ya tenés
+> permitida, así que nada en la forma de la operación delata que estás escribiendo afuera — la única
+> barrera que queda es esta línea.
 
 Y devuelve dos cosas: su reporte, comprimido a **40–60 líneas** —veredicto en la primera, después los
 bloqueantes con evidencia, y lo editado a conteos—, y esa lista de ediciones propuestas afuera. Sin la
@@ -183,8 +199,10 @@ re-audita: cruza.
 - **Si los dos contradicen al orden que derivaste en el Paso 2, gana la evidencia y decilo**: un orden
   mal derivado es un hallazgo sobre el `log.md`, no un detalle de proceso.
 
-La asimetría del review vale igual acá: **endurecer se aplica** —un cruce que falta se escribe en el
-`tasks.md` del spec que corresponda—; **aflojar se propone**. Si el cruce obliga a elegir entre dos
+La asimetría del review vale igual acá: **endurecer se aplica** —un cruce que falta se escribe con
+`spec_write` (`op: "seguimiento"`) en el spec que corresponda, y el `texto` tiene que decir qué se
+encontró y con qué evidencia, porque el ID lo pone la tool y esa línea es todo lo que queda del
+hallazgo—; **aflojar se propone**. Si el cruce obliga a elegir entre dos
 diseños, frená con `AskUserQuestion`: un párrafo ahora contra dos ramas rebaseadas después.
 
 > **Y por eso este skill NO lleva `context: fork`.** Correrlo forkeado sacaría de esta conversación
@@ -205,7 +223,9 @@ diseños, frená con `AskUserQuestion`: un párrafo ahora contra dos ramas rebas
 ## Paso 5 — Aplicar lo compartido y reportar
 
 El padre aplica las ediciones fuera-de-carpeta que juntó en el Paso 3, **una por hallazgo** y en serie,
-para que el `git diff` se lea. **No commitea.**
+para que el `git diff` se lea. La serie dejó de ser sólo legibilidad: `spec_write` deriva el `T0NN` del
+mayor que ya hay en el archivo, así que dos seguimientos disparados a la vez sobre el mismo spec están
+mirando el mismo máximo. **No commitea.**
 
 El reporte, en este orden:
 

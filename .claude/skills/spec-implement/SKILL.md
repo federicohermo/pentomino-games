@@ -16,7 +16,7 @@ test, las reglas de andamiaje y la convergencia salen de allá.
 ## El paralelismo viene declarado — no lo derives de cero
 
 El global construye el grafo con un nodo por encabezado y advierte que *"un grafo adivinado abanica
-trabajo que se pisa"*. En este repo, desde el spec 011, `tasks.md` lo declara por tarea
+trabajo que se pisa"*. En este repo, desde el spec 011, la declaración viene por tarea
 ([`specs/README.md`](../../../specs/README.md#formato-de-una-tarea)):
 
 ```
@@ -26,9 +26,18 @@ trabajo que se pisa"*. En este repo, desde el spec 011, `tasks.md` lo declara po
 - **`[P]`** — no depende de las otras `[P]` de su bloque ni comparte archivo con ellas. Lo escribió
   quien conocía las dependencias reales, al escribir el spec.
 - **`[M]`** — pide una persona: oído, navegador, captura. **Ningún agente la puede cerrar.** No la
-  metas en el grafo y no la marques `[x]`: queda abierta a propósito y `spec_status` ya la descuenta.
+  metas en el grafo y no la pases por `spec_write`: queda abierta a propósito y `spec_status` ya la
+  descuenta.
 - **`T0NN`** — ID estable. Usalo para nombrar nodos y aristas en el `--dry`, que es lo que hace
-  revisable el grafo antes de lanzar nada.
+  revisable el grafo antes de lanzar nada. Es también la dirección con la que se marca: `spec_write`
+  toma el ID, no un número de línea.
+
+**La declaración se lee con `spec_status`, no abriendo el archivo.** Con el argumento `spec` la
+respuesta se acota a ese spec y suma `citas`: por tarea, los archivos que nombra entre backticks, con
+su línea. Eso es la materia prima del fake-edge test ya parseada, y acotada pesa 2.814 bytes contra
+los 30.421 del registro entero. `cruces` da los pares `X → Y` que la tarea declara —`de` y `a` son
+string, que en este repo hay un `4,0 → 11,8`— y `proximaId` dice cuál falta de verdad, con
+`Seguimiento`, `[M]` y los specs terminales ya descontados.
 
 **Seguí usando el fake-edge test sobre los `[P]` declarados, no en su lugar.** Un `[P]` mal puesto es
 un conflicto de escritura que aparece recién al implementar; si el test contradice a la declaración,
@@ -49,8 +58,17 @@ dice el global. No los reescribas para agregárselos.
 
 ## Al cerrar
 
-- Marcá `[x]` sólo lo que hiciste. Lo `[M]` queda abierto — es la diferencia entre "falta" y "espera a
-  una persona", y es lo que hace que `spec_status` reporte `pendientes: 0` sin mentir.
+- **Marcar es `spec_write` con `op: "marcar"` y el `T0NN`**, no una edición del archivo. Marcá sólo lo
+  que hiciste. Lo `[M]` queda abierto — es la diferencia entre "falta" y "espera a una persona", y es
+  lo que hace que `spec_status` reporte `pendientes: 0` sin mentir. Lo que la tool garantiza y una
+  edición a mano no: **falla** si la tarea no existe o si ya estaba marcada, así que un ID mal tipeado
+  se ve en el acto en vez de quedar como un reemplazo que no reemplazó nada; y escribe en el registro
+  **central**, no en el worktree de quien la llama, que es lo que hace que dos carriles en paralelo no
+  terminen con dos versiones del mismo estado.
+- **La deuda que aparece implementando se anota con `spec_write` y `op: "seguimiento"`**, que la
+  agrega al final de `## Seguimiento (no bloquea)` —y crea la sección si el spec no la tenía—. **El ID
+  lo pone la tool**: sigue contando desde el mayor del archivo y nunca reusa uno libre, que es
+  exactamente el error que comete quien numera a ojo mirando el último bloque.
 - El estado del spec en `specs/log.md` lo mueve el **merge**, no la rama.
 - Si el spec falsificó algo que la documentación afirma en presente, actualizá `docs/` y
   `.claude/rules/` —no los specs viejos, que son historia— y anotá el aprendizaje en

@@ -44,9 +44,14 @@ el batch deja de comprar nada.
 
 Solo la arista serializa. El conflicto se paga en el merge y se mide en líneas.
 
-Para separarlos, **leé la tarea y su cita de línea**, que los `tasks.md` de este repo traen
-(`PiecePalette.tsx:36`, `Board.tsx:132`). Regiones lejanas del mismo archivo son conflicto barato; la
-misma función, arista.
+Para separarlos, **leé la tarea y su cita de línea**: las devuelve `spec_status` en `citas`
+(`{tarea, archivo, linea}` — `PiecePalette.tsx:36`, `Board.tsx:132`). Regiones lejanas del mismo
+archivo son conflicto barato; la misma función, arista.
+
+`citas` **sólo viene al pedir un spec por vez**: las de los 33 pesan 49.670 bytes contra los 29.019 de
+la respuesta entera —más que duplicarla—, así que el listado no las trae. Acotada a un spec la
+respuesta baja de 30.421 bytes a 2.814, y la matriz de archivos de un lote sale de una consulta por
+spec en vez de una sola grande.
 
 ---
 
@@ -93,18 +98,24 @@ Lo que ningún `/spec-implement` suelto puede ver, porque mira un spec. Corré l
    del 015 pide verificar lo contrario.
 3. **Un número que dos specs mueven.** Confirmá que el segundo parte del valor que deja el primero y no
    del de `main`.
-4. **Un spec que cierra una tarea de otro.** Es el único archivo que se escribe fuera de su propio
-   spec: anotalo para que dos carriles no lo pisen.
+4. **Un spec que cierra una tarea de otro.** Es la única escritura que sale de su propio spec: anotalo
+   para que dos carriles no lo pisen. Pisarlo dejó de ser silencioso —`spec_write` con `op: "marcar"`
+   falla si la tarea ya estaba marcada, en vez de dejar creer que escribió— pero un carril que se
+   frena con ese error igual costó la corrida.
 
-Lo que salga es una decisión de diseño que le falta al spec. **Decidila vos, escribila en el `tasks.md`
-que corresponda antes de lanzar, y seguí** — no se frena con `AskUserQuestion`. Sigue valiendo el
-argumento de por qué se resuelve *acá* y no en el carril: arreglar un spec cuesta un párrafo y
-arreglar dos carriles cuesta un rebase; lo que cambia es quién contesta. La recomendación se toma, no
-se ofrece.
+Lo que salga es una decisión de diseño que le falta al spec. **Decidila vos, escribila con `spec_write`
+(`op: "seguimiento"`) en el spec que corresponda antes de lanzar, y seguí** — no se frena con
+`AskUserQuestion`. El ID de la tarea lo pone la tool, contando desde el mayor del archivo, así que dos
+decisiones escritas seguidas no se pisan el número. Sigue valiendo el argumento de por qué se resuelve
+*acá* y no en el carril: arreglar un spec cuesta un párrafo y arreglar dos carriles cuesta un rebase;
+lo que cambia es quién contesta. La recomendación se toma, no se ofrece.
 
 Va escrita **como tarea con su porqué y su AC**, no como nota al pie: el carril la va a leer sin este
-contexto. Y va al reporte del Paso 5, que es donde el usuario la ve — si quiere revertirla, revierte
-un párrafo escrito, que es más barato que el turno de ida y vuelta que la habría evitado.
+contexto. Y la va a leer de verdad, que antes no estaba garantizado: la escritura cae en el **registro
+central**, no en el árbol de quien la hace (D1 del spec 033), así que el carril la ve con `spec_status`
+aunque su worktree haya nacido en `origin/main` sin ella. Y va al reporte del Paso 5, que es donde el
+usuario la ve — si quiere revertirla, revierte un párrafo escrito, que es más barato que el turno de
+ida y vuelta que la habría evitado.
 
 Lo único que sigue frenando es lo de siempre: que proceder bajo cualquier supuesto sea inseguro, o
 deje el lote inservible si el supuesto está mal. Eso casi nunca es una decisión de diseño de un spec.
@@ -141,8 +152,10 @@ Cada agente de carril recibe:
   que se ve, commit por nodo del grafo, push a `origin`, y PR;
 - **la base de cada PR**: el primer spec del carril apunta a `main`; los que le siguen, a la rama del
   spec anterior del mismo carril;
-- **que marque `[x]` solo lo que hizo.** Lo `[M]` queda abierto: pide una persona, y `spec_status` ya
-  lo descuenta.
+- **que marque `[x]` solo lo que hizo**, con `spec_write` (`op: "marcar"`). Lo `[M]` queda abierto:
+  pide una persona, y `spec_status` ya lo descuenta. **Esa marca no viaja en el commit del carril**: cae
+  en el registro central y no en su worktree (D1 del spec 033), así que el avance del lote se lee
+  entero con `spec_status` sin esperar los merges — y a la inversa, no esperes verlo en el diff del PR.
 
 Esperá a que vuelvan todos antes del reporte.
 
