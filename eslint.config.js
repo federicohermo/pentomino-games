@@ -391,11 +391,17 @@ export default tseslint.config([
       // `location: 'anywhere'` y no el default `start`: los tres terminos aparecen en
       // medio de una frase, no encabezando el comentario.
       //
-      // Los tres terminos viven en la config y NO en este docblock, y esa perifrasis es
-      // obligada: el bloque `**/*.js` de arriba lintea este mismo archivo, y la regla
-      // mira texto y no sintaxis, asi que **deletrear un termino para explicar por que no
-      // usarlo lo viola igual**. Es el precio de una regla textual y se paga una vez —
-      // `vite.config.ts` pagaba el suyo desde el 029 y lo arreglo este spec.
+      // La regla mira TEXTO y no sintaxis, asi que **deletrear un termino para explicar
+      // por que no usarlo lo viola igual**: es el precio de una regla textual y lo pagan
+      // los tres docblocks que lo hacian —`vite.config.ts:155`, `specStatus.ts` y
+      // `specWrite.ts`—, que hoy nombran el mecanismo en vez del termino.
+      //
+      // Los tres terminos viven aca y en ningun comentario del repo, pero ojo con el
+      // motivo: **este archivo no esta bajo la regla**. La regla se declara en el bloque
+      // `**/*.{ts,tsx}` y este es un `.js`, verificado con `--print-config eslint.config.js`
+      // —no aparece—; y aunque lo estuviera, `terms` es un array de strings y no un
+      // comentario. La perifrasis de arriba es por consistencia con los otros tres, no
+      // porque el linter la exija aca.
       'no-warning-comments': ['error', {
         terms: ['v8 ignore', 'c8 ignore', 'istanbul ignore'],
         location: 'anywhere',
@@ -406,10 +412,10 @@ export default tseslint.config([
   {
     // Las TRES aserciones no nulas de produccion, cada una con el motivo por el que el
     // compilador no puede verlo. Van como override por archivo y no como comentario
-    // suelto porque `noInlineConfig` no admite `eslint-disable`, y porque `CLAUDE.md` ya
-    // predice este mecanismo palabra por palabra: «va como override por archivo en
+    // suelto porque `noInlineConfig` no admite `eslint-disable`, y porque la regla escrita
+    // ya predice este mecanismo palabra por palabra: «va como override por archivo en
     // `eslint.config.js` —que se ve en el diff y se explica— y no como un comentario
-    // suelto».
+    // suelto» (`docs/guides/conventions.md`, y `CLAUDE.md` la primera mitad).
     //
     // Antes de agregar una cuarta, probar el `const`: la que habia en `engine.ts` existia
     // solo porque TypeScript pierde el estrechamiento al entrar al closure de un
@@ -539,7 +545,8 @@ export default tseslint.config([
     // es el mismo trap de flat config que el resto del archivo.
     //
     // El test sin una sola asercion no tiene equivalente barato con `node:test` —no hay un
-    // `expect` que contar— y queda afuera a proposito; `CLAUDE.md` lo dice asi.
+    // `expect` que contar— y queda afuera a proposito; `docs/guides/conventions.md` lo dice
+    // asi, en `## Tests`. Vivia en `CLAUDE.md` hasta que el 032 lo recorto y lo mudo ahi.
     files: ['mcp-server/**/__tests__/**/*.ts'],
     rules: {
       'no-restricted-syntax': ['error', ...REGLAS_DEL_REPO, {

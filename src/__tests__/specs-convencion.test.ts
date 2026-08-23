@@ -66,7 +66,7 @@ describe('los specs cumplen la convencion que su README documenta', () => {
     expect(faltan, `archivos que faltan:\n${faltan.join('\n')}`).toEqual([]);
   });
 
-  it('cada spec tiene su fila en `log.md`, con fecha ISO y un estado del conjunto cerrado', () => {
+  it('cada spec tiene su fila en `log.md`, apuntando a SU carpeta, con fecha ISO y un estado del conjunto cerrado', () => {
     // Los cinco estados los declara `log.md` arriba de su propia tabla. Se listan aca
     // porque el gate tiene que fallar ante uno inventado, que es la forma en la que una
     // tabla de estados se desarma: alguien escribe «En progreso» y `spec_status` lo lee
@@ -76,11 +76,17 @@ describe('los specs cumplen la convencion que su README documenta', () => {
 
     for (const carpeta of CARPETAS) {
       const id = carpeta.slice(0, 3);
-      const fila = new RegExp(`^\\|\\s*\\[${id}\\]\\([^)]*\\)\\s*\\|([^|]*)\\|([^|]*)\\|`, 'm').exec(LOG);
+      const fila = new RegExp(`^\\|\\s*\\[${id}\\]\\(([^)]*)\\)\\s*\\|([^|]*)\\|([^|]*)\\|`, 'm').exec(LOG);
       if (!fila) { problemas.push(`${carpeta}: sin fila en log.md`); continue; }
 
-      const fecha = fila[1].trim();
-      const estado = fila[2].trim();
+      // El `href` y no solo el texto del enlace: el numero entre corchetes y la carpeta a
+      // la que lleva son dos cosas distintas, y una fila que dice `[032]` apuntando al 031
+      // pasa las dos direcciones de la biyeccion sin que nada avise. Es la mitad del punto
+      // 3 del AC8 que el enlace visible no cubre.
+      const href = fila[1].trim();
+      const fecha = fila[2].trim();
+      const estado = fila[3].trim();
+      if (!href.startsWith(`./${carpeta}/`)) problemas.push(`${carpeta}: la fila enlaza a "${href}"`);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) problemas.push(`${carpeta}: fecha "${fecha}" no es ISO`);
       if (!ESTADOS.includes(estado)) problemas.push(`${carpeta}: estado "${estado}" no esta en el conjunto`);
     }

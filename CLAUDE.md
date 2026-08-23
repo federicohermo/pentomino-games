@@ -34,7 +34,7 @@ abrirlo:
   instrumentar rompe los presupuestos de performance del 009, medido.
 - **Cero excepciones al umbral**: ni un comentario que saltee una rama. Si parece inalcanzable, se
   borra o se vuelve alcanzable. Desde el 032 lo verifica `no-warning-comments`.
-- **`lint` también lintea los 162 `.md`** desde el 032, en dos carriles: preset completo en la
+- **`lint` también lintea todos los `.md`** desde el 032, en dos carriles: preset completo en la
   documentación viva, y sólo las reglas de **renderizado** en `specs/[0-9]*/**`, porque un spec
   mergeado no se reescribe.
 - **Los tests de `src/` son dos proyectos de Vitest**, `node` y `browser`. El discriminante es el
