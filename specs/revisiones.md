@@ -910,7 +910,7 @@ paso 2 puesto, confirma el 73 y **cambia lo que significa**.
 Los números, medidos con `align-items: start` sobre la grilla —que es la única forma de ver el alto
 natural de las dos tarjetas con el estiramiento apagado—:
 
-```
+```text
 paleta   496 → 428 px de caja natural      (el spec predecía ~490)
 tablero  470 px de caja natural            (6 × 73 + el p-4)
 CELL_PX  73   por ancho: 730,7 / 10 = 73,1

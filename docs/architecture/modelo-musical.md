@@ -171,7 +171,7 @@ quinta.
 
 Pentatónica mayor **siempre**, corrida `rotación` posiciones:
 
-```
+```text
 F, pentatónica mayor sobre C
 
 rotación 0   C4 D4 E4 G4 A4        ← idéntico en los dos regímenes
@@ -297,7 +297,7 @@ por un lado y si la forma no da, por una esquina.
 que es geometría pura, y `angularRank`, que es el orden angular del 007 reducido a desempate— y devuelve
 el grado **por índice de celda**:
 
-```
+```text
 camino que encadena la mayor cantidad de pasos a una celda que se toca → grados 0..4 en orden de visita
 ```
 

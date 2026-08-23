@@ -51,7 +51,7 @@ Cuatro sustituciones. Las cuatro se descubrieron corriendo, no leyendo:
    sabe además que un hallazgo suyo puede pertenecer al de abajo, y lo dice en vez de arreglarlo dos
    veces.
 5. **Medí la lista caliente**, que es el insumo del paso que sigue:
-   ```
+   ```bash
    cat <dir>/{33,34,35,36}/pr.files | sort | uniq -c | sort -rn | awk '$1>1'
    ```
    sobre los `pr.files` que `diff-pr.sh` ya emite —lo podés correr sin checkout, con el tercer
@@ -184,7 +184,7 @@ vistazo.
 Y este contrato, en este orden:
 
 1. **Parate en la cabeza del PR sin robarle la rama a nadie.**
-   ```
+   ```bash
    git fetch origin
    git checkout -B rev-pr-<N> origin/<head.ref>
    ```
@@ -195,7 +195,7 @@ Y este contrato, en este orden:
    decirlo. El Chromium de Playwright **no** hace falta reinstalarlo: su caché es de la máquina, no
    del checkout.
 3. **Materializá el diff una sola vez**, con la base del PR y no con `main`:
-   ```
+   ```bash
    sh .claude/skills/pr-review-batch/scripts/diff-pr.sh <base.ref> <dir-temporal>
    ```
    Emite el diff, el `--stat`, las listas de código y de prosa por separado, el gate de ejes y la
@@ -214,7 +214,7 @@ Y este contrato, en este orden:
    qué se encontró y con qué evidencia: es lo único que queda cuando el diff ya no está.
 7. **`pnpm verify` en verde**, con el Paso 4 de este archivo adelante.
 8. **Commit y push**, sin `--force`:
-   ```
+   ```bash
    git push origin HEAD:refs/heads/<head.ref>
    ```
    Empujar la rama de andamio a su nombre real. **El mensaje de commit se escribe con `Write` a un
@@ -300,7 +300,7 @@ El reporte, en este orden y en ~40 líneas más la tabla:
 
 ## Paso 6 — Destruir los worktrees
 
-```
+```bash
 sh .claude/skills/pr-review-batch/scripts/limpiar-worktrees.sh --todos
 ```
 

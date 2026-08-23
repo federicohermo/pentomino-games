@@ -6,7 +6,7 @@
 
 `src/` son cuatro capas con **una sola dirección**:
 
-```
+```text
 types/ ← constants/ ← módulos              types/ no importa nada de afuera de types/
 transform.ts ← board.ts                    domain/ no importa nada de fuera de domain/
              ← music.ts ← invariants.ts    audio/  no importa nada de fuera de audio/

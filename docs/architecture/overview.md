@@ -14,7 +14,7 @@ expresivo, no más difícil.
 
 ## Arquitectura de Alto Nivel
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │  src/main.tsx         createRoot().render(<App/>)       │
 └──────────────────────────┬──────────────────────────────┘

@@ -151,9 +151,15 @@ export default defineConfig({
       //
       // Es la misma forma que el repo ya eligio dos veces: «cero `any` y cero
       // `@ts-ignore`», no "pocos". Y el corolario vale igual: si una rama parece
-      // inalcanzable, la salida es borrarla o volverla alcanzable, nunca un
-      // `/* v8 ignore */`. Las cuatro que aparecieron en este spec se resolvieron asi,
-      // y estan anotadas en el `research.md` del 029.
+      // inalcanzable, la salida es borrarla o volverla alcanzable, nunca el comentario
+      // magico que le pide al proveedor de coverage que la saltee. Las cuatro que
+      // aparecieron en este spec se resolvieron asi, y estan anotadas en el
+      // `research.md` del 029.
+      //
+      // Esa perifrasis no es pudor: desde el 032 `no-warning-comments` prohibe los tres
+      // terminos, y la regla mira texto y no sintaxis, asi que **deletrear el termino
+      // para explicar por que no usarlo lo viola igual**. La lista literal vive en
+      // `eslint.config.js`, que es el unico lugar del repo donde tiene que estar.
       thresholds: { lines: 100, statements: 100, functions: 100, branches: 100 },
     },
   },

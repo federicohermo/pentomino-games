@@ -5,7 +5,7 @@ parte del código con más decisiones no obvias.
 
 ## El grafo
 
-```
+```text
 scheduleVoice()  ──┐
    osc → env       │
                    ├──→  master (gain 0.3)  ──→  analyser  ──→  ctx.destination
@@ -97,7 +97,7 @@ export interface ClockState {
 onsets se resuelven **en forma cerrada**, sin avanzar un cursor, pero la unidad pasó del compás al
 **ciclo** del recorrido:
 
-```
+```text
 onset(k) = origin + (k × ciclo + offset + j) × intervalo
 ```
 

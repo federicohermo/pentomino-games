@@ -34,9 +34,9 @@ const inputSchema = z.object({
  *
  * No es abstraccion por gusto: sin esto, la rama de un spec **sin** `tasks.md` no
  * se puede alcanzar desde un test —los 33 del repo lo tienen— y el umbral de 100
- * en ramas se pagaria con un `v8 ignore`, que este repo no acepta. Es el mismo
- * motivo por el que `specs.test.ts` fabrica sus directorios en vez de leer los de
- * verdad.
+ * en ramas se pagaria con el comentario magico que saltea la rama, que este repo
+ * no acepta y que desde el 032 rechaza `no-warning-comments`. Es el mismo motivo
+ * por el que `specs.test.ts` fabrica sus directorios en vez de leer los de verdad.
  */
 export const crearSpecStatus = (specsDir: string) => defineTool({
   name: 'spec_status',

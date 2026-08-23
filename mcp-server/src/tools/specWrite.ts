@@ -49,7 +49,7 @@ const falla = (motivo: string) => ({ content: [{ type: 'text' as const, text: mo
  * Toma su `specs/` por el mismo motivo que `spec_status`: un test que ejercite
  * una ESCRITURA no puede correr contra el registro de verdad, y las ramas que
  * fallan —el spec sin `tasks.md`, la tarea ya marcada— tienen que ser
- * alcanzables sin un `v8 ignore`.
+ * alcanzables sin saltear la cobertura de esa rama.
  */
 export const crearSpecWrite = (specsDir: string) => defineTool({
   name: 'spec_write',

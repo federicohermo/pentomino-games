@@ -109,7 +109,7 @@ Consecuencias, siguiendo los llamadores:
 
 | Función | Guarda | Con `ctx` sí y `master` no |
 |---|---|---|
-| `playNotes` | `if (!c || !master) return` | Sale bien |
+| `playNotes` | `if (!c \|\| !master) return` | Sale bien |
 | `readSpectrum` | `if (!analyser \|\| !ctx \|\| …)` | Sale bien |
 | `tick` | `if (!c \|\| !master) return` | Sale bien, en cada vuelta |
 | **`startClock`** | `const c = audio(); if (!c) return;` | **No sale**: arranca el `setInterval` |

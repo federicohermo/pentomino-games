@@ -66,7 +66,7 @@ node -p "JSON.stringify(require('./node_modules/vite/package.json').engines)"
 
 `public/_redirects` contiene:
 
-```
+```text
 /*    /index.html   200
 ```
 

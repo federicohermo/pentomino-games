@@ -163,7 +163,7 @@ Esperá a que vuelvan todos antes del reporte.
 
 ## Paso 4 — Destruir los worktrees
 
-```
+```bash
 sh .claude/skills/spec-implement-batch/scripts/limpiar-worktrees.sh --todos
 ```
 

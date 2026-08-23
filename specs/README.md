@@ -13,7 +13,7 @@ numerada, los tres documentos y el `tasks.md` derivado del plan salen de ahí.
 
 ## Convención de nombres
 
-```
+```text
 specs/<NNN>-<descripcion-kebab>/
 ├── spec.md       ← problema, solución propuesta, criterios de aceptación y límites de alcance
 ├── research.md   ← estado del código relevante, archivos afectados y riesgos
@@ -41,7 +41,7 @@ specs/<NNN>-<descripcion-kebab>/
 
 ## Formato de una tarea
 
-```
+```markdown
 - [ ] T012 [P] [M] Descripción, con la ruta del archivo que toca
 ```
 

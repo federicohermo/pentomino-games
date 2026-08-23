@@ -22,7 +22,7 @@ no se ven afectados: esto es tooling.
 
 ## Estructura
 
-```
+```text
 mcp-server/
 ├── package.json            deps propias: @modelcontextprotocol/server + zod + typescript
 ├── tsconfig.json           noEmit; lib incluye DOM (ver abajo)

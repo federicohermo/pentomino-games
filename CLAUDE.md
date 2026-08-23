@@ -124,7 +124,7 @@ El MCP server pide **≥ 22.18** porque corre TypeScript sin compilar; es un pis
 
 `src/` son cuatro capas en carpetas, con **una sola dirección de dependencia**:
 
-```
+```text
 types/ ← constants/ ← módulos              types/ no importa nada de afuera de types/
 transform.ts ← board.ts                    domain/ no importa nada de fuera de domain/
              ← music.ts ← invariants.ts    audio/  no importa nada de fuera de audio/
@@ -210,12 +210,21 @@ Estas son las reglas:
   producción cada una viene con el comentario que dice por qué el compilador no puede verlo**, y que
   antes de escribirla se pruebe el `const` — el `!` de `engine.ts` existía sólo porque TypeScript
   pierde el estrechamiento al entrar al closure de un `forEach` cuando la variable es un `let` de
-  módulo, y salió gratis con una `const` local. Quedan **dos**, las dos anotadas: la de `main.tsx`
-  (el idiom de Vite sobre un `#root` que el propio `index.html` garantiza) y la de
+  módulo, y salió gratis con una `const` local. Quedan **tres**, las tres anotadas: la de `main.tsx`
+  (el idiom de Vite sobre un `#root` que el propio `index.html` garantiza), la de
   `domain/invariants.ts` (el `queue.shift()!` de un BFS, dentro de un `while` que ya garantiza la
-  cola no vacía). **No** vale para los tests, donde el `!` sobre un `find` o un `querySelector` que
-  el propio test acaba de fijar es la forma de que el test **falle** si el nodo no está — hay 66 en
-  `src/**/__tests__/` y son deliberadas.
+  cola no vacía) y la de `components/Board.tsx` (el ancestro `[role="grid"]` existe por
+  construcción, porque el handler vive en un descendiente de esa grilla; el `if` alternativo sería
+  una rama inalcanzable y el umbral 100 no deja cubrirla). **No** vale para los tests, donde el `!`
+  sobre un `find` o un `querySelector` que el propio test acaba de fijar es la forma de que el test
+  **falle** si el nodo no está — son **102, en 100 líneas**, y son deliberadas.
+
+  Desde el spec 032 **el número no se escribe a mano**: lo verifica
+  `@typescript-eslint/no-non-null-assertion`, y la lista de excepciones de `eslint.config.js` es su
+  única fuente. Mientras vivió en esta prosa se desincronizó — decía «dos» y eran tres, y «66» y son
+  102. Y el número **viene con la regla que lo produce**, porque sin ella no se reproduce: se cuenta
+  por **ocurrencia**, corriendo la regla con sus tres overrides apagados; contando líneas da 100,
+  porque hay dos con dos `!`.
 - **Sin estado global.** Ni Context, ni Redux, ni Zustand — y desde el 030 lo verifica el linter, por
   el paquete y por la llamada a `createContext`.
 - **Nada de `.only` ni `.skip` en un test.** Es la misma familia de bug que el `--filter "{.}"` y el

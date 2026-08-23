@@ -28,7 +28,7 @@ por archivo en `eslint.config.js`, con el porqué al lado — ahí se ve en el d
 
 ### `Failed to load PostCSS config: module is not defined in ES module scope`
 
-```
+```text
 [plugin:vite:css] Failed to load PostCSS config (searchPath: …/my-app-vite):
 [ReferenceError] module is not defined in ES module scope
 ```
@@ -169,7 +169,7 @@ Para ver la secuencia activa desde la consola:
 
 ### El MCP server no arranca: `ERR_MODULE_NOT_FOUND`
 
-```
+```text
 node:internal/modules/esm/resolve:274
     throw new ERR_MODULE_NOT_FOUND(
 ```

@@ -2,7 +2,7 @@
 
 ## Organización General
 
-```
+```text
 pentomino-games/           # raíz del repo: la app vive acá, sin subdirectorio
 ├── CLAUDE.md              # Guía para Claude Code
 ├── docs/                  # Esta documentación
@@ -26,13 +26,14 @@ pentomino-games/           # raíz del repo: la app vive acá, sin subdirectorio
 Paquete aparte, con sus propias dependencias y su propio `tsconfig.json`. **La dirección de dependencia
 es una sola: `mcp-server/` importa de `src/`, nunca al revés.**
 
-```
+```text
 mcp-server/
 └── src/
     ├── index.ts                  entrypoint: serveStdio + registro de tools
     ├── pieces.ts                 las 12 letras, derivadas de SHAPES
     ├── render.ts                 ASCII de una pieza (puro)
-    ├── specs.ts                  parseo de log.md y de los tasks.md
+    ├── specs.ts                  parseo de log.md y de los tasks.md, y la escritura del 033
+    ├── symbols.ts                índice de símbolos de src/, construido en la consulta
     ├── tools/                    una tool por archivo + el array de index.ts
     └── __tests__/                node --test, uno por tool + los de parseo y render
 ```
@@ -47,7 +48,7 @@ encima del piso de la app — y por eso no puede quedar sirviendo código viejo.
 
 ## `src/`
 
-```
+```text
 src/
 ├── main.tsx                      # createRoot + StrictMode + import de styles/index.css
 ├── App.tsx                       # el shell: estado, derivados, handlers y composición. Cero efectos
@@ -69,6 +70,7 @@ src/
 │   │   ├── transform.types.ts    #   Cell
 │   │   ├── pieces.types.ts       #   PieceKey
 │   │   ├── board.types.ts        #   PlacedPiece · Dims · Ruta
+│   │   ├── music.types.ts        #   RegimenDeRotacion, derivado de REGIMEN (spec 017)
 │   │   └── sequence.types.ts     #   Step · Click · Sequence
 │   ├── constants/                # los datos del modelo. Solo importan tipos
 │   │   ├── pieces.constants.ts   #   SHAPES · ANCHOR_INDEX
@@ -87,7 +89,10 @@ src/
 │   ├── spectrum.ts               # mapeo puro de bins de la FFT a alturas de barra
 │   ├── playhead.ts               # offsetAt — aritmética del offset de la cabeza lectora (spec 010)
 │   ├── types/                    #   voice.types.ts · scheduler.types.ts
-│   ├── constants/                #   voice · scheduler · engine
+│   ├── constants/
+│   │   ├── voice.constants.ts    #   la envolvente y los tres velocities; el click del 015
+│   │   ├── scheduler.constants.ts #  LOOKAHEAD · TICK_MS · la subdivisión (008) · HIT
+│   │   └── engine.constants.ts   #   MASTER_GAIN · DEFAULT_BPM · los dos delays · la FFT
 │   └── __tests__/
 │       ├── voice.test.ts         #   síntesis, con OfflineAudioContext
 │       ├── scheduler.test.ts     #   lookahead, reloj por origen, offsets del ciclo y el swap (D5)
@@ -178,7 +183,7 @@ src/
 
 Es la regla que ordena todo lo demás, y **la verifica el linter**, no la revisión:
 
-```
+```text
 types/ ← constants/ ← módulos              types/ no importa nada de afuera de types/
 transform.ts ← board.ts                    domain/ no importa nada de fuera de domain/
              ← music.ts ← invariants.ts    audio/  no importa nada de fuera de audio/

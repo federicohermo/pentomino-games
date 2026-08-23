@@ -39,7 +39,7 @@ reescribe*, más abajo.
 Además de lo que pide el eje F del global, en este repo un `tasks.md` nuevo tiene que cumplir el
 formato de [`specs/README.md`](../../../specs/README.md#formato-de-una-tarea):
 
-```
+```markdown
 - [ ] T012 [P] [M] Descripción, con la ruta del archivo que toca
 ```
 
