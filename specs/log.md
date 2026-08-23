@@ -1,7 +1,8 @@
 # Log de Specs
 
 Registro de todo el trabajo especificado, en orden, y las dependencias entre specs. La convención de
-formato está en [README.md](./README.md); la deuda sin spec, en [deuda.md](./deuda.md); el por qué de
+formato está en [README.md](./README.md); la deuda sin spec, en
+[GitHub Issues](https://github.com/federicohermo/pentomino-games/issues); el por qué de
 cada decisión, en [revisiones.md](./revisiones.md).
 
 **Estados:** `Propuesto` (spec escrito, sin implementar) · `En curso` (rama abierta) ·
@@ -341,9 +342,11 @@ casillas abiertas como próxima tarea.
 ## Lo que dejó de vivir acá
 
 Este archivo llegó a 422 líneas sosteniendo cuatro cosas, y sólo la primera es un log. Las otras dos se
-mudaron sin perder una línea:
+mudaron:
 
-- **[deuda.md](./deuda.md)** — lo registrado que todavía no tiene spec.
 - **[revisiones.md](./revisiones.md)** — qué se aprendió escribiendo o revisando cada spec, con fecha.
+- **[GitHub Issues](https://github.com/federicohermo/pentomino-games/issues)** — lo registrado que
+  todavía no tiene spec. Pasó primero por `deuda.md`, que era un tracker escrito a mano y **perdía
+  ítems**: al mudarlo aparecieron seis que nunca habían llegado ahí.
 
-`spec_status` lee de acá sólo la tabla, así que la mudanza no le cambió nada.
+`spec_status` lee de acá sólo la tabla, así que ninguna de las dos mudanzas le cambió nada.

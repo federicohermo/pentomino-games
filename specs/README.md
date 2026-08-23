@@ -2,8 +2,10 @@
 
 Trabajo planificado. Un spec por unidad de trabajo, en su propia carpeta numerada.
 
-> **El registro vive en [log.md](./log.md)**, la deuda sin spec en [deuda.md](./deuda.md) y el porqué
-> de cada decisión en [revisiones.md](./revisiones.md). Este archivo documenta solo la convención.
+> **El registro vive en [log.md](./log.md)** y el porqué de cada decisión en
+> [revisiones.md](./revisiones.md). **La deuda sin spec vive en
+> [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues)**, no en un archivo de acá.
+> Este archivo documenta solo la convención.
 
 La convención es la de [Spec Kit](https://github.com/github/spec-kit) con tres desviaciones
 deliberadas, anotadas abajo donde corresponde. Las coincidencias no son casualidad: la carpeta

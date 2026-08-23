@@ -148,7 +148,8 @@ Las tres cláusulas, y las tres ya existían en el repo como comentarios sueltos
 
 Y **`type="button"` en todo `<button>`**, sin excepción. Hoy no hay un solo `<form>` en el árbol, así
 que no hay bug; pero el default de un `<button>` dentro de un formulario es `submit`, y en esta app eso
-es recargar la página perdiendo el tablero entero, **sin deshacer** (`specs/deuda.md`).
+es recargar la página perdiendo el tablero entero, **sin deshacer**
+([#47](https://github.com/federicohermo/pentomino-games/issues/47)).
 
 Lo que verifica todo esto es un test de navegador que consulta por **rol y nombre**, nunca por
 `className`: preguntarle al árbol de accesibilidad es la diferencia entre verificar accesibilidad y
@@ -161,7 +162,8 @@ Lo que el 025 midió en el árbol de accesibilidad, el spec 026 lo midió en el 
 `tabIndex`, **cero** `role` y **cero** estilo de foco en todo `src/`. El caso caro es el tablero —una
 celda es un `div` con `onClick`, así que no recibe foco ni lo anuncia nadie— y desde el spec 014 eso
 dejó de ser un hueco de *lectura*: quitar una pieza y mutearla **sólo existen ahí**, o sea que hay una
-operación destructiva sin ninguna otra vía y sin deshacer (`specs/deuda.md`).
+operación destructiva sin ninguna otra vía y sin deshacer
+([#47](https://github.com/federicohermo/pentomino-games/issues/47)).
 
 - **Una región compuesta es UNA parada de tabulación, y adentro se mueve con las flechas.** Es el
   *roving tabindex*: el elemento activo lleva `tabIndex={0}` y todos sus hermanos `-1`, así que el

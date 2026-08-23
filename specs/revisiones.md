@@ -5,7 +5,7 @@ el *por qué* de las decisiones que el código no explica: un spec que salió di
 acá el motivo, con fecha.
 
 Se lee de arriba abajo en orden cronológico. El registro de specs está en [log.md](./log.md) y la deuda
-sin spec en [deuda.md](./deuda.md).
+sin spec en [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues).
 
 - **2026-08-02 — Review del spec 002.** Ejecutar los tests propuestos corrigió dos cosas que leyendo el
   plan no se veían: la detección de onsets necesita un seguidor de envolvente (un umbral crudo dio 21

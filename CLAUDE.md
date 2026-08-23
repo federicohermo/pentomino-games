@@ -2,8 +2,8 @@
 
 Guía para Claude Code (claude.ai/code) al trabajar en este repositorio. Es un *cheat sheet*: lo que no
 se puede averiguar mirando un archivo. El detalle vive en `docs/`, las reglas por capa en
-`.claude/rules/` —se cargan solas al tocar sus archivos— y el trabajo planificado en `specs/`
-(`log.md` · `deuda.md` · `revisiones.md`).
+`.claude/rules/` —se cargan solas al tocar sus archivos—, el trabajo planificado en `specs/`
+(`log.md` · `revisiones.md`) y **la deuda sin spec en GitHub Issues**.
 
 ## Qué es
 
@@ -270,10 +270,15 @@ así — eso vive en los comentarios, no en la salida de una tool.
 | MCP server de dominio | [docs/guides/mcp-domain.md](./docs/guides/mcp-domain.md) | Las cuatro tools que ejecutan el dominio |
 | Deploy | [docs/infra/deploy.md](./docs/infra/deploy.md) | Netlify, `publish = "dist"`, versión de Node |
 
-**Trabajo planificado:** [specs/log.md](./specs/log.md) —registro y dependencias—, con la deuda sin
-spec en [specs/deuda.md](./specs/deuda.md) y el porqué de cada decisión en
-[specs/revisiones.md](./specs/revisiones.md). Son la única fuente: no se duplican acá para que no se
-desactualicen.
+**Trabajo planificado:** [specs/log.md](./specs/log.md) —registro y dependencias— y el porqué de cada
+decisión en [specs/revisiones.md](./specs/revisiones.md). Son la única fuente: no se duplican acá para
+que no se desactualicen.
+
+**La deuda sin spec vive en [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues)**
+y ya no en un archivo. `deuda.md` era un tracker escrito a mano y perdía ítems: al mudarlo aparecieron
+**seis** que nunca habían llegado ahí —enterrados en el `tasks.md` de specs ya cerrados—, dos de ellos
+bugs medidos con `OfflineAudioContext` que llevaban veinte días invisibles. Un issue tiene estado
+propio, se cierra desde un commit con `Closes #N` y no hereda el estado del spec que lo parió.
 
 ---
 
