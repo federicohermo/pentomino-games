@@ -1,9 +1,9 @@
 # CLAUDE.md
 
-Guía para Claude Code (claude.ai/code) al trabajar en este repositorio. Es un *cheat sheet*: lo que no
-se puede averiguar mirando un archivo. El detalle vive en `docs/`, las reglas por capa en
-`.claude/rules/` —se cargan solas al tocar sus archivos—, y **el trabajo planificado y la deuda en
-GitHub Issues**: `specs/log.md` es el mapa spec↔issue y `specs/revisiones.md` el porqué de cada decisión.
+Guía para Claude Code (claude.ai/code) en este repositorio. Es un *cheat sheet*: lo que no se puede
+averiguar mirando un archivo. El detalle vive en `docs/`, las reglas por capa en `.claude/rules/`
+—se cargan solas al tocar sus archivos—, y **el trabajo planificado y la deuda en GitHub Issues**:
+`specs/mapa.json` es el mapa spec↔issue, y el porqué de cada decisión, un comentario en su issue.
 
 ## Qué es
 
@@ -38,9 +38,9 @@ abrirlo:
   documentación viva, y sólo las reglas de **renderizado** en `specs/[0-9]*/**`, porque un spec
   mergeado no se reescribe.
 - **Los tests son dos proyectos de Vitest**, `node` y `browser`. El discriminante es el **sufijo**
-  `*.browser.test.tsx` y no una carpeta; el `node` mira `src/` **y** `docs/__tests__/`, donde viven los
-  gates de la documentación. **Chromium no está en el lockfile**: un clone nuevo necesita
-  `pnpm exec playwright install chromium` antes del primer `verify`.
+  `*.browser.test.tsx` y no una carpeta; el `node` mira cuatro raíces —`src/`, `docs/__tests__/`,
+  `specs/__tests__/` y `.claude/scripts/__tests__/`—: cada gate vive con lo que verifica. **Chromium
+  no está en el lockfile**: un clone nuevo necesita `pnpm exec playwright install chromium`.
 - **El gestor es pnpm y no npm** — npm dejaría un `package-lock.json` que Netlify puede preferir. Y
   `node_modules` es **estricto**: importar una dependencia transitiva falla, a propósito.
 - **Node ≥ 20.19 o ≥ 22.12**, declarado en nuestro propio `engines`. El MCP server pide **≥ 22.18**
@@ -137,7 +137,7 @@ que se lee sino una **interfaz**, y cinco skills la implementaban a mano hasta q
 | `describe_piece` | derivar a mano una rotación, una escala o un retrógrado |
 | `simulate_board` | recorrer el lookahead a mano para saber qué suena junto |
 | `check_invariants` | y después de tocar geometría, `SHAPES` o el modelo musical |
-| `spec_status` | leer `log.md` y todos los `tasks.md` para saber qué falta de verdad, qué archivos cita una tarea o qué `X → Y` mueve |
+| `spec_status` | leer `mapa.json` y todos los `tasks.md` para saber qué falta de verdad, qué archivos cita una tarea o qué `X → Y` mueve |
 | `spec_write` | abrir un `tasks.md` para marcar una casilla o anotar seguimiento — es la única que escribe |
 | `find_symbol` | `grep` para ubicar un símbolo, o abrir un archivo para ver una firma |
 
@@ -170,9 +170,11 @@ así — eso vive en los comentarios, no en la salida de una tool.
 | Deploy | [docs/infra/deploy.md](./docs/infra/deploy.md) | Netlify, `publish = "dist"`, versión de Node |
 
 **Trabajo planificado:** desde el spec 034 cada spec **es un issue**, y
-[specs/log.md](./specs/log.md) —que se queda trackeado— es el registro, las dependencias y el **mapa
-spec↔issue**; el porqué de cada decisión, en [specs/revisiones.md](./specs/revisiones.md). Son la única
-fuente: no se duplican acá para que no se desactualicen.
+[specs/mapa.json](./specs/mapa.json) —lo que se commitea de `specs/` son él, el `README.md` y los
+dos gates de `specs/__tests__/`, y ninguno es un spec— es el **mapa spec↔issue** y el estado de cada
+uno. Las dependencias entre specs no se declaran: las calcula `spec_status` en `cruces`, leyendo los
+`X → Y` de cada `tasks.md`. Y el porqué de cada decisión vive como comentario en el issue de su
+spec. Son la única fuente: no se duplican acá para que no se desactualicen.
 
 **La deuda sin spec vive en [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues)**
 y ya no en un archivo. `deuda.md` era un tracker escrito a mano y perdía ítems: al mudarlo aparecieron
@@ -185,7 +187,7 @@ propio, se cierra desde un commit con `Closes #N` y no hereda el estado del spec
 ## Antes de un cambio grande
 
 Escribir los cuatro archivos (`spec` · `research` · `plan` · `tasks`), **publicarlo como issue** con
-`node .claude/scripts/publicar-spec.mjs`, y agregar su fila a `specs/log.md` — que es lo único del spec
+`node .claude/scripts/publicar-spec.mjs`, que le escribe su entrada en `specs/mapa.json` — lo único del spec
 que se commitea. Recién ahí, la rama de feature. Convención en [specs/README.md](./specs/README.md).
 
 Desde el spec 034 `specs/[0-9]*/` está en el `.gitignore`: el directorio es una **caché** que se trae

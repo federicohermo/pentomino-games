@@ -265,8 +265,8 @@ arpegio ascendente es D4 E4 F#4 A4 B4 y con retrógrado suena B4 A4 F#4 E4 D4. E
 exactamente invertidas respecto de la melodía, en la mitad del espacio de colocación. El efecto es
 audible y medido: con esa `L` reflejada más una `P` rotación 0 en `(7,1)`, el ciclo pasa de 23 a 21
 intervalos; todo tablero **sin** reflexión suena exactamente igual que antes, y las 48 orientaciones al
-derecho lo verifican con un test. Historia completa en la nota de revisión del 009 en
-[revisiones.md](../../specs/revisiones.md).
+derecho lo verifican con un test. Historia completa en la [nota de revisión del review del
+010](https://github.com/federicohermo/pentomino-games/issues/72), que es donde se encontró.
 
 ### El paso: el número que se ve en la celda
 

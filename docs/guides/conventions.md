@@ -342,7 +342,7 @@ dos alcanza al otro:
 
 | Dónde | Quién lo caza |
 |---|---|
-| `src/**/__tests__/` y `docs/__tests__/` | `@vitest/eslint-plugin` — `no-focused-tests` (con `fixable: false`, para que `--fix` no borre el `.only` en silencio), `no-disabled-tests` y `expect-expect` |
+| `src/**/__tests__/`, `docs/__tests__/`, `specs/__tests__/` y `.claude/scripts/__tests__/` | `@vitest/eslint-plugin` — `no-focused-tests` (con `fixable: false`, para que `--fix` no borre el `.only` en silencio), `no-disabled-tests` y `expect-expect` |
 | `mcp-server/**/__tests__/` | un selector de `no-restricted-syntax`: ahí corre `node --test` y el plugin de Vitest no lo mira |
 
 **El test sin una sola aserción queda afuera en `mcp-server/`, y es a propósito:** con `node:test` no
@@ -376,11 +376,12 @@ Los comentarios de este repo están **en español**, igual que los mensajes de c
 ### El eje del tiempo: restricción vigente contra crónica
 
 «El porqué» tiene dos formas y sólo una envejece bien. **Se queda el comentario que describe una
-restricción que HOY hace que el código tenga que ser así. El que cuenta cómo se llegó se muda a
-[`specs/revisiones.md`](../../specs/revisiones.md), y en su lugar queda un puntero de una línea.**
+restricción que HOY hace que el código tenga que ser así. El que cuenta cómo se llegó se muda al
+[issue de su spec](https://github.com/federicohermo/pentomino-games/issues) como nota de revisión, y en su lugar queda un puntero de una línea.**
 
-`revisiones.md` existe textualmente para «el porqué de cada decisión», así que no es una poda: es
-mudanza. El costo de tener la crónica en el código es que el lector tiene que separar, párrafo por
+El issue de un spec es donde el lector busca el porqué de ese spec, así que no es una poda: es
+mudanza. Fue `specs/revisiones.md` hasta el spec 035, que repartió sus 41 notas —el archivo había
+llegado a 89.316 bytes y ya no entraba en un issue, y nadie lo podaba—. El costo de tener la crónica en el código es que el lector tiene que separar, párrafo por
 párrafo, la restricción que sigue viva de la historia de cómo se llegó — y la segunda se pudre sola:
 cada spec nuevo deja una capa más de «antes esto decía otra cosa».
 

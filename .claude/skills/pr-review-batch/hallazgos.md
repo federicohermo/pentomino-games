@@ -52,7 +52,7 @@ De ahí las dos sondas, en este orden, las dos baratas:
    número que el research, gana el research y el doc es el hallazgo.
 2. **Buscá el gemelo del párrafo que el PR sí actualizó.** Un cambio acá se anuncia en dos o tres
    registros a la vez —`CLAUDE.md`, `docs/architecture/directory-structure.md`, `README.md`,
-   `specs/log.md`— y es habitual que actualicen uno y se olviden del resto.
+   `specs/mapa.json`— y es habitual que actualicen uno y se olviden del resto.
    Grepeá la clave del cambio (el número del spec, el nombre del archivo, la cifra vieja) contra esos
    cuatro. Los tres hallazgos de conteo de archivos de la corrida salieron todos así.
 

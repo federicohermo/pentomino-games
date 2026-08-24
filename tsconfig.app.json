@@ -24,19 +24,19 @@
     "noUncheckedSideEffectImports": true
   },
   /*
-   * `.claude/scripts/lib` entra porque un test de `src/__tests__/` lo importa, asi que
-   * ya es parte de este programa: `tsc -b` lo typechequea por el import lo declaremos o
-   * no. Declararlo es lo que necesita el linter, que usa `projectService` y rechaza con
-   * un error de parseo todo archivo que ningun tsconfig incluya.
+   * Cuatro raices ademas de `src`, y las tres de afuera son los gates que viven al lado
+   * de lo que verifican: `specs/__tests__/` mira el registro (spec 035),
+   * `.claude/scripts/` trae `lib/specs.ts` mas el `__tests__/` que lo importa, y `docs`
+   * los tres gates de la documentacion (issue #100).
    *
-   * Es `lib` y no `.claude/scripts` entero: los dos scripts son `.mjs` ejecutables y no
-   * tienen por que entrar al programa de la app.
+   * Ese import es lo que mete a `lib/` en el programa: `tsc -b` lo typechequea por el
+   * import lo declaremos o no. Declararlo es lo que necesita el linter, que usa
+   * `projectService` y rechaza con un error de parseo todo archivo que ningun tsconfig
+   * incluya — y por eso los `__tests__/` tambien tienen que estar nombrados.
    *
-   * `docs` entra por el mismo motivo desde el issue #100: ahi viven los tres gates de la
-   * documentacion, que son TypeScript y los corre el mismo proyecto `node` de vitest.
-   * Sin declararlo, `projectService` del linter los rechaza con un error de parseo y
-   * `tsc -b` deja de mirarlos. Es `docs` entero y no `docs/__tests__` porque el resto de
-   * la carpeta son `.md`, que ningun tsconfig incluye.
+   * Son los directorios ENTEROS y no sus subcarpetas de tests: `allowJs` esta apagado,
+   * asi que de `.claude/scripts` no entran los `.mjs` ejecutables y de `docs` no entra
+   * un solo `.md`. TypeScript levanta unicamente los `.ts` de adentro.
    */
-  "include": ["src", ".claude/scripts/lib", "docs"]
+  "include": ["src", "specs", ".claude/scripts", "docs"]
 }

@@ -19,8 +19,14 @@ allowed-tools:
   - Bash(git status:*)
   - Bash(git worktree list:*)
   - Bash(git branch:*)
-  - Bash(.claude/skills/spec-review-batch/scripts/lote.sh:*)
-  - Bash(sh .claude/skills/spec-review-batch/scripts/lote.sh:*)
+  # Las dos formas del comando —directa y por `sh`— y las dos rutas: la que escribe la
+  # inyección de abajo con `${CLAUDE_SKILL_DIR}` ya expandido, y la relativa que tipea una
+  # persona desde la raíz. El comodín del medio es lo que cubre la primera sin hardcodear
+  # dónde está clonado el repo: la expansión está documentada para el CONTENIDO del
+  # SKILL.md, no para estas reglas, y una regla que no expande no falla — deja de matchear
+  # y pide permiso en cada corrida, que es peor porque es silencioso.
+  - Bash(*spec-review-batch/scripts/lote.sh:*)
+  - Bash(sh *spec-review-batch/scripts/lote.sh:*)
 ---
 
 # spec-review-batch — pentomino-games
@@ -32,11 +38,16 @@ allowed-tools:
      su resultado). `lote.sh` entiende las tres formas del `argument-hint`, que es lo que deja
      pasarle `$ARGUMENTS` crudo sin un caso especial.
 
-     Ruta literal y no `${CLAUDE_SKILL_DIR}`: la sustitución existe, pero su orden respecto de
-     la inyección `!` no está documentado, y acá una sustitución que no ocurre no degrada — hace
-     fallar la carga del skill. No compra ni un token, así que no vale la apuesta. -->
+     Ruta por `${CLAUDE_SKILL_DIR}` y no literal. Acá decía lo contrario, y el motivo escrito
+     era que el orden de la sustitución respecto de la inyección `!` no estaba documentado —
+     una que no ocurre no degrada, hace fallar la carga. Hoy sí está documentado, y para
+     exactamente este caso: «for scripts within bash injection commands». Verificado además
+     cargando el skill, que es lo que faltaba.
 
-!`.claude/skills/spec-review-batch/scripts/lote.sh $ARGUMENTS`
+     Lo que compra no es un token: es que el skill se pueda mover, renombrar o empaquetar sin
+     editar su propio contenido, que es la otra mitad de que sea autocontenido. -->
+
+!`${CLAUDE_SKILL_DIR}/scripts/lote.sh $ARGUMENTS`
 
 ---
 
@@ -63,14 +74,17 @@ spec. Esa disyunción es lo único que hace segura la concurrencia, y por eso la
 una precaución sino la condición.
 
 **Una cadena de anclaje no serializa.** Implementar el 020 necesita el 019 *en el árbol*; revisarlo
-necesita el 019 *escrito*, y ya lo está. Por eso el ancho es N aunque el `log.md` declare una fila.
+necesita el 019 *escrito*, y ya lo está. Por eso el ancho es N aunque los specs se citen en fila.
 
 ---
 
 ## Paso 0 — Resolver el lote y los gates
 
 `$ARGUMENTS`: números sueltos (`018 019 020 021`), un rango (`018-021`), o `--propuestos` = todos los
-`Propuesto` de la tabla de `specs/log.md`. Sin argumentos, **preguntá**: no asumas los últimos.
+`Propuesto` de `specs/mapa.json` — los lista
+[`scripts/specs-por-estado.mjs`](./scripts/specs-por-estado.mjs), que vive adentro de este skill
+igual que `lote.sh`.
+Sin argumentos, **preguntá**: no asumas los últimos.
 
 - **Sacá los terminales.** `Descartado` y `Superado` no se revisan; decí cuáles sacaste.
 - **Los specs del lote están en el disco.** Desde el spec 034 viven en issues y `specs/[0-9]*/` está
@@ -103,7 +117,8 @@ los cuatro se pasan **destilados**, no como rutas a leer:
   porque no las trae.
 - **El mapa síntoma → deuda**, que sale de los **issues abiertos** (`mcp__github__list_issues`) y es
   el eje D entero.
-- Lo que `specs/revisiones.md` registra como *ya se probó y no funcionó* para el área del lote.
+- Lo que las **notas de revisión** registran como *ya se probó y no funcionó* para el área del lote.
+  Viven como comentarios en el issue de cada spec: `gh issue view <N> --json comments`.
 - Las convenciones verificables, **≤40 líneas**: `CLAUDE.md` + `.claude/rules/` de las capas que el lote
   toca.
 
@@ -126,8 +141,12 @@ cada agente, o el lote devuelve una avalancha de citas rotas falsas.
    a mano es barato — lo caro era encontrarlos. Los 7 salen de la **línea de la tarea** y no de su
    prosa de abajo: contando también las continuaciones son 25, y los 18 de más son frecuencias y
    números de spec que inventarían una dependencia dura donde no hay ninguna.
-3. Contrastá contra «Dependencias entre specs» del `log.md`. Ese texto dice qué quiso el autor; la
-   matriz dice qué archivos se pisan. **Si difieren, eso es hallazgo** y se edita el `log.md`.
+3. Contrastá contra los `cruces` que devuelve `spec_status`: los pares `X → Y` de cada `tasks.md`, o
+   sea los números que un spec mueve de un valor a otro. Eso dice qué quiso el autor; la matriz dice
+   qué archivos se pisan. **Si difieren, eso es hallazgo**, y se corrige en el `tasks.md` del spec.
+
+   Hasta el spec 035 esto se contrastaba contra una lista de dependencias escrita a mano en `log.md`.
+   Se borró en vez de mudarse: era la copia a mano de un dato que la tool ya calcula.
 4. Un spec que **declara tolerar** llegar antes que su dependencia sale de la cadena: es permiso
    escrito, no un olvido.
 
@@ -185,7 +204,7 @@ espera de vuelta—:
 Y este contrato, que es lo propio del batch:
 
 > **No escribís fuera de `specs/<NNN>-*/`.** Ni `docs/`, ni `.claude/rules/`, ni `CLAUDE.md`, ni
-> `specs/log.md`, ni `specs/revisiones.md`. Los tocan los
+> `specs/mapa.json`, ni los issues de los specs. Los tocan los
 > N a la vez y no hay merge que lo arregle. Devolvelos como **edición propuesta**, con `path:línea` y
 > el texto exacto. **Tampoco abrís ni cerrás issues**, por lo mismo: el padre los consolida.
 >
@@ -210,7 +229,7 @@ re-audita: cruza.
 - **Al revés también:** si el de coherencia apunta a una línea que el agente de ese spec ya editó, el
   cruce se re-escribe contra el texto nuevo antes de aplicarlo.
 - **Si los dos contradicen al orden que derivaste en el Paso 2, gana la evidencia y decilo**: un orden
-  mal derivado es un hallazgo sobre el `log.md`, no un detalle de proceso.
+  mal derivado es un hallazgo sobre el `tasks.md` que lo declara, no un detalle de proceso.
 
 La asimetría del review vale igual acá: **endurecer se aplica** —un cruce que falta se escribe con
 `spec_write` (`op: "seguimiento"`) en el spec que corresponda, y el `texto` tiene que decir qué se
@@ -247,7 +266,7 @@ El reporte, en este orden:
 1. **Una tabla, una fila por spec:** veredicto (`listo` · `N advertencias` · `no implementar`),
    bloqueantes, y las ediciones comprimidas a conteos.
 2. **Los cruces y qué se decidió** — el entregable propio de este skill, y casi todo el presupuesto.
-3. **El orden que salió, y cuántas aristas del `log.md` resultaron falsas.**
+3. **El orden que salió, y cuántas de las aristas que los specs declaran resultaron falsas.**
 4. Una línea de lo que no tuvo nada.
 
 ~50 líneas más la tabla. Los matices, el porqué y las mediciones **van a los specs**: el chat se pierde,
@@ -260,7 +279,7 @@ el spec queda.
 - **No revisa código.** Si el lote ya tiene implementación, eso es un review de PR.
 - **No implementa, y no reparte el lote en carriles de trabajo.** Corre antes de eso, y su salida —el
   orden corregido y los cruces resueltos— es el insumo de quien lo implemente.
-- **No mueve estados en `specs/log.md`** —los mueve el merge— ni commitea.
+- **No mueve estados en `specs/mapa.json`** —los mueve el merge— ni commitea.
 - **No es un barrido de staleness.** Si lo único que querés es saber qué specs quedaron viejos respecto
   del código de hoy, alcanza con anclaje y deuda sobre cada uno, sin editar y sin coherencia: sale
   mucho más barato que esto.

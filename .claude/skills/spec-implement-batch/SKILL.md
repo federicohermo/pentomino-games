@@ -12,14 +12,19 @@ argument-hint: "<NNN NNN ...> | <NNN-MMM> | --propuestos [--dry]"
      matriz llega con el skill ya cargado en vez de costar un turno de tool. `matriz.sh` entiende las
      tres formas del `argument-hint`, que es lo que deja pasarle `$ARGUMENTS` crudo.
 
-     Ruta literal y no `${CLAUDE_SKILL_DIR}`: la sustitución existe pero su orden respecto de la
-     inyección `!` no está documentado, y acá una que no ocurre no degrada — hace fallar la carga.
+     Ruta por `${CLAUDE_SKILL_DIR}` y no literal. Acá decía lo contrario, y el motivo escrito era
+     que el orden de la sustitución respecto de la inyección `!` no estaba documentado — una que no
+     ocurre no degrada, hace fallar la carga. Hoy sí está documentado, y para exactamente este caso:
+     «for scripts within bash injection commands». Verificado además cargando el skill.
+
+     Lo que compra no es un token: es que el skill se pueda mover, renombrar o empaquetar sin editar
+     su propio contenido, que es la otra mitad de que sea autocontenido.
 
      Este skill sigue **sin `allowed-tools`**, o sea sin restricción. Declarar una lista parcial para
      nombrar el script le sacaría todo lo que no estuviera en ella —`Agent`, los `git worktree`, el
      `pnpm verify`— y lo rompería en silencio. -->
 
-!`.claude/skills/spec-implement-batch/scripts/matriz.sh $ARGUMENTS`
+!`${CLAUDE_SKILL_DIR}/scripts/matriz.sh $ARGUMENTS`
 
 ---
 
@@ -58,7 +63,7 @@ lote sale de una consulta por spec en vez de una sola grande.
 ## Paso 1 — Repartir el lote en carriles
 
 Derivá el grafo de los archivos, y recién después contrastalo contra «Dependencias entre specs» del
-`log.md`. Ese texto dice qué quiso el autor; el grafo dice qué va a pasar. **Si difieren, eso es el
+`spec_status` en `cruces`. Eso dice qué quiso el autor; el grafo dice qué va a pasar. **Si difieren, eso es el
 hallazgo** y va en el reporte.
 
 1. **La matriz ya está arriba**, inyectada por [`scripts/matriz.sh`](./scripts/matriz.sh) al cargar
@@ -148,7 +153,7 @@ Cada agente de carril recibe:
   hace checkout de lo trackeado. Cada agente corre
   `node .claude/scripts/hidratar-specs.mjs <NNN> <NNN>` con los de su carril antes de leer nada.
   Sin eso lee un directorio vacío y **no falla**: implementa sin spec, que es la versión cara de
-  «fallar en verde». El mapa sale de `specs/log.md`, que sí está trackeado;
+  «fallar en verde». El mapa sale de `specs/mapa.json`, que sí está trackeado;
 - **`pnpm install` después**: el worktree nace sin `node_modules` y `pnpm verify` va a rojo hasta que
   lo corra. Con el store de pnpm son hardlinks, así que sale barato — pero hay que decirlo;
 - **sus specs en orden**, y que delegue cada uno a `spec-implement`, que deriva el grafo *interno* y
@@ -170,7 +175,7 @@ Esperá a que vuelvan todos antes del reporte.
 ## Paso 4 — Destruir los worktrees
 
 ```bash
-sh .claude/skills/spec-implement-batch/scripts/limpiar-worktrees.sh --todos
+sh "${CLAUDE_SKILL_DIR}/scripts/limpiar-worktrees.sh" --todos
 ```
 
 **Va antes del reporte, no después**, y no se hace a mano. Los carriles de este skill **corren la
@@ -187,12 +192,12 @@ Playwright que quedó vivo—. Decilo en el reporte: lo cierra el usuario, no vo
 
 ## Paso 5 — Reporte
 
-- Los carriles, su ancho, y **cuántas aristas del `log.md` resultaron falsas**.
+- Los carriles, su ancho, y **cuántas de las aristas declaradas resultaron falsas**.
 - **Qué encontró el Paso 2 y qué se decidió** — es el entregable propio de este skill.
 - Por spec: verde o rojo de `pnpm verify`, número de PR, y qué quedó `[M]`.
 - **El orden de merge, y que un squash obliga a rebasear el carril de abajo.** Los PR apilados dependen
   de la historia de su base.
 
-Lo que el batch deja al usuario: mover el estado en `specs/log.md` —lo mueve el merge—, mergear, y
+Lo que el batch deja al usuario: mover el estado en `specs/mapa.json` —lo mueve el merge—, mergear, y
 correr el review.
 

@@ -29,7 +29,7 @@ Que la lista salga de una tool no la vuelve verdad: la cita es **dato**, y `cita
 Filtrá por el verbo antes de contar la cita como arista — se lee en las líneas de tarea que el Paso 1
 ya trae inyectadas, no en `citas`.
 
-## El `log.md` declara intención, no grafo
+## Lo que un spec declara es intención, no grafo
 
 La sección «Dependencias entre specs» la escribe quien planificó el lote, y planifica en fila porque
 así lo pensó. Medido: un lote declarado textualmente como *«una cadena»* de cinco eslabones dio **tres

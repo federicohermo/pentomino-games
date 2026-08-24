@@ -20,9 +20,9 @@ buscar la deuda ahí la deja fuera del review entero. El registro está partido 
 
 | Archivo | Qué tiene | Para qué eje |
 |---|---|---|
-| `specs/log.md` | La tabla de specs con su estado, y las dependencias entre specs | Alcance, colisión de número |
+| `specs/mapa.json` | El mapa spec↔issue y el estado de cada uno | Alcance, colisión de número |
 | **GitHub Issues** (`mcp__github__list_issues`) | **La deuda registrada sin spec.** Es el mapa síntoma → deuda del eje D | D · Deuda |
-| `specs/revisiones.md` | Qué se aprendió escribiendo o revisando cada spec, con fecha. Acá está el "esto ya se probó y no funcionó" | D · Deuda, y anclaje |
+| Los comentarios del issue de cada spec | Qué se aprendió escribiéndolo o revisándolo, con fecha. Acá está el "esto ya se probó y no funcionó" | D · Deuda, y anclaje |
 | `specs/README.md` | Solo la convención de formato y el flujo | F · Estructura |
 
 **Los estados `Descartado` y `Superado` son terminales.** Un spec en uno de esos dos no se revisa ni
@@ -77,7 +77,7 @@ Consecuencia para el review: que el spec bajo revisión **falsifique** algo que 
 afirma no genera hallazgo por sí solo, y el spec viejo no se toca. El hallazgo existe solo si hay
 archivos de `docs/`, `.claude/rules/` o `CLAUDE.md` que **lo siguen afirmando en presente** — esos
 son los que se mantienen al día —, y entonces la tarea es actualizarlos y anotar el aprendizaje en
-`specs/revisiones.md`. Si ninguno lo afirma, no hay nada que reportar. Hay
+las notas de revisión del issue. Si ninguno lo afirma, no hay nada que reportar. Hay
 precedente: los commits `d936597` (once archivos afirmaban que el eje X del tablero era tiempo) y
 `eb154a0` (cinco archivos afirmaban en presente cosas que el 008 falsifica).
 
@@ -89,7 +89,7 @@ y no puede quedar viejo:
 
 | En vez de | Usá |
 |---|---|
-| Leer `log.md` y los `tasks.md` para saber en qué quedó cada spec, o abrir uno para auditarle las tareas | `spec_status` — estado, hechas/total y `pendientes`, que descuenta `Seguimiento`, `[M]` y specs terminales; con el argumento `spec`, ese spec solo más `citas` y `cruces` |
+| Leer `mapa.json` y los `tasks.md` para saber en qué quedó cada spec, o abrir uno para auditarle las tareas | `spec_status` — estado, hechas/total y `pendientes`, que descuenta `Seguimiento`, `[M]` y specs terminales; con el argumento `spec`, ese spec solo más `citas` y `cruces` |
 | Abrir el `spec.md` o el `research.md` del spec que se audita, y encontrar que no está | `node .claude/scripts/hidratar-specs.mjs <NNN>` **antes de leer**. Desde el spec 034 viven en issues y `specs/[0-9]*/` está en el `.gitignore`: el directorio es una caché que puede no estar, y un review sobre un directorio vacío **no falla** — audita un spec que no leyó |
 | Derivar a mano una rotación, una escala o un retrógrado que el spec afirma | `describe_piece` |
 | Recorrer el lookahead a mano para saber qué suena junto | `simulate_board` |

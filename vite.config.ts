@@ -56,12 +56,34 @@ export default defineConfig({
         test: {
           name: 'node',
           environment: 'node',
-          // Dos raices y no una: los gates que verifican la DOCUMENTACION viven en
-          // `docs/__tests__/` desde el issue #100 —no importan una linea de `src/`,
-          // leen `.md` del disco— y sin esta segunda entrada dejarian de correr en
-          // silencio, que es la forma de fallar en verde que este repo ya se comio
-          // dos veces. No entran al coverage: su `include` es `src/**` y punto.
-          include: ['src/**/__tests__/*.test.ts', 'docs/__tests__/*.test.ts'],
+          /**
+           * Cuatro raices, y tres no son `src/`: cada gate vive al lado de lo que
+           * verifica. `specs/__tests__/` mira el REGISTRO —la convencion y `mapa.json`,
+           * spec 035—, `.claude/scripts/__tests__/` mira los SCRIPTS que lo publican e
+           * hidratan, y `docs/__tests__/` la DOCUMENTACION (issue #100).
+           *
+           * Que los scripts y los specs sean dos carpetas y no una es el criterio
+           * entero: el test de un script es del script, no de lo que el script
+           * manipula.
+           *
+           * Estaban todos en `src/__tests__/` por una sola razon, y no era de diseno:
+           * era el unico lugar donde vitest miraba. Ninguno importa una linea de `src/`
+           * —usan `node:fs`, `node:url`, `gh` y `.claude/scripts/lib`—, asi que lo que
+           * hacian ahi era obligar a la app a saber que el repo tiene specs y
+           * documentacion. Y en `__tests__/` y no sueltos, como en el resto del repo:
+           * `specs/` es ademas la cache hidratada de los issues, y un `.test.ts` entre
+           * 35 carpetas `NNN-…` se lee como si fuera parte de un spec.
+           *
+           * Sin cualquiera de estas cuatro entradas, esos gates dejan de correr EN
+           * SILENCIO — la forma de fallar en verde que este repo ya se comio dos veces.
+           * Ninguno entra al coverage: su `include` es `src/**` y punto.
+           */
+          include: [
+            'src/**/__tests__/*.test.ts',
+            'specs/__tests__/*.test.ts',
+            '.claude/scripts/__tests__/*.test.ts',
+            'docs/__tests__/*.test.ts',
+          ],
         },
       },
       {

@@ -32,7 +32,7 @@ mcp-server/
     ├── index.ts                  entrypoint: serveStdio + registro de tools
     ├── pieces.ts                 las 12 letras, derivadas de SHAPES
     ├── render.ts                 ASCII de una pieza (puro)
-    ├── specs.ts                  parseo de log.md y de los tasks.md, y la escritura del 033
+    ├── specs.ts                  parseo de mapa.json y de los tasks.md, y la escritura del 033
     ├── symbols.ts                índice de símbolos de src/, construido en la consulta
     ├── tools/                    una tool por archivo + el array de index.ts
     └── __tests__/                node --test, uno por tool + los de parseo y render
@@ -210,22 +210,26 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 `pnpm test` corre Vitest en **dos proyectos y un solo comando** (spec 029). El corte no es por capa sino
 por lo que el test necesita:
 
-- **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre **dos** raíces:
-  `src/**/__tests__/*.test.ts` y `docs/__tests__/*.test.ts`. Son 28 archivos, 25 en `src/` y 3 en
-  `docs/`. El dominio es puro y el audio tiene una implementación nativa de Web Audio, así que corren
-  ahí sin adaptación. Los que **no** son el test de un módulo leen un archivo **del disco**, porque el
-  proyecto de navegador sirve su propio documento y nunca carga esos archivos, y se reparten según **qué
-  verifican**:
-  - `src/__tests__/` — los que cruzan una constante de la app contra un archivo que la envuelve:
+- **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre **cuatro** raíces. Son 29
+  archivos: 23 en `src/`, 3 en `docs/`, 2 en `specs/` y 1 en `.claude/scripts/`. El dominio es puro y
+  el audio tiene una implementación nativa de Web Audio, así que corren ahí sin adaptación. Los que
+  **no** son el test de un módulo leen un archivo **del disco**, porque el proyecto de navegador sirve
+  su propio documento y nunca carga esos archivos, y **cada uno vive al lado de lo que verifica**:
+  - `src/__tests__/` — los tres que cruzan una constante de la app contra un archivo que la envuelve:
     `documento.test.ts` (spec 025) verifica el `lang` de `index.html`, y `fondo-sincronizado.test.ts` y
     `nombre-sincronizado.test.ts` (spec 028) verifican que el color de fondo y el nombre de la app digan
     lo mismo en los tres lugares donde están escritos. Eran lo único del repo que ningún test podía
-    falsear. Los acompañan `specs-convencion.test.ts` y `scripts-de-specs.test.ts`, que miran `specs/` y
-    `.claude/scripts/lib/`.
+    falsear.
   - `docs/__tests__/` — los tres gates de la **documentación**, mudados ahí por el issue #100 porque no
     importan una sola línea de `src/`: `enlaces-resueltos.test.ts` (enlaces y anclas de todo `.md` del
     repo), `mapa-de-directorios.test.ts` (que este archivo nombre cada archivo de producción) y
     `claude-md-acotado.test.ts` (el techo de 200 líneas de `CLAUDE.md`).
+  - `specs/__tests__/` — los dos del **registro** (spec 035): `mapa-de-specs.test.ts` verifica
+    `mapa.json` contra sí mismo y —cuando hay `gh`— contra los issues, y `specs-convencion.test.ts`
+    que las carpetas y el registro digan lo mismo.
+  - `.claude/scripts/__tests__/` — uno solo, `scripts-de-specs.test.ts`, sobre lo puro de
+    `publicar-spec.mjs` e `hidratar-specs.mjs`. Está acá y no en `specs/` porque **el test es del
+    script**, y `specs/` es lo que el script manipula.
 - **`browser`** — Chromium de verdad, por Playwright, sobre `src/**/__tests__/*.browser.test.tsx`. Son
   11: los seis componentes, `App.tsx`, los tres hooks —el tercero es `use-grid.ts`, de los specs
   021 y 031— y `audio/engine.ts`. Renderizan con

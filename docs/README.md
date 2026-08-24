@@ -22,9 +22,9 @@ secuencia de cinco notas derivada de su identidad y su orientación.
 - [Deploy](./infra/deploy.md) — Netlify, rutas relativas a `base` y versión de Node
 
 ### Specs
-- [specs/log.md](../specs/log.md) — Registro de specs, con estados y dependencias
+- [specs/mapa.json](../specs/mapa.json) — El mapa spec↔issue y el estado de cada uno
 - [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues) — Lo registrado que todavía no tiene spec
-- [specs/revisiones.md](../specs/revisiones.md) — Qué se aprendió escribiendo o revisando cada spec
+- Qué se aprendió escribiendo o revisando cada spec: como comentario en el [issue](https://github.com/federicohermo/pentomino-games/issues) de ese spec
 - [specs/README.md](../specs/README.md) — Convención de formato y flujo de trabajo
 
 ---

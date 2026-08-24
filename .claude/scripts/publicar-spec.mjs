@@ -35,38 +35,70 @@
  *   node .claude/scripts/publicar-spec.mjs crear     [--dry]
  *   node .claude/scripts/publicar-spec.mjs publicar  [--dry]
  */
-import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mapaDeLog, estadoDe, traducir, carpetaExistente } from './lib/specs.ts';
+import { leerMapa, estadoDe, traducir, NOMBRE_PUBLICABLE } from './lib/specs.ts';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '../..');
 const SPECS = join(RAIZ, 'specs');
-// **La fuente del mapa es `log.md`, no este archivo.** `mapa.json` es solo el buffer
-// del hueco entre crear el issue y anotar su fila, y vive en un directorio IGNORADO:
-// vaciar e hidratar `specs/` —que es la verificacion fuerte del propio 034— lo borra,
-// porque el hidratador reconstruye `spec.md` y los comentarios y nada mas. Si el mapa
-// fuera solo esto, despues de esa vuelta `crear` no reconoceria ni un spec y crearia
-// **34 issues duplicados** sin un solo error. Por eso `leerMapa` arranca de `log.md`,
-// que es lo que el AC3 declara como mapa y lo unico que se commitea.
-const MAPA_JSON = join(SPECS, '034-el-registro-deja-de-vivir-en-el-repo', 'mapa.json');
+// **El mapa es uno solo y esta trackeado** (spec 035). Antes eran dos —la tabla de
+// `log.md` como fuente, y un `mapa.json` adentro de la carpeta del 034 como buffer del
+// hueco entre crear el issue y anotar su fila—, y ese segundo vivia en un directorio
+// IGNORADO. O sea que vaciar e hidratar `specs/` —la verificacion fuerte del 034— lo
+// borraba, y si hubiera sido la unica fuente, la corrida siguiente de `crear` no
+// habria reconocido ni un spec: **34 issues duplicados** sin un solo error.
+//
+// Con `specs/mapa.json` trackeado el problema no existe: la fuente y el buffer son el
+// mismo archivo, y sobrevive al vaciado porque no es cache.
+const MAPA_JSON = join(SPECS, 'mapa.json');
 const REPO = 'federicohermo/pentomino-games';
 
 const [fase] = process.argv.slice(2);
 const DRY = process.argv.includes('--dry');
 
-/** Los cuatro archivos, en el orden en que se publican. El `spec.md` va al body. */
+/** El `spec.md` va al body del issue; todo el resto va como comentario. */
 const CUERPO = 'spec.md';
-const COMENTARIOS = ['research.md', 'plan.md', 'tasks.md', 'baseline.md'];
+
+/**
+ * Los `.md` de la carpeta que NO son el body, en orden de lectura.
+ *
+ * Era una lista hardcodeada —`research`, `plan`, `tasks`, `baseline`— y eso la
+ * convertia en un lugar mas que hay que acordarse de editar. El 035 escribio un
+ * `reparto.md` y la publicacion **lo dejo afuera sin decir nada**: el issue quedo con
+ * tres comentarios y el archivo solo en el disco, que es un directorio ignorado. O sea
+ * que el artefacto que hace auditable un AC se habria perdido al hidratar, en verde.
+ *
+ * Los tres canonicos van primero y en su orden; cualquier otro va detras, alfabetico.
+ * El nombre se acepta con `NOMBRE_PUBLICABLE`, que es **la misma constante** que usa
+ * `archivoDeComentario` para reconocerlo al bajar: mientras aca decia `[a-z]+.md` y
+ * alla tambien, un `reparto-de-lote.md` o un `research-2.md` volvia a caer en el mismo
+ * agujero que este comentario dice haber tapado —afuera y sin decirlo—.
+ *
+ * Y lo que igual no entra **grita**, en vez de quedar afuera en silencio. No es
+ * exageracion: `specs/[0-9]…/` esta ignorado, asi que un `.md` no publicado no queda
+ * "para la proxima" — se pierde en la hidratacion siguiente. Es la misma politica que
+ * el limite de 65.536 bytes de mas abajo, y el arreglo es renombrar el archivo.
+ */
+const CANONICOS = ['research.md', 'plan.md', 'tasks.md'];
+const comentariosDe = (carpeta) => {
+  const todos = readdirSync(join(SPECS, carpeta)).filter((f) => f.endsWith('.md') && f !== CUERPO);
+  const afuera = todos.filter((f) => !NOMBRE_PUBLICABLE.test(f));
+  if (afuera.length) {
+    throw new Error(`${carpeta}: ${afuera.join(', ')} no se puede publicar y specs/ esta ignorado, ` +
+      'asi que se perderia al hidratar. El nombre va en minusculas, digitos y guiones: [a-z0-9-]+.md');
+  }
+  const extras = todos.filter((f) => !CANONICOS.includes(f)).sort();
+  return [...CANONICOS.filter((f) => todos.includes(f)), ...extras];
+};
 
 const carpetas = readdirSync(SPECS, { withFileTypes: true })
   .filter((e) => e.isDirectory() && /^\d{3}-/.test(e.name))
   .map((e) => e.name)
   .sort();
 
-const LOG = readFileSync(join(SPECS, 'log.md'), 'utf8');
 
 /** `# Spec 017 — El régimen de rotación` → el titulo del issue, tal cual. */
 const tituloDe = (carpeta) => {
@@ -81,21 +113,8 @@ const gh = (args, stdin) => {
   return execFileSync('gh', args, { input: stdin, encoding: 'utf8', maxBuffer: 1 << 28 }).trim();
 };
 
-/**
- * El mapa, con `log.md` como fuente y `mapa.json` encima.
- *
- * Ese orden es el que importa: la columna del enlace de `log.md` esta commiteada y
- * sobrevive a un vaciado de `specs/`; `mapa.json` no. Lo que aporta el JSON es el
- * hueco entre crear un issue y anotar su fila, y por eso pisa —es mas nuevo—.
- */
-const leerMapa = () => {
-  const delLog = Object.fromEntries(
-    Object.entries(mapaDeLog(LOG))
-      .map(([id, m]) => [id, { carpeta: carpetaExistente(carpetas, id), ...m }]),
-  );
-  const delJson = existsSync(MAPA_JSON) ? JSON.parse(readFileSync(MAPA_JSON, 'utf8')) : {};
-  return { ...delLog, ...delJson };
-};
+/** El mapa, de su unico archivo. */
+const mapaDelDisco = () => leerMapa(readFileSync(MAPA_JSON, 'utf8'));
 
 /**
  * **En `--dry` no se escribe.** No es prolijidad: un mapa con los numeros en 0 haria
@@ -105,18 +124,19 @@ const leerMapa = () => {
  */
 const guardarMapa = (m) => {
   if (DRY) return;
-  // El directorio puede no estar: es una cache ignorada, y el hidratador la reconstruye
-  // con el slug que salga del titulo del issue, que no tiene por que ser este.
-  mkdirSync(dirname(MAPA_JSON), { recursive: true });
-  writeFileSync(MAPA_JSON, `${JSON.stringify(m, null, 2)}\n`, 'utf8');
+  // Una entrada por linea y ordenadas por `NNN`, que es el formato con el que se genero
+  // el mapa. No es estetica: con `JSON.stringify(m, null, 2)` cada entrada ocupa siete
+  // lineas y agregar un spec da un diff de siete; asi da uno.
+  const cuerpo = Object.keys(m).sort().map((id) => `  "${id}": ${JSON.stringify(m[id])}`).join(',\n');
+  writeFileSync(MAPA_JSON, `{\n${cuerpo}\n}\n`, 'utf8');
 };
 
 /* ── Fase 1: crear ────────────────────────────────────────────────────────── */
 if (fase === 'crear') {
-  const mapa = leerMapa();
+  const mapa = mapaDelDisco();
   for (const carpeta of carpetas) {
     const id = carpeta.slice(0, 3);
-    if (mapa[id]) { console.log(`${id}  ya existe → #${mapa[id].numero}`); continue; }
+    if (mapa[id]) { console.log(`${id}  ya existe → #${mapa[id].issue}`); continue; }
 
     const url = gh([
       'issue', 'create', '--repo', REPO,
@@ -126,7 +146,17 @@ if (fase === 'crear') {
       '--body', `Spec \`${carpeta}\`. El contenido lo sube la fase 2 de \`publicar-spec.mjs\`.`,
     ]);
     const numero = DRY ? 0 : Number(url.split('/').at(-1));
-    mapa[id] = { carpeta, numero, url: DRY ? '(dry)' : url };
+    // Los cinco campos que el mapa declara, y los cinco los mira un gate. `estado`
+    // arranca en `Propuesto` porque un spec recien publicado no puede estar en otro, y
+    // `fecha` es la de hoy: es la que `log.md` ponia en su columna Fecha, que era el dia
+    // en que el spec se escribio — y publicarlo es el mismo dia.
+    mapa[id] = {
+      issue: numero,
+      carpeta,
+      fecha: new Date().toISOString().slice(0, 10),
+      estado: 'Propuesto',
+      titulo: tituloDe(carpeta),
+    };
     guardarMapa(mapa);
     console.log(`${id}  creado → #${numero}`);
   }
@@ -135,16 +165,16 @@ if (fase === 'crear') {
 
 /* ── Fase 2: publicar el contenido, ya traducido ──────────────────────────── */
 if (fase === 'publicar') {
-  const mapa = leerMapa();
+  const mapa = mapaDelDisco();
   const faltan = carpetas.filter((c) => !mapa[c.slice(0, 3)]);
   if (faltan.length) throw new Error(`el mapa no tiene: ${faltan.join(', ')} — corre la fase "crear" primero`);
 
   for (const carpeta of carpetas) {
     const id = carpeta.slice(0, 3);
-    const { numero } = mapa[id];
+    const numero = mapa[id].issue;
 
     gh(['issue', 'edit', String(numero), '--repo', REPO, '--body-file', '-'],
-      traducir(readFileSync(join(SPECS, carpeta, CUERPO), 'utf8'), mapa));
+      traducir(readFileSync(join(SPECS, carpeta, CUERPO), 'utf8'), mapa, REPO));
 
     // Los comentarios que ya estan, por el archivo que representan. **Sin esto el
     // script no es idempotente**: `gh issue comment` AGREGA uno nuevo cada vez, asi
@@ -157,15 +187,19 @@ if (fase === 'publicar') {
 
     const yaEstan = new Map(
       actual.comments
-        .map((c) => [/^##\s+`([a-z]+\.md)`/.exec(c.body)?.[1], c.url.split('-').at(-1)])
+        // El mismo alfabeto que `NOMBRE_PUBLICABLE`, sin el ancla de fin: aca lo que
+        // sigue es el cuerpo del archivo. Si este reconociera menos nombres que los que
+        // se suben, la segunda corrida no vería el comentario que ella misma escribió y
+        // agregaría uno nuevo — que es el bug de idempotencia que ya pasó con el 035.
+        .map((c) => [/^##\s+`([a-z0-9-]+\.md)`/.exec(c.body)?.[1], c.url.split('-').at(-1)])
         .filter(([nombre]) => nombre !== undefined),
     );
 
     let n = 0;
-    for (const archivo of COMENTARIOS) {
+    for (const archivo of comentariosDe(carpeta)) {
       const ruta = join(SPECS, carpeta, archivo);
       if (!existsSync(ruta)) continue;
-      const cuerpo = `## \`${archivo}\`\n\n${traducir(readFileSync(ruta, 'utf8'), mapa)}`;
+      const cuerpo = `## \`${archivo}\`\n\n${traducir(readFileSync(ruta, 'utf8'), mapa, REPO)}`;
       // El limite de un body y de un comentario son 65.536 bytes. Medido: el peor
       // archivo del repo es el `tasks.md` del 021 con 41.051, o sea el 63 %. Si algun
       // dia se pasa, se parte en dos comentarios — pero que falle fuerte y no que
@@ -194,7 +228,7 @@ if (fase === 'publicar') {
     // asi que sin esta condicion el script se cae en la segunda corrida. Es la misma
     // clase de bug que los comentarios duplicados — una herramienta que se usa una vez
     // igual tiene que poder correrse dos.
-    const estado = estadoDe(LOG, id);
+    const estado = estadoDe(mapa, id);
     const cerrar = estado !== null && estado !== 'Propuesto' && estado !== 'En curso';
     if (estado === null) {
       console.log(`${id}  SIN ESTADO en el registro: se deja abierto y no se toca`);

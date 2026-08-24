@@ -41,9 +41,11 @@ const inputSchema = z.object({
 export const crearSpecStatus = (specsDir: string) => defineTool({
   name: 'spec_status',
   description:
-    'Estado del trabajo planificado: por spec, su estado en specs/log.md, cuántas tareas están ' +
-    'marcadas sobre el total y cuál es la próxima que de verdad falta. Usar en lugar de leer log.md ' +
-    'y los tasks.md, que son decenas de KB y crecen con cada spec. Una casilla abierta no siempre ' +
+    'Estado del trabajo planificado: por spec, su estado en specs/mapa.json, su issue, cuántas tareas ' +
+    'están marcadas sobre el total y cuál es la próxima que de verdad falta. Usar en lugar de leer el ' +
+    'mapa y los tasks.md, que son decenas de KB y crecen con cada spec. ' +
+    'Un spec puede venir sin "tareas": su carpeta es una caché de lo que vive en el issue y este ' +
+    'checkout puede no haberla hidratado. La nota lo dice y "totales.sinHidratar" los cuenta. Una casilla abierta no siempre ' +
     'es deuda, así que se descuentan tres clases y queda "pendientes", que vale 0 exactamente ' +
     'cuando no hay "proxima": las que están bajo un encabezado "Seguimiento" (deuda anotada a ' +
     'propósito), las marcadas "[M]" (piden una persona: navegador, oído, captura) y todas las de un ' +
