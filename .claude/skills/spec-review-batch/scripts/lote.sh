@@ -108,6 +108,18 @@ dir_de() {
   printf '%s' "$d"
 }
 
+# Los specs se resuelven TODOS antes de emitir nada, y esta pasada es un arreglo.
+#
+# `dir_de` se llama desde `$(dir_de "$n")`, y ahi su `exit 1` mata la SUBSHELL y no el
+# script: con un spec sin hidratar el mensaje salia por stderr, `grep` se quedaba leyendo
+# `/tasks.md`, y la matriz se imprimia VACIA con **exit 0** — que se lee como «estos specs
+# no comparten ningun archivo», o sea la conclusion contraria. Es la misma familia que el
+# `set -- $(expandir …)` de mas arriba, y aparecio corriendo el script con `specs/` sin
+# hidratar.
+#
+# Llamada DIRECTA y no dentro de `$(…)`: eso es lo que hace que el `exit 1` sea del script.
+for n in "$@"; do dir_de "$n" > /dev/null; done
+
 pares=$(mktemp)
 trap 'rm -f "$pares"' EXIT
 

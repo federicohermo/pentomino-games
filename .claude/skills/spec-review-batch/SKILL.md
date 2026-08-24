@@ -19,8 +19,14 @@ allowed-tools:
   - Bash(git status:*)
   - Bash(git worktree list:*)
   - Bash(git branch:*)
-  - Bash(.claude/skills/spec-review-batch/scripts/lote.sh:*)
-  - Bash(sh .claude/skills/spec-review-batch/scripts/lote.sh:*)
+  # Las dos formas del comando —directa y por `sh`— y las dos rutas: la que escribe la
+  # inyección de abajo con `${CLAUDE_SKILL_DIR}` ya expandido, y la relativa que tipea una
+  # persona desde la raíz. El comodín del medio es lo que cubre la primera sin hardcodear
+  # dónde está clonado el repo: la expansión está documentada para el CONTENIDO del
+  # SKILL.md, no para estas reglas, y una regla que no expande no falla — deja de matchear
+  # y pide permiso en cada corrida, que es peor porque es silencioso.
+  - Bash(*spec-review-batch/scripts/lote.sh:*)
+  - Bash(sh *spec-review-batch/scripts/lote.sh:*)
 ---
 
 # spec-review-batch — pentomino-games
@@ -32,11 +38,16 @@ allowed-tools:
      su resultado). `lote.sh` entiende las tres formas del `argument-hint`, que es lo que deja
      pasarle `$ARGUMENTS` crudo sin un caso especial.
 
-     Ruta literal y no `${CLAUDE_SKILL_DIR}`: la sustitución existe, pero su orden respecto de
-     la inyección `!` no está documentado, y acá una sustitución que no ocurre no degrada — hace
-     fallar la carga del skill. No compra ni un token, así que no vale la apuesta. -->
+     Ruta por `${CLAUDE_SKILL_DIR}` y no literal. Acá decía lo contrario, y el motivo escrito
+     era que el orden de la sustitución respecto de la inyección `!` no estaba documentado —
+     una que no ocurre no degrada, hace fallar la carga. Hoy sí está documentado, y para
+     exactamente este caso: «for scripts within bash injection commands». Verificado además
+     cargando el skill, que es lo que faltaba.
 
-!`.claude/skills/spec-review-batch/scripts/lote.sh $ARGUMENTS`
+     Lo que compra no es un token: es que el skill se pueda mover, renombrar o empaquetar sin
+     editar su propio contenido, que es la otra mitad de que sea autocontenido. -->
+
+!`${CLAUDE_SKILL_DIR}/scripts/lote.sh $ARGUMENTS`
 
 ---
 

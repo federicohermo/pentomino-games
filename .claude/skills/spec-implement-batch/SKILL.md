@@ -12,14 +12,19 @@ argument-hint: "<NNN NNN ...> | <NNN-MMM> | --propuestos [--dry]"
      matriz llega con el skill ya cargado en vez de costar un turno de tool. `matriz.sh` entiende las
      tres formas del `argument-hint`, que es lo que deja pasarle `$ARGUMENTS` crudo.
 
-     Ruta literal y no `${CLAUDE_SKILL_DIR}`: la sustitución existe pero su orden respecto de la
-     inyección `!` no está documentado, y acá una que no ocurre no degrada — hace fallar la carga.
+     Ruta por `${CLAUDE_SKILL_DIR}` y no literal. Acá decía lo contrario, y el motivo escrito era
+     que el orden de la sustitución respecto de la inyección `!` no estaba documentado — una que no
+     ocurre no degrada, hace fallar la carga. Hoy sí está documentado, y para exactamente este caso:
+     «for scripts within bash injection commands». Verificado además cargando el skill.
+
+     Lo que compra no es un token: es que el skill se pueda mover, renombrar o empaquetar sin editar
+     su propio contenido, que es la otra mitad de que sea autocontenido.
 
      Este skill sigue **sin `allowed-tools`**, o sea sin restricción. Declarar una lista parcial para
      nombrar el script le sacaría todo lo que no estuviera en ella —`Agent`, los `git worktree`, el
      `pnpm verify`— y lo rompería en silencio. -->
 
-!`.claude/skills/spec-implement-batch/scripts/matriz.sh $ARGUMENTS`
+!`${CLAUDE_SKILL_DIR}/scripts/matriz.sh $ARGUMENTS`
 
 ---
 
@@ -170,7 +175,7 @@ Esperá a que vuelvan todos antes del reporte.
 ## Paso 4 — Destruir los worktrees
 
 ```bash
-sh .claude/skills/spec-implement-batch/scripts/limpiar-worktrees.sh --todos
+sh "${CLAUDE_SKILL_DIR}/scripts/limpiar-worktrees.sh" --todos
 ```
 
 **Va antes del reporte, no después**, y no se hace a mano. Los carriles de este skill **corren la
