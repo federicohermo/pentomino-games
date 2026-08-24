@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { HIT } from '../constants/scheduler.constants.ts';
-import { DEFAULT_BPM, CLOCK_START_DELAY, MASTER_GAIN, FFT_SIZE } from '../constants/engine.constants.ts';
+import { DEFAULT_BPM, MASTER_GAIN, FFT_SIZE } from '../constants/engine.constants.ts';
 import { TICK_MS } from '../constants/scheduler.constants.ts';
 import type { Sequence } from '../types/scheduler.types.ts';
 
@@ -69,6 +69,46 @@ afterEach(async () => {
 
 /** Espera de reloj real: el motor agenda contra `currentTime`, que no se puede fingir. */
 const esperar = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
+ * Espera a que la cabeza tenga una posición que dibujar, **sondeando en vez de dormir**.
+ *
+ * ## El reloj de pared y el reloj de audio no son el mismo reloj
+ *
+ * `playheadOffset()` contesta un número recién cuando `ctx.currentTime` pasa
+ * `clock.origin`, y `origin` lo fija `startClock` en `currentTime + CLOCK_START_DELAY`.
+ * O sea que la condición vive en el **reloj del AudioContext**, que lo mueve el hilo de
+ * render — no `setTimeout`.
+ *
+ * Los tres sitios que llaman acá —cinco casos, contando el `it.each` de `outputLatency`—
+ * dormían `CLOCK_START_DELAY * 1000 + TICK_MS * 4` ms de pared y afirmaban después: o
+ * sea traducían una condición del reloj de audio a una espera del de pared. Con los
+ * cuatro nodos de `verify` compitiendo por CPU esa traducción se rompe, y está medido
+ * acá: **150 ms de pared, 50,7 ms de audio** —el hilo de render hambreado va a un
+ * tercio— con el contexto en `running` y la secuencia ya puesta. Sumale que
+ * `outputLatency` mide 40 ms en este Chromium y se resta antes de comparar: del margen
+ * nominal de 100 ms quedaban 60, y de reloj de audio ni eso.
+ *
+ * El rojo no decía nada de eso: decía `expected null not to be null` sobre un motor que
+ * estaba funcionando perfecto. Es el mismo modo de falla que el bucle de reintento de
+ * «null mientras `origin` todavía es futuro» ya documenta treinta líneas más abajo, y la
+ * respuesta es la misma: **cortar por reloj de pared, pero afirmar sobre la condición**.
+ *
+ * No afloja lo que se afirma. Lo que se pide sigue siendo un offset no nulo, entero y en
+ * rango; lo único que deja de exigirse es que aparezca dentro de UNA siesta fija. El
+ * techo es generoso a propósito —el presupuesto real son ~150 ms— porque acá no se está
+ * midiendo cuánto tarda: para eso están los presupuestos del 009, que además se saltean
+ * en la CI justamente porque el runner no es una máquina medible.
+ */
+async function esperarCabeza(e: Engine, limiteMs = 4000): Promise<number | null> {
+  const hasta = performance.now() + limiteMs;
+  let off = e.playheadOffset();
+  while (off === null && performance.now() < hasta) {
+    await esperar(TICK_MS);
+    off = e.playheadOffset();
+  }
+  return off;
+}
 
 /**
  * Un ciclo con las tres clases de evento, escrito a mano y no derivado del dominio.
@@ -403,9 +443,10 @@ describe('playheadOffset()', () => {
     }
     expect(visto, 'la ventana entre el swap y `origin` tiene que observarse al menos una vez').toBe(true);
 
-    await esperar(CLOCK_START_DELAY * 1000 + TICK_MS * 4);
-    const off = e.playheadOffset();
-    expect(off).not.toBeNull();
+    // Y pasado `origin`, un número. Se sondea y no se duerme un fijo: la condición vive
+    // en el reloj del AudioContext y no en el de pared — ver `esperarCabeza`.
+    const off = await esperarCabeza(e);
+    expect(off, 'pasado `origin` la cabeza tiene que tener una celda que dibujar').not.toBeNull();
     expect(off!).toBeGreaterThanOrEqual(0);
     expect(off!).toBeLessThan(CICLO.length);
   });
@@ -414,8 +455,7 @@ describe('playheadOffset()', () => {
     const e = await conReloj();
     e.setSequence(CICLO);
     e.startClock();
-    await esperar(CLOCK_START_DELAY * 1000 + TICK_MS * 4);
-    expect(e.playheadOffset()).not.toBeNull();
+    expect(await esperarCabeza(e), 'la premisa del caso: antes de suspender había cabeza').not.toBeNull();
 
     const c = e.audio()!;
     await c.suspend();
@@ -459,10 +499,9 @@ describe('outputLatency — la cadena que TypeScript cree innecesaria', () => {
       const e = await conReloj();
       e.setSequence(CICLO);
       e.startClock();
-      await esperar(CLOCK_START_DELAY * 1000 + TICK_MS * 4);
 
-      const off = e.playheadOffset();
-      expect(off).not.toBeNull();
+      const off = await esperarCabeza(e);
+      expect(off, 'con las dos lecturas caídas la cabeza tiene que seguir contestando').not.toBeNull();
       // Lo que el fallback compra: un offset entero y en rango, no un `NaN` que
       // `Playhead.tsx` pintaria como una celda que no existe.
       expect(Number.isInteger(off!)).toBe(true);
