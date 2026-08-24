@@ -29,10 +29,11 @@
  *   node .claude/scripts/hidratar-specs.mjs 021 032    # solo esos
  *   node .claude/scripts/hidratar-specs.mjs --forzar   # rehace los que ya estan
  */
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { filasDeLog, slugDe, archivoDeComentario, carpetaExistente } from './lib/specs.ts';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const SPECS = join(RAIZ, 'specs');
@@ -47,8 +48,7 @@ const PEDIDOS = args.filter((a) => /^\d{3}$/.test(a));
  * issue y no de aca, porque `log.md` ya no lo escribe.
  */
 const LOG = readFileSync(join(SPECS, 'log.md'), 'utf8');
-const filas = [...LOG.matchAll(/^\|\s*\[(\d{3})\]\((https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/(\d+))\)/gm)]
-  .map((m) => ({ id: m[1], url: m[2], numero: m[3] }));
+const filas = filasDeLog(LOG);
 
 if (filas.length === 0) {
   console.error(
@@ -61,41 +61,31 @@ if (filas.length === 0) {
 
 const gh = (args_) => execFileSync('gh', args_, { encoding: 'utf8', maxBuffer: 1 << 28 });
 
-/** `# Spec 021 — El tablero es la pantalla` → `021-el-tablero-es-la-pantalla`. */
-const slugDe = (titulo, id) => {
-  const sinPrefijo = titulo.replace(/^Spec\s+\d{3}\s*[—–-]\s*/, '');
-  const slug = sinPrefijo
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')   // se van los acentos
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .split('-').slice(0, 8).join('-');                  // carpetas cortas, como las de hoy
-  return `${id}-${slug}`;
-};
-
-/**
- * Un comentario del issue vuelve a ser su archivo. El encabezado que `publicar-spec.mjs`
- * le puso adelante —`## \`research.md\``— es lo que dice cual es, asi que se lee y se
- * saca: no forma parte del archivo original.
- */
-const archivoDeComentario = (cuerpo) => {
-  const m = /^##\s+`([a-z]+\.md)`\s*\n\n?/.exec(cuerpo);
-  if (!m) return null;
-  return { nombre: m[1], contenido: cuerpo.slice(m[0].length) };
-};
+/** Las carpetas de spec que ya estan, para no crear una segunda por cambiar un titulo. */
+const yaEnDisco = () => readdirSync(SPECS, { withFileTypes: true })
+  .filter((e) => e.isDirectory() && /^\d{3}-/.test(e.name))
+  .map((e) => e.name);
 
 const aHidratar = PEDIDOS.length ? filas.filter((f) => PEDIDOS.includes(f.id)) : filas;
 let hechos = 0;
 
 for (const fila of aHidratar) {
+  // La que ya este manda sobre el nombre que saldria del titulo: emparejar por `NNN`
+  // es lo que evita una segunda carpeta para el mismo spec cuando el titulo cambio.
+  //
+  // Y va ANTES del `gh`: la corrida tipica es «los que falten» sobre un checkout casi
+  // completo, asi que preguntar primero ahorra las 34 llamadas de red que despues se
+  // iban a descartar.
+  const nombre = carpetaExistente(yaEnDisco(), fila.id);
+  if (nombre !== null && !FORZAR) { console.log(`${fila.id}  ya esta (${nombre}/)`); continue; }
+
   const datos = JSON.parse(gh([
     'issue', 'view', fila.numero, '--repo', fila.url.split('/').slice(3, 5).join('/'),
     '--json', 'title,body,comments',
   ]));
 
-  const carpeta = join(SPECS, slugDe(datos.title, fila.id));
-  if (existsSync(carpeta) && !FORZAR) { console.log(`${fila.id}  ya esta`); continue; }
-
+  const destino = nombre ?? slugDe(datos.title, fila.id);
+  const carpeta = join(SPECS, destino);
   mkdirSync(carpeta, { recursive: true });
   writeFileSync(join(carpeta, 'spec.md'), datos.body, 'utf8');
 
@@ -111,7 +101,7 @@ for (const fila of aHidratar) {
   }
 
   hechos += 1;
-  console.log(`${fila.id}  #${fila.numero} → ${slugDe(datos.title, fila.id)}/  (${n} archivos)`);
+  console.log(`${fila.id}  #${fila.numero} → ${destino}/  (${n} archivos)`);
 }
 
 console.log(`\nhidratados: ${hechos} de ${aHidratar.length}`);

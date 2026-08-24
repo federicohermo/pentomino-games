@@ -39,6 +39,7 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 
 import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mapaDeLog, estadoDe, traducir, carpetaExistente } from './lib/specs.ts';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '../..');
@@ -67,12 +68,6 @@ const carpetas = readdirSync(SPECS, { withFileTypes: true })
 
 const LOG = readFileSync(join(SPECS, 'log.md'), 'utf8');
 
-/** El estado que `log.md` declara para un spec. Decide si el issue queda abierto. */
-const estadoDe = (id) => {
-  const m = new RegExp(`^\\|\\s*\\[${id}\\]\\([^)]*\\)\\s*\\|[^|]*\\|([^|]*)\\|`, 'm').exec(LOG);
-  return m ? m[1].trim() : null;
-};
-
 /** `# Spec 017 — El régimen de rotación` → el titulo del issue, tal cual. */
 const tituloDe = (carpeta) => {
   const primera = readFileSync(join(SPECS, carpeta, CUERPO), 'utf8').split(/\r?\n/)[0];
@@ -95,8 +90,8 @@ const gh = (args, stdin) => {
  */
 const leerMapa = () => {
   const delLog = Object.fromEntries(
-    [...LOG.matchAll(/^\|\s*\[(\d{3})\]\((https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/(\d+))\)/gm)]
-      .map((m) => [m[1], { carpeta: carpetas.find((c) => c.startsWith(`${m[1]}-`)) ?? null, numero: Number(m[3]), url: m[2] }]),
+    Object.entries(mapaDeLog(LOG))
+      .map(([id, m]) => [id, { carpeta: carpetaExistente(carpetas, id), ...m }]),
   );
   const delJson = existsSync(MAPA_JSON) ? JSON.parse(readFileSync(MAPA_JSON, 'utf8')) : {};
   return { ...delLog, ...delJson };
@@ -144,26 +139,12 @@ if (fase === 'publicar') {
   const faltan = carpetas.filter((c) => !mapa[c.slice(0, 3)]);
   if (faltan.length) throw new Error(`el mapa no tiene: ${faltan.join(', ')} — corre la fase "crear" primero`);
 
-  /**
-   * Traduce las referencias a otro spec por su URL de issue. **Es lo que permite no
-   * tocar un solo archivo de `specs/[0-9]…/`**: la Desviacion 2 dice que un spec
-   * mergeado no se reescribe, asi que la traduccion pasa a la publicacion.
-   *
-   * Cubre las dos formas que existen en el repo: la relativa desde adentro de
-   * `specs/` (`./005-…/spec.md`) y la que llega desde afuera (`specs/005-…/spec.md`,
-   * con o sin `../` adelante).
-   */
-  const traducir = (texto) => texto.replace(
-    /(?:\.{1,2}\/)*(?:specs\/)?(\d{3})-[a-z0-9-]+\/(?:spec|research|plan|tasks|baseline)\.md/g,
-    (original, id) => (mapa[id] ? mapa[id].url : original),
-  );
-
   for (const carpeta of carpetas) {
     const id = carpeta.slice(0, 3);
     const { numero } = mapa[id];
 
     gh(['issue', 'edit', String(numero), '--repo', REPO, '--body-file', '-'],
-      traducir(readFileSync(join(SPECS, carpeta, CUERPO), 'utf8')));
+      traducir(readFileSync(join(SPECS, carpeta, CUERPO), 'utf8'), mapa));
 
     // Los comentarios que ya estan, por el archivo que representan. **Sin esto el
     // script no es idempotente**: `gh issue comment` AGREGA uno nuevo cada vez, asi
@@ -184,7 +165,7 @@ if (fase === 'publicar') {
     for (const archivo of COMENTARIOS) {
       const ruta = join(SPECS, carpeta, archivo);
       if (!existsSync(ruta)) continue;
-      const cuerpo = `## \`${archivo}\`\n\n${traducir(readFileSync(ruta, 'utf8'))}`;
+      const cuerpo = `## \`${archivo}\`\n\n${traducir(readFileSync(ruta, 'utf8'), mapa)}`;
       // El limite de un body y de un comentario son 65.536 bytes. Medido: el peor
       // archivo del repo es el `tasks.md` del 021 con 41.051, o sea el 63 %. Si algun
       // dia se pasa, se parte en dos comentarios — pero que falle fuerte y no que
@@ -213,7 +194,7 @@ if (fase === 'publicar') {
     // asi que sin esta condicion el script se cae en la segunda corrida. Es la misma
     // clase de bug que los comentarios duplicados — una herramienta que se usa una vez
     // igual tiene que poder correrse dos.
-    const estado = estadoDe(id);
+    const estado = estadoDe(LOG, id);
     const cerrar = estado !== null && estado !== 'Propuesto' && estado !== 'En curso';
     if (estado === null) {
       console.log(`${id}  SIN ESTADO en el registro: se deja abierto y no se toca`);
