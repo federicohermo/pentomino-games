@@ -30,3 +30,10 @@ dist-ssr
 # corre cualquier tarea en paralelo, y el `git add -A` de un review ajeno se los
 # llevaria puestos.
 .claude/worktrees/
+
+# Los specs viven en GitHub Issues desde el spec 034: el mapa es la columna del
+# enlace de `specs/log.md`, y el directorio de aca es una CACHE que se reconstruye
+# con `node .claude/scripts/hidratar-specs.mjs`. Los tres registros —README, log y
+# revisiones— se quedan trackeados: no son specs, y `log.md` es lo que sostiene el
+# mapa.
+specs/[0-9]*/
