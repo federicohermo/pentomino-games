@@ -47,7 +47,7 @@ const PARECE_TAREA = /^\s*-\s\[.\]/;
 /* ────────────────────────────────────────────────────────────────────────────
  * El regimen, y por que existe (spec 034)
  *
- * El 034 saca `specs/NNN-*​/` del repo: el spec pasa a vivir en un issue y el
+ * El 034 saca `specs/NNN-…/` del repo: el spec pasa a vivir en un issue y el
  * directorio local queda como cache. O sea que estos gates tienen que valer en
  * DOS mundos, y el modo de falla a evitar esta medido — con `specs/` ignorado,
  * el gate «cada spec tiene sus cuatro archivos» **pasaba en verde con cero
@@ -58,7 +58,7 @@ const PARECE_TAREA = /^\s*-\s\[.\]/;
  *
  * Asi que el regimen **no se infiere** de si los directorios estan o no —eso es
  * exactamente el gate apagandose solo—: lo **declara `log.md`**, en la unica
- * columna que ya apunta a algo. Si sus filas enlazan a `./NNN-*​/spec.md` el
+ * columna que ya apunta a algo. Si sus filas enlazan a `./NNN-…/spec.md` el
  * registro vive en el repo; si enlazan a un issue, vive en GitHub. Y tiene que
  * ser uniforme: media tabla migrada es justo el estado que el 034 evita.
  * ──────────────────────────────────────────────────────────────────────────── */
