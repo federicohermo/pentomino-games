@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  agregarSeguimiento, buscarSpec, marcarTarea, parseLog, parseTasks, readSpecStatus,
+  agregarSeguimiento, buscarSpec, marcarTarea, parseMapa, parseTasks, readSpecStatus,
   type SpecStatus,
 } from '../specs.ts';
 
@@ -13,16 +13,16 @@ import {
  * `specs/`, marcar una tarea rompería el build.
  */
 
-const LOG = `# Log de Specs
-
-| Spec | Fecha | Estado | Descripción |
-|------|-------|--------|-------------|
-| [001](./001-notas-por-celda/spec.md) | 2026-08-02 | Propuesto | Notas por celda |
-| [002](./002-motor-de-audio/spec.md) | 2026-08-02 | Implementado | Motor propio |
-
-## Dependencias entre specs
-- **001 y 002 son ortogonales.**
-`;
+const MAPA = JSON.stringify({
+  '001': {
+    issue: 63, carpeta: '001-notas-por-celda', fecha: '2026-08-02',
+    estado: 'Propuesto', titulo: 'Spec 001 — Notas por celda',
+  },
+  '002': {
+    issue: 64, carpeta: '002-motor-de-audio', fecha: '2026-08-02',
+    estado: 'Implementado', titulo: 'Spec 002 — Motor propio',
+  },
+});
 
 const TASKS = `# Tareas — Ejemplo
 
@@ -54,60 +54,54 @@ const MARCADAS = `# Tareas — Con ID y marcadores
 - [ ] T004 [M] Capturas del tablero
 `;
 
-describe('parseLog', () => {
-  test('saca id, enlace, fecha, estado y descripción de cada fila', () => {
-    const rows = parseLog(LOG);
-    assert.equal(rows.length, 2);
-    assert.deepEqual(rows[0], {
-      id: '001', href: './001-notas-por-celda/spec.md', fecha: '2026-08-02',
-      estado: 'Propuesto', descripcion: 'Notas por celda',
+describe('parseMapa', () => {
+  test('saca los cinco campos de cada entrada', () => {
+    const mapa = parseMapa(MAPA);
+    assert.equal(Object.keys(mapa).length, 2);
+    assert.deepEqual(mapa['001'], {
+      issue: 63, carpeta: '001-notas-por-celda', fecha: '2026-08-02',
+      estado: 'Propuesto', titulo: 'Spec 001 — Notas por celda',
     });
-    assert.equal(rows[1].estado, 'Implementado');
+    assert.equal(mapa['002'].estado, 'Implementado');
   });
 
-  test('ignora el separador de la tabla y las listas de abajo', () => {
-    // El `|------|` y las viñetas de "Dependencias" son las dos cosas que un
-    // parseo por `split('|')` confundiría con filas.
-    assert.equal(parseLog(LOG).length, 2);
-    assert.deepEqual(parseLog('| Spec | Fecha |\n|---|---|\n'), []);
+  test('un mapa vacío es un mapa vacío, no un error', () => {
+    // `{}` es una respuesta legítima —un repo sin un solo spec—, y distinta de un
+    // archivo roto. Confundirlas es lo que hace este parser al revés que su
+    // antecesora: `parseLog` devolvía `[]` en los DOS casos.
+    assert.deepEqual(parseMapa('{}'), {});
   });
 
-  test('el enlace viene crudo, que es lo que lo hace servir de mapa', () => {
-    assert.equal(parseLog(LOG)[1].href, './002-motor-de-audio/spec.md');
-  });
+  /*
+   * Lo que sigue es el punto del archivo: **grita en vez de devolver poco**.
+   *
+   * `parseLog` devolvía `[]` cuando su regex dejaba de matchear, y cuando el spec 034
+   * le cambió el formato a la columna del enlace eso salió como 34 specs con
+   * `estado: null` — la tool contestando que no sabe nada, en verde. Cada uno de estos
+   * casos es esa misma falla en la versión JSON.
+   */
+  const rotos: [string, string][] = [
+    ['no es JSON', 'no es JSON valido'],
+    ['[]', 'tiene que ser un objeto'],
+    ['null', 'tiene que ser un objeto'],
+    ['{"1": {}}', 'no es un NNN de tres digitos'],
+    ['{"001": null}', 'no es un objeto'],
+    ['{"001": {"issue": 63}}', '`carpeta` como string'],
+    ['{"001": {"issue": "63", "carpeta": "a", "fecha": "b", "estado": "c", "titulo": "d"}}', '`issue` como number'],
+  ];
 
-  test('lee también las filas que enlazan a un ISSUE', () => {
-    // Desde el spec 034 los specs viven en GitHub Issues y la columna del enlace es
-    // el mapa spec<->issue. Con el regex viejo —que exigía `(./NNN-slug/…)`— una
-    // tabla migrada no matcheaba **ni una fila**, y eso no daba error: daba 34 specs
-    // con `estado: null` y la nota «sin fila en log.md». `spec_status` contestando
-    // que no sabe nada, en verde.
-    //
-    // El `href` se guarda tal cual —es el mapa spec<->issue— y el emparejamiento
-    // con la carpeta lo hace el `id`, que es lo único estable en los dos regímenes.
-    const rows = parseLog(`| Spec | Fecha | Estado | Descripción |
-|------|-------|--------|-------------|
-| [001](https://github.com/x/y/issues/63) | 2026-08-02 | Descartado | Notas por celda |
-| [002](https://github.com/x/y/issues/64) | 2026-08-02 | Implementado | Motor propio |
-`);
-    assert.equal(rows.length, 2);
-    assert.deepEqual(rows[0], {
-      id: '001', href: 'https://github.com/x/y/issues/63', fecha: '2026-08-02',
-      estado: 'Descartado', descripcion: 'Notas por celda',
+  for (const [json, esperado] of rotos) {
+    test(`falla fuerte ante ${json.slice(0, 40)}`, () => {
+      assert.throws(() => parseMapa(json), (e: Error) => e.message.includes(esperado));
     });
-  });
+  }
 
-  test('y una tabla a medio migrar se lee entera, fila por fila', () => {
-    // Media tabla migrada es un estado inválido —lo dice el spec 034 y lo verifica
-    // `specs-convencion.test.ts`—, pero el parser no es quien tiene que rechazarlo:
-    // si se plantara acá, el gate que existe para reportarlo se quedaría sin datos
-    // con los que explicar qué pasa.
-    const rows = parseLog(`| [001](./001-notas-por-celda/spec.md) | 2026-08-02 | Propuesto | Una |
-| [002](https://github.com/x/y/issues/64) | 2026-08-02 | Implementado | Otra |
-`);
-    assert.equal(rows.length, 2);
-    assert.equal(rows[0].href, './001-notas-por-celda/spec.md');
-    assert.equal(rows[1].href, 'https://github.com/x/y/issues/64');
+  test('el mensaje dice QUÉ entrada está mal, no sólo que algo lo está', () => {
+    // Un mapa de 35 entradas con «falta un campo» y sin decir cuál obliga a leer el
+    // archivo entero, que es justo lo que esta tool existe para no hacer.
+    assert.throws(
+      () => parseMapa('{"001": {"issue": 63, "carpeta": "a", "fecha": "b", "estado": "c"}, "002": {}}'),
+      /entrada 001/);
   });
 });
 
@@ -158,10 +152,6 @@ describe('parseTasks', () => {
     const crlf = parseTasks(TASKS.replace(/\n/g, '\r\n'));
     assert.deepEqual(crlf, lf);
     assert.ok(crlf.total > 0);
-  });
-
-  test('CRLF tampoco rompe la tabla del log', () => {
-    assert.deepEqual(parseLog(LOG.replace(/\n/g, '\r\n')), parseLog(LOG));
   });
 
   test('un tasks.md sin checkboxes devuelve ceros, no falla', () => {
@@ -242,18 +232,23 @@ describe('parseTasks — ID y marcadores', () => {
 
 /**
  * `readSpecStatus` es la parte que toca el disco, y la unica que cruza las dos
- * mitades: las CARPETAS mandan, y el log se cruza contra ellas.
+ * mitades: manda **el mapa**, y las carpetas se cruzan contra el.
+ *
+ * Esa direccion se dio vuelta en el 035 y no por gusto: mientras mandaban las
+ * carpetas, un checkout sin hidratar hacia que la tool contestara «1 spec» sobre un
+ * repo de 35, en verde. Las carpetas dejaron de ser el registro cuando el 034 las
+ * convirtio en cache.
  *
  * Va sobre un `specs/` de mentira en un temporal y no sobre el del repo, por la
- * misma razon que el resto de este archivo: sus casos son un spec sin fila, un spec
- * sin `tasks.md` y un spec terminal con casillas abiertas, o sea estados que el repo
- * real no tiene —ni queremos que tenga— y que aparecerian y desaparecerian solos.
+ * misma razon que el resto de este archivo: sus casos son un spec sin hidratar, una
+ * carpeta sin entrada y un spec terminal con casillas abiertas, o sea estados que el
+ * repo real no tiene —ni queremos que tenga— y que apareceria y desapareceria solos.
  */
 describe('readSpecStatus', () => {
-  /** Arma un `specs/` desechable. `null` en `log` es "este directorio no tiene log.md". */
-  function fixture(log: string | null, dirs: Record<string, string | null>): string {
+  /** Arma un `specs/` desechable. `null` en `mapa` es "este directorio no tiene mapa.json". */
+  function fixture(mapa: string | null, dirs: Record<string, string | null>): string {
     const raiz = mkdtempSync(join(tmpdir(), 'spec-status-'));
-    if (log !== null) writeFileSync(join(raiz, 'log.md'), log, 'utf8');
+    if (mapa !== null) writeFileSync(join(raiz, 'mapa.json'), mapa, 'utf8');
     for (const [dir, tasks] of Object.entries(dirs)) {
       mkdirSync(join(raiz, dir));
       if (tasks !== null) writeFileSync(join(raiz, dir, 'tasks.md'), tasks, 'utf8');
@@ -261,40 +256,94 @@ describe('readSpecStatus', () => {
     return raiz;
   }
 
-  const fila = (dir: string, estado: string) =>
-    `| [${dir.split('-', 1)[0]}](./${dir}/spec.md) | 2026-08-20 | ${estado} | Titulo de ${dir} |`;
+  /** Una entrada de mapa para la carpeta `dir`, con el `NNN` sacado de su nombre. */
+  const entrada = (dir: string, estado: string) => [dir.slice(0, 3), {
+    issue: 60 + Number(dir.slice(0, 3)), carpeta: dir, fecha: '2026-08-20',
+    estado, titulo: `Spec ${dir.slice(0, 3)} — Titulo de ${dir}`,
+  }] as const;
 
-  const CABECERA = '| Spec | Fecha | Estado | Descripción |\n|---|---|---|---|\n';
+  const mapaCon = (...entradas: (readonly [string, object])[]) =>
+    JSON.stringify(Object.fromEntries(entradas));
+
   const UNA_ABIERTA = '## Tareas\n- [x] T001 Hecha\n- [ ] T002 Abierta\n';
   const TODAS_HECHAS = '## Tareas\n- [x] T001 Hecha\n- [x] T002 Tambien\n';
 
-  test('cruza por NÚMERO, así que el slug local puede no ser el del log', () => {
-    // Es la garantía que el spec 034 necesita, y no es hipotética: el directorio pasó
-    // a ser una **caché** que se reconstruye desde el issue, y el hidratador deriva su
-    // nombre del título — `001-notas-por-celda-en-orden-angular` vuelve como
-    // `001-asignar-cada-nota-a-una-celda-de-la`.
+  test('un spec SIN hidratar contesta igual: estado, fecha y titulo salen del mapa', () => {
+    // El caso que le da sentido al mapa, y esta medido: sobre `main` con el 034 recien
+    // mergeado y `specs/` sin hidratar, la version que recorria carpetas devolvia
+    // **1 spec de 35**, con `totales: {specs: 1}` y sin una sola nota.
     //
-    // Con el emparejamiento viejo, por slug, eso daba «sin fila en log.md» para los 34
-    // specs: `spec_status` contestando que no sabe nada, sin un solo error.
-    const raiz = fixture(
-      CABECERA
-      + '| [001](https://github.com/x/y/issues/63) | 2026-08-20 | Implementado | Como se llamaba antes |\n',
-      { '001-con-otro-slug-cualquiera': TODAS_HECHAS },
-    );
-    const { specs } = readSpecStatus(raiz);
+    // Sin red y sin carpetas, las tres columnas que el registro tenia siguen ahi. Lo
+    // unico que falta es `tareas`, que vive en el `tasks.md` del issue, y la nota dice
+    // como bajarlo.
+    const raiz = fixture(mapaCon(entrada('001-un-spec', 'Implementado')), {});
+    try {
+      const { specs, totales } = readSpecStatus(raiz);
 
-    assert.equal(specs.length, 1);
-    assert.equal(specs[0].estado, 'Implementado');
-    assert.deepEqual(specs[0].notas, []);
-    rmSync(raiz, { recursive: true, force: true });
+      assert.equal(specs.length, 1);
+      assert.equal(specs[0].estado, 'Implementado');
+      assert.equal(specs[0].fecha, '2026-08-20');
+      assert.equal(specs[0].titulo, 'Spec 001 — Titulo de 001-un-spec');
+      assert.equal(specs[0].issue, 61);
+      // La carpeta se sabe aunque no este: es el nombre historico, el que citan los
+      // specs viejos, y por eso viaja en el mapa en vez de derivarse del titulo.
+      assert.equal(specs[0].dir, '001-un-spec');
+      // Y `enDisco` es `null`, que es la otra mitad: `dir` dice como se llama el spec y
+      // esto dice si hay algo que abrir. Confundirlos es lo que hacia que `spec_write`
+      // armara una ruta a una carpeta que no existe.
+      assert.equal(specs[0].enDisco, null);
+      assert.equal(specs[0].tareas, null);
+      assert.match(specs[0].notas[0], /^sin hidratar: el spec vive en el issue #61/);
+      assert.equal(totales.sinHidratar, 1);
+    } finally {
+      rmSync(raiz, { recursive: true, force: true });
+    }
   });
 
-  test('las carpetas mandan y el log se cruza contra ellas', () => {
+  test('`sinHidratar` no aparece cuando no falta ninguno', () => {
+    // Un `sinHidratar: 0` se lee como un dato y es ruido: el campo existe para avisar,
+    // no para estar. Es el mismo criterio que `citas` en la tool.
+    const raiz = fixture(mapaCon(entrada('001-un-spec', 'Propuesto')), { '001-un-spec': UNA_ABIERTA });
+    try {
+      assert.equal(readSpecStatus(raiz).totales.sinHidratar, undefined);
+    } finally {
+      rmSync(raiz, { recursive: true, force: true });
+    }
+  });
+
+  test('empareja por NÚMERO, así que una cache con el slug viejo igual sirve', () => {
+    // El directorio es una **cache** que se reconstruye desde el issue, y las
+    // hidratadas antes de que `carpeta` existiera traen el slug derivado del titulo:
+    // `001-notas-por-celda-en-orden-angular` volvia como
+    // `001-asignar-cada-nota-a-una-celda-de-la`. Negarles el `tasks.md` seria tratar
+    // un nombre viejo como un spec que no esta.
+    //
+    // Se lee igual y se DICE, que es lo que distingue "anduvo" de "anduvo de casualidad".
+    const raiz = fixture(mapaCon(entrada('001-el-nombre-historico', 'Implementado')),
+      { '001-el-slug-del-titulo': TODAS_HECHAS });
+    try {
+      const { specs } = readSpecStatus(raiz);
+
+      assert.equal(specs.length, 1);
+      assert.equal(specs[0].tareas?.total, 2);
+      // Los dos nombres viajan y **separados**: `dir` es el del mapa —la identidad— y
+      // `enDisco` es donde estan los bytes. Mientras `dir` era el unico, quien armaba
+      // una ruta con el se comia un ENOENT crudo en estos siete casos.
+      assert.equal(specs[0].dir, '001-el-nombre-historico');
+      assert.equal(specs[0].enDisco, '001-el-slug-del-titulo');
+      assert.deepEqual(specs[0].notas,
+        ['la carpeta en disco se llama 001-el-slug-del-titulo y el mapa dice 001-el-nombre-historico: cache vieja, volver a hidratar']);
+    } finally {
+      rmSync(raiz, { recursive: true, force: true });
+    }
+  });
+
+  test('manda el mapa, y las carpetas se cruzan contra él', () => {
     const raiz = fixture(
-      CABECERA + fila('001-con-todo', 'Implementado') + '\n',
+      mapaCon(entrada('001-con-todo', 'Implementado'), entrada('003-sin-tasks', 'Propuesto')),
       {
         '001-con-todo': UNA_ABIERTA,
-        '002-sin-fila': UNA_ABIERTA,
+        '002-sin-entrada': UNA_ABIERTA,
         '003-sin-tasks': null,
         // No empieza con digitos: no es un spec y no tiene que aparecer.
         'borrador': null,
@@ -303,27 +352,32 @@ describe('readSpecStatus', () => {
     try {
       const { specs, totales } = readSpecStatus(raiz);
 
-      assert.deepEqual(specs.map(s => s.dir), ['001-con-todo', '002-sin-fila', '003-sin-tasks']);
+      // Los del mapa primero y ordenados por `NNN`; los huerfanos al final.
+      assert.deepEqual(specs.map(s => s.dir), ['001-con-todo', '003-sin-tasks', '002-sin-entrada']);
 
-      const [conTodo, sinFila, sinTasks] = specs;
+      const [conTodo, sinTasks, sinEntrada] = specs;
       assert.deepEqual(conTodo.notas, []);
       assert.equal(conTodo.estado, 'Implementado');
       assert.equal(conTodo.tareas?.pendientes, 1);
 
-      // Un spec con carpeta y sin fila es el descuido que conviene VER, no esconder:
-      // se responde igual, con el id sacado del nombre de la carpeta y la nota puesta.
-      assert.deepEqual(sinFila.notas, ['sin fila en log.md']);
-      assert.equal(sinFila.id, '002');
-      assert.equal(sinFila.estado, null);
-      assert.equal(sinFila.titulo, null);
-
-      assert.deepEqual(sinTasks.notas, ['sin fila en log.md', 'sin tasks.md']);
+      assert.deepEqual(sinTasks.notas, ['sin tasks.md']);
       assert.equal(sinTasks.tareas, null);
+
+      // Una carpeta sin entrada es el descuido que conviene VER, no esconder: sin
+      // entrada no hay issue al que llegar, o sea que ese spec no se puede hidratar.
+      assert.deepEqual(sinEntrada.notas, ['sin entrada en specs/mapa.json: el spec no tiene issue al que llegar']);
+      assert.equal(sinEntrada.id, '002');
+      assert.equal(sinEntrada.issue, null);
+      assert.equal(sinEntrada.estado, null);
+      assert.equal(sinEntrada.titulo, null);
+      // Se le lee el `tasks.md` igual: esta en disco, y no responderlo castigaria al
+      // que pregunta por un descuido del registro.
+      assert.equal(sinEntrada.tareas?.total, 2);
 
       // Los totales se derivan de los estados que aparecen, sin lista propia.
       assert.equal(totales.specs, 3);
       assert.equal(totales.Implementado, 1);
-      assert.equal(totales['sin estado'], 2);
+      assert.equal(totales['sin estado'], 1);
     } finally {
       rmSync(raiz, { recursive: true, force: true });
     }
@@ -331,7 +385,7 @@ describe('readSpecStatus', () => {
 
   test('de un spec terminal no sale trabajo, y la nota dice por que', () => {
     const raiz = fixture(
-      CABECERA + fila('001-descartado', 'Descartado') + '\n' + fila('002-superado', 'Superado') + '\n',
+      mapaCon(entrada('001-descartado', 'Descartado'), entrada('002-superado', 'Superado')),
       { '001-descartado': UNA_ABIERTA, '002-superado': TODAS_HECHAS },
     );
     try {
@@ -354,13 +408,15 @@ describe('readSpecStatus', () => {
     }
   });
 
-  test('sin log.md contesta igual: son las carpetas las que existen', () => {
+  test('sin `mapa.json` NO contesta: grita', () => {
+    // La diferencia con el `log.md` que reemplaza, y es la unica razon de que el
+    // formato sea JSON y la lectura sin `existsSync`. `readSpecStatus` contestaba
+    // «sin fila en log.md» y seguia, o sea que un registro que no estaba y un registro
+    // que no decia nada se leian igual. Uno es un repo sin specs; el otro es la tool
+    // rota.
     const raiz = fixture(null, { '001-huerfano': UNA_ABIERTA });
     try {
-      const { specs, totales } = readSpecStatus(raiz);
-      assert.equal(specs.length, 1);
-      assert.deepEqual(specs[0].notas, ['sin fila en log.md']);
-      assert.equal(totales['sin estado'], 1);
+      assert.throws(() => readSpecStatus(raiz), { code: 'ENOENT' });
     } finally {
       rmSync(raiz, { recursive: true, force: true });
     }
@@ -460,8 +516,8 @@ describe('parseTasks — cruces', () => {
 
 describe('buscarSpec', () => {
   const specs = [
-    { id: '033', dir: '033-el-archivo', fecha: null, estado: null, titulo: null, tareas: null, notas: [] },
-    { id: '7', dir: '007-nota-por-celda', fecha: null, estado: null, titulo: null, tareas: null, notas: [] },
+    { id: '033', dir: '033-el-archivo', enDisco: '033-el-archivo', issue: null, fecha: null, estado: null, titulo: null, tareas: null, notas: [] },
+    { id: '7', dir: '007-nota-por-celda', enDisco: null, issue: null, fecha: null, estado: null, titulo: null, tareas: null, notas: [] },
   ] satisfies SpecStatus[];
 
   test('lo encuentra por carpeta, por id y por número sin ceros', () => {

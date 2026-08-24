@@ -24,13 +24,17 @@
     "noUncheckedSideEffectImports": true
   },
   /*
-   * `.claude/scripts/lib` entra porque un test de `src/__tests__/` lo importa, asi que
-   * ya es parte de este programa: `tsc -b` lo typechequea por el import lo declaremos o
-   * no. Declararlo es lo que necesita el linter, que usa `projectService` y rechaza con
-   * un error de parseo todo archivo que ningun tsconfig incluya.
+   * Tres raices ademas de `src`, y las dos de afuera son los gates que viven al lado de
+   * lo que verifican (spec 035): `specs/__tests__/` mira el registro, y
+   * `.claude/scripts/` trae `lib/specs.ts` mas el `__tests__/` que lo importa.
    *
-   * Es `lib` y no `.claude/scripts` entero: los dos scripts son `.mjs` ejecutables y no
-   * tienen por que entrar al programa de la app.
+   * Ese import es lo que mete a `lib/` en el programa: `tsc -b` lo typechequea por el
+   * import lo declaremos o no. Declararlo es lo que necesita el linter, que usa
+   * `projectService` y rechaza con un error de parseo todo archivo que ningun tsconfig
+   * incluya — y por eso el `__tests__/` tambien tiene que estar nombrado.
+   *
+   * Los `.mjs` ejecutables de `.claude/scripts/` NO entran aunque el directorio si:
+   * `allowJs` esta apagado, asi que TypeScript solo levanta los `.ts` de adentro.
    */
-  "include": ["src", ".claude/scripts/lib"]
+  "include": ["src", "specs", ".claude/scripts"]
 }

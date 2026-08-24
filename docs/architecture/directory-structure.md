@@ -32,7 +32,7 @@ mcp-server/
     ├── index.ts                  entrypoint: serveStdio + registro de tools
     ├── pieces.ts                 las 12 letras, derivadas de SHAPES
     ├── render.ts                 ASCII de una pieza (puro)
-    ├── specs.ts                  parseo de log.md y de los tasks.md, y la escritura del 033
+    ├── specs.ts                  parseo de mapa.json y de los tasks.md, y la escritura del 033
     ├── symbols.ts                índice de símbolos de src/, construido en la consulta
     ├── tools/                    una tool por archivo + el array de index.ts
     └── __tests__/                node --test, uno por tool + los de parseo y render

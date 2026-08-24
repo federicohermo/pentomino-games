@@ -250,7 +250,18 @@ const REGLA_CONSTANTES = {
 }
 
 export default tseslint.config([
-  globalIgnores(['dist']),
+  /**
+   * `.claude/worktrees/` esta ignorado por el mismo motivo por el que lo esta en
+   * `.gitignore`: adentro vive un checkout completo del repo mientras corre una tarea
+   * en paralelo.
+   *
+   * Y sin esta linea `pnpm lint` **falla** durante esas tareas, por un motivo que
+   * parece un detalle y no lo es: los overrides de este archivo emparejan por RUTA, y
+   * `.claude/worktrees/agent-x/src/main.tsx` no matchea `src/main.tsx`. O sea que las
+   * tres aserciones no nulas que el repo declara deliberadas se leen como prohibidas
+   * en la copia, y el rojo aparece en `main` por trabajo que ni siquiera es de `main`.
+   */
+  globalIgnores(['dist', '.claude/worktrees']),
 
   {
     // Sin `files`, o sea que valen para todo el repo.
@@ -438,7 +449,7 @@ export default tseslint.config([
     // En un test el `!` sobre un `find` o un `querySelector` que el propio test acaba de
     // fijar es la forma de que el test **falle** si el nodo no esta, que es justo lo que
     // se quiere. `CLAUDE.md` ya las declara deliberadas.
-    files: ['src/**/__tests__/**/*.{ts,tsx}', 'mcp-server/**/__tests__/**/*.ts'],
+    files: ['src/**/__tests__/**/*.{ts,tsx}', 'specs/__tests__/*.ts', '.claude/scripts/__tests__/*.ts', 'mcp-server/**/__tests__/**/*.ts'],
     rules: { '@typescript-eslint/no-non-null-assertion': 'off' },
   },
 
@@ -453,7 +464,9 @@ export default tseslint.config([
     languageOptions: { globals: globals.browser },
   },
   {
-    files: ['mcp-server/**/*.ts', '*.config.ts'],
+    // Los gates de `specs/__tests__/` y `.claude/scripts/` corren en node y no en el
+    // navegador: leen el disco y lanzan `gh`.
+    files: ['mcp-server/**/*.ts', 'specs/__tests__/*.ts', '.claude/scripts/**/*.ts', '*.config.ts'],
     languageOptions: { globals: globals.node },
   },
 
@@ -517,7 +530,7 @@ export default tseslint.config([
     //
     // `fixable: false` es deliberado: no se quiere que `--fix` borre el `.only` en silencio,
     // se quiere que falle.
-    files: ['src/**/__tests__/**/*.{ts,tsx}'],
+    files: ['src/**/__tests__/**/*.{ts,tsx}', 'specs/__tests__/*.ts', '.claude/scripts/__tests__/*.ts'],
     plugins: { vitest },
     rules: {
       'vitest/no-focused-tests': ['error', { fixable: false }],
@@ -608,8 +621,8 @@ export default tseslint.config([
     // cerrados para satisfacer una regla de estilo. Un error de RENDERIZADO es otra cosa:
     // no reescribe una decision, destapa contenido que hoy GitHub descarta.
     //
-    // El glob es `specs/[0-9]*` y no `specs/**`: los tres registros —`README.md`, `log.md`
-    // y `revisiones.md`— son documentacion viva y se quedan en el carril A.
+    // El glob es `specs/[0-9]*` y no `specs/**`: el `README.md` de ahi es documentacion
+    // viva y se queda en el carril A, igual que los gates de `specs/__tests__/`.
     files: ['specs/[0-9]*/**/*.md'],
     rules: {
       // Apagar el preset se deriva del preset y no de una lista escrita a mano, para que
