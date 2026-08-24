@@ -75,6 +75,40 @@ describe('parseLog', () => {
   test('la carpeta sale del link, que es también el nombre de la rama', () => {
     assert.equal(parseLog(LOG)[1].dir, '002-motor-de-audio');
   });
+
+  test('lee también las filas que enlazan a un ISSUE, con `dir` vacío', () => {
+    // Desde el spec 034 los specs viven en GitHub Issues y la columna del enlace es
+    // el mapa spec<->issue. Con el regex viejo —que exigía `(./NNN-slug/…)`— una
+    // tabla migrada no matcheaba **ni una fila**, y eso no daba error: daba 34 specs
+    // con `estado: null` y la nota «sin fila en log.md». `spec_status` contestando
+    // que no sabe nada, en verde.
+    //
+    // No hay slug que sacar de una URL, así que `dir` queda vacío y el
+    // emparejamiento con la carpeta lo hace el `id`.
+    const rows = parseLog(`| Spec | Fecha | Estado | Descripción |
+|------|-------|--------|-------------|
+| [001](https://github.com/x/y/issues/63) | 2026-08-02 | Descartado | Notas por celda |
+| [002](https://github.com/x/y/issues/64) | 2026-08-02 | Implementado | Motor propio |
+`);
+    assert.equal(rows.length, 2);
+    assert.deepEqual(rows[0], {
+      id: '001', dir: '', fecha: '2026-08-02',
+      estado: 'Descartado', descripcion: 'Notas por celda',
+    });
+  });
+
+  test('y una tabla a medio migrar se lee entera, fila por fila', () => {
+    // Media tabla migrada es un estado inválido —lo dice el spec 034 y lo verifica
+    // `specs-convencion.test.ts`—, pero el parser no es quien tiene que rechazarlo:
+    // si se plantara acá, el gate que existe para reportarlo se quedaría sin datos
+    // con los que explicar qué pasa.
+    const rows = parseLog(`| [001](./001-notas-por-celda/spec.md) | 2026-08-02 | Propuesto | Una |
+| [002](https://github.com/x/y/issues/64) | 2026-08-02 | Implementado | Otra |
+`);
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].dir, '001-notas-por-celda');
+    assert.equal(rows[1].dir, '');
+  });
 });
 
 describe('parseTasks', () => {
@@ -233,6 +267,27 @@ describe('readSpecStatus', () => {
   const CABECERA = '| Spec | Fecha | Estado | Descripción |\n|---|---|---|---|\n';
   const UNA_ABIERTA = '## Tareas\n- [x] T001 Hecha\n- [ ] T002 Abierta\n';
   const TODAS_HECHAS = '## Tareas\n- [x] T001 Hecha\n- [x] T002 Tambien\n';
+
+  test('cruza por NÚMERO, así que el slug local puede no ser el del log', () => {
+    // Es la garantía que el spec 034 necesita, y no es hipotética: el directorio pasó
+    // a ser una **caché** que se reconstruye desde el issue, y el hidratador deriva su
+    // nombre del título — `001-notas-por-celda-en-orden-angular` vuelve como
+    // `001-asignar-cada-nota-a-una-celda-de-la`.
+    //
+    // Con el emparejamiento viejo, por slug, eso daba «sin fila en log.md» para los 34
+    // specs: `spec_status` contestando que no sabe nada, sin un solo error.
+    const raiz = fixture(
+      CABECERA
+      + '| [001](https://github.com/x/y/issues/63) | 2026-08-20 | Implementado | Como se llamaba antes |\n',
+      { '001-con-otro-slug-cualquiera': TODAS_HECHAS },
+    );
+    const { specs } = readSpecStatus(raiz);
+
+    assert.equal(specs.length, 1);
+    assert.equal(specs[0].estado, 'Implementado');
+    assert.deepEqual(specs[0].notas, []);
+    rmSync(raiz, { recursive: true, force: true });
+  });
 
   test('las carpetas mandan y el log se cruza contra ellas', () => {
     const raiz = fixture(
