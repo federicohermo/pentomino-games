@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { join, dirname, resolve, relative } from 'node:path';
+import { join, dirname, resolve, relative, sep } from 'node:path';
 
 /**
  * Todo enlace relativo de todo `.md` del repo resuelve: el archivo existe, y si el
@@ -195,7 +195,11 @@ describe('los enlaces relativos de la documentacion resuelven', () => {
         //
         // Lo que la excepcion NO cubre: un spec enlazando a `docs/` o a `src/`. Ahi el
         // destino sigue trackeado, asi que un enlace roto es un enlace roto.
-        if (esDeUnSpec(archivo) && absoluto.startsWith(join(RAIZ, 'specs'))) continue;
+        //
+        // El separador al final no es cosmetico: sin el, `startsWith` tambien eximiria a
+        // un hermano futuro como `specs-archivo/`, o sea que un directorio nuevo entraria
+        // solo a la excepcion sin que nadie lo decida.
+        if (esDeUnSpec(archivo) && absoluto.startsWith(join(RAIZ, 'specs') + sep)) continue;
 
         if (!ARCHIVOS.includes(absoluto) && !existe(absoluto)) {
           rotos.push(`${relative(RAIZ, archivo)}:${linea} → ${destino}`);

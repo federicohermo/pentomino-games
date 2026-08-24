@@ -5,7 +5,7 @@
  * `.gitignore`. O sea que un clone nuevo, y sobre todo un **worktree**, no los tiene:
  * `git worktree add` hace checkout de lo trackeado, y un archivo ignorado no viaja.
  * Medido antes de la mudanza: a un worktree llegaban 136 archivos de `specs/`, y
- * despues llegan **3** — los tres registros.
+ * despues llegan **4**, ninguno de ellos un spec — el `README.md`, el mapa y los dos gates.
  *
  * Eso rompe en silencio a `/pr-review-batch` y a `/spec-implement-batch`, que corren
  * cada agente en su propio worktree y leen `specs/NNN-…/spec.md` desde ahi. Este
@@ -33,7 +33,7 @@
  *   node .claude/scripts/hidratar-specs.mjs 021 032    # solo esos
  *   node .claude/scripts/hidratar-specs.mjs --forzar   # rehace los que ya estan
  */
-import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, renameSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -78,15 +78,34 @@ for (const id of aHidratar) {
   // completo, asi que preguntar primero ahorra las 34 llamadas de red que despues se
   // iban a descartar.
   const nombre = carpetaExistente(yaEnDisco(), id);
-  if (nombre !== null && !FORZAR) { console.log(`${id}  ya esta (${nombre}/)`); continue; }
+
+  // Una cache con el nombre viejo se RENOMBRA, y esa linea es el arreglo de un no-op.
+  // `spec_status` dice «cache vieja, volver a hidratar» cuando el nombre en disco no es
+  // el del mapa, pero mientras el destino salia de `nombre ?? entrada.carpeta` volver a
+  // hidratar —hasta con `--forzar`— reescribia adentro de la carpeta vieja y nunca la
+  // renombraba: seguir el consejo no cambiaba nada y el ENOENT de `spec_write` volvia
+  // en la consulta siguiente.
+  if (nombre !== null && nombre !== entrada.carpeta) {
+    if (existsSync(join(SPECS, entrada.carpeta))) {
+      // Dos carpetas con el mismo NNN es el estado que `carpetaExistente` viene a
+      // evitar. Renombrar encima tiraria un ENOTEMPTY que no dice esto, asi que se dice.
+      console.log(`${id}  OJO: conviven ${nombre}/ y ${entrada.carpeta}/ — borrar la que sobra a mano`);
+    } else {
+      renameSync(join(SPECS, nombre), join(SPECS, entrada.carpeta));
+      console.log(`${id}  renombrada ${nombre}/ → ${entrada.carpeta}/  (el mapa manda sobre el nombre)`);
+    }
+  }
+
+  // El nombre sale del MAPA y no del titulo ni del disco: ver el encabezado de este
+  // archivo, y el renombrado de arriba es lo que hace que eso sea cierto.
+  const destino = entrada.carpeta;
+  if (nombre !== null && !FORZAR) { console.log(`${id}  ya esta (${destino}/)`); continue; }
 
   const datos = JSON.parse(gh([
     'issue', 'view', String(entrada.issue), '--repo', REPO,
     '--json', 'title,body,comments',
   ]));
 
-  // El nombre sale del MAPA y no del titulo: ver el encabezado de este archivo.
-  const destino = nombre ?? entrada.carpeta;
   const carpeta = join(SPECS, destino);
   mkdirSync(carpeta, { recursive: true });
   writeFileSync(join(carpeta, 'spec.md'), datos.body, 'utf8');

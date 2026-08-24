@@ -70,7 +70,9 @@ necesita el 019 *escrito*, y ya lo está. Por eso el ancho es N aunque los specs
 ## Paso 0 — Resolver el lote y los gates
 
 `$ARGUMENTS`: números sueltos (`018 019 020 021`), un rango (`018-021`), o `--propuestos` = todos los
-`Propuesto` de `specs/mapa.json` — los lista `node .claude/scripts/specs-por-estado.mjs`.
+`Propuesto` de `specs/mapa.json` — los lista
+[`scripts/specs-por-estado.mjs`](./scripts/specs-por-estado.mjs), que vive adentro de este skill
+igual que `lote.sh`.
 Sin argumentos, **preguntá**: no asumas los últimos.
 
 - **Sacá los terminales.** `Descartado` y `Superado` no se revisan; decí cuáles sacaste.

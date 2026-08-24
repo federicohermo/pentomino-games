@@ -19,7 +19,8 @@ Trabajo planificado. Un spec por unidad de trabajo, en su propia carpeta numerad
 >
 > Hace falta correrlo **en cada worktree**: `git worktree add` hace checkout de lo trackeado, y un
 > archivo ignorado no viaja. Medido: antes del 034 a un worktree llegaban 136 archivos de `specs/` y
-> ahora llegan **2**.
+> ahora llegan **4** — este `README.md`, el mapa y los dos gates de `__tests__/`, ninguno de ellos un
+> spec.
 >
 > **Buscar dentro de los specs necesita `--no-ignore`.** Leerlos no: `.gitignore` es cosa de git y no
 > del sistema de archivos, así que `Read`, `cat` y `head` los abren normalmente. Pero **ripgrep respeta

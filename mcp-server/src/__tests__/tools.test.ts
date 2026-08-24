@@ -898,16 +898,29 @@ describe('spec_status y spec_write — sobre un registro fabricado', () => {
     '',
   ].join('\r\n');
 
-  /** Un `specs/` desechable con dos specs: uno completo y uno sin `tasks.md`. */
+  /**
+   * Un `specs/` desechable con los cuatro estados en los que un spec puede llegar:
+   * completo, sin `tasks.md`, **sin hidratar** y con la carpeta bajo un nombre viejo.
+   *
+   * Los dos últimos son los que el registro real no tiene y los que costaron un bug:
+   * `readSpecStatus` devuelve todo el mapa desde el 035, así que un spec sin carpeta es
+   * lo NORMAL en un worktree recién creado, y una caché con el slug del título eran 7
+   * de los 35.
+   */
   function registro(): string {
     const raiz = mkdtempSync(join(tmpdir(), 'spec-write-'));
     writeFileSync(join(raiz, 'mapa.json'), JSON.stringify({
       '001': { issue: 1, carpeta: '001-completo', fecha: '2026-08-23', estado: 'Propuesto', titulo: 'Spec 001 — El completo' },
       '002': { issue: 2, carpeta: '002-sin-tasks', fecha: '2026-08-23', estado: 'Propuesto', titulo: 'Spec 002 — El vacío' },
+      '003': { issue: 3, carpeta: '003-sin-hidratar', fecha: '2026-08-23', estado: 'Propuesto', titulo: 'Spec 003 — El que no bajó' },
+      '004': { issue: 4, carpeta: '004-nombre-del-mapa', fecha: '2026-08-23', estado: 'Propuesto', titulo: 'Spec 004 — El del slug viejo' },
     }), 'utf8');
     mkdirSync(join(raiz, '001-completo'));
     writeFileSync(join(raiz, '001-completo', 'tasks.md'), TAREAS, 'utf8');
     mkdirSync(join(raiz, '002-sin-tasks'));
+    // Del 003 no hay carpeta: es el spec que vive en el issue y nadie hidrató.
+    mkdirSync(join(raiz, '004-slug-viejo'));
+    writeFileSync(join(raiz, '004-slug-viejo', 'tasks.md'), TAREAS, 'utf8');
     return raiz;
   }
 
@@ -935,8 +948,13 @@ describe('spec_status y spec_write — sobre un registro fabricado', () => {
     // que la respuesta ya pesa, para una lectura que siempre es sobre UN spec.
     con((_raiz, status) => {
       const r = call(status, {});
-      const specs = r.specs as { dir: string; tareas: { citas?: unknown[]; cruces: unknown[] } | null }[];
-      assert.deepEqual(specs.map(s => s.dir), ['001-completo', '002-sin-tasks']);
+      const specs = r.specs as { dir: string; enDisco: string | null; tareas: { citas?: unknown[]; cruces: unknown[] } | null }[];
+      assert.deepEqual(specs.map(s => s.dir),
+        ['001-completo', '002-sin-tasks', '003-sin-hidratar', '004-nombre-del-mapa']);
+      // `dir` viene del mapa siempre; `enDisco` dice qué hay de verdad. Son distintos
+      // en los dos casos que importan: el que no está y el que está con otro nombre.
+      assert.deepEqual(specs.map(s => s.enDisco),
+        ['001-completo', '002-sin-tasks', null, '004-slug-viejo']);
       assert.equal(specs[0].tareas?.citas, undefined);
       // Los cruces sí: son 7 en todo el repo y es la lectura que necesita ver
       // los specs de a varios para servir de algo.
@@ -959,7 +977,7 @@ describe('spec_status y spec_write — sobre un registro fabricado', () => {
       ]);
       // Los totales siguen siendo los de todos: el recorte es de la lista, no
       // del contexto.
-      assert.equal((r.totales as Record<string, number>).specs, 2);
+      assert.equal((r.totales as Record<string, number>).specs, 4);
     });
   });
 
@@ -1016,6 +1034,36 @@ describe('spec_status y spec_write — sobre un registro fabricado', () => {
       assert.match(motivo(write, { op: 'seguimiento', spec: '1' }), /necesita `texto`/);
       assert.match(motivo(write, { op: 'marcar', spec: '1', tarea: 'T900' }), /No hay ninguna tarea T900/);
       assert.match(motivo(write, { op: 'marcar', spec: '1', tarea: 'T002' }), /ya estaba marcada/);
+    });
+  });
+
+  test('escribe en la carpeta que ESTÁ, no en la que el mapa nombra', () => {
+    // El bug que cierra, y el peor de los tres porque no era un mensaje malo sino un
+    // crash: `spec_write` armaba la ruta con `dir` —el nombre del mapa— mientras
+    // `readSpecStatus` había leído el `tasks.md` de la carpeta real. En los 7 specs con
+    // la caché vieja eso es un `readFileSync` sobre algo que no existe, y no hay
+    // `try/catch` ni acá ni en `defineTool`: la tool moría con un ENOENT crudo, justo
+    // en el caso que la nota «cache vieja, volver a hidratar» describe.
+    con((raiz, _status, write) => {
+      const r = call(write, { op: 'marcar', spec: '004', tarea: 'T001' });
+
+      assert.equal(r.archivo, 'specs/004-slug-viejo/tasks.md');
+      assert.ok(readFileSync(join(raiz, '004-slug-viejo', 'tasks.md'), 'utf8').includes('- [x] T001 Tocar'));
+    });
+  });
+
+  test('un spec SIN hidratar dice eso, y no que le falta el tasks.md', () => {
+    // Son dos cosas distintas y decir la segunda por la primera manda a escribir de
+    // nuevo un archivo que existe —en el issue—. Desde el 035 `readSpecStatus` devuelve
+    // todos los specs del mapa, así que en un worktree recién creado este es el caso
+    // normal y no una rareza: el mensaje tiene que traer el remedio.
+    con((_raiz, _status, write) => {
+      const texto = motivo(write, { op: 'marcar', spec: '003', tarea: 'T001' });
+
+      assert.match(texto, /no está hidratado/);
+      assert.match(texto, /issue #3/);
+      assert.match(texto, /hidratar-specs\.mjs 003/);
+      assert.doesNotMatch(texto, /no tiene tasks\.md/);
     });
   });
 

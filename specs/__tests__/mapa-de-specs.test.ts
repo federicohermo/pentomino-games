@@ -126,21 +126,38 @@ describe('specs/mapa.json es el registro, y se verifica solo', () => {
 interface Issue { number: number; state: string; title: string }
 
 /**
+ * Cuántos issues se piden. **Una lista truncada es peor que ninguna**, y ese es el
+ * motivo del número.
+ *
+ * `gh issue list` devuelve del más nuevo al más viejo, y los issues de spec son los
+ * viejos: van del #63 al #99. Con `--limit 200`, el día que el repo pase los 200 issues
+ * los 35 caen fuera de la página y el gate de abajo falla para **todos** con «issue que
+ * no existe» — 35 rojos y ninguno cierto. `gh` pagina solo hasta el límite, así que
+ * pedir de más no cuesta nada hoy: son ~100 issues, una página.
+ */
+const LIMITE = 1000;
+
+/**
  * El estado del issue, leído con `gh`, o `null` si no se pudo.
  *
  * **Todo fallo cae en `null` a propósito**: sin `gh` en el PATH, sin sesión, sin red o
  * con la API lenta, la respuesta correcta es «no pude verificar», nunca «está bien».
  * El `timeout` está por la última: un gate que cuelga `pnpm verify` esperando a GitHub
  * se termina desactivando a mano, y un gate desactivado a mano no vuelve.
+ *
+ * Y una lista que llegó al límite cae en `null` por lo mismo: ahí una entrada ausente
+ * puede ser un issue que no existe o uno que no entró, y las dos no se distinguen. «No
+ * pude verificar» es la única respuesta cierta, y sale declarada en el reporte.
  */
 const estadosRemotos = (): Map<number, Issue> | null => {
   try {
     const salida = execFileSync('gh', [
       'issue', 'list', '--repo', 'federicohermo/pentomino-games',
-      '--state', 'all', '--limit', '200', '--json', 'number,state,title',
+      '--state', 'all', '--limit', String(LIMITE), '--json', 'number,state,title',
     ], { encoding: 'utf8', timeout: 20_000, stdio: ['ignore', 'pipe', 'pipe'] });
 
     const issues = JSON.parse(salida) as Issue[];
+    if (issues.length >= LIMITE) return null;
     return new Map(issues.map((i) => [i.number, i]));
   } catch {
     return null;

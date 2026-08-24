@@ -288,6 +288,10 @@ describe('readSpecStatus', () => {
       // La carpeta se sabe aunque no este: es el nombre historico, el que citan los
       // specs viejos, y por eso viaja en el mapa en vez de derivarse del titulo.
       assert.equal(specs[0].dir, '001-un-spec');
+      // Y `enDisco` es `null`, que es la otra mitad: `dir` dice como se llama el spec y
+      // esto dice si hay algo que abrir. Confundirlos es lo que hacia que `spec_write`
+      // armara una ruta a una carpeta que no existe.
+      assert.equal(specs[0].enDisco, null);
       assert.equal(specs[0].tareas, null);
       assert.match(specs[0].notas[0], /^sin hidratar: el spec vive en el issue #61/);
       assert.equal(totales.sinHidratar, 1);
@@ -322,6 +326,11 @@ describe('readSpecStatus', () => {
 
       assert.equal(specs.length, 1);
       assert.equal(specs[0].tareas?.total, 2);
+      // Los dos nombres viajan y **separados**: `dir` es el del mapa —la identidad— y
+      // `enDisco` es donde estan los bytes. Mientras `dir` era el unico, quien armaba
+      // una ruta con el se comia un ENOENT crudo en estos siete casos.
+      assert.equal(specs[0].dir, '001-el-nombre-historico');
+      assert.equal(specs[0].enDisco, '001-el-slug-del-titulo');
       assert.deepEqual(specs[0].notas,
         ['la carpeta en disco se llama 001-el-slug-del-titulo y el mapa dice 001-el-nombre-historico: cache vieja, volver a hidratar']);
     } finally {
@@ -507,8 +516,8 @@ describe('parseTasks — cruces', () => {
 
 describe('buscarSpec', () => {
   const specs = [
-    { id: '033', dir: '033-el-archivo', issue: null, fecha: null, estado: null, titulo: null, tareas: null, notas: [] },
-    { id: '7', dir: '007-nota-por-celda', issue: null, fecha: null, estado: null, titulo: null, tareas: null, notas: [] },
+    { id: '033', dir: '033-el-archivo', enDisco: '033-el-archivo', issue: null, fecha: null, estado: null, titulo: null, tareas: null, notas: [] },
+    { id: '7', dir: '007-nota-por-celda', enDisco: null, issue: null, fecha: null, estado: null, titulo: null, tareas: null, notas: [] },
   ] satisfies SpecStatus[];
 
   test('lo encuentra por carpeta, por id y por número sin ceros', () => {

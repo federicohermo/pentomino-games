@@ -39,7 +39,7 @@ import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { leerMapa, estadoDe, traducir } from './lib/specs.ts';
+import { leerMapa, estadoDe, traducir, NOMBRE_PUBLICABLE } from './lib/specs.ts';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '../..');
@@ -72,13 +72,24 @@ const CUERPO = 'spec.md';
  * que el artefacto que hace auditable un AC se habria perdido al hidratar, en verde.
  *
  * Los tres canonicos van primero y en su orden; cualquier otro va detras, alfabetico.
- * `archivoDeComentario` acepta cualquier `[a-z]+.md`, asi que el hidratador los trae
- * de vuelta sin cambios.
+ * El nombre se acepta con `NOMBRE_PUBLICABLE`, que es **la misma constante** que usa
+ * `archivoDeComentario` para reconocerlo al bajar: mientras aca decia `[a-z]+.md` y
+ * alla tambien, un `reparto-de-lote.md` o un `research-2.md` volvia a caer en el mismo
+ * agujero que este comentario dice haber tapado —afuera y sin decirlo—.
+ *
+ * Y lo que igual no entra **grita**, en vez de quedar afuera en silencio. No es
+ * exageracion: `specs/[0-9]…/` esta ignorado, asi que un `.md` no publicado no queda
+ * "para la proxima" — se pierde en la hidratacion siguiente. Es la misma politica que
+ * el limite de 65.536 bytes de mas abajo, y el arreglo es renombrar el archivo.
  */
 const CANONICOS = ['research.md', 'plan.md', 'tasks.md'];
 const comentariosDe = (carpeta) => {
-  const todos = readdirSync(join(SPECS, carpeta))
-    .filter((f) => f.endsWith('.md') && f !== CUERPO && /^[a-z]+\.md$/.test(f));
+  const todos = readdirSync(join(SPECS, carpeta)).filter((f) => f.endsWith('.md') && f !== CUERPO);
+  const afuera = todos.filter((f) => !NOMBRE_PUBLICABLE.test(f));
+  if (afuera.length) {
+    throw new Error(`${carpeta}: ${afuera.join(', ')} no se puede publicar y specs/ esta ignorado, ` +
+      'asi que se perderia al hidratar. El nombre va en minusculas, digitos y guiones: [a-z0-9-]+.md');
+  }
   const extras = todos.filter((f) => !CANONICOS.includes(f)).sort();
   return [...CANONICOS.filter((f) => todos.includes(f)), ...extras];
 };
@@ -176,7 +187,11 @@ if (fase === 'publicar') {
 
     const yaEstan = new Map(
       actual.comments
-        .map((c) => [/^##\s+`([a-z]+\.md)`/.exec(c.body)?.[1], c.url.split('-').at(-1)])
+        // El mismo alfabeto que `NOMBRE_PUBLICABLE`, sin el ancla de fin: aca lo que
+        // sigue es el cuerpo del archivo. Si este reconociera menos nombres que los que
+        // se suben, la segunda corrida no vería el comentario que ella misma escribió y
+        // agregaría uno nuevo — que es el bug de idempotencia que ya pasó con el 035.
+        .map((c) => [/^##\s+`([a-z0-9-]+\.md)`/.exec(c.body)?.[1], c.url.split('-').at(-1)])
         .filter(([nombre]) => nombre !== undefined),
     );
 

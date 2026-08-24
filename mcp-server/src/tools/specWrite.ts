@@ -71,9 +71,21 @@ export const crearSpecWrite = (specsDir: string) => defineTool({
     const { specs } = readSpecStatus(specsDir);
     const encontrado = buscarSpec(specs, spec);
     if (encontrado === null) return falla(`Ningún spec de specs/ coincide con "${spec}". Va el número ("33") o el nombre de la carpeta.`);
+    // «No está hidratado» y «no tiene tasks.md» son dos cosas distintas y decir la
+    // segunda por la primera manda a escribir de nuevo un archivo que existe — en el
+    // issue. Desde el 035 `readSpecStatus` devuelve TODOS los specs del mapa, así que
+    // este caso es el normal en un worktree recién creado, no una rareza.
+    if (encontrado.enDisco === null) {
+      return falla(`El spec ${encontrado.dir} no está hidratado en este árbol: vive en el issue #${encontrado.issue}. ` +
+        `Traerlo con \`node .claude/scripts/hidratar-specs.mjs ${encontrado.id}\` y volver a intentar.`);
+    }
     if (encontrado.tareas === null) return falla(`El spec ${encontrado.dir} no tiene tasks.md.`);
 
-    const ruta = join(specsDir, encontrado.dir, 'tasks.md');
+    // La ruta se arma con `enDisco` y NO con `dir`: son distintos en toda cache
+    // hidratada antes de que `carpeta` existiera —7 de 35—, y ahí `dir` apunta a una
+    // carpeta que no existe. El `readFileSync` de abajo no tiene `try/catch` ni arriba
+    // ni en `defineTool`, así que eso salía como un ENOENT crudo en vez de un `falla`.
+    const ruta = join(specsDir, encontrado.enDisco, 'tasks.md');
     const md = readFileSync(ruta, 'utf8');
 
     let resultado: Escritura;
@@ -95,8 +107,9 @@ export const crearSpecWrite = (specsDir: string) => defineTool({
       linea: resultado.linea,
       texto: resultado.texto,
       // La ruta, para que quede dicho DONDE cayo: el que llama puede estar en un
-      // worktree y esperar el cambio ahi.
-      archivo: `specs/${encontrado.dir}/tasks.md`,
+      // worktree y esperar el cambio ahi. Y por eso es `enDisco` y no `dir` —
+      // es la carpeta que se escribio, no el nombre que el mapa le da.
+      archivo: `specs/${encontrado.enDisco}/tasks.md`,
     });
   },
 });

@@ -44,8 +44,8 @@ pnpm exec vite --port 5199 --strictPort
 ### Los specs no vienen en el clone
 
 Desde el spec 034 cada spec **es un issue** y `specs/[0-9]*/` está en el `.gitignore`, así que a un
-clone nuevo llegan **2** archivos de `specs/` —`README.md` y `mapa.json`— y no 136. El
-directorio es una **caché**, y se trae:
+clone nuevo llegan **4** archivos de `specs/` —`README.md`, `mapa.json` y los dos gates de
+`__tests__/`— y no 136. Ninguno es un spec: el directorio es una **caché**, y se trae:
 
 ```bash
 node .claude/scripts/hidratar-specs.mjs        # los que falten
@@ -172,10 +172,9 @@ las funciones puras reales, así que responden lo que el código hace hoy. Catá
 
 ### Antes de un cambio grande
 
-Escribir los cuatro archivos, publicarlo como issue con `node .claude/scripts/publicar-spec.mjs`,
-publicarlo, que le escribe su entrada en [`specs/mapa.json`](../../specs/mapa.json) —lo único del
-spec que se commitea— y recién
-ahí sacar la rama de feature. Ver [specs/README.md](../../specs/README.md).
+Escribir los cuatro archivos y publicarlo como issue con `node .claude/scripts/publicar-spec.mjs`,
+que le escribe su entrada en [`specs/mapa.json`](../../specs/mapa.json) —lo único del spec que se
+commitea— y recién ahí sacar la rama de feature. Ver [specs/README.md](../../specs/README.md).
 
 ## Verificación antes de un PR
 

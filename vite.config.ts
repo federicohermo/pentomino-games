@@ -57,21 +57,28 @@ export default defineConfig({
           name: 'node',
           environment: 'node',
           /**
-           * Dos raices, y la segunda no es `src/`: los gates que verifican el
-           * REGISTRO —la convencion de los specs, el mapa, y los dos scripts que los
-           * publican e hidratan— viven al lado de lo que verifican, en `specs/`
-           * (spec 035).
+           * Tres raices, y dos no son `src/`: cada gate vive al lado de lo que
+           * verifica (spec 035).
            *
-           * Estaban en `src/__tests__/` por una sola razon, y no era de diseno: era
-           * el unico lugar donde vitest miraba. Ninguno de los tres importa una
-           * linea de `src/` —usan `node:fs`, `gh` y `.claude/scripts/lib`—, asi que
-           * lo que hacian ahi era obligar a la app a saber que el repo tiene specs.
+           * `specs/__tests__/` mira el REGISTRO —la convencion y `mapa.json`—, y
+           * `.claude/scripts/__tests__/` mira los SCRIPTS que lo publican e hidratan.
+           * Son dos cosas distintas y por eso son dos carpetas: el test de un script
+           * es del script, no de lo que el script manipula.
+           *
+           * Estaban los tres en `src/__tests__/` por una sola razon, y no era de
+           * diseno: era el unico lugar donde vitest miraba. Ninguno importa una linea
+           * de `src/` —usan `node:fs`, `gh` y `.claude/scripts/lib`—, asi que lo que
+           * hacian ahi era obligar a la app a saber que el repo tiene specs.
            *
            * En `__tests__/`, como en el resto del repo: `specs/` tambien es la
            * cache hidratada de los issues, y un `.test.ts` suelto entre 35
            * carpetas `NNN-…` se lee como si fuera parte de un spec.
            */
-          include: ['src/**/__tests__/*.test.ts', 'specs/__tests__/*.test.ts'],
+          include: [
+            'src/**/__tests__/*.test.ts',
+            'specs/__tests__/*.test.ts',
+            '.claude/scripts/__tests__/*.test.ts',
+          ],
         },
       },
       {

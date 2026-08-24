@@ -29,6 +29,10 @@
 # documentacion depende del verbo de la tarea — y un script que lo adivine se equivoca en silencio.
 set -eu
 
+# Los scripts que este skill usa viven ADENTRO del skill, y la ruta sale de `$0` y no de
+# la raiz del repo: asi el skill se puede mover o copiar sin que quede nada colgando.
+AQUI=$(dirname "$0")
+
 # Entiende las TRES formas del `argument-hint` del skill, no solo los numeros sueltos, y esa
 # paridad es lo que deja que el SKILL.md lo inyecte con !`lote.sh $ARGUMENTS` sin un caso
 # especial: lo que el usuario tipea es lo que el script recibe. Con el guard viejo
@@ -47,7 +51,16 @@ expandir() {
         # busqueda al formato del archivo, y el dia que alguien lo reformatee la
         # respuesta pasa a ser vacia sin un solo error — un lote de cero specs que
         # se lee como «no hay nada Propuesto». `jq` se descarto: no esta en el PATH.
-        node .claude/scripts/specs-por-estado.mjs Propuesto ;;
+        #
+        # El `||` no es decorativo, y cierra un fallo en verde: el script grita cuando el
+        # mapa no se puede leer, pero ese grito viajaba adentro de una sustitucion —ver
+        # el `lista=` de mas abajo— y el lote seguia con CERO specs, que sale por el
+        # `uso:` como si el usuario hubiera tipeado mal.
+        node "$AQUI/specs-por-estado.mjs" Propuesto || {
+          echo "no se pudo leer specs/mapa.json: $AQUI/specs-por-estado.mjs fallo." >&2
+          echo "  node en uso: $(node --version 2>/dev/null || echo 'no esta en el PATH')" >&2
+          exit 3
+        } ;;
       [0-9][0-9][0-9]-[0-9][0-9][0-9])
         # Los ceros a la izquierda se sacan antes del `-le`: `018` es octal invalido para la
         # aritmetica de shell y el rango moriria con un error que no dice eso.
@@ -60,8 +73,23 @@ expandir() {
   done
 }
 
+# La salida se captura ANTES del `set --`, y esa linea es un arreglo. `set -- $(expandir …)`
+# toma como exit status el de `set`, que es 0 pase lo que pase: con `set -eu` puesto, un
+# `exit 2` de `expandir` —un argumento no reconocido— o un `node` que muere se tragaban
+# enteros, y el lote seguia con CERO specs. Eso salia por el `uso:` de abajo, o sea culpando
+# al usuario de haber tipeado mal justo cuando lo que fallo fue otra cosa.
+#
+# El `| sort -u` tambien se movio, y por lo mismo: en un pipeline el status es el del ULTIMO
+# comando —`sort`, que siempre anda— y `sh` de POSIX no tiene `pipefail`.
+lista=$(expandir "$@") || exit $?
+[ -n "$lista" ] || {
+  echo "el lote quedo vacio: ningun spec coincide con «$*»." >&2
+  echo "  Con --propuestos, quiere decir que specs/mapa.json no tiene ninguno en ese estado." >&2
+  exit 2
+}
+
 # shellcheck disable=SC2046 # el split por whitespace es lo que convierte las lineas en argumentos
-set -- $(expandir "$@" | sort -u)
+set -- $(printf '%s\n' "$lista" | sort -u)
 
 [ $# -ge 2 ] || { echo "uso: $(basename "$0") <NNN NNN ...> | <NNN-MMM> | --propuestos" >&2; exit 2; }
 

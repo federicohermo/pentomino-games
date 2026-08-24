@@ -1,6 +1,7 @@
 /**
- * Lo puro de `publicar-spec.mjs`, `hidratar-specs.mjs` y `specs-por-estado.mjs`
- * (specs 034 y 035).
+ * Lo puro de `publicar-spec.mjs` y `hidratar-specs.mjs` (specs 034 y 035), que son las
+ * herramientas COMUNES: las que no pertenecen a ningun skill. Un skill se lleva adentro
+ * los scripts que usa, asi que de aca no importa ninguno.
  *
  * **Existe para que tenga tests.** Los scripts empezaron como herramientas de un solo
  * uso y no lo son —cada spec nuevo se publica, y cada worktree se hidrata—: el commit
@@ -8,14 +9,21 @@
  * de parseo. Mientras esto vivio adentro de un script ejecutable no habia forma de
  * cubrirlo, porque importarlo corria el script.
  *
- * Lo verifica `specs/__tests__/scripts-de-specs.test.ts`, que vive al lado de lo que
- * verifica.
+ * Lo verifica `.claude/scripts/__tests__/scripts-de-specs.test.ts`, que vive al lado de
+ * lo que verifica — **en `scripts/`, no en `specs/`**: el test es del script, y `specs/`
+ * es lo que el script manipula.
  *
- * **Es `.ts` y no `.mjs`** aunque lo importen tres `.mjs`: node lo carga igual —corre
+ * **Es `.ts` y no `.mjs`** aunque lo importen dos `.mjs`: node lo carga igual —corre
  * TypeScript sin compilar, como `mcp-server/`, y la sintaxis de aca es la que
  * `erasableSyntaxOnly` permite—, y en cambio un `.mjs` no se puede importar desde un
  * test sin `allowJs` o un `.d.mts` escrito a mano, que es la duplicacion que este repo
  * evita en todos lados.
+ *
+ * El precio esta dicho: un `.mjs` que importa un `.ts` necesita **node >= 22.18** —el
+ * mismo piso que `mcp-server/`—, por encima del `^20.19` de `engines`. Lo pagan las dos
+ * herramientas comunes, que se corren a mano y una vez por spec. Lo que NO puede
+ * pagarlo es un script de skill, que se inyecta en cada corrida: por eso los de los
+ * skills no importan de aca.
  *
  * Nada de aca toca el disco ni la red: son strings a strings.
  */
@@ -58,11 +66,16 @@ export type Mapa = Record<string, EntradaDeMapa>;
  * vacio. Cuando cambio el formato de la columna, eso salio como 34 specs sin estado,
  * en verde.
  *
- * La validacion campo por campo NO esta aca: la hacen los dos que leen el archivo de
- * verdad —el gate antes de mergear, y `parseMapa` del MCP server al responder—. Aca
- * alcanza con distinguir «el registro no se pudo leer» de «el registro esta vacio»,
- * que es la unica confusion que costo algo.
+ * **La validacion campo por campo tambien esta aca**, y eso se corrigio: decia que la
+ * delegaba al gate y a `parseMapa` del MCP server, y ninguno de los dos corre antes que
+ * los scripts. Un mapa editado a mano al que le falte `issue` hacia que la fase 2 de
+ * `publicar-spec.mjs` corriera `gh issue edit undefined` — su guarda `faltan` mira que
+ * la CLAVE este, no la entrada. Es el mismo criterio que el resto del archivo: el que
+ * lee el registro tiene que poder distinguir «roto» de «vacio», y ahora tambien de
+ * «incompleto».
  */
+const CAMPOS: readonly (keyof EntradaDeMapa)[] = ['issue', 'carpeta', 'fecha', 'estado', 'titulo'];
+
 export const leerMapa = (json: string): Mapa => {
   let crudo: unknown;
   try {
@@ -77,19 +90,33 @@ export const leerMapa = (json: string): Mapa => {
   if (Object.keys(mapa).length === 0) {
     throw new Error('specs/mapa.json no tiene una sola entrada: o se trunco, o este no es el archivo.');
   }
+  for (const [id, entrada] of Object.entries(mapa)) {
+    if (entrada === null || typeof entrada !== 'object') {
+      throw new Error(`specs/mapa.json: la entrada ${id} no es un objeto.`);
+    }
+    for (const campo of CAMPOS) {
+      const esperado = campo === 'issue' ? 'number' : 'string';
+      if (typeof entrada[campo] !== esperado) {
+        throw new Error(`specs/mapa.json: la entrada ${id} no trae \`${campo}\` como ${esperado}.`);
+      }
+    }
+  }
   return mapa;
 };
 
-/**
- * Los `NNN` de los specs en un estado, ordenados.
+/*
+ * Aca vivia `idsPorEstado`, que sacaba los `NNN` de un estado para el `--propuestos` de
+ * `lote.sh` y `matriz.sh`.
  *
- * Vive aca y no en cada `.sh` porque lo piden dos —`lote.sh` y `matriz.sh`, para su
- * `--propuestos`— y hasta el spec 035 cada uno lo sacaba con su propio `sed` sobre la
- * tabla de `log.md`. Dos copias del mismo parseo es como el `SKILL.md` termina
- * diciendo una cosa y el script haciendo otra, que ya paso con los cruces.
+ * Se fue porque **un skill se lleva los scripts que usa**: los dos `.sh` ahora llaman a
+ * un `specs-por-estado.mjs` que vive adentro de su propio skill y no importa nada. Que
+ * las dos copias sean iguales lo verifica un gate, que es la respuesta al unico riesgo
+ * de duplicar; y no importar `lib/` es lo que las devuelve al piso de `engines` — un
+ * `.mjs` que importa un `.ts` necesita node >= 22.18, y el repo declara `^20.19`.
+ *
+ * Lo que queda aca es lo que usan las herramientas COMUNES, `publicar-spec.mjs` y
+ * `hidratar-specs.mjs`, que no son de ningun skill.
  */
-export const idsPorEstado = (mapa: Mapa, estado: string): string[] =>
-  Object.keys(mapa).filter((id) => mapa[id].estado === estado).sort();
 
 /**
  * El estado que el registro declara para un spec, o `null` si no tiene entrada.
@@ -102,6 +129,21 @@ export const estadoDe = (mapa: Mapa, id: string): string | null => mapa[id]?.est
 /** La URL de un issue. El repo se pasa: este archivo no habla con git ni con la red. */
 export const urlDeIssue = (repo: string, numero: number): string =>
   `https://github.com/${repo}/issues/${numero}`;
+
+/**
+ * El alfabeto de un `.md` publicable de un spec, y **el mismo de los dos lados**.
+ *
+ * Lo comparten `archivoDeComentario` —que reconoce el encabezado al bajar— y el
+ * `comentariosDe` de `publicar-spec.mjs` —que elige que subir—. Que sea uno solo es el
+ * punto: mientras el publicador aceptaba `[a-z]+\.md`, un `reparto-de-lote.md` o un
+ * `research-2.md` quedaba afuera **sin decir nada**, y como `specs/[0-9]…/` esta
+ * ignorado, el archivo se perdia en la hidratacion siguiente.
+ *
+ * Sigue siendo estrecho a proposito —minusculas, digitos y guiones— porque es tambien
+ * lo que distingue un archivo de una DISCUSION del issue: un comentario escrito a mano
+ * no arranca con `## \`algo.md\``.
+ */
+export const NOMBRE_PUBLICABLE = /^[a-z0-9-]+\.md$/;
 
 /** Un archivo reconstruido desde el comentario que lo llevaba. */
 export interface ArchivoDeComentario {
@@ -127,7 +169,7 @@ export const archivoDeComentario = (cuerpo: string): ArchivoDeComentario | null 
   // hoy sino por el primero que se escriba asi. Y el `\r` va explicito porque la API
   // devuelve CRLF: sin eso el corte deja un retorno de carro colgado adelante, que es
   // la misma trampa que `.claude/rules/mcp-server.md` ya tiene anotada.
-  const m = /^##\s+`([a-z]+\.md)`[^\S\r\n]*\r?\n(?:\r?\n)?/.exec(cuerpo);
+  const m = /^##\s+`([a-z0-9-]+\.md)`[^\S\r\n]*\r?\n(?:\r?\n)?/.exec(cuerpo);
   if (!m) return null;
   return { nombre: m[1], contenido: cuerpo.slice(m[0].length) };
 };
@@ -140,9 +182,18 @@ export const archivoDeComentario = (cuerpo: string): ArchivoDeComentario | null 
  * publicacion. Cubre las dos formas que existen en el repo: la relativa desde adentro
  * de `specs/` (`./005-…/spec.md`) y la que llega desde afuera (`specs/005-…/spec.md`,
  * con o sin `../` adelante). Lo que no esta en el mapa se deja como estaba.
+ *
+ * **El nombre del archivo se acepta con el mismo alfabeto que se publica** y no con una
+ * lista de cinco. Mientras era `spec|research|plan|tasks|baseline`, un enlace a un
+ * extra publicable —`./035-…/reparto.md`— se subia al issue VERBATIM, o sea una ruta
+ * relativa a un directorio ignorado: un enlace muerto que ademas el gate de
+ * `enlaces-resueltos` no mira, porque exime todo enlace de un spec hacia `specs/`.
+ *
+ * Que sea `NNN-slug/` lo que va adelante es lo que lo mantiene acotado: un `./notas.md`
+ * suelto no matchea.
  */
 export const traducir = (texto: string, mapa: Mapa, repo: string): string => texto.replace(
-  /(?:\.{1,2}\/)*(?:specs\/)?(\d{3})-[a-z0-9-]+\/(?:spec|research|plan|tasks|baseline)\.md/g,
+  /(?:\.{1,2}\/)*(?:specs\/)?(\d{3})-[a-z0-9-]+\/[a-z0-9-]+\.md/g,
   (original, id: string) => (mapa[id] ? urlDeIssue(repo, mapa[id].issue) : original),
 );
 

@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest';
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { join, dirname, resolve } from 'node:path';
 import {
-  archivoDeComentario, carpetaExistente, estadoDe, idsPorEstado, leerMapa, traducir, urlDeIssue,
-} from '../../.claude/scripts/lib/specs.ts';
+  archivoDeComentario, carpetaExistente, estadoDe, leerMapa, traducir, urlDeIssue,
+} from '../lib/specs.ts';
 
 /**
- * Los dos scripts que mueven los specs entre el repo y GitHub Issues (spec 034).
+ * Los scripts que mueven los specs entre el repo y GitHub Issues (spec 034).
  *
  * **Por que estan testeados y por que aca.** `publicar-spec.mjs` y
  * `hidratar-specs.mjs` nacieron como herramientas de un solo uso y no lo son: cada
@@ -13,12 +17,17 @@ import {
  * comentario duplicado, un `issue close` sobre uno ya cerrado, un estado nulo leido
  * como terminal—, encontrados usandolos y no por un test.
  *
- * Viven en `specs/__tests__/` —al lado de lo que verifican— desde el spec 035. El
- * codigo que miran esta en `.claude/scripts/lib/`, fuera del `include` de coverage
- * —que es `src/**`—, asi que no entra al umbral de 100: el criterio de suficiencia es
- * otro, y esta escrito en cada bloque. Cada caso de abajo es un modo de falla que ya
- * paso o que el propio spec lo nombra.
+ * **Vive en `.claude/scripts/__tests__/` y no en `specs/__tests__/`**, que es donde
+ * empezo: el test es del SCRIPT, y `specs/` es lo que el script manipula. Al lado de lo
+ * que verifica, como el resto del repo. En `specs/` se quedan los gates que miran el
+ * registro y la convencion, que si son de ahi.
+ *
+ * El codigo que mira esta fuera del `include` de coverage —que es `src/**`—, asi que no
+ * entra al umbral de 100: el criterio de suficiencia es otro, y esta escrito en cada
+ * bloque. Cada caso de abajo es un modo de falla que ya paso o que un spec nombra.
  */
+
+const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 const REPO = 'federicohermo/pentomino-games';
 const ISSUE = (n: number) => `https://github.com/${REPO}/issues/${n}`;
@@ -54,28 +63,81 @@ describe('leerMapa', () => {
   ])('grita ante %s', (json, esperado) => {
     expect(() => leerMapa(json)).toThrow(esperado);
   });
+
+  /*
+   * Y grita tambien ante una entrada INCOMPLETA, que es lo que no hacia.
+   *
+   * El encabezado decia que la validacion campo por campo la hacian el gate del PR y
+   * `parseMapa` del MCP server — y ninguno de los dos corre antes que el script. Un
+   * `mapa.json` editado a mano sin `issue` pasaba entero: la guarda `faltan` de la fase
+   * 2 de `publicar-spec.mjs` mira que este la CLAVE, no la entrada, asi que la corrida
+   * terminaba en `gh issue edit undefined --repo …`.
+   */
+  it.each([
+    ['una entrada que no es objeto', '{"001": 63}', 'la entrada 001 no es un objeto'],
+    ['`issue` ausente', '{"001": {"carpeta":"001-x","fecha":"2026-08-02","estado":"Propuesto","titulo":"T"}}', '`issue` como number'],
+    ['`issue` como string', '{"001": {"issue":"63","carpeta":"001-x","fecha":"2026-08-02","estado":"Propuesto","titulo":"T"}}', '`issue` como number'],
+    ['`carpeta` ausente', '{"001": {"issue":63,"fecha":"2026-08-02","estado":"Propuesto","titulo":"T"}}', '`carpeta` como string'],
+  ])('grita ante %s', (_caso, json, esperado) => {
+    expect(() => leerMapa(json)).toThrow(esperado);
+  });
+
+  it('una entrada completa pasa', () => {
+    expect(() => leerMapa(JSON.stringify(MAPA_DE(['001', 63])))).not.toThrow();
+  });
 });
 
-describe('idsPorEstado', () => {
-  const MAPA = MAPA_DE(['001', 63, 'Implementado'], ['034', 96], ['035', 99]);
+/**
+ * El `specs-por-estado.mjs` de cada skill: **una copia por skill, y las dos iguales**.
+ *
+ * Un skill se lleva adentro los scripts que usa, asi que el que resolvia `--propuestos`
+ * dejo de vivir en `.claude/scripts/` y hay uno en cada batch. La duplicacion tiene un
+ * solo riesgo real —que una se arregle y la otra no, que es como el SKILL.md termina
+ * diciendo una cosa y el script haciendo otra— y eso es lo que este bloque cierra.
+ *
+ * El otro motivo de que no importen `lib/`: un `.mjs` que importa un `.ts` necesita node
+ * **>= 22.18** y el repo declara `^20.19` en `engines`. Un script que se inyecta en cada
+ * corrida del skill no puede pedir mas de lo que el repo promete.
+ */
+describe('specs-por-estado.mjs, el de cada skill', () => {
+  const COPIAS = [
+    join(RAIZ, '.claude/skills/spec-review-batch/scripts/specs-por-estado.mjs'),
+    join(RAIZ, '.claude/skills/spec-implement-batch/scripts/specs-por-estado.mjs'),
+  ];
 
-  it('devuelve los `NNN` del estado pedido, ordenados', () => {
-    expect(idsPorEstado(MAPA, 'Propuesto')).toEqual(['034', '035']);
-    expect(idsPorEstado(MAPA, 'Implementado')).toEqual(['001']);
+  it('las dos copias son el mismo archivo, byte por byte', () => {
+    const [a, b] = COPIAS.map((c) => readFileSync(c, 'utf8'));
+
+    expect(b, 'las copias divergieron: arreglar una y no la otra es el unico riesgo de duplicar').toBe(a);
   });
 
-  it('un estado que no tiene specs da la lista vacia', () => {
-    // Y eso SI es una respuesta: «ninguno esta Descartado» es distinto de «no pude
-    // leer el registro», que es lo que `leerMapa` ya rechazo mas arriba.
-    expect(idsPorEstado(MAPA, 'Descartado')).toEqual([]);
+  it('no importa nada, que es lo que lo devuelve al piso de `engines`', () => {
+    // Un solo `import` de algo que no sea `node:` lo saca del piso: si es un `.ts`
+    // pide node >= 22.18, y si es un `.mjs` de afuera del skill deja de ser
+    // autocontenido. Las dos cosas se ven en la misma linea.
+    const fuera = [...readFileSync(COPIAS[0], 'utf8').matchAll(/^import .* from '([^']+)';$/gm)]
+      .map((m) => m[1])
+      .filter((m) => !m.startsWith('node:'));
+
+    expect(fuera, `importa de afuera: ${fuera.join(', ')}`).toEqual([]);
   });
 
-  it('vive aca y no en cada `.sh`, que es el punto', () => {
-    // Lo piden `lote.sh` y `matriz.sh` para su `--propuestos`, y hasta el 035 cada uno
-    // lo sacaba con su propio `sed` sobre la tabla de `log.md`. Dos copias del mismo
-    // parseo es como el SKILL.md termina diciendo una cosa y el script haciendo otra,
-    // que ya paso con los cruces.
-    expect(idsPorEstado(MAPA, 'Propuesto')).toEqual(idsPorEstado({ ...MAPA }, 'Propuesto'));
+  it('devuelve los `NNN` del estado pedido, ordenados y uno por linea', () => {
+    // Contra el `specs/mapa.json` de verdad, que es contra lo que corre: es el unico
+    // caso donde el registro real es el fixture correcto, porque lo que se verifica es
+    // justamente que el script lo sepa leer.
+    const salida = execFileSync('node', [COPIAS[0], 'Implementado'], { encoding: 'utf8' });
+    const ids = salida.split(/\r?\n/).filter(Boolean);
+
+    expect(ids.length).toBeGreaterThan(20);
+    expect(ids).toEqual([...ids].sort());
+    expect(ids.every((id) => /^\d{3}$/.test(id))).toBe(true);
+  });
+
+  it('un estado sin specs da la lista vacia, y eso SI es una respuesta', () => {
+    // «Ninguno esta en ese estado» es distinto de «no pude leer el registro», y el
+    // script grita para el segundo — por eso el vacio de aca se puede creer.
+    expect(execFileSync('node', [COPIAS[0], 'Un estado que no existe'], { encoding: 'utf8' }).trim()).toBe('');
   });
 });
 
@@ -120,6 +182,21 @@ describe('archivoDeComentario', () => {
       .toEqual({ nombre: 'research.md', contenido: '# Research\n\ncuerpo\n' });
   });
 
+  it('el nombre acepta digitos y guiones, que es lo que el publicador sube', () => {
+    // Los dos lados usan `NOMBRE_PUBLICABLE`. Mientras aca decia `[a-z]+\.md` y alla
+    // tambien, un `reparto-de-lote.md` quedaba afuera SIN DECIR NADA — y como
+    // `specs/[0-9]…/` esta ignorado, el archivo se perdia en la hidratacion siguiente.
+    expect(archivoDeComentario('## `reparto-de-lote.md`\n\ncuerpo\n')?.nombre).toBe('reparto-de-lote.md');
+    expect(archivoDeComentario('## `research-2.md`\n\ncuerpo\n')?.nombre).toBe('research-2.md');
+  });
+
+  it('y sigue siendo estrecho: mayusculas y espacios no son un archivo', () => {
+    // Es lo unico que distingue un archivo de una DISCUSION del issue, asi que ampliar
+    // el alfabeto tiene un limite: un comentario escrito a mano no puede colarse.
+    expect(archivoDeComentario('## `Notas Fede.md`\n\ncuerpo\n')).toBeNull();
+    expect(archivoDeComentario('## `README.md`\n\ncuerpo\n')).toBeNull();
+  });
+
   it('un comentario SIN encabezado no es un archivo', () => {
     // Es la unica forma de distinguir un archivo de una discusion del issue. Sin
     // esto, el primer comentario que alguien escriba a mano se escribiria al disco
@@ -155,6 +232,16 @@ describe('traducir', () => {
   it('traduce los cuatro archivos y el `baseline.md`, que solo tiene el 008', () => {
     for (const archivo of ['spec', 'research', 'plan', 'tasks', 'baseline']) {
       expect(traducir(`(./009-el-recorrido/${archivo}.md)`, MAPA, REPO)).toBe(`(${ISSUE(71)})`);
+    }
+  });
+
+  it('y tambien un extra publicable, que la lista de cinco dejaba pasar verbatim', () => {
+    // El bug: mientras el nombre se aceptaba con `spec|research|plan|tasks|baseline`, un
+    // enlace a `./005-…/reparto.md` —un archivo que el publicador SI sube— se publicaba
+    // tal cual, o sea una ruta relativa a un directorio ignorado. Enlace muerto, y el
+    // gate de `enlaces-resueltos` no lo mira porque exime los enlaces spec → `specs/`.
+    for (const archivo of ['reparto', 'reparto-de-lote', 'research-2', 'baseline2']) {
+      expect(traducir(`(./005-src-en-capas/${archivo}.md)`, MAPA, REPO)).toBe(`(${ISSUE(67)})`);
     }
   });
 

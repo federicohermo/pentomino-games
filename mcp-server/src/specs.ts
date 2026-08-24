@@ -337,8 +337,24 @@ export interface SpecStatus {
    * Su carpeta. Sale del mapa, asi que **existe aunque el spec no este hidratado**:
    * es el nombre historico, el que citan los specs viejos, y no uno derivado del
    * titulo — ver `EntradaDeMapa.carpeta`.
+   *
+   * Es la IDENTIDAD del spec y no una ruta: para abrir un archivo esta `enDisco`.
    */
   dir: string;
+  /**
+   * La carpeta que de verdad esta en disco, o `null` si el spec no esta hidratado.
+   *
+   * Va aparte de `dir` porque los dos hacen falta y **no siempre coinciden**: una
+   * cache hidratada antes de que `carpeta` existiera quedo con el slug del titulo, y
+   * eran 7 de los 35. Ahi `dir` sigue siendo el nombre que citan los specs viejos y
+   * este es donde estan los bytes.
+   *
+   * Quien vaya a leer o escribir un archivo arma la ruta con ESTE. Con `dir` la ruta
+   * apunta a una carpeta que puede no existir, y el `readFileSync` de `spec_write`
+   * moria con un ENOENT crudo —sin `try/catch` en el medio— justo en el caso que la
+   * nota «cache vieja» describe.
+   */
+  enDisco: string | null;
   /** El issue donde vive el spec entero. `null` solo si la carpeta no esta en el mapa. */
   issue: number | null;
   fecha: string | null;
@@ -448,6 +464,7 @@ export function readSpecStatus(specsDir: string): { specs: SpecStatus[]; totales
     return {
       id,
       dir: e.carpeta,
+      enDisco: dir,
       issue: e.issue,
       fecha: e.fecha,
       estado: e.estado,
@@ -465,7 +482,9 @@ export function readSpecStatus(specsDir: string): { specs: SpecStatus[]; totales
     if (mapa[dir.slice(0, 3)] !== undefined) continue;
     const notas = ['sin entrada en specs/mapa.json: el spec no tiene issue al que llegar'];
     specs.push({
-      id: dir.split('-', 1)[0], dir, issue: null, fecha: null, estado: null, titulo: null,
+      // Una carpeta huerfana es lo unico que hay: el nombre de disco es tambien el
+      // unico nombre, asi que `dir` y `enDisco` son el mismo string por definicion.
+      id: dir.split('-', 1)[0], dir, enDisco: dir, issue: null, fecha: null, estado: null, titulo: null,
       tareas: leerTareas(dir, notas), notas,
     });
   }
