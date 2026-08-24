@@ -547,7 +547,7 @@ export default function App(){
   // O sea que esta clase paso de ser la red a ser la garantia.
   //
   // `bg-fondo text-slate-900` SOBREVIVEN: este `div` es uno de los cuatro
-  // lugares donde vive el color de fondo, y `src/__tests__/fondo-sincronizado.test.ts`
+  // lugares donde vive el color de fondo, y `__tests__/fondo-sincronizado.test.ts`
   // existe para que los cuatro no se desincronicen.
   return (
     <div ref={raizRef} className="h-[100dvh] w-full overflow-hidden bg-fondo text-slate-900">

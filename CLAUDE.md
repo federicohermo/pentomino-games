@@ -1,10 +1,9 @@
 # CLAUDE.md
 
-Guía para Claude Code (claude.ai/code) al trabajar en este repositorio. Es un *cheat sheet*: lo que no
-se puede averiguar mirando un archivo. El detalle vive en `docs/`, las reglas por capa en
-`.claude/rules/` —se cargan solas al tocar sus archivos—, y **el trabajo planificado y la deuda en
-GitHub Issues**: `specs/mapa.json` es el mapa spec↔issue, y el porqué de cada decisión vive como
-comentario en el issue de su spec.
+Guía para Claude Code (claude.ai/code) en este repositorio. Es un *cheat sheet*: lo que no se puede
+averiguar mirando un archivo. El detalle vive en `docs/`, las reglas por capa en `.claude/rules/`
+—se cargan solas al tocar sus archivos—, y **el trabajo planificado y la deuda en GitHub Issues**:
+`specs/mapa.json` es el mapa spec↔issue, y el porqué de cada decisión, un comentario en su issue.
 
 ## Qué es
 
@@ -38,9 +37,10 @@ abrirlo:
 - **`lint` también lintea todos los `.md`** desde el 032, en dos carriles: preset completo en la
   documentación viva, y sólo las reglas de **renderizado** en `specs/[0-9]*/**`, porque un spec
   mergeado no se reescribe.
-- **Los tests de `src/` son dos proyectos de Vitest**, `node` y `browser`. El discriminante es el
-  **sufijo** `*.browser.test.tsx` y no una carpeta. **Chromium no está en el lockfile**: un clone
-  nuevo necesita `pnpm exec playwright install chromium` antes del primer `verify`.
+- **Los tests son dos proyectos de Vitest**, `node` y `browser`. El discriminante es el **sufijo**
+  `*.browser.test.tsx` y no una carpeta; el `node` mira cinco raíces —`src/`, `__tests__/` en la raíz,
+  `docs/`, `specs/` y `.claude/scripts/`—: cada gate vive con **el sujeto** que verifica. **Chromium
+  no está en el lockfile**: un clone nuevo necesita `pnpm exec playwright install chromium`.
 - **El gestor es pnpm y no npm** — npm dejaría un `package-lock.json` que Netlify puede preferir. Y
   `node_modules` es **estricto**: importar una dependencia transitiva falla, a propósito.
 - **Node ≥ 20.19 o ≥ 22.12**, declarado en nuestro propio `engines`. El MCP server pide **≥ 22.18**

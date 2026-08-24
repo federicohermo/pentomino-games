@@ -57,25 +57,33 @@ export default defineConfig({
           name: 'node',
           environment: 'node',
           /**
-           * Tres raices, y dos no son `src/`: cada gate vive al lado de lo que
-           * verifica (spec 035).
+           * Cinco raices, y cuatro no son `src/`: **cada gate vive al lado de lo que
+           * verifica**, y eso quiere decir al lado del SUJETO, no de lo que el sujeto
+           * toca. `__tests__/` en la raiz mira los archivos de la raiz —`index.html`,
+           * `public/manifest.json`, `README.md`—; `docs/__tests__/` la DOCUMENTACION
+           * (issue #100); `specs/__tests__/` el REGISTRO —la convencion y `mapa.json`,
+           * spec 035—; y `.claude/scripts/__tests__/` los SCRIPTS que lo publican e
+           * hidratan, que son del script y no de `specs/`, que es lo que el script
+           * manipula.
            *
-           * `specs/__tests__/` mira el REGISTRO —la convencion y `mapa.json`—, y
-           * `.claude/scripts/__tests__/` mira los SCRIPTS que lo publican e hidratan.
-           * Son dos cosas distintas y por eso son dos carpetas: el test de un script
-           * es del script, no de lo que el script manipula.
+           * Estaban todos en `src/__tests__/` por una sola razon, y no era de diseno:
+           * era el unico lugar donde vitest miraba. Ninguno importa una linea de `src/`
+           * —usan `node:fs` y `node:url`, y uno lanza `gh`—, asi que lo que hacian ahi
+           * era obligar a la app a saber que el repo tiene specs, documentacion y un
+           * `index.html`. En `src/__tests__/` queda lo que es de la app.
            *
-           * Estaban los tres en `src/__tests__/` por una sola razon, y no era de
-           * diseno: era el unico lugar donde vitest miraba. Ninguno importa una linea
-           * de `src/` —usan `node:fs`, `gh` y `.claude/scripts/lib`—, asi que lo que
-           * hacian ahi era obligar a la app a saber que el repo tiene specs.
+           * Y en `__tests__/` y no sueltos, como en el resto del repo: `specs/` es
+           * ademas la cache hidratada de los issues, y un `.test.ts` entre 35 carpetas
+           * `NNN-…` se lee como si fuera parte de un spec.
            *
-           * En `__tests__/`, como en el resto del repo: `specs/` tambien es la
-           * cache hidratada de los issues, y un `.test.ts` suelto entre 35
-           * carpetas `NNN-…` se lee como si fuera parte de un spec.
+           * Sin cualquiera de estas cinco entradas, esos gates dejan de correr EN
+           * SILENCIO — la forma de fallar en verde que este repo ya se comio dos veces.
+           * Ninguno entra al coverage: su `include` es `src/**` y punto.
            */
           include: [
             'src/**/__tests__/*.test.ts',
+            '__tests__/*.test.ts',
+            'docs/__tests__/*.test.ts',
             'specs/__tests__/*.test.ts',
             '.claude/scripts/__tests__/*.test.ts',
           ],

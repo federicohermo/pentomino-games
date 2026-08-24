@@ -449,7 +449,11 @@ export default tseslint.config([
     // En un test el `!` sobre un `find` o un `querySelector` que el propio test acaba de
     // fijar es la forma de que el test **falle** si el nodo no esta, que es justo lo que
     // se quiere. `CLAUDE.md` ya las declara deliberadas.
-    files: ['src/**/__tests__/**/*.{ts,tsx}', 'specs/__tests__/*.ts', '.claude/scripts/__tests__/*.ts', 'mcp-server/**/__tests__/**/*.ts'],
+    files: [
+      'src/**/__tests__/**/*.{ts,tsx}', '__tests__/*.ts', 'docs/__tests__/*.ts',
+      'specs/__tests__/*.ts', '.claude/scripts/__tests__/*.ts',
+      'mcp-server/**/__tests__/**/*.ts',
+    ],
     rules: { '@typescript-eslint/no-non-null-assertion': 'off' },
   },
 
@@ -464,9 +468,14 @@ export default tseslint.config([
     languageOptions: { globals: globals.browser },
   },
   {
-    // Los gates de `specs/__tests__/` y `.claude/scripts/` corren en node y no en el
-    // navegador: leen el disco y lanzan `gh`.
-    files: ['mcp-server/**/*.ts', 'specs/__tests__/*.ts', '.claude/scripts/**/*.ts', '*.config.ts'],
+    // Los gates que no son de la app van aca y no arriba, y es el arreglo del mismo
+    // error con otra cara: leen el disco con `node:fs` y `node:url`, lanzan `gh`, y
+    // ninguno toca un DOM. Mientras vivieron en `src/` caian en `globals.browser`, o
+    // sea que recibian `window` y `document` definidos y `process` NO.
+    files: [
+      'mcp-server/**/*.ts', '__tests__/*.ts', 'docs/__tests__/*.ts',
+      'specs/__tests__/*.ts', '.claude/scripts/**/*.ts', '*.config.ts',
+    ],
     languageOptions: { globals: globals.node },
   },
 
@@ -530,7 +539,10 @@ export default tseslint.config([
     //
     // `fixable: false` es deliberado: no se quiere que `--fix` borre el `.only` en silencio,
     // se quiere que falle.
-    files: ['src/**/__tests__/**/*.{ts,tsx}', 'specs/__tests__/*.ts', '.claude/scripts/__tests__/*.ts'],
+    files: [
+      'src/**/__tests__/**/*.{ts,tsx}', '__tests__/*.ts', 'docs/__tests__/*.ts',
+      'specs/__tests__/*.ts', '.claude/scripts/__tests__/*.ts',
+    ],
     plugins: { vitest },
     rules: {
       'vitest/no-focused-tests': ['error', { fixable: false }],
@@ -605,7 +617,7 @@ export default tseslint.config([
       // con backticks y guion bajo, asi que declara roto el unico enlace de
       // `docs/guides/mcp-domain.md` que apunta a `#find_symbol`, que en GitHub resuelve.
       // Lo que si se verifica —enlaces y anclas, con el slugger correcto— es
-      // `src/__tests__/enlaces-resueltos.test.ts`, que ademas cubre los enlaces a OTRO
+      // `docs/__tests__/enlaces-resueltos.test.ts`, que ademas cubre los enlaces a OTRO
       // archivo, que esta regla no mira.
       'markdown/no-missing-link-fragments': 'off',
     },

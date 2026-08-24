@@ -20,13 +20,15 @@ import { join, dirname, resolve, relative, sep } from 'node:path';
  * abajo, cada una con el falso positivo que produce si se escribe de la otra forma.
  *
  * Es un test del proyecto `node`: son archivos leidos del disco y comparados como
- * texto, sin un DOM en el medio. Vive en `src/__tests__/`, que el `exclude` de
- * coverage ya saca, junto a los otros tres tests del repo —y no de `src/`— que ya
- * hacian esto mismo con tres valores puntuales.
+ * texto, sin un DOM en el medio. Vive en `docs/__tests__/` y no en `src/` porque no
+ * importa una sola linea de la app: verifica la DOCUMENTACION, y `src/` no tiene por
+ * que saber de ella (issue #100). Como el `include` de coverage es `src/**`, tampoco
+ * entra al umbral de 100 — el criterio de suficiencia es otro y esta escrito abajo.
  */
 
 /**
- * La raiz del repo: este archivo vive en `src/__tests__/`.
+ * La raiz del repo: este archivo vive en `docs/__tests__/`, a dos niveles, que es la
+ * misma profundidad que tenia en `src/__tests__/`.
  *
  * Con `fileURLToPath` y no con `.pathname`: en Windows el pathname de un `file://`
  * viene como `/D:/...`, con una barra de mas adelante, y `resolve` sobre eso da una
@@ -163,13 +165,17 @@ describe('los enlaces relativos de la documentacion resuelven', () => {
     // "{.}"` de `verify`, aca con otra cara.
     //
     // El piso es 25 y no 100 porque la cuenta cambio sola con el spec 034, no porque
-    // el gate afloje. Medido sobre un worktree con `specs/NNN-…/` ignorado: **30**
-    // archivos contra los 163 del repo completo — los 133 que faltan son exactamente
-    // los specs. Un piso de 25 sigue siendo una red que atrapa un caminante roto; lo
-    // que no podia era seguir en 100 y fallar por el motivo equivocado.
+    // el gate afloje. Medido el 2026-08-24 sobre un worktree SIN hidratar: **28**
+    // archivos, contra los 170 que camina el mismo arbol con `specs/` hidratado — los
+    // 142 de la diferencia son exactamente los specs. Un piso de 25 sigue siendo una
+    // red que atrapa un caminante roto; lo que no podia era seguir en 100 y fallar por
+    // el motivo equivocado.
+    //
+    // El margen es de 3 y se achica solo: la medicion anterior, del 034, daba 30. Si
+    // llega a 0 el arreglo es re-medir y bajar el piso, no borrarlo.
     const piso = 25;
 
-    expect(ARCHIVOS.length, `piso ${piso}, sin contar los specs ignorados`).toBeGreaterThan(piso);
+    expect(ARCHIVOS.length, `piso ${piso}, con specs/ hidratado o no`).toBeGreaterThan(piso);
   });
 
   it('cada enlace apunta a un archivo que existe', () => {
