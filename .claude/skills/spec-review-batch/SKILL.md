@@ -73,9 +73,20 @@ necesita el 019 *escrito*, y ya lo está. Por eso el ancho es N aunque el `log.m
 `Propuesto` de la tabla de `specs/log.md`. Sin argumentos, **preguntá**: no asumas los últimos.
 
 - **Sacá los terminales.** `Descartado` y `Superado` no se revisan; decí cuáles sacaste.
-- **Árbol limpio en `specs/`.** `git status --short specs/`. Sucio, las ediciones de N agentes se
-  mezclan con trabajo previo y el `git diff` deja de ser el registro del review — que es lo único que
-  lo hace auditable. Ofrecé commitear primero o correr `--dry`.
+- **Los specs del lote están en el disco.** Desde el spec 034 viven en issues y `specs/[0-9]*/` está
+  en el `.gitignore`, así que el directorio es una **caché** que puede no estar:
+
+  ```bash
+  node .claude/scripts/hidratar-specs.mjs <NNN> <NNN> …
+  ```
+
+  Sin eso los agentes revisan un directorio vacío y **no falla**: revisan un spec que no leyeron.
+
+  **Y esto reemplaza al viejo gate de «árbol limpio en `specs/`», que dejó de poder funcionar**:
+  `git status --short specs/` ya no ve nada de `specs/[0-9]*/` porque está ignorado, así que decía
+  «limpio» siempre. Lo que ese gate protegía —que el `git diff` fuera el registro auditable del
+  review— **ya no aplica**: desde el 033 las escrituras van por `spec_write` al registro central, y
+  desde el 034 el registro es el issue. El historial del review es el del issue.
 - **Loop activo.** `git worktree list`: el spec que tenga un worktree abierto cae a `--dry` **él solo**,
   no el lote. Al resto no se le mueve el piso por un vecino. Y `--dry` ahora quiere decir **no llamar a
   `spec_write`**: la tool escribe en el registro central y no en el árbol de quien la llama, así que un

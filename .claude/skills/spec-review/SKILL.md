@@ -90,6 +90,7 @@ y no puede quedar viejo:
 | En vez de | Usá |
 |---|---|
 | Leer `log.md` y los `tasks.md` para saber en qué quedó cada spec, o abrir uno para auditarle las tareas | `spec_status` — estado, hechas/total y `pendientes`, que descuenta `Seguimiento`, `[M]` y specs terminales; con el argumento `spec`, ese spec solo más `citas` y `cruces` |
+| Abrir el `spec.md` o el `research.md` del spec que se audita, y encontrar que no está | `node .claude/scripts/hidratar-specs.mjs <NNN>` **antes de leer**. Desde el spec 034 viven en issues y `specs/[0-9]*/` está en el `.gitignore`: el directorio es una caché que puede no estar, y un review sobre un directorio vacío **no falla** — audita un spec que no leyó |
 | Derivar a mano una rotación, una escala o un retrógrado que el spec afirma | `describe_piece` |
 | Recorrer el lookahead a mano para saber qué suena junto | `simulate_board` |
 | Verificar que el spec no rompe geometría, `SHAPES` o el modelo musical | `check_invariants`, **en proceso fresco** — el MCP de la sesión cachea los módulos y contesta con el código viejo |
