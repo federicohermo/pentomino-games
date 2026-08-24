@@ -20,7 +20,7 @@ export const SHAPES: Record<PieceKey, Cell[]> = {
   W: [[0,0],[1,0],[1,1],[2,1],[2,2]],
   X: [[1,0],[0,1],[1,1],[2,1],[1,2]],
   Y: [[0,0],[1,0],[2,0],[3,0],[2,1]],
-  Z: [[0,1],[1,1],[1,0],[2,0],[3,0]],
+  Z: [[0,0],[1,0],[1,1],[1,2],[2,2]],
 };
 
 // Celda "de agarre": la que queda bajo el cursor al colocar la pieza. Se guarda
@@ -30,5 +30,5 @@ export const SHAPES: Record<PieceKey, Cell[]> = {
 // Se eligió en cada pieza una celda central, para que el click caiga sobre
 // masa de la pieza y no sobre un hueco de su bounding box.
 export const ANCHOR_INDEX: Record<PieceKey, number> = {
-  F: 2, I: 2, L: 1, N: 2, P: 2, T: 3, U: 2, V: 0, W: 2, X: 2, Y: 2, Z: 1,
+  F: 2, I: 2, L: 1, N: 2, P: 2, T: 3, U: 2, V: 0, W: 2, X: 2, Y: 2, Z: 2,
 };
