@@ -26,9 +26,19 @@ import { join, dirname, resolve } from 'node:path';
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const SPECS = join(RAIZ, 'specs');
 
-/** Las carpetas de spec: `NNN-descripcion-kebab`. */
+/**
+ * Las carpetas de spec: `NNN-descripcion-kebab`.
+ *
+ * Se listan TODAS y se descuenta una sola por nombre, en vez de filtrar por
+ * `/^\d{3}-/`. La diferencia importa: con el filtro, el gate «cada carpeta se llama
+ * `NNN-descripcion-kebab`» solo podria ver las que ya cumplen, o sea que no podria
+ * fallar nunca. Una carpeta mal nombrada tiene que seguir siendo roja.
+ *
+ * `__tests__` es la excepcion y es este mismo directorio: los gates del registro
+ * viven al lado de lo que verifican (spec 035).
+ */
 const CARPETAS = readdirSync(SPECS, { withFileTypes: true })
-  .filter((e) => e.isDirectory())
+  .filter((e) => e.isDirectory() && e.name !== '__tests__')
   .map((e) => e.name)
   .sort();
 

@@ -32,5 +32,5 @@
    * Es `lib` y no `.claude/scripts` entero: los dos scripts son `.mjs` ejecutables y no
    * tienen por que entrar al programa de la app.
    */
-  "include": ["src", ".claude/scripts/lib"]
+  "include": ["src", "specs", ".claude/scripts/lib"]
 }
