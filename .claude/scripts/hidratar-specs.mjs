@@ -74,7 +74,7 @@ const slugDe = (titulo, id) => {
 };
 
 /**
- * Un comentario del issue vuelve a ser su archivo. El encabezado que `publicar.mjs`
+ * Un comentario del issue vuelve a ser su archivo. El encabezado que `publicar-spec.mjs`
  * le puso adelante —`## \`research.md\``— es lo que dice cual es, asi que se lee y se
  * saca: no forma parte del archivo original.
  */
@@ -104,7 +104,7 @@ for (const fila of aHidratar) {
     const archivo = archivoDeComentario(c.body);
     // Un comentario sin el encabezado no es un archivo: es una discusion del issue, y
     // esas NO se escriben al disco. Es la unica forma de distinguirlos, y por eso el
-    // encabezado que pone `publicar.mjs` no es decorativo.
+    // encabezado que pone `publicar-spec.mjs` no es decorativo.
     if (!archivo) continue;
     writeFileSync(join(carpeta, archivo.nombre), archivo.contenido, 'utf8');
     n += 1;

@@ -35,7 +35,7 @@
  *   node .claude/scripts/publicar-spec.mjs crear     [--dry]
  *   node .claude/scripts/publicar-spec.mjs publicar  [--dry]
  */
-import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,9 +43,13 @@ import { fileURLToPath } from 'node:url';
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '../..');
 const SPECS = join(RAIZ, 'specs');
-// El mapa vive con los specs y no con el script: es dato, no herramienta. (El 035 lo
-// muda a `specs/mapa.json` y lo hace la unica fuente; hasta entonces convive con la
-// columna de enlace de `log.md`.)
+// **La fuente del mapa es `log.md`, no este archivo.** `mapa.json` es solo el buffer
+// del hueco entre crear el issue y anotar su fila, y vive en un directorio IGNORADO:
+// vaciar e hidratar `specs/` —que es la verificacion fuerte del propio 034— lo borra,
+// porque el hidratador reconstruye `spec.md` y los comentarios y nada mas. Si el mapa
+// fuera solo esto, despues de esa vuelta `crear` no reconoceria ni un spec y crearia
+// **34 issues duplicados** sin un solo error. Por eso `leerMapa` arranca de `log.md`,
+// que es lo que el AC3 declara como mapa y lo unico que se commitea.
 const MAPA_JSON = join(SPECS, '034-el-registro-deja-de-vivir-en-el-repo', 'mapa.json');
 const REPO = 'federicohermo/pentomino-games';
 
@@ -82,7 +86,21 @@ const gh = (args, stdin) => {
   return execFileSync('gh', args, { input: stdin, encoding: 'utf8', maxBuffer: 1 << 28 }).trim();
 };
 
-const leerMapa = () => (existsSync(MAPA_JSON) ? JSON.parse(readFileSync(MAPA_JSON, 'utf8')) : {});
+/**
+ * El mapa, con `log.md` como fuente y `mapa.json` encima.
+ *
+ * Ese orden es el que importa: la columna del enlace de `log.md` esta commiteada y
+ * sobrevive a un vaciado de `specs/`; `mapa.json` no. Lo que aporta el JSON es el
+ * hueco entre crear un issue y anotar su fila, y por eso pisa —es mas nuevo—.
+ */
+const leerMapa = () => {
+  const delLog = Object.fromEntries(
+    [...LOG.matchAll(/^\|\s*\[(\d{3})\]\((https:\/\/github\.com\/[^/]+\/[^/]+\/issues\/(\d+))\)/gm)]
+      .map((m) => [m[1], { carpeta: carpetas.find((c) => c.startsWith(`${m[1]}-`)) ?? null, numero: Number(m[3]), url: m[2] }]),
+  );
+  const delJson = existsSync(MAPA_JSON) ? JSON.parse(readFileSync(MAPA_JSON, 'utf8')) : {};
+  return { ...delLog, ...delJson };
+};
 
 /**
  * **En `--dry` no se escribe.** No es prolijidad: un mapa con los numeros en 0 haria
@@ -92,6 +110,9 @@ const leerMapa = () => (existsSync(MAPA_JSON) ? JSON.parse(readFileSync(MAPA_JSO
  */
 const guardarMapa = (m) => {
   if (DRY) return;
+  // El directorio puede no estar: es una cache ignorada, y el hidratador la reconstruye
+  // con el slug que salga del titulo del issue, que no tiene por que ser este.
+  mkdirSync(dirname(MAPA_JSON), { recursive: true });
   writeFileSync(MAPA_JSON, `${JSON.stringify(m, null, 2)}\n`, 'utf8');
 };
 
@@ -107,7 +128,7 @@ if (fase === 'crear') {
       '--title', tituloDe(carpeta),
       // Cuerpo minimo a proposito: el de verdad lo sube la fase 2, ya traducido. Si
       // esto quedara publicado por un fallo a mitad, dice que le falta.
-      '--body', `Spec \`${carpeta}\`. El contenido lo sube la fase 2 de \`publicar.mjs\`.`,
+      '--body', `Spec \`${carpeta}\`. El contenido lo sube la fase 2 de \`publicar-spec.mjs\`.`,
     ]);
     const numero = DRY ? 0 : Number(url.split('/').at(-1));
     mapa[id] = { carpeta, numero, url: DRY ? '(dry)' : url };
