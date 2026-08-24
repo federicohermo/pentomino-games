@@ -1,13 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
-  checkArrayOrder, checkAnchors, checkShapes, checkBaseMap, checkNotes, checkAll,
+  checkArrayOrder, checkAnchors, checkShapes, checkBaseMap, checkNotes, checkDistinct, checkAll,
 } from '../invariants.ts';
 import { SHAPES } from '../constants/pieces.constants.ts';
 import { BASE_MAP, PENT_MAJOR, REGIMEN } from '../constants/music.constants.ts';
 import type { Cell } from '../types/transform.types.ts';
 import type { PieceKey } from '../types/pieces.types.ts';
 
-describe('los cinco chequeos sobre las 96 combinaciones', () => {
+describe('los seis chequeos sobre las 96 combinaciones', () => {
   it('orden del array', () => {
     const r = checkArrayOrder();
     expect(r.failures).toEqual([]);
@@ -38,10 +38,18 @@ describe('los cinco chequeos sobre las 96 combinaciones', () => {
     expect(r.ok).toBe(true);
   });
 
-  it('checkAll devuelve los cinco, todos en verde', () => {
+  it('piezas distintas', () => {
+    const r = checkDistinct();
+    expect(r.failures).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+
+  it('checkAll devuelve los seis, todos en verde', () => {
     const all = checkAll();
-    expect(all).toHaveLength(5);
-    expect(all.map(r => r.name)).toEqual(['orden del array', 'ancla', 'formas', 'BASE_MAP', 'notas']);
+    expect(all).toHaveLength(6);
+    expect(all.map(r => r.name)).toEqual([
+      'orden del array', 'ancla', 'formas', 'BASE_MAP', 'notas', 'piezas distintas',
+    ]);
     expect(all.every(r => r.ok)).toBe(true);
   });
 
@@ -123,6 +131,35 @@ describe('los chequeos detectan una regresion', () => {
       vi.doUnmock('../transform.ts');
       vi.resetModules();
     }
+  });
+
+  /**
+   * El bug que motivo el chequeo, reproducido con la forma que la `Z` tuvo de verdad:
+   * `[[0,1],[1,1],[1,0],[2,0],[3,0]]` es la `N` reflejada. Los otros cinco chequeos la
+   * dan por buena —son cinco celdas, sin repetir, conexas— porque ninguno mira dos
+   * piezas a la vez.
+   */
+  it('checkDistinct ve la Z que era la N reflejada', () => {
+    conFormaMutada('Z', [[0,1],[1,1],[1,0],[2,0],[3,0]], () => {
+      expect(checkShapes().ok).toBe(true);   // el chequeo 3 no la ve, y ese es el punto
+
+      const r = checkDistinct();
+      expect(r.ok).toBe(false);
+      expect(r.failures).toEqual(['Z: es la misma forma que N rotada o reflejada']);
+    });
+  });
+
+  /**
+   * Y una forma distinta escrita con las celdas en otro orden NO es un duplicado: el
+   * chequeo compara conjuntos, no arrays. Sin el `sort()` de `canonicalKey` esta `N`
+   * —la misma pieza, otro orden— se leeria como una pieza nueva y el duplicado real
+   * pasaria.
+   */
+  it('checkDistinct compara el conjunto y no el orden del array', () => {
+    conFormaMutada('N', [[3,1],[2,1],[1,1],[1,0],[0,0]], () => {
+      const r = checkDistinct();
+      expect(r.ok).toBe(true);
+    });
   });
 
   it('checkBaseMap ve dos piezas con la misma tonica', () => {
