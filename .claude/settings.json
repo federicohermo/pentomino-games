@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [".claude/scripts/gate-de-spec.mjs"],
+            "timeout": 10,
+            "statusMessage": "Verificando que la rama tenga spec…"
+          }
+        ]
+      }
+    ]
+  }
+}
