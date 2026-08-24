@@ -165,13 +165,17 @@ describe('los enlaces relativos de la documentacion resuelven', () => {
     // "{.}"` de `verify`, aca con otra cara.
     //
     // El piso es 25 y no 100 porque la cuenta cambio sola con el spec 034, no porque
-    // el gate afloje. Medido sobre un worktree con `specs/NNN-…/` ignorado: **30**
-    // archivos contra los 163 del repo completo — los 133 que faltan son exactamente
-    // los specs. Un piso de 25 sigue siendo una red que atrapa un caminante roto; lo
-    // que no podia era seguir en 100 y fallar por el motivo equivocado.
+    // el gate afloje. Medido el 2026-08-24 sobre un worktree SIN hidratar: **28**
+    // archivos, contra los 170 que camina el mismo arbol con `specs/` hidratado — los
+    // 142 de la diferencia son exactamente los specs. Un piso de 25 sigue siendo una
+    // red que atrapa un caminante roto; lo que no podia era seguir en 100 y fallar por
+    // el motivo equivocado.
+    //
+    // El margen es de 3 y se achica solo: la medicion anterior, del 034, daba 30. Si
+    // llega a 0 el arreglo es re-medir y bajar el piso, no borrarlo.
     const piso = 25;
 
-    expect(ARCHIVOS.length, `piso ${piso}, sin contar los specs ignorados`).toBeGreaterThan(piso);
+    expect(ARCHIVOS.length, `piso ${piso}, con specs/ hidratado o no`).toBeGreaterThan(piso);
   });
 
   it('cada enlace apunta a un archivo que existe', () => {
