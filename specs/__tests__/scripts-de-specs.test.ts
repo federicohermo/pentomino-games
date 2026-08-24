@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  archivoDeComentario, carpetaExistente, estadoDe, filasDeLog, mapaDeLog, slugDe, traducir,
+  archivoDeComentario, carpetaExistente, estadoDe, idsPorEstado, leerMapa, traducir, urlDeIssue,
 } from '../../.claude/scripts/lib/specs.ts';
 
 /**
@@ -13,97 +13,106 @@ import {
  * comentario duplicado, un `issue close` sobre uno ya cerrado, un estado nulo leido
  * como terminal—, encontrados usandolos y no por un test.
  *
- * Viven en `src/__tests__/` porque es donde ya estan los gates del repo que no miran
- * la app: `specs-convencion`, `enlaces-resueltos`, `mapa-de-directorios`,
- * `claude-md-acotado`. El codigo que verifican esta en `.claude/scripts/lib/`, fuera
- * del `include` de coverage —que es `src/**`—, asi que no entra al umbral de 100: el
- * criterio de suficiencia es otro, y esta escrito en cada bloque. Cada caso de abajo
- * es un modo de falla que ya paso o que el propio spec 034 nombra.
+ * Viven en `specs/__tests__/` —al lado de lo que verifican— desde el spec 035. El
+ * codigo que miran esta en `.claude/scripts/lib/`, fuera del `include` de coverage
+ * —que es `src/**`—, asi que no entra al umbral de 100: el criterio de suficiencia es
+ * otro, y esta escrito en cada bloque. Cada caso de abajo es un modo de falla que ya
+ * paso o que el propio spec lo nombra.
  */
 
-const FILA = (id: string, href: string) => `| [${id}](${href}) | 2026-08-23 | Propuesto | Una cosa |`;
-const ISSUE = (n: number) => `https://github.com/federicohermo/pentomino-games/issues/${n}`;
+const REPO = 'federicohermo/pentomino-games';
+const ISSUE = (n: number) => `https://github.com/${REPO}/issues/${n}`;
 
-describe('filasDeLog / mapaDeLog', () => {
-  it('lee id, numero y URL de cada fila migrada', () => {
-    const filas = filasDeLog([FILA('001', ISSUE(63)), FILA('034', ISSUE(96))].join('\n'));
+/** Una entrada de mapa, con los cinco campos que el registro declara. */
+const ENTRADA = (id: string, issue: number, estado = 'Propuesto') => ({
+  issue, carpeta: `${id}-un-spec-cualquiera`, fecha: '2026-08-23', estado, titulo: `Spec ${id} — Una cosa`,
+});
+const MAPA_DE = (...pares: [string, number, string?][]) =>
+  Object.fromEntries(pares.map(([id, n, e]) => [id, ENTRADA(id, n, e)]));
 
-    expect(filas).toEqual([
-      { id: '001', url: ISSUE(63), numero: '63' },
-      { id: '034', url: ISSUE(96), numero: '96' },
-    ]);
+describe('leerMapa', () => {
+  it('devuelve el mapa entero, indexado por `NNN`', () => {
+    const mapa = leerMapa(JSON.stringify(MAPA_DE(['001', 63], ['034', 96])));
+
+    expect(Object.keys(mapa)).toEqual(['001', '034']);
+    expect(mapa['034'].issue).toBe(96);
   });
 
-  it('NO cuenta las filas que todavia apuntan a una carpeta', () => {
-    // Media tabla migrada es el estado que el 034 define como invalido, y el mapa
-    // tiene que reflejarlo corto en vez de inventar un issue: de una ruta no sale un
-    // numero de issue, y adivinarlo —`NNN` -> `#NNN`— es justo lo que el AC3 prohibe
-    // porque issues y PRs comparten contador.
-    const filas = filasDeLog([FILA('001', './001-notas-por-celda/spec.md'), FILA('002', ISSUE(64))].join('\n'));
+  /*
+   * Las tres formas de que el registro no se pueda leer, y las tres tienen que GRITAR.
+   *
+   * Es la leccion del 034: su antecesora `filasDeLog` devolvia `[]` cuando el regex
+   * dejaba de matchear, y `[]` no es un error sino un registro vacio. Cuando el 034
+   * cambio el formato de la columna del enlace, eso salio como 34 specs sin estado, en
+   * verde. Un mapa vacio entra en la lista a proposito: para el hidratador significa
+   * «no hay nada que bajar», que es lo contrario de lo que pasa.
+   */
+  it.each([
+    ['no es JSON', 'no es JSON valido'],
+    ['[]', 'tiene que ser un objeto'],
+    ['{}', 'no tiene una sola entrada'],
+  ])('grita ante %s', (json, esperado) => {
+    expect(() => leerMapa(json)).toThrow(esperado);
+  });
+});
 
-    expect(filas.map((f) => f.id)).toEqual(['002']);
+describe('idsPorEstado', () => {
+  const MAPA = MAPA_DE(['001', 63, 'Implementado'], ['034', 96], ['035', 99]);
+
+  it('devuelve los `NNN` del estado pedido, ordenados', () => {
+    expect(idsPorEstado(MAPA, 'Propuesto')).toEqual(['034', '035']);
+    expect(idsPorEstado(MAPA, 'Implementado')).toEqual(['001']);
   });
 
-  it('no confunde un issue de otro repo con una ruta, ni una linea suelta con una fila', () => {
-    expect(filasDeLog('el spec [001](https://github.com/x/y/issues/1) se cita en un parrafo')).toEqual([]);
-    expect(filasDeLog(FILA('001', 'https://example.com/algo'))).toEqual([]);
+  it('un estado que no tiene specs da la lista vacia', () => {
+    // Y eso SI es una respuesta: «ninguno esta Descartado» es distinto de «no pude
+    // leer el registro», que es lo que `leerMapa` ya rechazo mas arriba.
+    expect(idsPorEstado(MAPA, 'Descartado')).toEqual([]);
   });
 
-  it('el mapa indexa por `NNN` y el numero viaja como numero', () => {
-    expect(mapaDeLog(FILA('021', ISSUE(83)))).toEqual({ '021': { numero: 83, url: ISSUE(83) } });
+  it('vive aca y no en cada `.sh`, que es el punto', () => {
+    // Lo piden `lote.sh` y `matriz.sh` para su `--propuestos`, y hasta el 035 cada uno
+    // lo sacaba con su propio `sed` sobre la tabla de `log.md`. Dos copias del mismo
+    // parseo es como el SKILL.md termina diciendo una cosa y el script haciendo otra,
+    // que ya paso con los cruces.
+    expect(idsPorEstado(MAPA, 'Propuesto')).toEqual(idsPorEstado({ ...MAPA }, 'Propuesto'));
+  });
+});
+
+describe('urlDeIssue', () => {
+  it('arma la URL desde el repo y el numero', () => {
+    // El repo se pasa y no se hardcodea: `lib/` no habla con git ni con la red, asi
+    // que quien sabe contra que remoto corre es quien llama.
+    expect(urlDeIssue(REPO, 63)).toBe(ISSUE(63));
   });
 });
 
 describe('estadoDe', () => {
-  const LOG = [FILA('033', ISSUE(95)).replace('Propuesto', 'Implementado'), FILA('034', ISSUE(96))].join('\n');
+  const MAPA = MAPA_DE(['033', 95, 'Implementado'], ['034', 96]);
 
-  it('saca el estado de la fila, que es la TERCERA columna', () => {
-    // La segunda es la fecha. Leer la columna corrida cerraria un spec por la fecha
-    // que tenga, que es la clase de bug que no da error.
-    expect(estadoDe(LOG, '033')).toBe('Implementado');
-    expect(estadoDe(LOG, '034')).toBe('Propuesto');
+  it('saca el estado de la entrada', () => {
+    expect(estadoDe(MAPA, '033')).toBe('Implementado');
+    expect(estadoDe(MAPA, '034')).toBe('Propuesto');
   });
 
-  it('un spec sin fila da `null`, y eso NO es un estado', () => {
-    // El bug del 035: sin fila todavia, caia en el `else` y el issue se cerraba
+  it('un spec sin entrada da `null`, y eso NO es un estado', () => {
+    // El bug del 035: sin entrada todavia, caia en el `else` y el issue se cerraba
     // recien nacido — lo contrario de lo correcto, porque un spec recien escrito es
     // justamente el que tiene que quedar abierto.
-    expect(estadoDe(LOG, '035')).toBeNull();
+    expect(estadoDe(MAPA, '035')).toBeNull();
   });
 });
 
-describe('slugDe', () => {
-  it('saca el prefijo `Spec NNN —` y deja el titulo en kebab', () => {
-    expect(slugDe('Spec 021 — El tablero es la pantalla', '021')).toBe('021-el-tablero-es-la-pantalla');
-  });
-
-  it('se lleva los acentos y la puntuacion', () => {
-    expect(slugDe('Spec 017 — El régimen de rotación', '017')).toBe('017-el-regimen-de-rotacion');
-    expect(slugDe('Spec 004 — Fase por pieza: la columna como posición en el compás', '004'))
-      .toBe('004-fase-por-pieza-la-columna-como-posicion-en-el-compas');
-  });
-
-  it('corta en un guion y nunca a mitad de palabra', () => {
-    // El corte viejo era a las 8 primeras palabras y partia la frase donde cayera:
-    // el 001 quedaba `001-asignar-cada-nota-a-una-celda-de-la`. Lo que se afirma no
-    // es el largo exacto —eso es un numero de la implementacion— sino que lo que
-    // salga termine en una palabra entera del titulo.
-    const largo = slugDe('Spec 001 — Asignar cada nota a una celda de la pieza, en orden angular alrededor del centroide', '001');
-
-    expect(largo.startsWith('001-asignar-cada-nota-a-una-celda-de-la-pieza')).toBe(true);
-    expect(largo.endsWith('-')).toBe(false);
-    for (const palabra of largo.slice(4).split('-')) {
-      expect('asignar cada nota a una celda de la pieza en orden angular alrededor del centroide'.split(' '))
-        .toContain(palabra);
-    }
-  });
-
-  it('un titulo sin el prefijo tambien sale entero', () => {
-    // `tituloDe` lee el `# ` del spec tal cual, asi que un spec que no siga la
-    // convencion del encabezado no puede romper la hidratacion.
-    expect(slugDe('Los registros se van con los specs', '035')).toBe('035-los-registros-se-van-con-los-specs');
-  });
-});
+/*
+ * Aca vivia `slugDe`, que derivaba el nombre de la carpeta del titulo del issue.
+ *
+ * Se borro en el spec 035 con una medicion: sobre los 35 specs reproducia **28**
+ * nombres historicos y fallaba en **7**. El 001 se llama
+ * `001-notas-por-celda-en-orden-angular` y su issue se titula «Asignar cada nota a una
+ * celda de la pieza…»; ninguna heuristica los recupera. El nombre pasa a estar en
+ * `specs/mapa.json`, o sea guardado en vez de calculado, y el gate del mapa verifica
+ * que empiece con su propio `NNN`.
+ */
 
 describe('archivoDeComentario', () => {
   it('reconoce el encabezado y lo saca del contenido', () => {
@@ -135,29 +144,29 @@ describe('archivoDeComentario', () => {
 });
 
 describe('traducir', () => {
-  const MAPA = { '005': { numero: 67, url: ISSUE(67) }, '009': { numero: 71, url: ISSUE(71) } };
+  const MAPA = MAPA_DE(['005', 67], ['009', 71]);
 
   it('traduce las tres formas de citar un spec que hay en el repo', () => {
-    expect(traducir('ver [el 005](./005-src-en-capas/spec.md)', MAPA)).toBe(`ver [el 005](${ISSUE(67)})`);
-    expect(traducir('ver [el 005](specs/005-src-en-capas/research.md)', MAPA)).toBe(`ver [el 005](${ISSUE(67)})`);
-    expect(traducir('ver [el 005](../005-src-en-capas/plan.md)', MAPA)).toBe(`ver [el 005](${ISSUE(67)})`);
+    expect(traducir('ver [el 005](./005-src-en-capas/spec.md)', MAPA, REPO)).toBe(`ver [el 005](${ISSUE(67)})`);
+    expect(traducir('ver [el 005](specs/005-src-en-capas/research.md)', MAPA, REPO)).toBe(`ver [el 005](${ISSUE(67)})`);
+    expect(traducir('ver [el 005](../005-src-en-capas/plan.md)', MAPA, REPO)).toBe(`ver [el 005](${ISSUE(67)})`);
   });
 
   it('traduce los cuatro archivos y el `baseline.md`, que solo tiene el 008', () => {
     for (const archivo of ['spec', 'research', 'plan', 'tasks', 'baseline']) {
-      expect(traducir(`(./009-el-recorrido/${archivo}.md)`, MAPA)).toBe(`(${ISSUE(71)})`);
+      expect(traducir(`(./009-el-recorrido/${archivo}.md)`, MAPA, REPO)).toBe(`(${ISSUE(71)})`);
     }
   });
 
   it('lo que no esta en el mapa se deja COMO ESTABA', () => {
     // Un spec sin issue todavia no se puede traducir, y romper o borrar el enlace
     // seria peor: dejarlo permite que el gate de enlaces lo reporte.
-    expect(traducir('(./021-el-tablero/spec.md)', MAPA)).toBe('(./021-el-tablero/spec.md)');
+    expect(traducir('(./021-el-tablero/spec.md)', MAPA, REPO)).toBe('(./021-el-tablero/spec.md)');
   });
 
   it('no toca un enlace que no es a un archivo de spec', () => {
-    expect(traducir('(./log.md) y (../../docs/guides/quickstart.md)', MAPA))
-      .toBe('(./log.md) y (../../docs/guides/quickstart.md)');
+    expect(traducir('(./mapa.json) y (../../docs/guides/quickstart.md)', MAPA, REPO))
+      .toBe('(./mapa.json) y (../../docs/guides/quickstart.md)');
   });
 });
 

@@ -29,8 +29,12 @@ expandir() {
     case "$a" in
       --dry|--carriles|--serie) ;;
       --propuestos)
-        # La tabla de log.md, columna de estado. Misma fuente que lee `spec_status`.
-        sed -n 's/^| \[\([0-9][0-9][0-9]\)\](.*|[ ]*Propuesto[ ]*|.*/\1/p' specs/log.md ;;
+        # El estado sale de `specs/mapa.json`, que es la misma fuente que lee
+        # `spec_status`. Es node y no `sed` a proposito: `sed` sobre JSON ata la
+        # busqueda al formato del archivo, y el dia que alguien lo reformatee la
+        # respuesta pasa a ser vacia sin un solo error — un lote de cero specs que
+        # se lee como «no hay nada Propuesto». `jq` se descarto: no esta en el PATH.
+        node .claude/scripts/specs-por-estado.mjs Propuesto ;;
       [0-9][0-9][0-9]-[0-9][0-9][0-9])
         # Los ceros a la izquierda se sacan antes del `-le`: `013` es octal invalido para la
         # aritmetica de shell y el rango moriria con un error que no dice eso.
