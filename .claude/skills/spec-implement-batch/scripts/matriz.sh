@@ -50,7 +50,16 @@ set -- $(expandir "$@" | sort -u)
 
 dir_de() {
   d=$(find specs -maxdepth 1 -type d -name "$1-*" | head -1)
-  [ -n "$d" ] || { echo "no hay spec $1 en specs/" >&2; exit 1; }
+  # Desde el spec 034 los specs viven en issues y `specs/[0-9]*/` esta en el
+  # .gitignore, asi que la causa mas probable de que no este NO es que el spec no
+  # exista: es que este checkout no lo hidrato todavia. El mensaje lo dice, porque
+  # "no hay spec 021" manda a buscar el error en el lugar equivocado.
+  [ -n "$d" ] || {
+    echo "no hay spec $1 en specs/." >&2
+    echo "  Si el spec existe, falta hidratarlo en este checkout:" >&2
+    echo "    node .claude/scripts/hidratar-specs.mjs $1" >&2
+    exit 1
+  }
   printf '%s' "$d"
 }
 

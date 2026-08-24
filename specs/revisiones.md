@@ -212,7 +212,7 @@ sin spec en [GitHub Issues](https://github.com/federicohermo/pentomino-games/iss
   qué modelo, y pisarlo borraría el registro de por qué en su momento se eligió negro.
 
 - **2026-08-16 — El 008 cierra la deuda del 004 sobre `ARPEGGIO_SPREAD`.** La tarea de seguimiento
-  anotada en [`004/tasks.md`](./004-fase-por-pieza-la-columna-como-posicion-en-el-compas/tasks.md#seguimiento-no-bloquea)
+  anotada en [`004/tasks.md`](https://github.com/federicohermo/pentomino-games/issues/66#seguimiento-no-bloquea)
   pedía llevar el espaciado del arpegio a unidades musicales, con la medición de que a 110 bpm cuatro
   piezas desfasadas fusionan sus onsets porque el arpegio (1.07 s) dobla a un cuarto de compás
   (0.545 s). El 008 la salda: `intervalDuration(bpm)` reemplaza a `ARPEGGIO_SPREAD`, definida sobre

@@ -204,6 +204,18 @@ Y este contrato, en este orden:
 4. **Leé los AC del spec del PR** — `specs/NNN-*/spec.md`, con el `NNN` de la rama — y contrastá cada
    uno contra el diff. Un AC sin contraparte verificable en el diff es hallazgo aunque el código esté
    bien.
+
+   **Ese archivo no está en el worktree.** Desde el spec 034 los specs viven en issues y
+   `specs/[0-9]*/` está en el `.gitignore`; `git worktree add` hace checkout de lo **trackeado**, así
+   que ahí llegan tres archivos de `specs/` y no 136. Antes de leerlo, hidratalo:
+
+   ```bash
+   node .claude/scripts/hidratar-specs.mjs <NNN>
+   ```
+
+   No es opcional y **no falla solo**: sin eso el paso lee un directorio vacío, no encuentra los AC y
+   revisa sin criterios de aceptación — que es la peor forma de este bug, porque el review igual
+   termina y reporta. El mapa sale de `specs/log.md`, que sí está trackeado.
 5. **Encontrá con el método de `hallazgos.md`**, y solo en los ejes que el gate abrió.
 6. **Arreglá con la política de triage de `hallazgos.md`**, y con las cinco cláusulas del Paso 0 bis
    encima: lo que no sea `+` en el propio diff se reporta como `PERTENECE-A-PR-<N>` y no se toca, el

@@ -15,7 +15,7 @@ scheduleVoice()  ──┘                                 ↓
 
 Una voz por nota, creada y descartada. El `master` existe para tener un punto único de volumen y de
 inserción: el `AnalyserNode` del
-[spec 003](../../specs/003-visualizacion-de-la-senal-con-analysernode/spec.md) entra ahí.
+[spec 003](https://github.com/federicohermo/pentomino-games/issues/65) entra ahí.
 
 ## Los archivos de la capa
 

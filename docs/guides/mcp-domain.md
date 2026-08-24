@@ -6,7 +6,7 @@ hay staleness y no hay nada que sellar. Si alguien cambia `notesForRotation`, la
 en la consulta siguiente.
 
 Vive en [`mcp-server/`](../../mcp-server/README.md) como paquete aparte del workspace. El spec que lo
-motivó es el [006](../../specs/006-mcp-server-de-dominio-ejecutable/spec.md).
+motivó es el [006](https://github.com/federicohermo/pentomino-games/issues/68).
 
 ## Setup
 
@@ -45,7 +45,7 @@ propiedad que importa igual — construye el índice **en la consulta** y no lo 
 artefacto que regenerar ni que pueda quedar viejo.
 
 `spec_write` es la otra, y en el eje contrario: **es la única que escribe.** Entró con el
-[spec 033](../../specs/033-el-archivo-deja-de-ser-la-interfaz/spec.md), que terminó la indirección que
+[spec 033](https://github.com/federicohermo/pentomino-games/issues/95), que terminó la indirección que
 el repo tenía a medio construir — `tasks.md` no es un archivo que se lee sino una **interfaz**, y
 hasta ese spec cinco skills la implementaban a mano. Dos de ellas corren cada agente en su propio
 worktree, y `git worktree add` hace checkout de lo **trackeado**: el día que `specs/` entre al
@@ -60,9 +60,9 @@ en la D1 del spec: el hallazgo deja de viajar en el diff del PR.
 La regla corta: **simular el modelo es caro, y localizar dejó de ser gratis.** Lo caro sigue siendo
 responder qué produce el modelo, y ahí la simulación mental además **no avisa cuando sale mal**. Pero la
 otra mitad de la regla cambió y está medida: cuando se escribió el
-[spec 006](../../specs/006-mcp-server-de-dominio-ejecutable/spec.md), `src/` eran 8 archivos y 855
+[spec 006](https://github.com/federicohermo/pentomino-games/issues/68), `src/` eran 8 archivos y 855
 líneas y cualquier "¿dónde está X?" se resolvía con un `grep` barato. Hoy —después de que el
-[spec 005](../../specs/005-modularizacion-de-src-en-capas/spec.md) partiera `App.tsx` en capas— son
+[spec 005](https://github.com/federicohermo/pentomino-games/issues/67) partiera `App.tsx` en capas— son
 **38 archivos, 1.303 líneas de fuente y 84 símbolos exportados** —78 si se dejan afuera los `__tests__/`,
 que es lo que el índice muestra por defecto. Localizar sigue siendo fácil para una
 persona; lo que dejó de ser barato es el **costo en tokens** de localizar leyendo.
@@ -71,14 +71,14 @@ Preguntar en vez de leer cuando la pregunta es:
 
 - *¿Qué notas suenan con la pieza `Z` rotada 270° y reflejada?* → `describe_piece`. A mano hay que
   aplicar la fórmula de escala, el corrimiento de octava y el retrógrado, en ese orden. Desde el
-  [spec 017](../../specs/017-el-regimen-de-rotacion/spec.md) la pregunta **no está completa sin el
+  [spec 017](https://github.com/federicohermo/pentomino-games/issues/79) la pregunta **no está completa sin el
   régimen**: `describe_piece` y `simulate_board` lo aceptan como argumento —default `escala`, el de la
   app— y lo **devuelven** en la respuesta, porque en 36 de las 48 combinaciones de pieza × rotación las
   mismas cinco notas tienen dos respuestas correctas.
 - *¿Qué forma tiene la `F` rotada 180°, y dónde queda su celda de agarre?* → `describe_piece`.
 - *¿Este tablero suena como un recorrido continuo o con saltos largos?* → `simulate_board`, y mirar el
   orden del circuito, sus saltos y el largo del ciclo. Es lo que el
-  [spec 009](../../specs/009-el-tablero-como-recorrido/spec.md) hizo audible.
+  [spec 009](https://github.com/federicohermo/pentomino-games/issues/71) hizo audible.
 - *¿Rompí algo del modelo?* → `check_invariants`, antes y después de tocar geometría o piezas.
 - *¿En qué quedó el trabajo planificado?* → `spec_status`. Y para **marcar** una tarea o anotar un
   hallazgo en el `## Seguimiento`, `spec_write` — no abrir el `tasks.md`.

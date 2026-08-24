@@ -23,5 +23,14 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  /*
+   * `.claude/scripts/lib` entra porque un test de `src/__tests__/` lo importa, asi que
+   * ya es parte de este programa: `tsc -b` lo typechequea por el import lo declaremos o
+   * no. Declararlo es lo que necesita el linter, que usa `projectService` y rechaza con
+   * un error de parseo todo archivo que ningun tsconfig incluya.
+   *
+   * Es `lib` y no `.claude/scripts` entero: los dos scripts son `.mjs` ejecutables y no
+   * tienen por que entrar al programa de la app.
+   */
+  "include": ["src", ".claude/scripts/lib"]
 }

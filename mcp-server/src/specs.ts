@@ -30,7 +30,17 @@ export interface LogRow {
   fecha: string;
   estado: string;
   descripcion: string;
-  dir: string;
+  /**
+   * A donde enlaza la fila, **tal cual**: `./NNN-slug/spec.md` mientras el registro
+   * vivio en el repo, y la URL del issue desde el spec 034. Es el mapa spec<->issue
+   * del AC3, y por eso se guarda crudo en vez de parseado: cualquiera de las dos
+   * formas es informacion, y quien la necesite sabe cual espera.
+   *
+   * Fue `dir` —el slug, sacado del enlace— hasta que el 034 lo dejo sin sentido: con
+   * una URL no hay slug que sacar, asi que el campo valia `''` en las 35 filas y el
+   * unico consumidor que le quedaba eran sus propios tests.
+   */
+  href: string;
 }
 
 /**
@@ -182,11 +192,20 @@ export interface TasksInfo {
 /**
  * Filas de la tabla de `log.md`.
  *
- * `dir` sale del link de la primera celda y no de una convencion de nombres: es
- * lo que ata la fila con la carpeta, y ademas es el nombre de la rama.
+ * Lo que ata la fila con la carpeta es el `id`, que es lo unico estable en los dos
+ * regimenes del spec 034: esta en la fila, en el nombre de la carpeta y en el
+ * titulo del issue.
  */
 export function parseLog(md: string): LogRow[] {
-  const fila = /^\|\s*\[(\d+)\]\(\.\/([^/)]+)\/[^)]*\)\s*\|([^|]*)\|([^|]*)\|([^|]*)\|/;
+  // El destino del enlace es `([^)]*)` y no `\.\/([^/)]+)\/[^)]*`, y ese cambio es del
+  // spec 034: desde ahi la fila puede enlazar a una **URL de issue** en vez de a una
+  // carpeta, porque los specs ya no se persisten en el repo.
+  //
+  // Con el regex viejo una tabla migrada no matcheaba **ni una fila**, y el resultado
+  // no era un error sino 34 specs con `estado: null` y la nota «sin fila en log.md» —
+  // o sea `spec_status` respondiendo que no sabe nada, en verde. Lo encontro una
+  // consulta a mano y no `mcp:test`, porque sus fixtures usan el formato viejo.
+  const fila = /^\|\s*\[(\d+)\]\(([^)]*)\)\s*\|([^|]*)\|([^|]*)\|([^|]*)\|/;
   const rows: LogRow[] = [];
 
   for (const line of lines(md)) {
@@ -194,7 +213,7 @@ export function parseLog(md: string): LogRow[] {
     if (!m) continue;
     rows.push({
       id: m[1],
-      dir: m[2],
+      href: m[2].trim(),
       fecha: m[3].trim(),
       estado: m[4].trim(),
       descripcion: m[5].trim(),
@@ -328,11 +347,16 @@ function specDirs(specsDir: string): string[] {
 export function readSpecStatus(specsDir: string): { specs: SpecStatus[]; totales: Record<string, number> } {
   const logPath = join(specsDir, 'log.md');
   const log = existsSync(logPath) ? parseLog(readFileSync(logPath, 'utf8')) : [];
-  const byDir = new Map(log.map(r => [r.dir, r]));
+  // **Por numero y no por carpeta** (spec 034). Antes la clave era el slug del
+  // directorio, que salia del enlace de la fila; desde que ese enlace puede ser una URL
+  // de issue, el slug ya no esta ahi — y ademas el directorio local es una CACHE que se
+  // reconstruye desde el issue, asi que su nombre puede no ser el historico. El `NNN`
+  // es lo unico que no cambia: esta en la fila, en la carpeta y en el titulo del issue.
+  const byId = new Map(log.map(r => [r.id, r]));
 
   const specs = specDirs(specsDir).map((dir): SpecStatus => {
     const notas: string[] = [];
-    const row = byDir.get(dir) ?? null;
+    const row = byId.get(dir.slice(0, 3)) ?? null;
     if (!row) notas.push('sin fila en log.md');
 
     const tasksPath = join(specsDir, dir, 'tasks.md');

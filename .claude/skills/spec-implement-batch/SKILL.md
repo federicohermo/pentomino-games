@@ -143,7 +143,13 @@ Cada agente de carril recibe:
 - **el preámbulo, destilado una vez para todo el lote**: el bloque de convenciones de ≤40 líneas
   (`CLAUDE.md` + `.claude/rules/`) y las trampas que ya costaron una corrida en rojo. Es el ahorro
   propio del batch — sin esto, N corridas lo re-derivan N veces desde frío;
-- **`pnpm install` primero**: el worktree nace sin `node_modules` y `pnpm verify` va a rojo hasta que
+- **hidratar los specs del carril, primero de todo**: desde el spec 034 los specs viven en issues y
+  `specs/[0-9]*/` está en el `.gitignore`, así que **al worktree no viajan** — `git worktree add`
+  hace checkout de lo trackeado. Cada agente corre
+  `node .claude/scripts/hidratar-specs.mjs <NNN> <NNN>` con los de su carril antes de leer nada.
+  Sin eso lee un directorio vacío y **no falla**: implementa sin spec, que es la versión cara de
+  «fallar en verde». El mapa sale de `specs/log.md`, que sí está trackeado;
+- **`pnpm install` después**: el worktree nace sin `node_modules` y `pnpm verify` va a rojo hasta que
   lo corra. Con el store de pnpm son hardlinks, así que sale barato — pero hay que decirlo;
 - **sus specs en orden**, y que delegue cada uno a `spec-implement`, que deriva el grafo *interno* y
   abanica lo que corresponda. Ahí el `[P]` de las tareas ya viene declarado;

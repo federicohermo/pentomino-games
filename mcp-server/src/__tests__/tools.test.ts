@@ -1,5 +1,5 @@
 import { test, describe } from 'node:test';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
@@ -9,6 +9,7 @@ import { checkInvariants, pieceOf } from '../tools/checkInvariants.ts';
 import { simulateBoard, nombreDeHz } from '../tools/simulateBoard.ts';
 import { findSymbol } from '../tools/findSymbol.ts';
 import { crearSpecStatus, specStatus } from '../tools/specStatus.ts';
+import { SPECS_DIR } from '../tools/specsDir.ts';
 import { crearSpecWrite } from '../tools/specWrite.ts';
 import { PIECE_KEYS } from '../pieces.ts';
 import { routeBetween } from '../../../src/domain/board.ts';
@@ -792,13 +793,47 @@ describe('find_symbol', () => {
   });
 });
 
+/**
+ * El regimen del registro (spec 034), redetectado aca en cuatro lineas en vez de
+ * compartir un helper con `src/__tests__/specs-convencion.test.ts`, por la misma
+ * razon que alla: un helper compartido entre tests es codigo sin tests.
+ *
+ * En regimen `archivo` los specs viven en el repo y `specs/NNN-…/` siempre esta.
+ * En regimen `issue` ese directorio es una CACHE que puede no estar hidratada —la
+ * CI corre asi, y un worktree recien creado tambien—, y lo unico que siempre esta
+ * es `log.md`.
+ */
+const LOG_REAL = existsSync(join(SPECS_DIR, 'log.md')) ? readFileSync(join(SPECS_DIR, 'log.md'), 'utf8') : '';
+const FILAS_REALES = [...LOG_REAL.matchAll(/^\|\s*\[(\d{3})\]\(([^)]*)\)/gm)];
+const REGIMEN_ARCHIVO = FILAS_REALES.length > 0 && FILAS_REALES.every(m => /^\.\/\d{3}-/.test(m[2].trim()));
+
 describe('spec_status', () => {
   test('responde sobre las carpetas reales sin depender de lo que digan', () => {
     const r = call(specStatus, {});
     const specs = r.specs as { id: string; dir: string; notas: string[] }[];
     const totales = r.totales as Record<string, number>;
 
-    assert.ok(specs.length > 0, 'el repo tiene specs');
+    // La red anti-vacio, puesta donde el regimen la deja valer (spec 034). Antes era
+    // `specs.length > 0` a secas, y eso convertia a este test en el unico del repo que
+    // exigia hidratar para estar en verde: con `specs/NNN-…/` ignorado no hay carpetas,
+    // y el gate fallaba por el motivo equivocado en vez de mirar lo que si hay.
+    //
+    // Que no se puede hacer es sacarla y ya: `[]` pasa todas las aserciones de abajo,
+    // que es el «fallar en verde» que el 034 vino a cerrar. Asi que la red se corre a
+    // lo que cada regimen garantiza.
+    if (REGIMEN_ARCHIVO) assert.ok(specs.length > 0, 'en regimen archivo el repo tiene specs');
+    else assert.ok(FILAS_REALES.length > 20, 'el registro tiene filas que mirar');
+
+    // Y lo que vale en los DOS: la tool ve exactamente las carpetas que hay en el
+    // disco, leidas sin pasar por la tool. Con `specs/` hidratado cruza las 35; sin
+    // hidratar cruza cero, pero entonces la red de arriba es la que respalda el test.
+    // El orden es el de las carpetas ordenadas, que es lo que hace estable la respuesta.
+    const enDisco = readdirSync(SPECS_DIR, { withFileTypes: true })
+      .filter(e => e.isDirectory() && /^\d+-/.test(e.name))
+      .map(e => e.name)
+      .sort();
+    assert.deepEqual(specs.map(s => s.dir), enDisco, `${enDisco.length} carpetas en disco`);
+
     assert.equal(totales.specs, specs.length);
 
     // Los totales se derivan de los estados que aparecen, sin lista propia: la suma
@@ -806,8 +841,6 @@ describe('spec_status', () => {
     const porEstado = Object.entries(totales).filter(([k]) => k !== 'specs');
     assert.equal(porEstado.reduce((n, [, v]) => n + v, 0), specs.length);
 
-    // Y el orden es el de las carpetas, que es lo que hace la respuesta estable.
-    assert.deepEqual(specs.map(s => s.dir), [...specs.map(s => s.dir)].sort());
     for (const s of specs) assert.match(s.dir, /^\d+-/);
   });
 });
