@@ -38,8 +38,8 @@ abrirlo:
   documentación viva, y sólo las reglas de **renderizado** en `specs/[0-9]*/**`, porque un spec
   mergeado no se reescribe.
 - **Los tests son dos proyectos de Vitest**, `node` y `browser`. El discriminante es el **sufijo**
-  `*.browser.test.tsx` y no una carpeta; el `node` mira cuatro raíces —`src/`, `docs/__tests__/`,
-  `specs/__tests__/` y `.claude/scripts/__tests__/`—: cada gate vive con lo que verifica. **Chromium
+  `*.browser.test.tsx` y no una carpeta; el `node` mira cinco raíces —`src/`, `__tests__/` en la raíz,
+  `docs/`, `specs/` y `.claude/scripts/`—: cada gate vive con **el sujeto** que verifica. **Chromium
   no está en el lockfile**: un clone nuevo necesita `pnpm exec playwright install chromium`.
 - **El gestor es pnpm y no npm** — npm dejaría un `package-lock.json` que Netlify puede preferir. Y
   `node_modules` es **estricto**: importar una dependencia transitiva falla, a propósito.

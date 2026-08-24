@@ -20,8 +20,8 @@ import { readFileSync } from 'node:fs';
  * disco y comparados como texto, sin un DOM en el medio.
  */
 
-/** La raiz del repo: este archivo vive en `src/__tests__/`. */
-const raiz = new URL('../../', import.meta.url);
+/** La raiz del repo, que es donde vive este archivo: `__tests__/` cuelga de ella. */
+const raiz = new URL('../', import.meta.url);
 const leer = (ruta: string) => readFileSync(new URL(ruta, raiz), 'utf8');
 
 /**

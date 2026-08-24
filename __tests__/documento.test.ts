@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
  * (`index-html.test.ts`), el segundo carril en mergear pisaba al primero sin que el
  * merge lo viera: un archivo entero perdido en verde.
  */
-const HTML = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+const HTML = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 describe('index.html', () => {
   it('declara el idioma de la interfaz, que es el que se habla adentro', () => {

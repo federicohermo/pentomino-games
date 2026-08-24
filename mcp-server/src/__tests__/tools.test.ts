@@ -795,7 +795,7 @@ describe('find_symbol', () => {
 
 /**
  * El registro real, leido aca en dos lineas en vez de compartir un helper con
- * `src/__tests__/specs-convencion.test.ts`, por la misma razon que alla: un helper
+ * `specs/__tests__/specs-convencion.test.ts`, por la misma razon que alla: un helper
  * compartido entre tests es codigo sin tests.
  *
  * Antes esto detectaba un **regimen** (spec 034), porque `specs/NNN-…/` podia estar o

@@ -210,16 +210,21 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 `pnpm test` corre Vitest en **dos proyectos y un solo comando** (spec 029). El corte no es por capa sino
 por lo que el test necesita:
 
-- **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre **cuatro** raíces. Son 29
-  archivos: 23 en `src/`, 3 en `docs/`, 2 en `specs/` y 1 en `.claude/scripts/`. El dominio es puro y
-  el audio tiene una implementación nativa de Web Audio, así que corren ahí sin adaptación. Los que
-  **no** son el test de un módulo leen un archivo **del disco**, porque el proyecto de navegador sirve
-  su propio documento y nunca carga esos archivos, y **cada uno vive al lado de lo que verifica**:
-  - `src/__tests__/` — los tres que cruzan una constante de la app contra un archivo que la envuelve:
-    `documento.test.ts` (spec 025) verifica el `lang` de `index.html`, y `fondo-sincronizado.test.ts` y
-    `nombre-sincronizado.test.ts` (spec 028) verifican que el color de fondo y el nombre de la app digan
-    lo mismo en los tres lugares donde están escritos. Eran lo único del repo que ningún test podía
-    falsear.
+- **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre **cinco** raíces. Son 29
+  archivos: 20 en `src/`, 3 en la raíz, 3 en `docs/`, 2 en `specs/` y 1 en `.claude/scripts/`. El
+  dominio es puro y el audio tiene una implementación nativa de Web Audio, así que corren ahí sin
+  adaptación. Los que **no** son el test de un módulo leen un archivo **del disco**, porque el proyecto
+  de navegador sirve su propio documento y nunca carga esos archivos, y **cada uno vive al lado del
+  sujeto que verifica** — no de lo que el sujeto toca:
+  - `__tests__/` en la **raíz del repo** — los tres que cruzan una constante de la app contra un
+    archivo de la raíz que la envuelve: `documento.test.ts` (spec 025) verifica el `lang` de
+    `index.html`, y `fondo-sincronizado.test.ts` y `nombre-sincronizado.test.ts` (spec 028) verifican
+    que el color de fondo y el nombre de la app digan lo mismo en los tres lugares donde están
+    escritos —`index.html`, `public/manifest.json`, `README.md`—. Eran lo único del repo que ningún
+    test podía falsear. Vivieron en `src/__tests__/` hasta que se notó lo obvio: lo que miran está en
+    la raíz, no en `src/`.
+  - `src/__tests__/` — lo que queda ahí es de la **app**: hoy solo `App.browser.test.tsx`, que corre
+    en el otro proyecto.
   - `docs/__tests__/` — los tres gates de la **documentación**, mudados ahí por el issue #100 porque no
     importan una sola línea de `src/`: `enlaces-resueltos.test.ts` (enlaces y anclas de todo `.md` del
     repo), `mapa-de-directorios.test.ts` (que este archivo nombre cada archivo de producción) y
