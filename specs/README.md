@@ -115,6 +115,22 @@ Las tareas de `## Seguimiento (no bloquea)` son deuda anotada a propósito y tam
 pendientes. Es un eje distinto de `[M]`: `Seguimiento` es *dónde* está anotada la tarea, `[M]` es
 *quién* la puede hacer. Una tarea puede ser las dos cosas.
 
+**Y `Seguimiento` no es donde va todo lo que quedó pendiente.** Cerrar de una vez los seguimientos de
+cuatro specs mostró que de sus 16 ítems, **la mitad no eran tareas** sino deuda de registro — y
+confundirlas es lo que los había dejado abiertos tanto tiempo. Las cuatro clases que no son una tarea,
+con la señal que las delata:
+
+| No es una tarea, es… | La señal | Dónde va |
+|---|---|---|
+| una **decisión ya tomada** | está escrita como pendiente y nadie la discute | al lado de lo que decide: la constante, la firma, el módulo |
+| algo **sin dueño** | vive en el seguimiento de un spec ya cerrado | [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues), que es la única fuente que este repo declara |
+| **otro spec** | otro spec ya la absorbió, a veces cambiando el enfoque | se cierra citando al spec que la absorbió |
+| algo **que no se cierra leyendo código** | pide oído, ojo o navegador | se queda, con `[M]` y el motivo escrito al lado |
+
+La señal más barata de todas: **una tarea anotada en cuatro seguimientos distintos ya no es de nadie.**
+`PlacedPiece.notes` estaba en los seguimientos del 001, el 007, el 009 y el 010, y cada spec la
+postergaba al siguiente; cerrarla no llevó más de un commit.
+
 ## Flujo
 
 1. Escribir los cuatro archivos. El `research.md` se escribe **midiendo, no suponiendo**.
