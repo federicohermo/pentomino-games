@@ -10,6 +10,7 @@ pentomino-games/           # raíz del repo: la app vive acá, sin subdirectorio
 ├── public/                # Assets servidos tal cual, copiados a dist/
 ├── src/                   # Todo el código de la app
 ├── mcp-server/            # MCP server de dominio: tooling, NO entra al bundle
+├── __tests__/             # Los gates de la raíz: index.html, public/manifest.json, README.md
 ├── .mcp.json              # Registra el server; commiteado, sin nada que configurar
 ├── index.html             # Entry point de Vite (en la raíz, no en public/)
 ├── vite.config.ts         # Plugins: react() + tailwindcss()
@@ -315,6 +316,7 @@ viven en la carpeta de su rol.** Un `.ts` de capa tiene funciones y nada más.
 | asset referenciado por URL | `public/` | se copia sin procesar |
 | documentación de arquitectura | `docs/architecture/` | |
 | gate que verifica la documentación | `docs/__tests__/` | `<qué-verifica>.test.ts`, sin importar `src/` |
+| gate que verifica un archivo de la raíz | `__tests__/` en la raíz | `<qué-verifica>.test.ts`, sin importar `src/` |
 | trabajo planificado | `specs/<NNN>-<desc>/` | cuatro archivos, ver [specs/README.md](../../specs/README.md) |
 | tool nueva del MCP server | `mcp-server/src/tools/` | `<tool>.ts` + una línea en `tools/index.ts` |
 | regla que el server necesita ejecutar | `src/domain/` | **no** en `mcp-server/`: es un cambio de `src/`, en su propio commit |

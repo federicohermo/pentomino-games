@@ -24,7 +24,7 @@
     "noUncheckedSideEffectImports": true
   },
   /*
-   * Cinco raices ademas de `src`, y las cuatro de afuera son los gates que viven al lado
+   * Cinco raices, y las cuatro que no son `src` son los gates que viven al lado
    * de lo que verifican: `__tests__` mira los archivos de la raiz del repo, `docs` los
    * tres gates de la documentacion (issue #100), `specs/__tests__/` el registro (spec
    * 035) y `.claude/scripts` trae `lib/specs.ts` mas el `__tests__/` que lo importa.
