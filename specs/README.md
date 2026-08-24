@@ -22,6 +22,16 @@ Trabajo planificado. Un spec por unidad de trabajo, en su propia carpeta numerad
 > archivo ignorado no viaja. Medido: antes del 034 a un worktree llegaban 136 archivos de `specs/` y
 > ahora llegan **3**.
 >
+> **Buscar dentro de los specs necesita `--no-ignore`.** Leerlos no: `.gitignore` es cosa de git y no
+> del sistema de archivos, así que `Read`, `cat` y `head` los abren normalmente. Pero **ripgrep respeta
+> `.gitignore`**, y la herramienta `Grep` está construida sobre ripgrep — o sea que una búsqueda en
+> `specs/` devuelve **cero resultados sin decir que no miró**, que es la peor respuesta posible. Para
+> buscar ahí:
+>
+> ```bash
+> rg --no-ignore "lo que sea" specs/
+> ```
+
 > **El mapa spec↔issue es la columna del enlace de [log.md](./log.md)**, y por eso ese archivo se
 > queda. No puede ser aritmético —issues y PRs comparten contador—: el spec 001 es el issue **#63**.
 
