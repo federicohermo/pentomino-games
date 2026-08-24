@@ -566,6 +566,17 @@ describe('la reflexion no cambia la nota de una celda', () => {
  * hace que esto sea una referencia es que no se re-derive. Lo que atrapa es lo mismo
  * de antes: que nadie mueva el mapeo sin querer.
  *
+ * **La fila de la `Z` SI se re-derivo, en el spec 036, y esa es la unica excepcion.**
+ * No contradice la regla de arriba: lo que la regla prohibe es regenerar la tabla para
+ * que un test rojo se ponga verde, porque ahi la referencia deja de referir a nada. Acá
+ * cambio el INSUMO —la `Z` era la `N` reflejada y paso a ser el pentomino Z—, asi que
+ * la fila vieja describia una pieza que ya no existe. Las otras once no se tocaron, y
+ * que el diff no las mueva es parte de la verificacion.
+ *
+ * La fila nueva se lee al reves que la vieja, y no es un error de transcripcion: la `Z`
+ * de verdad tiene una celda parada sobre su centroide —la del indice 2— y eso cambia
+ * como se reparten los grados.
+ *
  * Las celdas van en el orden del array de `SHAPES`, que es el orden por el que se
  * indexa el mapeo — el segundo test lo verifica para atrapar una transcripcion
  * corrida.
@@ -582,12 +593,17 @@ const REFERENCIA: Record<PieceKey, [Cell, string][]> = {
   W: [[[0, 0], 'F5'],  [[1, 0], 'D#5'], [[1, 1], 'C5'],  [[2, 1], 'A#4'], [[2, 2], 'G#4']],
   X: [[[1, 0], 'F#5'], [[0, 1], 'C#5'], [[1, 1], 'E5'],  [[2, 1], 'A4'],  [[1, 2], 'B4']],
   Y: [[[0, 0], 'G5'],  [[1, 0], 'F5'],  [[2, 0], 'D5'],  [[3, 0], 'C5'],  [[2, 1], 'A#4']],
-  Z: [[[0, 1], 'B4'],  [[1, 1], 'C#5'], [[1, 0], 'D#5'], [[2, 0], 'F#5'], [[3, 0], 'G#5']],
+  Z: [[[0, 0], 'G#5'], [[1, 0], 'F#5'], [[1, 1], 'D#5'], [[1, 2], 'C#5'], [[2, 2], 'B4']],
 };
 
-/** La celda que lleva la tonica: la del grado 0, o sea por donde entra el recorrido. */
+/**
+ * La celda que lleva la tonica: la del grado 0, o sea por donde entra el recorrido.
+ *
+ * La de la `Z` paso de 0 a 4 en el spec 036, y es la misma consecuencia que movio su
+ * fila de `REFERENCIA`: la forma nueva le da los grados al reves.
+ */
 const TONICA_EN: Record<PieceKey, number> = {
-  F: 0, I: 4, L: 3, N: 4, P: 3, T: 4, U: 4, V: 2, W: 4, X: 3, Y: 4, Z: 0,
+  F: 0, I: 4, L: 3, N: 4, P: 3, T: 4, U: 4, V: 2, W: 4, X: 3, Y: 4, Z: 4,
 };
 
 describe('la referencia congelada', () => {

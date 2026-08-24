@@ -50,7 +50,7 @@ expresivo, no más difícil.
 │                  degreeByCellIndex                       │
 │   sequence.ts    buildSequence · cellsByPlayOrder ·      │
 │                  gates · noteAtCell                       │
-│   invariants.ts  los cinco chequeos del modelo           │
+│   invariants.ts  los seis chequeos del modelo            │
 │   types/ ← constants/ ← módulos                          │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -104,7 +104,7 @@ Sin React, sin audio, sin DOM. Determinísticas y testeables en aislamiento.
 | `board.ts` | `cellsAt`, `isValid`, `routeBetween`, `rutador`, `costuraDe`, `occupantAt`, `occupantCellIndex` | Las reglas del tablero, el camino de costo mínimo entre dos celdas replegando la costura que une `(0,0)` con la esquina opuesta y pesando `CROSS_COST` las celdas ocupadas que cruza (spec 011), y qué celda de la pieza cae en `(x, y)`. Las tres primeras reciben las **dimensiones** por parámetro desde el spec 031, y `rutador` es la puerta con caché que usa `buildSequence` |
 | `music.ts` | `midiFor`, `midiName`, `notesForRotation`, `arpeggioFor`, `degreeByCellIndex`, `angularRank` | De pieza + rotación a cinco notas MIDI, y de la forma a qué celda lleva cuál. `arpeggioFor` es la derivación completa —tónica, escala y retrógrado—, y la única fuente del arpegio de una pieza colocada. `angularRank` es el orden angular del spec 007, que desde el 012 solo desempata la dirección del camino |
 | `sequence.ts` | `buildSequence`, `cellsByPlayOrder`, `gates`, `noteAtCell` | El circuito que visita las piezas colocadas (Held-Karp sobre `routeBetween`) y los offsets del ciclo — orden, silencios y clicks. Las otras tres son las derivaciones celda↔nota que el circuito necesita y que no pueden vivir escondidas en su único consumidor: el orden de reproducción, las dos puertas de una pieza y qué nota suena en una celda (la que da su altura al cruce del spec 011) |
-| `invariants.ts` | `checkArrayOrder`, `checkAnchors`, `checkShapes`, `checkBaseMap`, `checkNotes`, `checkAll` | Los cinco chequeos del modelo. Los dos geométricos recorren las 96 orientaciones; los otros tres, lo que les corresponde |
+| `invariants.ts` | `checkArrayOrder`, `checkAnchors`, `checkShapes`, `checkBaseMap`, `checkNotes`, `checkDistinct`, `checkAll` | Los seis chequeos del modelo. Tres recorren las 96 orientaciones —los dos geométricos y `checkDistinct`, que compara las 12 formas entre sí—; los otros tres, lo que les corresponde |
 
 Los datos (`SHAPES`, `ANCHOR_INDEX`, `BASE_MAP`, `PENT_*`, `GRID_MIN`/`GRID_DEFAULT`) viven en `domain/constants/`, y
 los tipos (`Cell`, `PieceKey`, `PlacedPiece`) en `domain/types/`. Detalle en

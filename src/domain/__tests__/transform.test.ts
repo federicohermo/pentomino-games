@@ -139,7 +139,7 @@ describe('centroid', () => {
     W: [1.2, 0.8],
     X: [1, 1],
     Y: [1.6, 0.2],
-    Z: [1.4, 0.4],
+    Z: [1, 1],
   };
 
   it('es el promedio de las coordenadas de las 12 piezas', () => {
@@ -163,15 +163,22 @@ describe('centroid', () => {
     expect(distancia(cent, caja)).toBeGreaterThan(0.4);
   });
 
-  it('solo I y X tienen una celda parada sobre el centroide, y es la del indice 2', () => {
+  it('solo I, X y Z tienen una celda parada sobre el centroide, y es la del indice 2', () => {
     // Medido, no supuesto: es la regla que saca esa celda del anillo angular y le da
-    // el primer grado del arpegio. Las otras 10 piezas no tienen ninguna.
+    // el primer grado del arpegio. Las otras 9 piezas no tienen ninguna.
+    //
+    // La `Z` entro a esta lista con el spec 036, y es una consecuencia AUDIBLE del
+    // arreglo: mientras fue la `N` reflejada su centroide caia en (1.4, 0.4), o sea en
+    // el aire, y sus cinco celdas repartian el arpegio por angulo. Con la forma de
+    // verdad el centroide es (1, 1) y ahi hay celda, asi que esa celda pasa a abrir el
+    // arpegio. Es tambien lo que hace que `ANCHOR_INDEX.Z` sea 2.
+    const CON_CELDA_AL_CENTRO: PieceKey[] = ['I', 'X', 'Z'];
     const sobreElCentro = (p: PieceKey) => {
       const cent = centroid(SHAPES[p]);
       return SHAPES[p].flatMap((c, k) => (distancia(c, cent) < DEGREE_EPSILON ? [k] : []));
     };
     for (const p of PIECES) {
-      expect(sobreElCentro(p)).toEqual(p === 'I' || p === 'X' ? [2] : []);
+      expect(sobreElCentro(p), p).toEqual(CON_CELDA_AL_CENTRO.includes(p) ? [2] : []);
     }
   });
 });
