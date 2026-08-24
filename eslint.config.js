@@ -250,7 +250,18 @@ const REGLA_CONSTANTES = {
 }
 
 export default tseslint.config([
-  globalIgnores(['dist']),
+  /**
+   * `.claude/worktrees/` esta ignorado por el mismo motivo por el que lo esta en
+   * `.gitignore`: adentro vive un checkout completo del repo mientras corre una tarea
+   * en paralelo.
+   *
+   * Y sin esta linea `pnpm lint` **falla** durante esas tareas, por un motivo que
+   * parece un detalle y no lo es: los overrides de este archivo emparejan por RUTA, y
+   * `.claude/worktrees/agent-x/src/main.tsx` no matchea `src/main.tsx`. O sea que las
+   * tres aserciones no nulas que el repo declara deliberadas se leen como prohibidas
+   * en la copia, y el rojo aparece en `main` por trabajo que ni siquiera es de `main`.
+   */
+  globalIgnores(['dist', '.claude/worktrees']),
 
   {
     // Sin `files`, o sea que valen para todo el repo.
