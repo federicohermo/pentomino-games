@@ -147,6 +147,35 @@ describe('el regimen del registro esta declarado y es uniforme', () => {
 
     expect(problemas, `filas de log.md con problemas:\n${problemas.join('\n')}`).toEqual([]);
   });
+
+  /**
+   * La direccion que falta: toda carpeta que ESTE tiene su fila.
+   *
+   * **Corre en los dos regimenes**, y eso costo una falsificacion: cuando vivia en el
+   * bloque de regimen `archivo`, borrar la fila del 031 con el registro ya migrado
+   * **no fallaba** — el gate se salteaba y nadie miraba. Y ahi es cuando mas importa:
+   * `log.md` ES el mapa spec<->issue, asi que una carpeta sin fila es un spec al que
+   * no se puede llegar ni hidratar.
+   *
+   * En regimen `issue` sin hidratar no hay carpetas y no hay nada que cruzar, que es
+   * correcto — pero entonces no aporta nada, y por eso el conteo va en el mensaje: un
+   * cero ahi significa «no habia nada que mirar» y no «esta todo bien».
+   *
+   * Es la asimetria con `mapa-de-directorios.test.ts`, y no es incoherencia: alla la
+   * direccion inversa borraria el registro de los archivos eliminados a proposito. Aca
+   * no hay equivalente: los specs que no prosperaron no se borran, quedan con estado
+   * `Descartado` y su carpeta puesta, como el 001.
+   */
+  it('cada carpeta que este tiene su fila en `log.md`', () => {
+    const conFila = new Set(FILAS.map((f) => f.id));
+    const huerfanas = CARPETAS.filter((c) => !conFila.has(c.slice(0, 3)));
+
+    expect(
+      huerfanas,
+      `se cruzaron ${CARPETAS.length} carpetas contra ${FILAS.length} filas.\n` +
+      `carpetas sin fila en log.md:\n${huerfanas.join('\n')}`,
+    ).toEqual([]);
+  });
 });
 
 /**
@@ -231,21 +260,6 @@ describe.runIf(REGIMEN === 'archivo')('los specs cumplen la convencion que su RE
     expect(faltan, `archivos que faltan:\n${faltan.join('\n')}`).toEqual([]);
   });
 
-  /**
-   * La direccion que falta: toda carpeta tiene su fila. La vuelta —toda fila resuelve—
-   * la verifica el bloque del regimen, que corre siempre.
-   *
-   * Es la asimetria con `mapa-de-directorios.test.ts`, y no es incoherencia: alla la
-   * direccion inversa borraria el registro de los archivos eliminados a proposito. Aca
-   * no hay equivalente: los specs que no prosperaron no se borran, quedan con estado
-   * `Descartado` y su carpeta puesta, como el 001.
-   */
-  it('cada carpeta tiene su fila en `log.md`', () => {
-    const conFila = new Set(FILAS.map((f) => f.id));
-    const huerfanas = CARPETAS.filter((c) => !conFila.has(c.slice(0, 3)));
-
-    expect(huerfanas, `carpetas sin fila en log.md:\n${huerfanas.join('\n')}`).toEqual([]);
-  });
 
   it('toda linea que arranca como checkbox parsea con el formato documentado', () => {
     const malformadas: string[] = [];
