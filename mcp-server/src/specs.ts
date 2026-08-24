@@ -30,7 +30,17 @@ export interface LogRow {
   fecha: string;
   estado: string;
   descripcion: string;
-  dir: string;
+  /**
+   * A donde enlaza la fila, **tal cual**: `./NNN-slug/spec.md` mientras el registro
+   * vivio en el repo, y la URL del issue desde el spec 034. Es el mapa spec<->issue
+   * del AC3, y por eso se guarda crudo en vez de parseado: cualquiera de las dos
+   * formas es informacion, y quien la necesite sabe cual espera.
+   *
+   * Fue `dir` —el slug, sacado del enlace— hasta que el 034 lo dejo sin sentido: con
+   * una URL no hay slug que sacar, asi que el campo valia `''` en las 35 filas y el
+   * unico consumidor que le quedaba eran sus propios tests.
+   */
+  href: string;
 }
 
 /**
@@ -182,8 +192,9 @@ export interface TasksInfo {
 /**
  * Filas de la tabla de `log.md`.
  *
- * `dir` sale del link de la primera celda y no de una convencion de nombres: es
- * lo que ata la fila con la carpeta, y ademas es el nombre de la rama.
+ * Lo que ata la fila con la carpeta es el `id`, que es lo unico estable en los dos
+ * regimenes del spec 034: esta en la fila, en el nombre de la carpeta y en el
+ * titulo del issue.
  */
 export function parseLog(md: string): LogRow[] {
   // El destino del enlace es `([^)]*)` y no `\.\/([^/)]+)\/[^)]*`, y ese cambio es del
@@ -195,9 +206,6 @@ export function parseLog(md: string): LogRow[] {
   // o sea `spec_status` respondiendo que no sabe nada, en verde. Lo encontro una
   // consulta a mano y no `mcp:test`, porque sus fixtures usan el formato viejo.
   const fila = /^\|\s*\[(\d+)\]\(([^)]*)\)\s*\|([^|]*)\|([^|]*)\|([^|]*)\|/;
-  // De un `./NNN-slug/spec.md` se saca el slug; de una URL no hay slug que sacar, y
-  // el emparejamiento lo hace `id`, que es lo unico estable en los dos regimenes.
-  const carpeta = /^\.\/([^/)]+)\//;
   const rows: LogRow[] = [];
 
   for (const line of lines(md)) {
@@ -205,7 +213,7 @@ export function parseLog(md: string): LogRow[] {
     if (!m) continue;
     rows.push({
       id: m[1],
-      dir: carpeta.exec(m[2])?.[1] ?? '',
+      href: m[2].trim(),
       fecha: m[3].trim(),
       estado: m[4].trim(),
       descripcion: m[5].trim(),

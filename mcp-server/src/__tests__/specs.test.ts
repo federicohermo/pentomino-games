@@ -55,11 +55,11 @@ const MARCADAS = `# Tareas — Con ID y marcadores
 `;
 
 describe('parseLog', () => {
-  test('saca id, carpeta, fecha, estado y descripción de cada fila', () => {
+  test('saca id, enlace, fecha, estado y descripción de cada fila', () => {
     const rows = parseLog(LOG);
     assert.equal(rows.length, 2);
     assert.deepEqual(rows[0], {
-      id: '001', dir: '001-notas-por-celda', fecha: '2026-08-02',
+      id: '001', href: './001-notas-por-celda/spec.md', fecha: '2026-08-02',
       estado: 'Propuesto', descripcion: 'Notas por celda',
     });
     assert.equal(rows[1].estado, 'Implementado');
@@ -72,19 +72,19 @@ describe('parseLog', () => {
     assert.deepEqual(parseLog('| Spec | Fecha |\n|---|---|\n'), []);
   });
 
-  test('la carpeta sale del link, que es también el nombre de la rama', () => {
-    assert.equal(parseLog(LOG)[1].dir, '002-motor-de-audio');
+  test('el enlace viene crudo, que es lo que lo hace servir de mapa', () => {
+    assert.equal(parseLog(LOG)[1].href, './002-motor-de-audio/spec.md');
   });
 
-  test('lee también las filas que enlazan a un ISSUE, con `dir` vacío', () => {
+  test('lee también las filas que enlazan a un ISSUE', () => {
     // Desde el spec 034 los specs viven en GitHub Issues y la columna del enlace es
     // el mapa spec<->issue. Con el regex viejo —que exigía `(./NNN-slug/…)`— una
     // tabla migrada no matcheaba **ni una fila**, y eso no daba error: daba 34 specs
     // con `estado: null` y la nota «sin fila en log.md». `spec_status` contestando
     // que no sabe nada, en verde.
     //
-    // No hay slug que sacar de una URL, así que `dir` queda vacío y el
-    // emparejamiento con la carpeta lo hace el `id`.
+    // El `href` se guarda tal cual —es el mapa spec<->issue— y el emparejamiento
+    // con la carpeta lo hace el `id`, que es lo único estable en los dos regímenes.
     const rows = parseLog(`| Spec | Fecha | Estado | Descripción |
 |------|-------|--------|-------------|
 | [001](https://github.com/x/y/issues/63) | 2026-08-02 | Descartado | Notas por celda |
@@ -92,7 +92,7 @@ describe('parseLog', () => {
 `);
     assert.equal(rows.length, 2);
     assert.deepEqual(rows[0], {
-      id: '001', dir: '', fecha: '2026-08-02',
+      id: '001', href: 'https://github.com/x/y/issues/63', fecha: '2026-08-02',
       estado: 'Descartado', descripcion: 'Notas por celda',
     });
   });
@@ -106,8 +106,8 @@ describe('parseLog', () => {
 | [002](https://github.com/x/y/issues/64) | 2026-08-02 | Implementado | Otra |
 `);
     assert.equal(rows.length, 2);
-    assert.equal(rows[0].dir, '001-notas-por-celda');
-    assert.equal(rows[1].dir, '');
+    assert.equal(rows[0].href, './001-notas-por-celda/spec.md');
+    assert.equal(rows[1].href, 'https://github.com/x/y/issues/64');
   });
 });
 
