@@ -2,8 +2,8 @@
 
 Guía para Claude Code (claude.ai/code) al trabajar en este repositorio. Es un *cheat sheet*: lo que no
 se puede averiguar mirando un archivo. El detalle vive en `docs/`, las reglas por capa en
-`.claude/rules/` —se cargan solas al tocar sus archivos—, el trabajo planificado en `specs/`
-(`log.md` · `revisiones.md`) y **la deuda sin spec en GitHub Issues**.
+`.claude/rules/` —se cargan solas al tocar sus archivos—, y **el trabajo planificado y la deuda en
+GitHub Issues**: `specs/log.md` es el mapa spec↔issue y `specs/revisiones.md` el porqué de cada decisión.
 
 ## Qué es
 
@@ -168,9 +168,10 @@ así — eso vive en los comentarios, no en la salida de una tool.
 | MCP server de dominio | [docs/guides/mcp-domain.md](./docs/guides/mcp-domain.md) | Las seis tools: cinco que ejecutan el dominio o lo leen, y la que escribe |
 | Deploy | [docs/infra/deploy.md](./docs/infra/deploy.md) | Netlify, `publish = "dist"`, versión de Node |
 
-**Trabajo planificado:** [specs/log.md](./specs/log.md) —registro y dependencias— y el porqué de cada
-decisión en [specs/revisiones.md](./specs/revisiones.md). Son la única fuente: no se duplican acá para
-que no se desactualicen.
+**Trabajo planificado:** desde el spec 034 cada spec **es un issue**, y
+[specs/log.md](./specs/log.md) —que se queda trackeado— es el registro, las dependencias y el **mapa
+spec↔issue**; el porqué de cada decisión, en [specs/revisiones.md](./specs/revisiones.md). Son la única
+fuente: no se duplican acá para que no se desactualicen.
 
 **La deuda sin spec vive en [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues)**
 y ya no en un archivo. `deuda.md` era un tracker escrito a mano y perdía ítems: al mudarlo aparecieron
@@ -182,8 +183,13 @@ propio, se cierra desde un commit con `Closes #N` y no hereda el estado del spec
 
 ## Antes de un cambio grande
 
-Escribir un spec en `specs/` (cuatro archivos: `spec` · `research` · `plan` · `tasks`), commitearlo a
-`main`, y recién ahí sacar la rama de feature. Convención en [specs/README.md](./specs/README.md).
+Escribir los cuatro archivos (`spec` · `research` · `plan` · `tasks`), **publicarlo como issue** con
+`node .claude/scripts/publicar-spec.mjs`, y agregar su fila a `specs/log.md` — que es lo único del spec
+que se commitea. Recién ahí, la rama de feature. Convención en [specs/README.md](./specs/README.md).
+
+Desde el spec 034 `specs/[0-9]*/` está en el `.gitignore`: el directorio es una **caché** que se trae
+con `node .claude/scripts/hidratar-specs.mjs <NNN>`, y hace falta **en cada worktree**. Leerlos anda
+igual, pero **`Grep` no los ve** —es ripgrep y respeta `.gitignore`—: ahí va `rg --no-ignore`.
 
 El `research.md` se escribe **midiendo, no suponiendo**. El spec 001 salió distinto de lo previsto
 porque correr el algoritmo sobre las 12 piezas × 4 rotaciones desmintió tres supuestos.
