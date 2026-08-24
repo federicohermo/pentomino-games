@@ -33,7 +33,7 @@
   "032": {"issue":94,"carpeta":"032-la-documentacion-tambien-se-verifica","fecha":"2026-08-22","estado":"Implementado","titulo":"Spec 032 — La documentación también se verifica"},
   "033": {"issue":95,"carpeta":"033-el-archivo-deja-de-ser-la-interfaz","fecha":"2026-08-23","estado":"Implementado","titulo":"Spec 033 — El archivo deja de ser la interfaz"},
   "034": {"issue":96,"carpeta":"034-el-registro-deja-de-vivir-en-el-repo","fecha":"2026-08-23","estado":"Implementado","titulo":"Spec 034 — El registro deja de vivir en el repo"},
-  "035": {"issue":99,"carpeta":"035-los-registros-se-van-con-los-specs","fecha":"2026-08-24","estado":"Propuesto","titulo":"Spec 035 — Los registros se van con los specs"},
+  "035": {"issue":99,"carpeta":"035-los-registros-se-van-con-los-specs","fecha":"2026-08-24","estado":"Implementado","titulo":"Spec 035 — Los registros se van con los specs"},
   "036": {"issue":103,"carpeta":"036-la-z-era-la-n-reflejada","fecha":"2026-08-24","estado":"Propuesto","titulo":"Spec 036 — La Z era la N reflejada"},
   "037": {"issue":104,"carpeta":"037-un-cambio-arranca-por-el-issue","fecha":"2026-08-24","estado":"Propuesto","titulo":"Spec 037 — Un cambio arranca por el issue"},
   "038": {"issue":105,"carpeta":"038-el-estado-del-mapa-tiene-que-ser-verdad","fecha":"2026-08-24","estado":"Propuesto","titulo":"Spec 038 — El estado del mapa tiene que ser verdad"}
