@@ -621,8 +621,8 @@ export default tseslint.config([
     // cerrados para satisfacer una regla de estilo. Un error de RENDERIZADO es otra cosa:
     // no reescribe una decision, destapa contenido que hoy GitHub descarta.
     //
-    // El glob es `specs/[0-9]*` y no `specs/**`: los tres registros —`README.md`, `log.md`
-    // y `revisiones.md`— son documentacion viva y se quedan en el carril A.
+    // El glob es `specs/[0-9]*` y no `specs/**`: el `README.md` de ahi es documentacion
+    // viva y se queda en el carril A, igual que los gates de `specs/__tests__/`.
     files: ['specs/[0-9]*/**/*.md'],
     rules: {
       // Apagar el preset se deriva del preset y no de una lista escrita a mano, para que

@@ -57,7 +57,7 @@ Cuatro sustituciones. Las cuatro se descubrieron corriendo, no leyendo:
    sobre los `pr.files` que `diff-pr.sh` ya emite —lo podés correr sin checkout, con el tercer
    argumento—. Medido el 2026-08-22 sobre el lote 018–021: **30 archivos distintos, 17 tocados por
    más de un PR y 3 por los cuatro** (`src/App.tsx`, `src/__tests__/App.browser.test.tsx` y
-   `specs/revisiones.md`).
+   las notas de revisión del issue de su spec).
 6. **Comparalo contra `main`.** El PR de más abajo puede estar detrás: en esa corrida `main` iba tres
    commits adelante de la base del 33 y no tocaba ninguno de los 30 archivos del lote, o sea que la
    puesta al día no costaba nada. Eso se dice en el reporte y **no** se hace desde acá.
@@ -147,7 +147,8 @@ los cuatro van **destilados**, no como rutas a leer:
   el lote toca. Con la línea de [`hallazgos.md`](./hallazgos.md) marcada: qué verifica ya el linter y
   qué no.
 - **El mapa síntoma → deuda**, que sale de los **issues abiertos** (`mcp__github__list_issues`).
-- Lo que `specs/revisiones.md` registra como *ya se probó y no funcionó* para el área del lote.
+- Lo que las **notas de revisión** registran como *ya se probó y no funcionó* para el área del lote.
+  Viven como comentarios en el issue de cada spec: `gh issue view <N> --json comments`.
 - **La cadena de bases del Paso 0**, con **las cinco cláusulas del Paso 0 bis literales** y **la lista
   caliente medida**. Las tres cosas son del padre y ninguna la puede derivar el agente: la cadena
   porque no ve hacia arriba, las cláusulas porque son el contrato, y la lista porque es la medición
@@ -215,7 +216,7 @@ Y este contrato, en este orden:
 
    No es opcional y **no falla solo**: sin eso el paso lee un directorio vacío, no encuentra los AC y
    revisa sin criterios de aceptación — que es la peor forma de este bug, porque el review igual
-   termina y reporta. El mapa sale de `specs/log.md`, que sí está trackeado.
+   termina y reporta. El mapa sale de `specs/mapa.json`, que sí está trackeado.
 5. **Encontrá con el método de `hallazgos.md`**, y solo en los ejes que el gate abrió.
 6. **Arreglá con la política de triage de `hallazgos.md`**, y con las cinco cláusulas del Paso 0 bis
    encima: lo que no sea `+` en el propio diff se reporta como `PERTENECE-A-PR-<N>` y no se toca, el
@@ -337,7 +338,7 @@ Después borrá las ramas `rev-pr-<N>`, **pero recién después de verificar que
 
 ## Lo que no hace
 
-- **No mergea, y no mueve estados en `specs/log.md`** — los mueve el merge.
+- **No mergea, y no mueve estados en `specs/mapa.json`** — los mueve el merge.
 - **No revisa specs que todavía son texto.** Eso es `spec-review-batch`, corre antes, y sale mucho
   más barato: un cruce detectado como texto cuesta un párrafo y detectado en dos ramas cuesta un
   rebase.

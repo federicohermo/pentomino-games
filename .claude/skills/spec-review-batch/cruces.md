@@ -80,14 +80,14 @@ Medido: el 015 **cierra el `T070` del 011 con un "no"**: el 011 quería borrar e
   `spec_status` reportando trabajo que ya no existe — y como el conteo sale del mismo `spec_status`, el
   olvido se ve en la consulta siguiente.
 
-## 6 · El `log.md` declara intención, no grafo
+## 6 · Lo que un spec declara es intención, no grafo
 
 «Dependencias entre specs» lo escribe quien planificó el lote, y planifica en fila porque así lo pensó.
 Medido: un lote declarado textualmente como *«una cadena»* de cinco eslabones dio **tres carriles** al
 derivar el grafo de archivos.
 
 - **Se detecta** contrastando la matriz del Paso 2 contra ese texto.
-- **Se edita el `log.md`** —acá sí, es documentación viva, no un spec mergeado— y el orden corregido es
+- **Se corrige donde se declaró** —el `tasks.md` del spec, si todavía no está mergeado— y el orden corregido es
   el que va al reporte — y el que va a leer quien reparta el lote para implementarlo.
 
 ## 7 · Dos specs declaran la misma tarea de documentación

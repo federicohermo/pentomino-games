@@ -546,8 +546,8 @@ resetearse nunca, y además haría un swap fuera del borde del ciclo en el cuadr
 
 **Este spec no calcula ningún recorrido: lo lee.** Entre el par de celdas más lejano del tablero hay 792
 caminos mínimos, o sea 792 formas de que el dibujo discrepe del sonido si la UI eligiera el suyo — el
-mismo argumento que ya separó al 009 del 010 (ver la nota de revisión correspondiente en
-[revisiones.md](../../specs/revisiones.md)).
+mismo argumento que ya separó al 009 del 010 (ver la [nota de revisión sobre ese
+corte](https://github.com/federicohermo/pentomino-games/issues/71)).
 
 ## Cómo verificar el audio
 

@@ -44,7 +44,7 @@ pnpm exec vite --port 5199 --strictPort
 ### Los specs no vienen en el clone
 
 Desde el spec 034 cada spec **es un issue** y `specs/[0-9]*/` está en el `.gitignore`, así que a un
-clone nuevo llegan **3** archivos de `specs/` —`README.md`, `log.md` y `revisiones.md`— y no 136. El
+clone nuevo llegan **2** archivos de `specs/` —`README.md` y `mapa.json`— y no 136. El
 directorio es una **caché**, y se trae:
 
 ```bash
@@ -56,7 +56,7 @@ Necesita [`gh`](https://cli.github.com/) autenticado, y hay que correrlo **en ca
 `git worktree add` hace checkout de lo trackeado, y un archivo ignorado no viaja. No hace falta para
 `pnpm verify` —los gates saben en qué régimen están (spec 034) y no exigen las carpetas—, sí para
 leer o auditar un spec. El mapa spec↔issue es la columna del enlace de
-[`specs/log.md`](../../specs/log.md).
+[`specs/mapa.json`](../../specs/mapa.json).
 
 **Buscar dentro de los specs necesita `--no-ignore`.** Leerlos no: `.gitignore` es cosa de git y no
 del sistema de archivos. Pero ripgrep lo respeta, así que `rg "lo que sea" specs/` devuelve cero
@@ -173,7 +173,8 @@ las funciones puras reales, así que responden lo que el código hace hoy. Catá
 ### Antes de un cambio grande
 
 Escribir los cuatro archivos, publicarlo como issue con `node .claude/scripts/publicar-spec.mjs`,
-agregar su fila a [`specs/log.md`](../../specs/log.md) —lo único del spec que se commitea— y recién
+publicarlo, que le escribe su entrada en [`specs/mapa.json`](../../specs/mapa.json) —lo único del
+spec que se commitea— y recién
 ahí sacar la rama de feature. Ver [specs/README.md](../../specs/README.md).
 
 ## Verificación antes de un PR

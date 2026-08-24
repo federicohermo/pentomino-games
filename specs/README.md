@@ -2,14 +2,13 @@
 
 Trabajo planificado. Un spec por unidad de trabajo, en su propia carpeta numerada.
 
-> **El registro vive en [log.md](./log.md)** y el porqué de cada decisión en
-> [revisiones.md](./revisiones.md). **La deuda sin spec vive en
-> [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues)**, no en un archivo de acá.
-> Este archivo documenta solo la convención.
+> **El registro vive en [mapa.json](./mapa.json)** y el porqué de cada decisión, como comentario en
+> el issue del spec del que habla. **La deuda sin spec vive en [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues)**,
+> no en un archivo de acá. Este archivo documenta solo la convención.
 
 > **Desde el spec 034 los specs no se persisten en el repo: cada uno es un issue.**
-> `specs/[0-9]*/` está en el `.gitignore`, y lo que queda trackeado son los tres registros —este
-> `README.md`, `log.md` y `revisiones.md`—.
+> `specs/[0-9]*/` está en el `.gitignore`, y lo que queda trackeado son dos archivos que no son
+> specs —este `README.md` y [`mapa.json`](./mapa.json)— más los gates de `__tests__/`.
 >
 > **El directorio local es una caché, no la fuente.** Si no está, se trae:
 >
@@ -20,7 +19,7 @@ Trabajo planificado. Un spec por unidad de trabajo, en su propia carpeta numerad
 >
 > Hace falta correrlo **en cada worktree**: `git worktree add` hace checkout de lo trackeado, y un
 > archivo ignorado no viaja. Medido: antes del 034 a un worktree llegaban 136 archivos de `specs/` y
-> ahora llegan **3**.
+> ahora llegan **2**.
 >
 > **Buscar dentro de los specs necesita `--no-ignore`.** Leerlos no: `.gitignore` es cosa de git y no
 > del sistema de archivos, así que `Read`, `cat` y `head` los abren normalmente. Pero **ripgrep respeta
@@ -32,8 +31,23 @@ Trabajo planificado. Un spec por unidad de trabajo, en su propia carpeta numerad
 > rg --no-ignore "lo que sea" specs/
 > ```
 
-> **El mapa spec↔issue es la columna del enlace de [log.md](./log.md)**, y por eso ese archivo se
-> queda. No puede ser aritmético —issues y PRs comparten contador—: el spec 001 es el issue **#63**.
+> **El mapa spec↔issue es [`mapa.json`](./mapa.json)**, y por eso ese archivo se queda. No puede ser
+> aritmético —issues y PRs comparten contador—: el spec 001 es el issue **#63**.
+>
+> ```json
+> { "001": { "issue": 63, "carpeta": "001-notas-por-celda-en-orden-angular",
+>            "fecha": "2026-08-02", "estado": "Descartado", "titulo": "Spec 001 — …" } }
+> ```
+>
+> **`carpeta` está guardada y no se deriva del título**: medido sobre los 35, derivarla acierta 28 y
+> falla 7 —el 001 se llama `001-notas-por-celda-en-orden-angular` y su issue se titula «Asignar cada
+> nota a una celda de la pieza…»—, o sea que un árbol recién hidratado inventaría siete carpetas que
+> ninguna cita conoce.
+>
+> **`estado` y `titulo` son copias del issue**, y las mira un gate (`__tests__/mapa-de-specs.test.ts`)
+> que se saltea declarándolo cuando no hay red. Se copian porque `spec_status` y `mcp:test` corren
+> **sin red**; lo que no se copia es la descripción larga que tenía cada fila del registro anterior,
+> que son los 54.531 bytes que se desincronizaban solos.
 
 La convención es la de [Spec Kit](https://github.com/github/spec-kit) con tres desviaciones
 deliberadas, anotadas abajo donde corresponde. Las coincidencias no son casualidad: la carpeta
@@ -84,8 +98,8 @@ specs/<NNN>-<descripcion-kebab>/
 > por exclusión dejaría entrar sola cualquier regla que el preset agregue más adelante — y eso sería
 > `pnpm lint` en rojo sobre specs que no se pueden tocar.
 >
-> Los tres registros de acá —este `README.md`, `log.md` y `revisiones.md`— **no** están en ese carril:
-> son documentación viva y se mantienen al día, así que van con el preset completo.
+> El `README.md` de acá **no** está en ese carril: es documentación viva y se mantiene al día, así
+> que va con el preset completo.
 
 ## Formato de una tarea
 
@@ -134,13 +148,21 @@ postergaba al siguiente; cerrarla no llevó más de un commit.
 ## Flujo
 
 1. Escribir los cuatro archivos. El `research.md` se escribe **midiendo, no suponiendo**.
-2. Publicar el spec como issue y agregar su fila a [log.md](./log.md) con estado `Propuesto`. La fila
-   enlaza al issue, y **eso es el mapa**: es lo único del spec que se commitea.
+2. Publicarlo como issue con `node .claude/scripts/publicar-spec.mjs`, que le escribe su entrada en
+   [mapa.json](./mapa.json) con estado `Propuesto`. **Esa entrada es el mapa**, y es lo único del spec
+   que se commitea.
 3. Crear la rama `feature/<NNN>-<descripcion-kebab>`.
 4. Implementar, marcando `tasks.md` a medida que se avanza. El archivo local es caché — si no está,
    `node .claude/scripts/hidratar-specs.mjs <NNN>`.
-5. Al mergear, actualizar el estado en [log.md](./log.md), **cerrar el issue**, y anotar en
-   [revisiones.md](./revisiones.md) qué se aprendió si el spec salió distinto de lo previsto.
+5. Al mergear, actualizar el estado en [mapa.json](./mapa.json), **cerrar el issue**, y anotar en el
+   issue —como comentario— qué se aprendió si el spec salió distinto de lo previsto. Los dos primeros
+   son la misma cosa vista de dos lados, y el gate del mapa falla si no coinciden.
 
-`spec_status` (MCP) responde el estado de los once specs en una llamada, en vez de abrir `log.md` y
-once `tasks.md`.
+`spec_status` (MCP) responde el estado de todos los specs en una llamada, en vez de abrir el mapa y
+treinta y cinco `tasks.md`. Y responde **sin hidratar**: lo que falta en ese caso es `tareas`, y lo
+dice.
+
+**Las dependencias entre specs no se declaran en ninguna parte.** Las calcula `spec_status` en
+`cruces`, leyendo los pares `X → Y` de cada `tasks.md` — o sea los números que una tarea mueve de un
+valor a otro, que es la arista que ningún import delata. El registro anterior tenía además una lista
+escrita a mano, y era la copia de eso.

@@ -70,7 +70,7 @@ dice el global. No los reescribas para agregárselos.
   agrega al final de `## Seguimiento (no bloquea)` —y crea la sección si el spec no la tenía—. **El ID
   lo pone la tool**: sigue contando desde el mayor del archivo y nunca reusa uno libre, que es
   exactamente el error que comete quien numera a ojo mirando el último bloque.
-- El estado del spec en `specs/log.md` lo mueve el **merge**, no la rama.
+- El estado del spec en `specs/mapa.json` lo mueve el **merge**, no la rama.
 - Si el spec falsificó algo que la documentación afirma en presente, actualizá `docs/` y
   `.claude/rules/` —no los specs viejos, que son historia— y anotá el aprendizaje en
-  `specs/revisiones.md`.
+  el issue del spec, como nota de revisión.

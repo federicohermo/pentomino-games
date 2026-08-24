@@ -242,7 +242,8 @@ El spec 013 fue el primero que agregó uno —hasta ahí el único `addEventList
   el `wheel`, así que va por `selectedRef`. Lo que la vuelve legítima no es el ref sino su escritor —un
   `elegirPieza` que es el **único** que toca `selected`, así que el ref no se puede desincronizar por
   construcción— y que ese ref **no se escribe en el render**, que es la forma obvia y la que
-  `react-hooks` rechaza («Cannot access refs during render»). Ver `specs/revisiones.md`, 2026-08-21.
+  `react-hooks` rechaza («Cannot access refs during render»). Ver la nota de revisión del 020:
+  https://github.com/federicohermo/pentomino-games/issues/82.
 - **Con callbacks, la cardinalidad de suscripción pasa a decidirse en el shell.** Los callbacks del
   teclado se memoizan con sus dependencias reales —desde el 020 es `[orientar, selected]`, porque el
   cambio se calcula adentro del setter funcional sobre la ranura anterior y ya no hace falta leer la

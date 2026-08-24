@@ -31,9 +31,9 @@ dist-ssr
 # llevaria puestos.
 .claude/worktrees/
 
-# Los specs viven en GitHub Issues desde el spec 034: el mapa es la columna del
-# enlace de `specs/log.md`, y el directorio de aca es una CACHE que se reconstruye
-# con `node .claude/scripts/hidratar-specs.mjs`. Los tres registros —README, log y
-# revisiones— se quedan trackeados: no son specs, y `log.md` es lo que sostiene el
-# mapa.
+# Los specs viven en GitHub Issues desde el spec 034: el mapa es `specs/mapa.json`, y
+# el directorio de aca es una CACHE que se reconstruye con
+# `node .claude/scripts/hidratar-specs.mjs`. Lo que queda trackeado son dos archivos que
+# no son specs: el `README.md` con la convencion, y el mapa — que ademas trae el nombre
+# historico de cada carpeta, porque NO se deriva del titulo del issue (7 de 35 no).
 specs/[0-9]*/

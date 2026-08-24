@@ -141,19 +141,16 @@ const enlacesDe = (contenido: string) => {
 };
 
 /**
- * El regimen del registro (spec 034), redetectado aca en cuatro lineas en vez de
- * compartir un helper con `specs-convencion.test.ts` — por la misma razon que el
- * caminante: un helper compartido entre tests es codigo sin tests.
+ * Los `specs/NNN-…/` estan **ignorados** desde el spec 034: pueden estar hidratados o
+ * no, y cualquiera de los dos es correcto. Un spec hidratado que cita a otro que no lo
+ * esta daria «roto» sin que nada este mal, asi que **los enlaces DE un spec HACIA otro
+ * spec** dejan de verificarse — y solo esos. Todo el resto del repo, incluidos los
+ * enlaces de `docs/` y del `README.md` de `specs/`, se sigue verificando igual.
  *
- * En regimen `issue` los `specs/NNN-…/` estan **ignorados**: pueden estar hidratados
- * o no, y cualquiera de los dos es correcto. Un spec hidratado que cita a otro que no
- * lo esta daria «roto» sin que nada este mal, asi que **los enlaces DE un spec HACIA
- * otro spec** dejan de verificarse — y solo esos. Todo el resto del repo, incluidos
- * los enlaces de `docs/` y de los registros, se sigue verificando igual.
+ * Esto era condicional hasta el spec 035: `log.md` declaraba un «regimen» —si el
+ * registro vivia en el repo o en GitHub— y la excepcion valia solo en el segundo. Con
+ * `log.md` borrado no hay dos mundos que distinguir: hay uno.
  */
-const LOG = readFileSync(join(RAIZ, 'specs/log.md'), 'utf8');
-const hrefs = [...LOG.matchAll(/^\|\s*\[\d{3}\]\(([^)]*)\)/gm)].map((m) => m[1].trim());
-const REGIMEN_ISSUE = hrefs.length > 0 && hrefs.every((h) => /^https:\/\/github\.com\/.+\/issues\/\d+$/.test(h));
 
 /** ¿La ruta cae dentro de un directorio de spec, que es lo que el 034 ignora? */
 const esDeUnSpec = (absoluto: string) => /[/\\]specs[/\\]\d{3}-/.test(absoluto);
@@ -165,15 +162,14 @@ describe('los enlaces relativos de la documentacion resuelven', () => {
     // pasan **sin haber mirado nada**. Es el mismo «fallar en verde» que el `--filter
     // "{.}"` de `verify`, aca con otra cara.
     //
-    // El piso depende del regimen porque la cuenta cambia sola con el spec 034, no
-    // porque el gate afloje. Medido sobre un worktree con `specs/NNN-…/` ignorado:
-    // **30** archivos contra los 163 del repo completo — los 133 que faltan son
-    // exactamente los specs. Un piso de 25 sigue siendo una red que atrapa un
-    // caminante roto; lo que no puede es seguir en 100 y fallar por el motivo
-    // equivocado.
-    const piso = REGIMEN_ISSUE ? 25 : 100;
+    // El piso es 25 y no 100 porque la cuenta cambio sola con el spec 034, no porque
+    // el gate afloje. Medido sobre un worktree con `specs/NNN-…/` ignorado: **30**
+    // archivos contra los 163 del repo completo — los 133 que faltan son exactamente
+    // los specs. Un piso de 25 sigue siendo una red que atrapa un caminante roto; lo
+    // que no podia era seguir en 100 y fallar por el motivo equivocado.
+    const piso = 25;
 
-    expect(ARCHIVOS.length, `regimen ${REGIMEN_ISSUE ? 'issue' : 'archivo'}: piso ${piso}`).toBeGreaterThan(piso);
+    expect(ARCHIVOS.length, `piso ${piso}, sin contar los specs ignorados`).toBeGreaterThan(piso);
   });
 
   it('cada enlace apunta a un archivo que existe', () => {
@@ -185,10 +181,10 @@ describe('los enlaces relativos de la documentacion resuelven', () => {
         if (ruta === '') continue; // ancla propia: la mira el test de abajo
         const absoluto = resolve(dirname(archivo), ruta);
 
-        // La unica excepcion, y es angosta a proposito: un spec citando a otro spec,
-        // en regimen `issue`. Ahi los dos estan ignorados y la hidratacion puede
-        // haber traido uno y no el otro. Fuera de ese cruce exacto, todo se verifica.
-        if (REGIMEN_ISSUE && esDeUnSpec(archivo) && esDeUnSpec(absoluto)) continue;
+        // La unica excepcion, y es angosta a proposito: un spec citando a otro spec.
+        // Los dos estan ignorados y la hidratacion puede haber traido uno y no el
+        // otro. Fuera de ese cruce exacto, todo se verifica.
+        if (esDeUnSpec(archivo) && esDeUnSpec(absoluto)) continue;
 
         if (!ARCHIVOS.includes(absoluto) && !existe(absoluto)) {
           rotos.push(`${relative(RAIZ, archivo)}:${linea} → ${destino}`);
