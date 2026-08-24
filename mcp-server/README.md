@@ -4,7 +4,7 @@ Servidor MCP que **importa las funciones puras de `src/` y las ejecuta**. No ind
 índice, no hay staleness y no hay paso de build.
 
 Guía de uso y catálogo de tools: [`docs/guides/mcp-domain.md`](../docs/guides/mcp-domain.md).
-El spec que lo motivó: [`specs/006`](../specs/006-mcp-server-de-dominio-ejecutable/spec.md).
+El spec que lo motivó: [`specs/006`](https://github.com/federicohermo/pentomino-games/issues/68).
 
 ## Comandos
 

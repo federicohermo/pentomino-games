@@ -165,7 +165,7 @@ De esa propiedad depende `ANCHOR_INDEX`, que guarda la celda de agarre de cada p
 de coordenada: rotar la pieza mueve la celda, pero no cambia su índice. Es lo que hace que el punto de
 agarre acompañe a la figura sin recalcular nada.
 
-El [spec 001](../../specs/001-notas-por-celda-en-orden-angular/spec.md) reusa el mismo mecanismo para el
+El [spec 001](https://github.com/federicohermo/pentomino-games/issues/63) reusa el mismo mecanismo para el
 mapeo celda↔nota. **Es un invariante del que ya depende código en producción**: romperlo (por ejemplo,
 haciendo que `normalize` filtre u ordene celdas) rompe la colocación de piezas de forma silenciosa.
 

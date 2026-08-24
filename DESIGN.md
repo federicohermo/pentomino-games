@@ -7,7 +7,7 @@ suena, acá está qué se ve.
 Los valores salieron de **muestrear la lámina de referencia píxel a píxel**, no de elegirlos de nuevo.
 Las mediciones —cómo se aisló cada color, los dos contrastes de cada uno y el mapeo celda↔nota completo—
 viven en
-[research.md §1](./specs/007-nota-por-celda-y-lenguaje-visual/research.md#1-los-12-colores-muestreados-de-la-referencia)
+[research.md §1](https://github.com/federicohermo/pentomino-games/issues/69#1-los-12-colores-muestreados-de-la-referencia)
 del spec 007 y **no se copian acá**, para que no haya dos fuentes que se contradigan.
 
 ## Un color por pieza

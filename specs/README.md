@@ -7,6 +7,24 @@ Trabajo planificado. Un spec por unidad de trabajo, en su propia carpeta numerad
 > [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues)**, no en un archivo de acá.
 > Este archivo documenta solo la convención.
 
+> **Desde el spec 034 los specs no se persisten en el repo: cada uno es un issue.**
+> `specs/[0-9]*/` está en el `.gitignore`, y lo que queda trackeado son los tres registros —este
+> `README.md`, `log.md` y `revisiones.md`—.
+>
+> **El directorio local es una caché, no la fuente.** Si no está, se trae:
+>
+> ```bash
+> node .claude/scripts/hidratar-specs.mjs        # los que falten
+> node .claude/scripts/hidratar-specs.mjs 021    # o uno solo
+> ```
+>
+> Hace falta correrlo **en cada worktree**: `git worktree add` hace checkout de lo trackeado, y un
+> archivo ignorado no viaja. Medido: antes del 034 a un worktree llegaban 136 archivos de `specs/` y
+> ahora llegan **3**.
+>
+> **El mapa spec↔issue es la columna del enlace de [log.md](./log.md)**, y por eso ese archivo se
+> queda. No puede ser aritmético —issues y PRs comparten contador—: el spec 001 es el issue **#63**.
+
 La convención es la de [Spec Kit](https://github.com/github/spec-kit) con tres desviaciones
 deliberadas, anotadas abajo donde corresponde. Las coincidencias no son casualidad: la carpeta
 numerada, los tres documentos y el `tasks.md` derivado del plan salen de ahí.
@@ -90,10 +108,12 @@ pendientes. Es un eje distinto de `[M]`: `Seguimiento` es *dónde* está anotada
 ## Flujo
 
 1. Escribir los cuatro archivos. El `research.md` se escribe **midiendo, no suponiendo**.
-2. Commitear el spec a `main` y agregar su fila a [log.md](./log.md) con estado `Propuesto`.
+2. Publicar el spec como issue y agregar su fila a [log.md](./log.md) con estado `Propuesto`. La fila
+   enlaza al issue, y **eso es el mapa**: es lo único del spec que se commitea.
 3. Crear la rama `feature/<NNN>-<descripcion-kebab>`.
-4. Implementar, marcando `tasks.md` a medida que se avanza.
-5. Al mergear, actualizar el estado en [log.md](./log.md), y anotar en
+4. Implementar, marcando `tasks.md` a medida que se avanza. El archivo local es caché — si no está,
+   `node .claude/scripts/hidratar-specs.mjs <NNN>`.
+5. Al mergear, actualizar el estado en [log.md](./log.md), **cerrar el issue**, y anotar en
    [revisiones.md](./revisiones.md) qué se aprendió si el spec salió distinto de lo previsto.
 
 `spec_status` (MCP) responde el estado de los once specs en una llamada, en vez de abrir `log.md` y

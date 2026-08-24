@@ -1,0 +1,172 @@
+{
+  "001": {
+    "carpeta": "001-notas-por-celda-en-orden-angular",
+    "numero": 63,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/63"
+  },
+  "002": {
+    "carpeta": "002-motor-de-audio-propio-sobre-web-audio",
+    "numero": 64,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/64"
+  },
+  "003": {
+    "carpeta": "003-visualizacion-de-la-senal-con-analysernode",
+    "numero": 65,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/65"
+  },
+  "004": {
+    "carpeta": "004-fase-por-pieza-la-columna-como-posicion-en-el-compas",
+    "numero": 66,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/66"
+  },
+  "005": {
+    "carpeta": "005-modularizacion-de-src-en-capas",
+    "numero": 67,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/67"
+  },
+  "006": {
+    "carpeta": "006-mcp-server-de-dominio-ejecutable",
+    "numero": 68,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/68"
+  },
+  "007": {
+    "carpeta": "007-nota-por-celda-y-lenguaje-visual",
+    "numero": 69,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/69"
+  },
+  "008": {
+    "carpeta": "008-el-intervalo-como-unidad-musical",
+    "numero": 70,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/70"
+  },
+  "009": {
+    "carpeta": "009-el-tablero-como-recorrido",
+    "numero": 71,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/71"
+  },
+  "010": {
+    "carpeta": "010-cabeza-lectora-por-celda",
+    "numero": 72,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/72"
+  },
+  "011": {
+    "carpeta": "011-el-recorrido-esquiva-las-piezas",
+    "numero": 73,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/73"
+  },
+  "012": {
+    "carpeta": "012-el-arpegio-camina-la-pieza",
+    "numero": 74,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/74"
+  },
+  "013": {
+    "carpeta": "013-control-directo",
+    "numero": 75,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/75"
+  },
+  "014": {
+    "carpeta": "014-el-tablero-se-edita-en-el-tablero",
+    "numero": 76,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/76"
+  },
+  "015": {
+    "carpeta": "015-el-click-deja-de-ser-ruido",
+    "numero": 77,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/77"
+  },
+  "016": {
+    "carpeta": "016-la-pieza-se-ve-antes-de-colocarse",
+    "numero": 78,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/78"
+  },
+  "017": {
+    "carpeta": "017-el-regimen-de-rotacion",
+    "numero": 79,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/79"
+  },
+  "018": {
+    "carpeta": "018-la-pieza-se-elige-con-su-letra",
+    "numero": 80,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/80"
+  },
+  "019": {
+    "carpeta": "019-el-panel-se-queda-sin-botones",
+    "numero": 81,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/81"
+  },
+  "020": {
+    "carpeta": "020-la-orientacion-es-de-la-pieza",
+    "numero": 82,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/82"
+  },
+  "021": {
+    "carpeta": "021-el-tablero-es-la-pantalla",
+    "numero": 83,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/83"
+  },
+  "022": {
+    "carpeta": "022-el-puente-con-el-motor-sale-del-shell",
+    "numero": 84,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/84"
+  },
+  "023": {
+    "carpeta": "023-la-verificacion-la-corre-la-maquina",
+    "numero": 85,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/85"
+  },
+  "024": {
+    "carpeta": "024-los-componentes-se-verifican-en-un-navegador",
+    "numero": 86,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/86"
+  },
+  "025": {
+    "carpeta": "025-el-estado-que-se-pinta-tambien-se-anuncia",
+    "numero": 87,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/87"
+  },
+  "026": {
+    "carpeta": "026-el-tablero-se-toca-con-el-teclado",
+    "numero": 88,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/88"
+  },
+  "027": {
+    "carpeta": "027-lo-que-falla-en-silencio",
+    "numero": 89,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/89"
+  },
+  "028": {
+    "carpeta": "028-la-app-deja-de-llamarse-react-app",
+    "numero": 90,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/90"
+  },
+  "029": {
+    "carpeta": "029-lo-que-no-se-cubre-no-se-mergea",
+    "numero": 91,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/91"
+  },
+  "030": {
+    "carpeta": "030-el-linter-verifica-lo-que-claude-md-declara",
+    "numero": 92,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/92"
+  },
+  "031": {
+    "carpeta": "031-el-tablero-crece-hasta-la-pantalla",
+    "numero": 93,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/93"
+  },
+  "032": {
+    "carpeta": "032-la-documentacion-tambien-se-verifica",
+    "numero": 94,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/94"
+  },
+  "033": {
+    "carpeta": "033-el-archivo-deja-de-ser-la-interfaz",
+    "numero": 95,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/95"
+  },
+  "034": {
+    "carpeta": "034-el-registro-deja-de-vivir-en-el-repo",
+    "numero": 96,
+    "url": "https://github.com/federicohermo/pentomino-games/issues/96"
+  }
+}

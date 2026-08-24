@@ -122,7 +122,7 @@ ver [audio.md](./audio.md#reconciliación-de-loops).
 
 **Retroalimentación visual del recorrido.** Esta sección anotaba como limitación conocida que no había
 ninguna: hoy se oía el recorrido pero no se leía. El [spec
-010](../../specs/010-cabeza-lectora-por-celda/spec.md) la cierra con una cabeza lectora
+010](https://github.com/federicohermo/pentomino-games/issues/72) la cierra con una cabeza lectora
 (`components/Playhead.tsx`) que recorre el tablero celda por celda, leyendo `playheadOffset()` del motor
 — sin pasar por estado de React, porque la frecuencia de actualización (4 a 10,6 veces por segundo) lo
 haría re-renderizar el tablero entero para mover un resaltado. Detalle en
@@ -150,7 +150,7 @@ La octava está fija en `4` en la llamada actual (`notesForRotation(basePc, 4, r
 
 ## Rotación → escala **o** orden: los dos regímenes
 
-Desde el [spec 017](../../specs/017-el-regimen-de-rotacion/spec.md) la rotación hace **una de dos** cosas,
+Desde el [spec 017](https://github.com/federicohermo/pentomino-games/issues/79) la rotación hace **una de dos** cosas,
 y cuál se elige con un interruptor global (`RegimenDeRotacion`, estado de `App.tsx` como el tempo). El
 default es `escala`: sin tocar nada, el instrumento suena como siempre.
 
@@ -245,7 +245,7 @@ Se compone limpiamente con la rotación en los dos regímenes, pero la frase cor
 notas, reflejar elige *en qué orden*»— vale sólo con `escala`: bajo `orden` la rotación **también** mueve
 el orden, y lo que las separa es que el retrógrado lo **invierte** mientras la rotación lo **corre**.
 Ortogonales siguen siendo —las dos se componen sin pisarse—, y el
-[spec 007](../../specs/007-nota-por-celda-y-lenguaje-visual/spec.md) §D3 argumenta por qué mantenerlas
+[spec 007](https://github.com/federicohermo/pentomino-games/issues/69) §D3 argumenta por qué mantenerlas
 así al agregar el mapeo espacial.
 
 **Desde el spec 010 esto también decide por dónde entra y sale el recorrido.** `gates(p)` lee de
@@ -290,7 +290,7 @@ Cruzarlas compila: `ascendente[paso]` devuelve la nota **espejada** en toda piez
 ## Forma → qué celda tiene qué nota
 
 Cada celda de una pieza es **dueña de un grado de la escala**, y quién es dueña de cuál lo decide la
-forma. Desde el [spec 012](../../specs/012-el-arpegio-camina-la-pieza/spec.md) el arpegio **recorre** la
+forma. Desde el [spec 012](https://github.com/federicohermo/pentomino-games/issues/74) el arpegio **recorre** la
 pieza: de una nota a la siguiente se llega a una celda que **se toca** con la anterior, preferentemente
 por un lado y si la forma no da, por una esquina.
 `degreeByCellIndex` (`domain/music.ts`) compone dos cosas —`pathThroughCells` de `domain/transform.ts`,
@@ -337,7 +337,7 @@ Cuatro cosas que definen la regla, y por qué son así:
   `notes` de `describe_piece` vienen **ya invertidos**.
 
 El mapeo completo de las 12 piezas —grado por índice y nota por celda— está medido en
-[research.md §5 del spec 012](../../specs/012-el-arpegio-camina-la-pieza/research.md) y congelado en un
+[research.md §5 del spec 012](https://github.com/federicohermo/pentomino-games/issues/74) y congelado en un
 test, con las notas escritas a mano. La lámina de referencia del 007 **ya no lo describe**: lo que sigue
 fijando es qué cinco notas tiene cada pieza, no cuál de sus celdas muestra cuál. Los colores con que el tablero lo muestra están en
 [DESIGN.md](../../DESIGN.md).
