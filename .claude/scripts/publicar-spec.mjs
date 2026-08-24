@@ -59,9 +59,29 @@ const REPO = 'federicohermo/pentomino-games';
 const [fase] = process.argv.slice(2);
 const DRY = process.argv.includes('--dry');
 
-/** Los cuatro archivos, en el orden en que se publican. El `spec.md` va al body. */
+/** El `spec.md` va al body del issue; todo el resto va como comentario. */
 const CUERPO = 'spec.md';
-const COMENTARIOS = ['research.md', 'plan.md', 'tasks.md', 'baseline.md'];
+
+/**
+ * Los `.md` de la carpeta que NO son el body, en orden de lectura.
+ *
+ * Era una lista hardcodeada —`research`, `plan`, `tasks`, `baseline`— y eso la
+ * convertia en un lugar mas que hay que acordarse de editar. El 035 escribio un
+ * `reparto.md` y la publicacion **lo dejo afuera sin decir nada**: el issue quedo con
+ * tres comentarios y el archivo solo en el disco, que es un directorio ignorado. O sea
+ * que el artefacto que hace auditable un AC se habria perdido al hidratar, en verde.
+ *
+ * Los tres canonicos van primero y en su orden; cualquier otro va detras, alfabetico.
+ * `archivoDeComentario` acepta cualquier `[a-z]+.md`, asi que el hidratador los trae
+ * de vuelta sin cambios.
+ */
+const CANONICOS = ['research.md', 'plan.md', 'tasks.md'];
+const comentariosDe = (carpeta) => {
+  const todos = readdirSync(join(SPECS, carpeta))
+    .filter((f) => f.endsWith('.md') && f !== CUERPO && /^[a-z]+\.md$/.test(f));
+  const extras = todos.filter((f) => !CANONICOS.includes(f)).sort();
+  return [...CANONICOS.filter((f) => todos.includes(f)), ...extras];
+};
 
 const carpetas = readdirSync(SPECS, { withFileTypes: true })
   .filter((e) => e.isDirectory() && /^\d{3}-/.test(e.name))
@@ -140,7 +160,7 @@ if (fase === 'publicar') {
 
   for (const carpeta of carpetas) {
     const id = carpeta.slice(0, 3);
-    const { numero } = mapa[id];
+    const numero = mapa[id].issue;
 
     gh(['issue', 'edit', String(numero), '--repo', REPO, '--body-file', '-'],
       traducir(readFileSync(join(SPECS, carpeta, CUERPO), 'utf8'), mapa, REPO));
@@ -161,7 +181,7 @@ if (fase === 'publicar') {
     );
 
     let n = 0;
-    for (const archivo of COMENTARIOS) {
+    for (const archivo of comentariosDe(carpeta)) {
       const ruta = join(SPECS, carpeta, archivo);
       if (!existsSync(ruta)) continue;
       const cuerpo = `## \`${archivo}\`\n\n${traducir(readFileSync(ruta, 'utf8'), mapa, REPO)}`;

@@ -181,10 +181,21 @@ describe('los enlaces relativos de la documentacion resuelven', () => {
         if (ruta === '') continue; // ancla propia: la mira el test de abajo
         const absoluto = resolve(dirname(archivo), ruta);
 
-        // La unica excepcion, y es angosta a proposito: un spec citando a otro spec.
-        // Los dos estan ignorados y la hidratacion puede haber traido uno y no el
-        // otro. Fuera de ese cruce exacto, todo se verifica.
-        if (esDeUnSpec(archivo) && esDeUnSpec(absoluto)) continue;
+        // La unica excepcion, y es angosta a proposito: un spec citando algo de
+        // `specs/`. Son dos casos y los dos son correctos.
+        //
+        // A otro spec: los dos estan ignorados y la hidratacion puede haber traido uno
+        // y no el otro.
+        //
+        // Y a un archivo de `specs/` que ya no esta — el `../log.md` que el `tasks.md`
+        // del 007 cita en su linea 205. Un spec mergeado **no se reescribe** (la
+        // Desviacion 2, y desde el 034 su texto vive en el issue, asi que arreglarlo
+        // seria editar el issue), y ademas el enlace era cierto cuando se escribio: un
+        // archivo que existio y se borro es historia correcta, no un enlace roto.
+        //
+        // Lo que la excepcion NO cubre: un spec enlazando a `docs/` o a `src/`. Ahi el
+        // destino sigue trackeado, asi que un enlace roto es un enlace roto.
+        if (esDeUnSpec(archivo) && absoluto.startsWith(join(RAIZ, 'specs'))) continue;
 
         if (!ARCHIVOS.includes(absoluto) && !existe(absoluto)) {
           rotos.push(`${relative(RAIZ, archivo)}:${linea} → ${destino}`);
