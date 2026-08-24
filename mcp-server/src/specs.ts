@@ -4,11 +4,11 @@ import { join } from 'node:path';
 /**
  * Estado del trabajo planificado, leido de `specs/`.
  *
- * Es la unica tool que no es de dominio, y la que menos ahorra: `log.md` mas los
+ * Es la unica tool que no es de dominio, y la que menos ahorra: `mapa.json` mas los
  * `tasks.md` —61 KB al escribir esto, y suben con cada spec— contra una respuesta
  * de menos de 1 KB. Entra porque el costo de escribirla es un parseo de checkboxes.
  *
- * El parseo esta separado de la lectura a proposito: `parseLog` y `parseTasks`
+ * El parseo esta separado de la lectura a proposito: `parseMapa` y `parseTasks`
  * son puras y se testean contra strings fijos, asi que los tests no se rompen
  * cada vez que alguien marca una tarea.
  */
@@ -24,23 +24,88 @@ import { join } from 'node:path';
  */
 const lines = (md: string): string[] => md.split(/\r?\n/);
 
-/** Una fila de la tabla de `log.md`. */
-export interface LogRow {
-  id: string;
-  fecha: string;
-  estado: string;
-  descripcion: string;
+/**
+ * Una entrada de `specs/mapa.json`: un spec, su issue, y lo que de el se sabe sin red.
+ *
+ * Reemplaza a `LogRow` y con ella a `parseLog` (spec 035). La fila de `log.md` traia
+ * los mismos cuatro datos ahogados en una descripcion larga que **nadie verificaba**:
+ * el PR #44 encontro que mentia sobre 12 de 31 filas. Aca lo que se duplica del issue
+ * son dos campos —`estado` y `titulo`— y los dos los vigila un gate.
+ */
+export interface EntradaDeMapa {
+  /** El issue donde vive el spec. Es lo que hace que el mapa sea un mapa. */
+  issue: number;
   /**
-   * A donde enlaza la fila, **tal cual**: `./NNN-slug/spec.md` mientras el registro
-   * vivio en el repo, y la URL del issue desde el spec 034. Es el mapa spec<->issue
-   * del AC3, y por eso se guarda crudo en vez de parseado: cualquiera de las dos
-   * formas es informacion, y quien la necesite sabe cual espera.
+   * El nombre historico de la carpeta, que **no se deriva del titulo**.
    *
-   * Fue `dir` —el slug, sacado del enlace— hasta que el 034 lo dejo sin sentido: con
-   * una URL no hay slug que sacar, asi que el campo valia `''` en las 35 filas y el
-   * unico consumidor que le quedaba eran sus propios tests.
+   * Medido sobre los 35: `slugDe` reproduce 28 y falla en 7 —el 001 se llama
+   * `001-notas-por-celda-en-orden-angular` y su issue se titula «Asignar cada nota a
+   * una celda de la pieza…»—. O sea que ninguna heuristica lo recupera, y sin este
+   * campo un arbol recien hidratado inventa siete nombres que ninguna cita conoce.
    */
-  href: string;
+  carpeta: string;
+  /** La fecha en que se escribio el spec. Es un hecho del pasado: no puede derivar. */
+  fecha: string;
+  /** `Propuesto` · `En curso` · `Implementado` · `Descartado` · `Superado`. */
+  estado: string;
+  /**
+   * El titulo del issue, **verbatim** — con el `Spec NNN — ` adelante y todo.
+   *
+   * Verbatim y no recortado para que el gate del AC4 sea una igualdad de strings.
+   * Cualquier transformacion en el medio es una regla mas que puede desincronizarse
+   * sola, que es exactamente lo que este spec vino a sacar del registro.
+   */
+  titulo: string;
+}
+
+/** Los cinco campos que toda entrada tiene que traer. */
+const CAMPOS_DE_ENTRADA = ['issue', 'carpeta', 'fecha', 'estado', 'titulo'] as const;
+
+/**
+ * `specs/mapa.json` parseado, y **falla fuerte** ante cualquier cosa que no sea el
+ * mapa entero.
+ *
+ * El grito es el punto. Su antecesora `parseLog` devolvia `[]` cuando el regex dejaba
+ * de matchear, y `[]` no es un error: es una tabla vacia. Cuando el 034 migro el
+ * formato de la columna, los 34 specs pasaron a responder `estado: null` con la nota
+ * «sin fila en log.md» —o sea `spec_status` contestando que no sabe nada, en verde—, y
+ * lo encontro una consulta a mano y no `mcp:test`.
+ *
+ * Un JSON roto rompe la tool entera donde un `.md` roto perdia una fila sola. Es el
+ * precio del formato y se paga a proposito: perder una fila sola es lo que no se ve.
+ */
+export function parseMapa(json: string): Record<string, EntradaDeMapa> {
+  let crudo: unknown;
+  try {
+    crudo = JSON.parse(json);
+  } catch (e) {
+    throw new Error(`specs/mapa.json no es JSON valido: ${(e as Error).message}`);
+  }
+  if (crudo === null || typeof crudo !== 'object' || Array.isArray(crudo)) {
+    throw new Error('specs/mapa.json tiene que ser un objeto `{ "NNN": {…} }`.');
+  }
+
+  const mapa: Record<string, EntradaDeMapa> = {};
+  for (const [id, valor] of Object.entries(crudo as Record<string, unknown>)) {
+    if (!/^\d{3}$/.test(id)) throw new Error(`specs/mapa.json: "${id}" no es un NNN de tres digitos.`);
+    if (valor === null || typeof valor !== 'object') throw new Error(`specs/mapa.json: la entrada ${id} no es un objeto.`);
+
+    const e = valor as Record<string, unknown>;
+    for (const campo of CAMPOS_DE_ENTRADA) {
+      const esperado = campo === 'issue' ? 'number' : 'string';
+      if (typeof e[campo] !== esperado) {
+        throw new Error(`specs/mapa.json: la entrada ${id} no trae \`${campo}\` como ${esperado}.`);
+      }
+    }
+    mapa[id] = {
+      issue: e.issue as number,
+      carpeta: e.carpeta as string,
+      fecha: e.fecha as string,
+      estado: e.estado as string,
+      titulo: e.titulo as string,
+    };
+  }
+  return mapa;
 }
 
 /**
@@ -190,39 +255,6 @@ export interface TasksInfo {
 }
 
 /**
- * Filas de la tabla de `log.md`.
- *
- * Lo que ata la fila con la carpeta es el `id`, que es lo unico estable en los dos
- * regimenes del spec 034: esta en la fila, en el nombre de la carpeta y en el
- * titulo del issue.
- */
-export function parseLog(md: string): LogRow[] {
-  // El destino del enlace es `([^)]*)` y no `\.\/([^/)]+)\/[^)]*`, y ese cambio es del
-  // spec 034: desde ahi la fila puede enlazar a una **URL de issue** en vez de a una
-  // carpeta, porque los specs ya no se persisten en el repo.
-  //
-  // Con el regex viejo una tabla migrada no matcheaba **ni una fila**, y el resultado
-  // no era un error sino 34 specs con `estado: null` y la nota «sin fila en log.md» —
-  // o sea `spec_status` respondiendo que no sabe nada, en verde. Lo encontro una
-  // consulta a mano y no `mcp:test`, porque sus fixtures usan el formato viejo.
-  const fila = /^\|\s*\[(\d+)\]\(([^)]*)\)\s*\|([^|]*)\|([^|]*)\|([^|]*)\|/;
-  const rows: LogRow[] = [];
-
-  for (const line of lines(md)) {
-    const m = fila.exec(line.trim());
-    if (!m) continue;
-    rows.push({
-      id: m[1],
-      href: m[2].trim(),
-      fecha: m[3].trim(),
-      estado: m[4].trim(),
-      descripcion: m[5].trim(),
-    });
-  }
-  return rows;
-}
-
-/**
  * Checkboxes de un `tasks.md`, incluidos los anidados.
  *
  * La forma de una tarea es `- [ ] T012 [P] [M] texto`: el ID y los marcadores son
@@ -298,13 +330,25 @@ export function parseTasks(md: string): TasksInfo {
   };
 }
 
-/** Un spec con su fila del log y el conteo de su `tasks.md`. */
+/** Un spec con su entrada del mapa y el conteo de su `tasks.md`. */
 export interface SpecStatus {
   id: string;
+  /**
+   * Su carpeta. Sale del mapa, asi que **existe aunque el spec no este hidratado**:
+   * es el nombre historico, el que citan los specs viejos, y no uno derivado del
+   * titulo — ver `EntradaDeMapa.carpeta`.
+   */
   dir: string;
+  /** El issue donde vive el spec entero. `null` solo si la carpeta no esta en el mapa. */
+  issue: number | null;
   fecha: string | null;
   estado: string | null;
   titulo: string | null;
+  /**
+   * El conteo de su `tasks.md`, o `null` si no se pudo leer. Desde el 034 eso pasa
+   * tambien cuando el spec **no esta hidratado**, que no es un error: el spec vive en
+   * el issue y la carpeta es una cache. La nota dice cual de los dos casos es.
+   */
   tareas: TasksInfo | null;
   /** Que falto para responder del todo. Vacio cuando no falto nada. */
   notas: string[];
@@ -340,61 +384,103 @@ function specDirs(specsDir: string): string[] {
 /**
  * Estado de todos los specs.
  *
- * Recorre las CARPETAS y despues cruza con `log.md`, no al reves: un spec con
- * carpeta y sin fila en el log es exactamente el descuido que conviene ver, y no
- * uno que la respuesta deba esconder.
+ * **Recorre el MAPA y despues cruza con las carpetas, no al reves** — y esa direccion
+ * se dio vuelta en el 035 con una medicion: sobre `main` con el 034 recien mergeado y
+ * `specs/` sin hidratar, esta funcion devolvia **1 spec de 35**, con
+ * `totales: {specs: 1}` y sin una sola nota. Recorrer las carpetas era razonable
+ * mientras las carpetas eran el registro; desde que son una **cache**, un checkout sin
+ * hidratar hacia que la tool contestara, en verde, que el repo tiene un spec.
+ *
+ * El descuido que la direccion vieja cuidaba —una carpeta que nadie registro— no se
+ * pierde: se recorren tambien las carpetas que el mapa no nombra, y esas salen con
+ * `estado: null` y su nota.
  */
 export function readSpecStatus(specsDir: string): { specs: SpecStatus[]; totales: Record<string, number> } {
-  const logPath = join(specsDir, 'log.md');
-  const log = existsSync(logPath) ? parseLog(readFileSync(logPath, 'utf8')) : [];
-  // **Por numero y no por carpeta** (spec 034). Antes la clave era el slug del
-  // directorio, que salia del enlace de la fila; desde que ese enlace puede ser una URL
-  // de issue, el slug ya no esta ahi — y ademas el directorio local es una CACHE que se
-  // reconstruye desde el issue, asi que su nombre puede no ser el historico. El `NNN`
-  // es lo unico que no cambia: esta en la fila, en la carpeta y en el titulo del issue.
-  const byId = new Map(log.map(r => [r.id, r]));
+  // Sin `existsSync` y sin fallback: si el mapa no esta, `readFileSync` grita. Es
+  // deliberado y es la leccion del 034 —ver `parseMapa`—: la version silenciosa de
+  // esta linea contestaba "no hay specs" en vez de "no encontre el registro".
+  const mapa = parseMapa(readFileSync(join(specsDir, 'mapa.json'), 'utf8'));
+  const enDisco = specDirs(specsDir);
 
-  const specs = specDirs(specsDir).map((dir): SpecStatus => {
+  /**
+   * La carpeta hidratada de un spec, emparejando por `NNN` y no por nombre.
+   *
+   * El mapa dice como se llama, pero una cache hidratada antes de que `carpeta`
+   * existiera puede tener otro nombre —7 de los 35 salian con el slug del titulo—, y
+   * negarle el `tasks.md` a esos siete seria tratar un nombre viejo como un spec que
+   * no esta.
+   */
+  const hidratada = (id: string): string | null => enDisco.find(d => d.startsWith(`${id}-`)) ?? null;
+
+  const leerTareas = (dir: string, notas: string[]): TasksInfo | null => {
+    const ruta = join(specsDir, dir, 'tasks.md');
+    if (existsSync(ruta)) return parseTasks(readFileSync(ruta, 'utf8'));
+    notas.push('sin tasks.md');
+    return null;
+  };
+
+  /**
+   * De un spec terminal no sale trabajo, asi que sus casillas abiertas no son "lo
+   * proximo". Se anota por que en vez de silenciarlas: el conteo sigue mostrando el
+   * resto historico y la nota dice que nadie lo debe.
+   */
+  const sinTrabajo = (tareas: TasksInfo | null, estado: string | null, notas: string[]): TasksInfo | null => {
+    if (!tareas || estado === null || !ESTADOS_TERMINALES.has(estado)) return tareas;
+    const abiertas = tareas.total - tareas.hechas;
+    if (abiertas > 0) notas.push(`${estado}: las ${abiertas} casillas abiertas son historia, no deuda`);
+    return { ...tareas, pendientes: 0, proxima: null, proximaId: null };
+  };
+
+  const specs: SpecStatus[] = Object.keys(mapa).sort().map((id): SpecStatus => {
+    const e = mapa[id];
     const notas: string[] = [];
-    const row = byId.get(dir.slice(0, 3)) ?? null;
-    if (!row) notas.push('sin fila en log.md');
+    const dir = hidratada(id);
 
-    const tasksPath = join(specsDir, dir, 'tasks.md');
-    let tareas: TasksInfo | null = null;
-    if (existsSync(tasksPath)) tareas = parseTasks(readFileSync(tasksPath, 'utf8'));
-    else notas.push('sin tasks.md');
-
-    // De un spec terminal no sale trabajo, asi que sus casillas abiertas no son
-    // "lo proximo". Se anota por que en vez de silenciarlas: el conteo sigue
-    // mostrando el resto historico y la nota dice que nadie lo debe.
-    if (tareas && row && ESTADOS_TERMINALES.has(row.estado)) {
-      const abiertas = tareas.total - tareas.hechas;
-      if (abiertas > 0) {
-        notas.push(`${row.estado}: las ${abiertas} casillas abiertas son historia, no deuda`);
-      }
-      tareas = { ...tareas, pendientes: 0, proxima: null, proximaId: null };
+    if (dir === null) {
+      // No es un error: el spec vive en el issue y la carpeta es una cache. Se dice
+      // como reconstruirla, porque quien pregunta suele necesitar el `tasks.md`.
+      notas.push(`sin hidratar: el spec vive en el issue #${e.issue}. \`node .claude/scripts/hidratar-specs.mjs\``);
+    } else if (dir !== e.carpeta) {
+      notas.push(`la carpeta en disco se llama ${dir} y el mapa dice ${e.carpeta}: cache vieja, volver a hidratar`);
     }
 
+    const tareas = dir === null ? null : leerTareas(dir, notas);
     return {
-      id: row?.id ?? dir.split('-', 1)[0],
-      dir,
-      fecha: row?.fecha ?? null,
-      estado: row?.estado ?? null,
-      // El titulo sale de la descripcion del log y no del `# ` del spec: es la
-      // misma frase, ya parseada, y evita abrir seis archivos mas.
-      titulo: row?.descripcion ?? null,
-      tareas,
+      id,
+      dir: e.carpeta,
+      issue: e.issue,
+      fecha: e.fecha,
+      estado: e.estado,
+      // El titulo sale del mapa —que lo copia verbatim del issue— y no del `# ` del
+      // spec: es la misma frase, ya parseada, y no obliga a hidratar para tenerla.
+      titulo: e.titulo,
+      tareas: sinTrabajo(tareas, e.estado, notas),
       notas,
     };
   });
 
+  // La direccion que el mapa no cubre: una carpeta que nadie registro. Es el descuido
+  // que conviene ver, no uno que la respuesta deba esconder.
+  for (const dir of enDisco) {
+    if (mapa[dir.slice(0, 3)] !== undefined) continue;
+    const notas = ['sin entrada en specs/mapa.json: el spec no tiene issue al que llegar'];
+    specs.push({
+      id: dir.split('-', 1)[0], dir, issue: null, fecha: null, estado: null, titulo: null,
+      tareas: leerTareas(dir, notas), notas,
+    });
+  }
+
   // Los totales se derivan de los estados que aparecen, sin lista propia: si el
-  // log estrena `Descartado`, sale en la respuesta sin tocar este archivo.
+  // mapa estrena `Descartado`, sale en la respuesta sin tocar este archivo.
   const totales: Record<string, number> = { specs: specs.length };
   for (const s of specs) {
     const k = s.estado ?? 'sin estado';
     totales[k] = (totales[k] ?? 0) + 1;
   }
+  // Cuantos contestan sin `tareas` por no estar hidratados. Va aparte porque es la
+  // diferencia entre "este spec no tiene tareas" y "este checkout no las bajo".
+  const sinHidratar = specs.filter(s => s.notas.some(n => n.startsWith('sin hidratar'))).length;
+  if (sinHidratar > 0) totales.sinHidratar = sinHidratar;
   return { specs, totales };
 }
 
