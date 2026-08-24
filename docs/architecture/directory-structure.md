@@ -5,7 +5,7 @@
 ```text
 pentomino-games/           # raíz del repo: la app vive acá, sin subdirectorio
 ├── CLAUDE.md              # Guía para Claude Code
-├── docs/                  # Esta documentación
+├── docs/                  # Esta documentación, y en docs/__tests__/ los gates que la verifican
 ├── specs/                 # Trabajo planificado (ver specs/README.md)
 ├── public/                # Assets servidos tal cual, copiados a dist/
 ├── src/                   # Todo el código de la app
@@ -210,14 +210,22 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 `pnpm test` corre Vitest en **dos proyectos y un solo comando** (spec 029). El corte no es por capa sino
 por lo que el test necesita:
 
-- **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre `src/**/__tests__/*.test.ts`.
-  Son 23 archivos. El dominio es puro y el audio tiene una implementación nativa de Web Audio, así que
-  corren ahí sin adaptación. Los que **no** son el test de un módulo son los **tres** de
-  `src/__tests__/`, y los tres leen un archivo **del disco** porque el proyecto de navegador sirve su
-  propio documento y nunca carga esos archivos: `documento.test.ts` (spec 025) verifica el `lang` de
-  `index.html`, y `fondo-sincronizado.test.ts` y `nombre-sincronizado.test.ts` (spec 028) verifican que
-  el color de fondo y el nombre de la app digan lo mismo en los tres lugares donde están escritos. Eran
-  lo único del repo que ningún test podía falsear.
+- **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre **dos** raíces:
+  `src/**/__tests__/*.test.ts` y `docs/__tests__/*.test.ts`. Son 28 archivos, 25 en `src/` y 3 en
+  `docs/`. El dominio es puro y el audio tiene una implementación nativa de Web Audio, así que corren
+  ahí sin adaptación. Los que **no** son el test de un módulo leen un archivo **del disco**, porque el
+  proyecto de navegador sirve su propio documento y nunca carga esos archivos, y se reparten según **qué
+  verifican**:
+  - `src/__tests__/` — los que cruzan una constante de la app contra un archivo que la envuelve:
+    `documento.test.ts` (spec 025) verifica el `lang` de `index.html`, y `fondo-sincronizado.test.ts` y
+    `nombre-sincronizado.test.ts` (spec 028) verifican que el color de fondo y el nombre de la app digan
+    lo mismo en los tres lugares donde están escritos. Eran lo único del repo que ningún test podía
+    falsear. Los acompañan `specs-convencion.test.ts` y `scripts-de-specs.test.ts`, que miran `specs/` y
+    `.claude/scripts/lib/`.
+  - `docs/__tests__/` — los tres gates de la **documentación**, mudados ahí por el issue #100 porque no
+    importan una sola línea de `src/`: `enlaces-resueltos.test.ts` (enlaces y anclas de todo `.md` del
+    repo), `mapa-de-directorios.test.ts` (que este archivo nombre cada archivo de producción) y
+    `claude-md-acotado.test.ts` (el techo de 200 líneas de `CLAUDE.md`).
 - **`browser`** — Chromium de verdad, por Playwright, sobre `src/**/__tests__/*.browser.test.tsx`. Son
   11: los seis componentes, `App.tsx`, los tres hooks —el tercero es `use-grid.ts`, de los specs
   021 y 031— y `audio/engine.ts`. Renderizan con
@@ -226,7 +234,7 @@ por lo que el test necesita:
   layout pasa o falla por el motivo equivocado y en silencio.
 
 El discriminante es el **sufijo** y no la carpeta: un test de `Board.tsx` que necesita navegador sigue
-siendo un test de `Board.tsx` y vive al lado. Los dos `include` arrancan en `__tests__/` y con un solo
+siendo un test de `Board.tsx` y vive al lado. Los `include` terminan en `__tests__/` y con un solo
 `*`, así que no matchean ni los helpers que no son tests —`test-context.ts` y `browser-setup.ts`, a los
 que les falta el `.test.` antes de la extensión— ni el `__screenshots__/` de los artefactos.
 
@@ -297,6 +305,7 @@ viven en la carpeta de su rol.** Un `.ts` de capa tiene funciones y nada más.
 | hook que cablea un módulo | al lado del módulo | `use-<módulo>.ts`, en kebab-case como el resto |
 | asset referenciado por URL | `public/` | se copia sin procesar |
 | documentación de arquitectura | `docs/architecture/` | |
+| gate que verifica la documentación | `docs/__tests__/` | `<qué-verifica>.test.ts`, sin importar `src/` |
 | trabajo planificado | `specs/<NNN>-<desc>/` | cuatro archivos, ver [specs/README.md](../../specs/README.md) |
 | tool nueva del MCP server | `mcp-server/src/tools/` | `<tool>.ts` + una línea en `tools/index.ts` |
 | regla que el server necesita ejecutar | `src/domain/` | **no** en `mcp-server/`: es un cambio de `src/`, en su propio commit |

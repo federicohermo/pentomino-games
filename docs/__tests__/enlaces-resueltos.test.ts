@@ -20,13 +20,15 @@ import { join, dirname, resolve, relative } from 'node:path';
  * abajo, cada una con el falso positivo que produce si se escribe de la otra forma.
  *
  * Es un test del proyecto `node`: son archivos leidos del disco y comparados como
- * texto, sin un DOM en el medio. Vive en `src/__tests__/`, que el `exclude` de
- * coverage ya saca, junto a los otros tres tests del repo —y no de `src/`— que ya
- * hacian esto mismo con tres valores puntuales.
+ * texto, sin un DOM en el medio. Vive en `docs/__tests__/` y no en `src/` porque no
+ * importa una sola linea de la app: verifica la DOCUMENTACION, y `src/` no tiene por
+ * que saber de ella (issue #100). Como el `include` de coverage es `src/**`, tampoco
+ * entra al umbral de 100 — el criterio de suficiencia es otro y esta escrito abajo.
  */
 
 /**
- * La raiz del repo: este archivo vive en `src/__tests__/`.
+ * La raiz del repo: este archivo vive en `docs/__tests__/`, a dos niveles, que es la
+ * misma profundidad que tenia en `src/__tests__/`.
  *
  * Con `fileURLToPath` y no con `.pathname`: en Windows el pathname de un `file://`
  * viene como `/D:/...`, con una barra de mas adelante, y `resolve` sobre eso da una

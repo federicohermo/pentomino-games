@@ -99,7 +99,11 @@ son sólo dentro de su propia medición.
 Spec 029. El corte no es por capa sino por lo que el test necesita:
 
 - **`node`** — `environment: 'node'` contra `node-web-audio-api`. El dominio es puro y el audio tiene
-  una implementación nativa de Web Audio, así que corre ahí sin adaptación.
+  una implementación nativa de Web Audio, así que corre ahí sin adaptación. Su `include` tiene **dos**
+  raíces: `src/**/__tests__/*.test.ts` y `docs/__tests__/*.test.ts`. La segunda es la del issue #100:
+  los tres gates que verifican la **documentación** —enlaces y anclas de todo `.md`, el mapa de
+  `directory-structure.md` y el techo de 200 líneas de `CLAUDE.md`— no importan una línea de `src/`, así
+  que no viven ahí. No entran al umbral de 100: el `include` de coverage sigue siendo `src/**`.
 - **`browser`** — Chromium de verdad, por Playwright, para los archivos `*.browser.test.tsx`. Entra
   porque jsdom no puede: `Spectrum.tsx` necesita canvas 2D, `createLinearGradient`, `ResizeObserver`,
   `matchMedia` y un `getBoundingClientRect` con números, y `audio/engine.ts` necesita

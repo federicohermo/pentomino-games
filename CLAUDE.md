@@ -37,9 +37,10 @@ abrirlo:
 - **`lint` también lintea todos los `.md`** desde el 032, en dos carriles: preset completo en la
   documentación viva, y sólo las reglas de **renderizado** en `specs/[0-9]*/**`, porque un spec
   mergeado no se reescribe.
-- **Los tests de `src/` son dos proyectos de Vitest**, `node` y `browser`. El discriminante es el
-  **sufijo** `*.browser.test.tsx` y no una carpeta. **Chromium no está en el lockfile**: un clone
-  nuevo necesita `pnpm exec playwright install chromium` antes del primer `verify`.
+- **Los tests son dos proyectos de Vitest**, `node` y `browser`. El discriminante es el **sufijo**
+  `*.browser.test.tsx` y no una carpeta; el `node` mira `src/` **y** `docs/__tests__/`, donde viven los
+  gates de la documentación. **Chromium no está en el lockfile**: un clone nuevo necesita
+  `pnpm exec playwright install chromium` antes del primer `verify`.
 - **El gestor es pnpm y no npm** — npm dejaría un `package-lock.json` que Netlify puede preferir. Y
   `node_modules` es **estricto**: importar una dependencia transitiva falla, a propósito.
 - **Node ≥ 20.19 o ≥ 22.12**, declarado en nuestro propio `engines`. El MCP server pide **≥ 22.18**

@@ -56,7 +56,12 @@ export default defineConfig({
         test: {
           name: 'node',
           environment: 'node',
-          include: ['src/**/__tests__/*.test.ts'],
+          // Dos raices y no una: los gates que verifican la DOCUMENTACION viven en
+          // `docs/__tests__/` desde el issue #100 —no importan una linea de `src/`,
+          // leen `.md` del disco— y sin esta segunda entrada dejarian de correr en
+          // silencio, que es la forma de fallar en verde que este repo ya se comio
+          // dos veces. No entran al coverage: su `include` es `src/**` y punto.
+          include: ['src/**/__tests__/*.test.ts', 'docs/__tests__/*.test.ts'],
         },
       },
       {

@@ -438,7 +438,7 @@ export default tseslint.config([
     // En un test el `!` sobre un `find` o un `querySelector` que el propio test acaba de
     // fijar es la forma de que el test **falle** si el nodo no esta, que es justo lo que
     // se quiere. `CLAUDE.md` ya las declara deliberadas.
-    files: ['src/**/__tests__/**/*.{ts,tsx}', 'mcp-server/**/__tests__/**/*.ts'],
+    files: ['src/**/__tests__/**/*.{ts,tsx}', 'docs/__tests__/*.ts', 'mcp-server/**/__tests__/**/*.ts'],
     rules: { '@typescript-eslint/no-non-null-assertion': 'off' },
   },
 
@@ -453,7 +453,11 @@ export default tseslint.config([
     languageOptions: { globals: globals.browser },
   },
   {
-    files: ['mcp-server/**/*.ts', '*.config.ts'],
+    // `docs/__tests__/` va aca y no arriba, y es el arreglo del mismo error con otra cara:
+    // los tres gates de la documentacion leen el disco con `node:fs` y `node:url`, no
+    // tocan un DOM. Mientras vivieron en `src/` caian en `globals.browser`, o sea que
+    // recibian `window` y `document` definidos y `process` no.
+    files: ['mcp-server/**/*.ts', 'docs/__tests__/*.ts', '*.config.ts'],
     languageOptions: { globals: globals.node },
   },
 
@@ -517,7 +521,7 @@ export default tseslint.config([
     //
     // `fixable: false` es deliberado: no se quiere que `--fix` borre el `.only` en silencio,
     // se quiere que falle.
-    files: ['src/**/__tests__/**/*.{ts,tsx}'],
+    files: ['src/**/__tests__/**/*.{ts,tsx}', 'docs/__tests__/*.ts'],
     plugins: { vitest },
     rules: {
       'vitest/no-focused-tests': ['error', { fixable: false }],
@@ -592,7 +596,7 @@ export default tseslint.config([
       // con backticks y guion bajo, asi que declara roto el unico enlace de
       // `docs/guides/mcp-domain.md` que apunta a `#find_symbol`, que en GitHub resuelve.
       // Lo que si se verifica —enlaces y anclas, con el slugger correcto— es
-      // `src/__tests__/enlaces-resueltos.test.ts`, que ademas cubre los enlaces a OTRO
+      // `docs/__tests__/enlaces-resueltos.test.ts`, que ademas cubre los enlaces a OTRO
       // archivo, que esta regla no mira.
       'markdown/no-missing-link-fragments': 'off',
     },

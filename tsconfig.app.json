@@ -31,6 +31,12 @@
    *
    * Es `lib` y no `.claude/scripts` entero: los dos scripts son `.mjs` ejecutables y no
    * tienen por que entrar al programa de la app.
+   *
+   * `docs` entra por el mismo motivo desde el issue #100: ahi viven los tres gates de la
+   * documentacion, que son TypeScript y los corre el mismo proyecto `node` de vitest.
+   * Sin declararlo, `projectService` del linter los rechaza con un error de parseo y
+   * `tsc -b` deja de mirarlos. Es `docs` entero y no `docs/__tests__` porque el resto de
+   * la carpeta son `.md`, que ningun tsconfig incluye.
    */
-  "include": ["src", ".claude/scripts/lib"]
+  "include": ["src", ".claude/scripts/lib", "docs"]
 }

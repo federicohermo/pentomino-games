@@ -342,7 +342,7 @@ dos alcanza al otro:
 
 | Dónde | Quién lo caza |
 |---|---|
-| `src/**/__tests__/` | `@vitest/eslint-plugin` — `no-focused-tests` (con `fixable: false`, para que `--fix` no borre el `.only` en silencio), `no-disabled-tests` y `expect-expect` |
+| `src/**/__tests__/` y `docs/__tests__/` | `@vitest/eslint-plugin` — `no-focused-tests` (con `fixable: false`, para que `--fix` no borre el `.only` en silencio), `no-disabled-tests` y `expect-expect` |
 | `mcp-server/**/__tests__/` | un selector de `no-restricted-syntax`: ahí corre `node --test` y el plugin de Vitest no lo mira |
 
 **El test sin una sola aserción queda afuera en `mcp-server/`, y es a propósito:** con `node:test` no

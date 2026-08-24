@@ -13,9 +13,12 @@ import {
  * comentario duplicado, un `issue close` sobre uno ya cerrado, un estado nulo leido
  * como terminal—, encontrados usandolos y no por un test.
  *
- * Viven en `src/__tests__/` porque es donde ya estan los gates del repo que no miran
- * la app: `specs-convencion`, `enlaces-resueltos`, `mapa-de-directorios`,
- * `claude-md-acotado`. El codigo que verifican esta en `.claude/scripts/lib/`, fuera
+ * Siguen en `src/__tests__/` junto a `specs-convencion`: los gates que verifican la
+ * DOCUMENTACION —`enlaces-resueltos`, `mapa-de-directorios`, `claude-md-acotado`— se
+ * mudaron a `docs/__tests__/` con el issue #100, y estos dos no los siguieron porque
+ * lo que miran son los specs y los scripts, no `docs/`. Que la carpeta correcta sea
+ * otra es materia de un issue propio, no de este comentario. El codigo que verifican
+ * esta en `.claude/scripts/lib/`, fuera
  * del `include` de coverage —que es `src/**`—, asi que no entra al umbral de 100: el
  * criterio de suficiencia es otro, y esta escrito en cada bloque. Cada caso de abajo
  * es un modo de falla que ya paso o que el propio spec 034 nombra.
