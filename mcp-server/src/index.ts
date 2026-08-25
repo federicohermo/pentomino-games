@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { tools } from './tools/index.ts';
+import { resources } from './resources/index.ts';
 
 /**
  * MCP server de pentomino-games: **ejecuta el dominio** en vez de describirlo.
@@ -24,14 +25,25 @@ import { tools } from './tools/index.ts';
 serveStdio(() => {
   const server = new McpServer(
     { name: 'pentomino-domain', version: '1.0.0' },
-    { capabilities: { tools: {} } },
+    // `resources: {}` no es decorativo: las capabilities son lo que el server ANUNCIA en el
+    // handshake, y sin declararlas contesta que no tiene resources — el registro de abajo
+    // corre igual y no lo ve nadie. Falla en silencio y del lado del cliente.
+    { capabilities: { tools: {}, resources: {} } },
   );
   for (const t of tools) {
     server.registerTool(
       t.name,
-      { description: t.description, inputSchema: t.inputSchema },
+      {
+        description: t.description,
+        title: t.title,
+        annotations: t.annotations,
+        inputSchema: t.inputSchema,
+      },
       t.run,
     );
+  }
+  for (const r of resources) {
+    server.registerResource(r.name, r.uri, r.config, r.read);
   }
   return server;
 });

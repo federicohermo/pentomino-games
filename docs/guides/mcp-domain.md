@@ -22,7 +22,7 @@ server sin configurar nada.
 compilar, quitando los tipos. Es tooling de desarrollo — no entra al bundle ni al deploy, así que con
 Node 20 el server no arranca y **el repo sigue funcionando igual**.
 
-## Las seis tools
+## Seis tools y un resource
 
 | Tool | Responde | En lugar de |
 |---|---|---|
@@ -65,6 +65,64 @@ estado terminal. El `op` quedó como un enum de **un** valor a propósito: una l
 implementando la abre la **skill**, con `mcp__github__issue_write` — el server sigue sin red, que es la
 restricción del spec 035.
 
+### Que cinco lean y una escriba es un campo, no sólo esta prosa
+
+Desde el [spec 040](https://github.com/federicohermo/pentomino-games/issues/110) las seis declaran
+`annotations` en su `tools/list`, así que el reparto de arriba lo puede leer **la máquina**:
+
+| Campo | Qué dice | Quién lo lleva |
+|---|---|---|
+| `readOnlyHint` | si la tool **modifica** su entorno | `true` en cinco, `false` sólo en `spec_write` |
+| `openWorldHint` | si el dominio de entidades es abierto | `false` en las seis: doce piezas, un `src/`, un `specs/` |
+| `destructiveHint` | si además de escribir, borra | `false`, y sólo en `spec_write` |
+
+Importa por algo concreto y no por prolijidad: **varios clientes MCP usan `readOnlyHint` para no pedir
+permiso**. Hasta el 040, las cinco que sólo leen pagaban la misma fricción que la que escribe.
+
+Dos cosas que el campo **no** dice, a propósito. `readOnlyHint: true` en `find_symbol` y `spec_status`
+no es un error: el hint habla de si la tool modifica su entorno, y las dos leen el disco sin tocarlo.
+Y `spec_write` **no** declara `idempotentHint`: `marcar` falla si la tarea ya estaba marcada, así que
+llamarla dos veces es un error y no un no-op. Omitir antes que afirmar algo falso, que es la misma
+política con la que `spec_status` omite las `citas` en vez de mandarlas vacías.
+
+Lo que sostiene todo esto es un test —`tools.test.ts`, `describe('el registro')`— con la forma
+«ninguna se olvidó»: recorre `tools` y exige los campos en **todas**, en vez de repetir tool por tool
+lo que el código ya dice. Los dos campos son opcionales en `ToolDef`, así que el compilador no puede
+atajar a la tool número siete y el test sí.
+
+### El resource: `pentomino://constantes`
+
+Desde el [spec 041](https://github.com/federicohermo/pentomino-games/issues/111) el server expone,
+además de las tools, **un resource**: los 14 valores fijos que gobiernan el instrumento —el tablero
+mínimo y el default, el máximo de piezas, el costo de cruce, las celdas y las notas por pieza, la
+octava y el régimen por defecto, el BPM, el master gain, el FFT, el lookahead, el tick y el tope de
+pasos—, cada uno con **su valor y la ruta del archivo de `src/` que lo define**.
+
+**No se llama como una tool, y esa es la diferencia que importa.** Un resource no se invoca: se
+**lista** y se **lee** por URI. En Claude Code son `ListMcpResources` y `ReadMcpResource`, con el
+server (`pentomino-domain`) y el URI `pentomino://constantes`; no aparece en `tools/list` y pedirlo
+como tool falla. A cambio es **adjuntable y enumerable**, que es justo lo que una tool no puede ser: el
+cliente puede traérselo entero al contexto sin decidir una llamada.
+
+Es un resource y no una tool porque es material de **referencia** — se lee entero y no toma argumentos.
+Una tool con `inputSchema` vacío sería la misma información detrás de una llamada que alguien tiene que
+acordarse de hacer.
+
+Las tres propiedades que lo hacen valer la pena, y las tres son la misma de siempre:
+
+- **Importa, no copia.** `resources/constantes.ts` no tiene un solo literal numérico: las 14 vienen de
+  `src/domain/constants/` y `src/audio/constants/`, agrupadas por archivo con shorthand de propiedad,
+  así que la clave **es** el identificador importado y un rename rompe el import en vez de mentir.
+- **Sin `cacheHint`, y por tipo.** `ResourceDef.config` se declara `ResourceMetadata` pelado, así que
+  escribir un `cacheHint` no compila. Lo que hace confiable a este server es que nada pueda quedar
+  viejo; una respuesta cacheada es una copia con otro nombre.
+- **La ruta viaja al lado del valor.** Sin ella el resource sería otra copia, sólo que generada: se
+  sabría el número y no dónde cambiarlo. El test abre en el disco el archivo que cada constante declara
+  y verifica que de verdad la exporta — una ruta mal copiada es lo único que el compilador no ataja.
+
+**El criterio de entrada es que hoy esté copiado en `docs/` o en `CLAUDE.md`.** Es verificable; «lo que
+parezca útil» no lo es, y sin esa regla el resource se vuelve un cajón que nadie lee.
+
 ## Cuándo preferirlas a leer el código
 
 La regla corta: **simular el modelo es caro, y localizar dejó de ser gratis.** Lo caro sigue siendo
@@ -97,6 +155,10 @@ Preguntar en vez de leer cuando la pregunta es:
   que abrir el archivo, y `usedBy` sale del grafo de imports: un archivo que lo llama quince veces
   aparece una vez, y un homónimo de otro módulo no aparece.
 - *¿Qué exporta `src/` en total?* → `find_symbol` sin argumentos: el mapa entero en ~2 KB.
+- *¿Cuánto mide el tablero mínimo, cuál es el BPM por defecto, cuánto es el lookahead?* →
+  `pentomino://constantes` con `ReadMcpResource`, **no** el valor transcripto en `CLAUDE.md` o acá: esas
+  transcripciones no tienen quién las verifique, y el resource trae además la ruta del archivo que hay
+  que editar para cambiarlas.
 
 Y **leer el código igual** cuando la pregunta es por qué algo está hecho así: eso vive en los
 comentarios, no en la salida de una tool.
@@ -118,7 +180,7 @@ pongo en `x=1` y otra pieza en `x=5`?"*
 |---|---|---|
 | Leyendo el código: `domain/{transform,music,board,sequence}` + sus `constants/` y `types/` + `audio/scheduler` + sus constantes | 48.565 | ~12.141 |
 | Con las tools: `describe_piece` (621) + `simulate_board` (2.064) | **2.685** | **~671** |
-| Catálogo de las seis tools, una vez por sesión | 13.118 | ~3.280 |
+| Catálogo de las seis tools, una vez por sesión | 13.714 | ~3.430 |
 
 Las dos primeras filas se re-midieron con el spec 009 y **la brecha se ensanchó**: la respuesta de
 `simulate_board` creció de 1.189 a 2.064 bytes porque ahora lleva el camino de cada salto, pero el
@@ -127,7 +189,10 @@ el orden y los silencios salen de `sequence.ts`. La fila del catálogo se volvi�
 033 —eran 6.787 con cinco tools— y sigue con la misma salvedad que traía: se serializa a través del
 SDK, no con el mismo método que las otras dos. Que casi se haya duplicado no es sólo la tool nueva:
 las descripciones son donde vive el criterio de cuándo preferir la tool, y son lo que se paga una vez
-por sesión para ahorrar en cada pregunta.
+por sesión para ahorrar en cada pregunta. El spec 040 la volvió a tomar y aportó dos datos: los
+`title` y `annotations` de las seis pesan **556 bytes** en total, y el número que esta fila traía
+—13.118— ya estaba **40 bytes corrido** antes de tocar nada, porque una descripción creció y nadie
+re-midió. Es un número escrito a mano y le pasa lo que le pasa a todos.
 
 **94% menos por pregunta**, y el catálogo se paga con la primera. Lo que no aparece en la tabla es lo
 que más importa: leyendo el código, la respuesta todavía hay que **derivarla a mano** —tres rotaciones,
@@ -152,9 +217,10 @@ bytes.
 El `grep` de la comparación barre los dos paquetes porque es lo que hace falta para igualar la
 respuesta: `usedBy` incluye a `mcp-server/`, y ahí está justamente la parte que es fácil olvidar.
 
-Costo de construirlo: **112 ms** la primera consulta, ~50 ms las siguientes, sobre 36 archivos
-indexados más 16 que solo aportan aristas. Es lo que permite no persistirlo. El día que eso duela, la
-respuesta es cachear por `mtime`, no generar un artefacto que alguien tenga que regenerar.
+Costo de construirlo: **112 ms** la primera consulta y ~50 ms las siguientes, medido en su momento
+sobre 36 + 16 archivos. Hoy el índice son 92 archivos más 22 que solo aportan aristas. Es lo que
+permite no persistirlo. El día que eso duela, la respuesta es cachear por `mtime`, no generar un
+artefacto que alguien tenga que regenerar.
 
 ### El alcance del grafo, y por qué es asimétrico
 
