@@ -227,12 +227,6 @@ export interface TasksInfo {
   hechas: number;
   total: number;
   /**
-   * Cuantas del total estan bajo un encabezado `Seguimiento`. Se cuentan aparte
-   * porque son deuda anotada a proposito: un spec puede estar `Implementado` con
-   * seis sin marcar y no deberle nada a nadie.
-   */
-  seguimiento: number;
-  /**
    * Cuantas del total llevan `[M]`, y es un conteo **historico**: cuenta lo que los
    * specs anteriores al 039 ya tienen escrito, y en un spec nuevo vale siempre `0`.
    *
@@ -243,15 +237,20 @@ export interface TasksInfo {
    * «no se va a hacer, pero queda escrito». La regla desde el 039 es volver la tarea
    * verificable o no anotarla — el ultimo spec que trae una `[M]` es el **037**.
    *
-   * Se sigue contando porque un spec mergeado no se reescribe, y para esos 35 sigue
-   * valiendo que es un eje distinto del de `seguimiento`: `Seguimiento` es *donde*
-   * esta anotada la tarea, `[M]` era *quien* la podia hacer. Una tarea vieja puede
-   * ser las dos cosas, y entonces suma en los dos contadores.
+   * Se sigue contando porque un spec mergeado no se reescribe. El contador hermano
+   * —`seguimiento`, el otro eje: `Seguimiento` era *donde* estaba anotada la tarea y
+   * `[M]` *quien* la podia hacer— se fue con el 042, que hizo que `parseTasks` CORTE
+   * en esa seccion en vez de contarla aparte. O sea que una tarea vieja que era las
+   * dos cosas hoy no llega hasta aca: la de `Seguimiento` ya no se ve.
    */
   manual: number;
   /**
-   * Las que de verdad faltan: sin marcar, fuera de `Seguimiento` y sin `[M]`.
-   * Vale `0` exactamente cuando `proxima` es `null`.
+   * Las que de verdad faltan: sin marcar y sin `[M]`. Vale `0` exactamente cuando
+   * `proxima` es `null`.
+   *
+   * Lo que hay bajo `## Seguimiento` no se descuenta: desde el 042 **no se cuenta**,
+   * porque `parseTasks` corta al entrar a esa seccion. La diferencia importa para
+   * `total`, que antes incluia esos items y ahora no.
    *
    * El descuento de `[M]` es historico igual que el contador — ver `manual` y el
    * comentario del descuento en `parseTasks`.
@@ -294,7 +293,7 @@ export function parseTasks(md: string): TasksInfo {
   const tarea = /^\s*-\s\[([ xX])\]\s*(?:(T\d{3})\s+)?((?:\[[PM]\]\s*)*)(.*)$/;
   const continuacion = /^\s+\S/;
 
-  let hechas = 0, total = 0, seguimiento = 0, manual = 0, pendientes = 0;
+  let hechas = 0, total = 0, manual = 0, pendientes = 0;
   let enSeguimiento = false;
   let proxima: string[] | null = null;
   let proximaId: string | null = null;
@@ -313,21 +312,37 @@ export function parseTasks(md: string): TasksInfo {
       continue;
     }
 
+    // **El corte del 042.** Adentro de `## Seguimiento` no se cuenta ni se extrae
+    // NADA hasta el proximo `##`: ni tareas, ni citas, ni cruces.
+    //
+    // Antes el flag discriminaba contadores —la tarea se contaba en `total` y se
+    // desviaba a `seguimiento`— y eso hacia que la seccion existiera para todo el que
+    // leyera la tool. Este spec la saca del formato: la deuda que aparece implementando
+    // se abre como issue, porque un item anotado adentro del spec que lo pario **hereda
+    // su estado** y nadie lo mira. Al mudar el tracker aparecieron seis que nunca habian
+    // llegado, dos de ellos bugs medidos que llevaban veinte dias invisibles.
+    //
+    // Cortar y no seguir contando aparte es lo que hace que las 40 secciones que ya
+    // existen sean historia de verdad: la Desviacion 2 las deja donde estan, y desde
+    // aca no se ven. El modo de falla a evitar era el otro —empujar esos items a
+    // `pendientes`—, que es silencioso y dejaria inaplicable el gate del 038.
+    if (enSeguimiento) continue;
+
     const t = tarea.exec(line);
     if (t) {
       const marcada = t[1] !== ' ';
       const esManual = t[3].includes('[M]');
       total++;
       if (marcada) hechas++;
-      if (enSeguimiento) seguimiento++;
       if (esManual) manual++;
 
       abierta = [t[4].trim()];
       idAbierto = t[2] ?? null;
       extraerCitas(t[4], idAbierto, citas);
       extraerCruces(t[4], idAbierto, cruces);
-      // La primera sin marcar que no es de seguimiento ni lleva `[M]` se queda como
-      // `proxima`, y sigue abierta para recibir sus continuaciones.
+      // La primera sin marcar que no lleva `[M]` se queda como `proxima`, y sigue
+      // abierta para recibir sus continuaciones. Lo de `Seguimiento` ni llega: el
+      // corte de arriba lo dejo afuera antes de contarlo.
       //
       // El `!esManual` lo CONSERVA el 039 a proposito, que es lo contraintuitivo del
       // cambio: el spec deroga `[M]` **hacia adelante** y un spec mergeado no se
@@ -336,7 +351,7 @@ export function parseTasks(md: string): TasksInfo {
       // dia para el otro y pondria en rojo, sobre 35 specs que nadie toco, el gate del
       // 038 que exige `pendientes: 0` en todo spec cerrado. En un spec nuevo el
       // descuento no descuenta nada, porque no hay `[M]` que descontar.
-      if (!marcada && !enSeguimiento && !esManual) {
+      if (!marcada && !esManual) {
         pendientes++;
         if (proxima === null) {
           proxima = abierta;
@@ -354,7 +369,7 @@ export function parseTasks(md: string): TasksInfo {
   }
 
   return {
-    hechas, total, seguimiento, manual, pendientes,
+    hechas, total, manual, pendientes,
     proxima: proxima === null ? null : proxima.join(' '),
     proximaId,
     citas, cruces,

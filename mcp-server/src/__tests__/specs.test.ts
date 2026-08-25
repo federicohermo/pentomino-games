@@ -127,17 +127,40 @@ describe('parseMapa', () => {
 
 describe('parseTasks', () => {
   test('cuenta marcadas sobre el total, anidadas incluidas', () => {
+    // Seis y no ocho: las dos de `## Seguimiento` no entran al total desde el 042.
     const t = parseTasks(TASKS);
-    assert.equal(t.total, 8);
+    assert.equal(t.total, 6);
     assert.equal(t.hechas, 3);
   });
 
-  test('las de Seguimiento se cuentan aparte y no son la próxima', () => {
-    // Es lo que distingue "faltan seis cosas" de "hay seis cosas anotadas a
-    // propósito". Un conteo plano leería lo mismo en los dos casos.
-    const t = parseTasks(TASKS);
-    assert.equal(t.seguimiento, 2);
-    assert.equal(t.proxima, '**Crear rama** `feature/002-motor`');
+  test('`## Seguimiento` CORTA: nada de lo que hay abajo se cuenta', () => {
+    // El cambio del 042, y el caso exacto que pide su T012: dos tareas fuera de la
+    // sección y tres adentro. Antes las cinco entraban a `total` y las tres se
+    // desviaban a un contador aparte; ahora el parser corta al entrar y no las ve.
+    //
+    // Que `total` sea 2 es la mitad que importa: si el corte estuviera mal puesto, el
+    // modo de falla no es contar de más sino empujar esas tres a `pendientes` —
+    // silencioso, y dejaría inaplicable el gate del 038 que exige `pendientes: 0`.
+    const t = parseTasks(
+      '## Paso 1\n- [x] T001 hecha\n- [ ] T002 falta\n'
+      + '## Seguimiento (no bloquea)\n- [ ] T003 deuda\n- [ ] T004 más deuda\n- [x] T005 cerrada\n',
+    );
+    assert.deepEqual([t.total, t.hechas, t.pendientes], [2, 1, 1]);
+    assert.equal(t.proximaId, 'T002');
+    // Y el campo ya no existe: una llamada vieja que lo leyera recibe `undefined` en
+    // vez de un número que dejó de significar lo mismo.
+    assert.equal('seguimiento' in t, false);
+  });
+
+  test('lo que sigue a `## Seguimiento` vuelve a contarse en el próximo `##`', () => {
+    // El corte es por sección, no hasta el final del archivo. Ningún spec del repo
+    // pone un encabezado después del seguimiento —es el último—, así que sin este
+    // test un corte que se comiera el resto del archivo pasaría igual.
+    const t = parseTasks(
+      '## Seguimiento (no bloquea)\n- [ ] T001 deuda\n## Paso 2\n- [ ] T002 sí cuenta\n',
+    );
+    assert.deepEqual([t.total, t.pendientes], [1, 1]);
+    assert.equal(t.proximaId, 'T002');
   });
 
   test('la próxima es la primera sin marcar, no la primera de todas', () => {
@@ -153,15 +176,17 @@ describe('parseTasks', () => {
   test('con todo marcado no hay próxima', () => {
     const t = parseTasks('## A\n- [x] una\n- [x] otra\n');
     assert.deepEqual(t, {
-      hechas: 2, total: 2, seguimiento: 0, manual: 0, pendientes: 0,
+      hechas: 2, total: 2, manual: 0, pendientes: 0,
       proxima: null, proximaId: null, citas: [], cruces: [],
     });
   });
 
   test('solo las de seguimiento sin marcar tampoco dan próxima', () => {
+    // Sigue sin haber próxima, pero por otro motivo que antes: la deuda ya no se
+    // cuenta y se descuenta, directamente no se ve. `total` lo delata.
     const t = parseTasks('## Hecho\n- [x] una\n\n## Seguimiento (no bloquea)\n- [ ] deuda\n');
     assert.equal(t.proxima, null);
-    assert.equal(t.seguimiento, 1);
+    assert.deepEqual([t.total, t.hechas], [1, 1]);
   });
 
   test('CRLF cuenta igual que LF', () => {
@@ -176,14 +201,14 @@ describe('parseTasks', () => {
 
   test('un tasks.md sin checkboxes devuelve ceros, no falla', () => {
     assert.deepEqual(parseTasks('# Tareas\n\nTodavía nada.\n'), {
-      hechas: 0, total: 0, seguimiento: 0, manual: 0, pendientes: 0,
+      hechas: 0, total: 0, manual: 0, pendientes: 0,
       proxima: null, proximaId: null, citas: [], cruces: [],
     });
   });
 
   test('`pendientes` vale 0 exactamente cuando no hay próxima', () => {
     // Es la invariante que hace legible la respuesta: sin ella hay que restar
-    // hechas, seguimiento y manual a mano para saber si falta algo.
+    // hechas y manual a mano para saber si falta algo.
     for (const md of [TASKS, MARCADAS, '## A\n- [x] una\n', '# Nada\n']) {
       const t = parseTasks(md);
       assert.equal(t.pendientes === 0, t.proxima === null, md.slice(0, 20));
@@ -203,8 +228,12 @@ describe('parseTasks — ID y marcadores', () => {
   test('`[M]` no bloquea: pide una persona, no trabajo pendiente', () => {
     // El caso real: nueve specs `Implementado` con una verificación a oído
     // abierta. Sin esto, `spec_status` los reporta como si algo faltara.
+    //
+    // `manual` es 1 y no 2 desde el 042: `MARCADAS` tiene dos `[M]`, pero una está
+    // bajo `## Seguimiento` y esa ya no se lee. La que importa acá es la otra —la que
+    // está en un paso normal— porque es la que podría bloquear y no bloquea.
     const t = parseTasks(MARCADAS);
-    assert.equal(t.manual, 2);
+    assert.equal(t.manual, 1);
     assert.equal(t.pendientes, 1);
   });
 
@@ -212,13 +241,17 @@ describe('parseTasks — ID y marcadores', () => {
     // La otra mitad del test de arriba, y la única forma que se va a escribir de acá
     // en adelante. Que `manual` valga 0 no alcanza como aserción: lo que hay que fijar
     // es que el descuento sea un no-op, o sea que `pendientes` sea exactamente lo que
-    // queda al sacar las hechas y las de seguimiento. Con una `[M]` en el medio esa
-    // igualdad no se cumple —ver `MARCADAS`, donde da 2 y `pendientes` es 1—.
+    // queda al sacar las hechas. Con una `[M]` en el medio esa igualdad no se cumple
+    // —ver `MARCADAS`, donde `manual` da 2 y `pendientes` es 1—.
+    //
+    // El total es 4 y no 5 desde el 042: la tarea de `## Seguimiento` del fixture ya
+    // no entra. Por eso la resta quedó sin el tercer término, y no porque se haya
+    // simplificado la aserción.
     const t = parseTasks(SIN_MANUAL);
     assert.equal(t.manual, 0);
-    assert.deepEqual([t.total, t.hechas, t.seguimiento], [5, 1, 1]);
+    assert.deepEqual([t.total, t.hechas], [4, 1]);
     assert.equal(t.pendientes, 3);
-    assert.equal(t.pendientes, t.total - t.hechas - t.seguimiento);
+    assert.equal(t.pendientes, t.total - t.hechas);
     assert.equal(t.proximaId, 'T002');
   });
 
@@ -235,18 +268,23 @@ describe('parseTasks — ID y marcadores', () => {
     assert.equal(pm.proxima, null);
   });
 
-  test('una tarea de Seguimiento con `[M]` suma en los dos contadores', () => {
-    // Son ejes distintos —dónde está anotada y quién la puede hacer— así que no
-    // se excluyen, y contarla una sola vez escondería una de las dos cosas.
+  test('una `[M]` bajo Seguimiento no llega ni a `manual`', () => {
+    // Antes esta tarea sumaba en los DOS contadores: eran ejes distintos —dónde está
+    // anotada y quién la puede hacer— y contarla una sola vez escondía una de las dos.
+    //
+    // Con el corte del 042 el eje de «dónde» desapareció, y con él la mitad de este
+    // caso: la tarea ni se lee. Se conserva porque fija el orden de las dos reglas —el
+    // corte pasa ANTES del parseo de marcadores— y ése es el punto donde un refactor
+    // las puede invertir sin que nada más lo note.
     const t = parseTasks('## Seguimiento (no bloquea)\n- [ ] [M] escuchar\n');
-    assert.deepEqual([t.seguimiento, t.manual, t.pendientes], [1, 1, 0]);
+    assert.deepEqual([t.total, t.manual, t.pendientes], [0, 0, 0]);
   });
 
   test('un tasks.md sin IDs ni marcadores se lee igual que antes', () => {
     // Los diez specs anteriores a la convención no se reescriben, así que el
     // formato viejo tiene que seguir contando bien.
     const t = parseTasks(TASKS);
-    assert.deepEqual([t.total, t.hechas, t.manual], [8, 3, 0]);
+    assert.deepEqual([t.total, t.hechas, t.manual], [6, 3, 0]);
     assert.equal(t.proximaId, null);
     assert.equal(t.proxima, '**Crear rama** `feature/002-motor`');
   });
@@ -476,8 +514,11 @@ const CITAS = `# Tareas — Citas y cruces
       en \`docs/architecture/audio.md:154\`, que el spec anterior movió de 8 → 9 ms, y sigue
 - [ ] Sin ID, pero cita \`App.tsx\` igual
 
-## Seguimiento (no bloquea)
+## Paso 2
 - [ ] T005 El presupuesto pasa de 4,0 → 11,8 ms
+
+## Seguimiento (no bloquea)
+- [ ] T006 Un cruce anotado como deuda, de 1 → 2
 `;
 
 describe('parseTasks — citas', () => {
@@ -529,6 +570,14 @@ describe('parseTasks — cruces', () => {
       { tarea: 'T003', de: '44', a: '63' },
       { tarea: 'T005', de: '4,0', a: '11,8' },
     ]);
+  });
+
+  test('un `X → Y` bajo `## Seguimiento` tampoco es un cruce', () => {
+    // Consecuencia del corte del 042 que su `tasks.md` no deletrea, y conviene
+    // fijarla: los cruces alimentan el reparto en carriles de un lote, o sea que
+    // declaran una dependencia dura entre dos specs. Un ítem de deuda anotado no
+    // debería crear esa arista — y desde el corte, no la crea.
+    assert.deepEqual(parseTasks(CITAS).cruces.filter(c => c.tarea === 'T006'), []);
   });
 
   test('un `X → Y` en una continuación no es un cruce', () => {
