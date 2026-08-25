@@ -353,11 +353,14 @@ describe('degreeByCellIndex', () => {
     expect(orden).toEqual([[8, 3], [7, 3], [7, 4], [7, 5], [8, 5]]);
   });
 
-  it('en I y X el grado 0 ya NO es la celda del centroide', () => {
+  it('en I, X y Z el grado 0 ya NO es la celda del centroide', () => {
     // Es un cambio deliberado: en la `I` arrancar por el centro de una
     // linea de cinco obliga a un salto de 4 celdas que la forma no necesita. El grado 0
     // pasa a ser por donde el recorrido ENTRA a la pieza, no el centro de la figura.
-    for (const p of ['I', 'X'] as PieceKey[]) {
+    //
+    // La `Z` entro a la lista con el spec 036: hasta ahi era la `N` reflejada y su
+    // centroide caia en el aire.
+    for (const p of ['I', 'X', 'Z'] as PieceKey[]) {
       expect(distanciaAlCentro(p, 2)).toBeLessThan(DEGREE_EPSILON);
       expect(degreeByCellIndex(SHAPES[p])[2]).not.toBe(0);
     }
@@ -386,9 +389,10 @@ describe('que decide hoy el orden angular', () => {
 
   it('la celda parada sobre el centroide sigue saliendo del anillo, aunque ya no gane el grado 0', () => {
     // `Math.atan2(0, 0)` devuelve `0` en silencio: sin la excepcion, la celda central
-    // de `I` y `X` entraria al anillo como si estuviera al este y correria el rango de
-    // todas las demas — o sea, cambiaria la direccion del recorrido.
-    for (const p of ['I', 'X'] as PieceKey[]) {
+    // de `I`, `X` y —desde el spec 036— `Z` entraria al anillo como si estuviera al este
+    // y correria el rango de todas las demas — o sea, cambiaria la direccion del
+    // recorrido.
+    for (const p of ['I', 'X', 'Z'] as PieceKey[]) {
       expect(angularRank(SHAPES[p])[2]).toBe(0);
     }
   });

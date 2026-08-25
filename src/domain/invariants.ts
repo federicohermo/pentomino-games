@@ -20,9 +20,9 @@ import type { RegimenDeRotacion } from './types/music.types.ts';
  * orientaciones de cada forma para reducirla a su clave canonica— y `checkBaseMap`
  * el conjunto una sola vez.
  *
- * Los cinco primeros miran cada pieza por separado; `checkDistinct` es el unico que
- * mira DOS a la vez, y por eso fue el unico capaz de ver que la `Z` era la `N`
- * reflejada.
+ * Cinco de los seis miran la FORMA de cada pieza por separado —`checkBaseMap` si cruza
+ * piezas, pero por su TONICA—; `checkDistinct` es el unico que compara dos FORMAS a la
+ * vez, y por eso fue el unico capaz de ver que la `Z` era la `N` reflejada.
  *
  * DEVUELVEN el resultado en vez de lanzar o asertar: asi los usa igual el test de
  * este modulo y la tool `check_invariants` del MCP server, que necesita responder
@@ -215,7 +215,8 @@ export function checkBaseMap(): CheckResult {
  * `degreeByCellIndex` empareja las dos listas por indice, `NOTES_PER_PIECE` y
  * `CELLS_PER_PIECE` pasaron de coincidir a TENER que coincidir. Sin este chequeo
  * una formula de 4 notas con `NOTES_PER_PIECE = 4` pasaba los cinco invariantes
- * y todos los tests, y la celda de grado 4 renderizaba `undefinedNaN` —
+ * que habia entonces —hoy son seis— y todos los tests, y la celda de grado 4
+ * renderizaba `undefinedNaN` —
  * `midiName(undefined)` no explota, devuelve basura.
  *
  * ## Por que el chequeo de orden esta PARTIDO por regimen
@@ -340,9 +341,10 @@ function canonicalKey(cells: Cell[]): string {
  *
  * Existe porque su ausencia costo un bug que vivio desde el primer commit: la `Z`
  * era `[[0,1],[1,1],[1,0],[2,0],[3,0]]`, o sea la `N` reflejada. Pasaba `checkShapes`
- * —cinco celdas, sin repetir, conexa— y pasaba los otros cuatro, porque ninguno mira
- * dos piezas a la vez. El tablero tenia once pentominos y uno repetido, y lo unico que
- * lo delataba era mirar el dibujo.
+ * —cinco celdas, sin repetir, conexa— y pasaba los otros cuatro, porque ninguno compara
+ * dos FORMAS: el unico que cruza piezas es `checkBaseMap`, y las cruza por su tonica,
+ * que la `Z` y la `N` tienen distinta. El tablero tenia once pentominos y uno repetido,
+ * y lo unico que lo delataba era mirar el dibujo.
  *
  * Se compara por clave canonica y no por pares: son 12 claves contra 66 pares, y sobre
  * todo el mensaje sale nombrando a la OTRA pieza, que es el dato que hace falta para

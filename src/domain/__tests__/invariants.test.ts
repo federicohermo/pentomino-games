@@ -136,8 +136,8 @@ describe('los chequeos detectan una regresion', () => {
   /**
    * El bug que motivo el chequeo, reproducido con la forma que la `Z` tuvo de verdad:
    * `[[0,1],[1,1],[1,0],[2,0],[3,0]]` es la `N` reflejada. Los otros cinco chequeos la
-   * dan por buena —son cinco celdas, sin repetir, conexas— porque ninguno mira dos
-   * piezas a la vez.
+   * dan por buena —son cinco celdas, sin repetir, conexas— porque ninguno compara dos
+   * FORMAS: el unico que cruza piezas es `checkBaseMap`, y las cruza por su tonica.
    */
   it('checkDistinct ve la Z que era la N reflejada', () => {
     conFormaMutada('Z', [[0,1],[1,1],[1,0],[2,0],[3,0]], () => {
@@ -286,8 +286,9 @@ describe('los chequeos detectan una regresion', () => {
 
   /**
    * El chequeo que el docblock de `checkNotes` explica: sin el,
-   * una formula de cuatro notas con `NOTES_PER_PIECE = 4` pasaba los cinco invariantes y
-   * todos los tests, y la celda de grado 4 renderizaba `undefinedNaN`.
+   * una formula de cuatro notas con `NOTES_PER_PIECE = 4` pasaba los cinco invariantes
+   * que habia entonces —hoy son seis— y todos los tests, y la celda de grado 4
+   * renderizaba `undefinedNaN`.
    *
    * Se rompe por el lado barato —la constante, no la formula— y con eso caen los dos
    * mensajes: el del par que dejo de coincidir, y el del arpegio que ahora tiene una nota

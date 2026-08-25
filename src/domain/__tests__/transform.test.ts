@@ -164,14 +164,18 @@ describe('centroid', () => {
   });
 
   it('solo I, X y Z tienen una celda parada sobre el centroide, y es la del indice 2', () => {
-    // Medido, no supuesto: es la regla que saca esa celda del anillo angular y le da
-    // el primer grado del arpegio. Las otras 9 piezas no tienen ninguna.
+    // Medido, no supuesto: es la regla que saca esa celda del anillo angular y le da el
+    // primer lugar del anillo —`angularRank` 0—. Desde el spec 012 eso ya NO es el grado
+    // 0, que es la punta por donde se empieza a caminar la forma. Las otras 9 piezas no
+    // tienen ninguna.
     //
     // La `Z` entro a esta lista con el spec 036, y es una consecuencia AUDIBLE del
     // arreglo: mientras fue la `N` reflejada su centroide caia en (1.4, 0.4), o sea en
-    // el aire, y sus cinco celdas repartian el arpegio por angulo. Con la forma de
-    // verdad el centroide es (1, 1) y ahi hay celda, asi que esa celda pasa a abrir el
-    // arpegio. Es tambien lo que hace que `ANCHOR_INDEX.Z` sea 2.
+    // el aire, y sus cinco celdas repartian el anillo por angulo. Con la forma de verdad
+    // el centroide es (1, 1) y ahi hay celda, asi que sale del anillo y con ella se da
+    // vuelta la direccion del recorrido — medido: `degreeByCellIndex(SHAPES.Z)` pasa de
+    // `[0,1,2,3,4]` a `[4,3,2,1,0]`, que es lo que movio `TONICA_EN.Z` de 0 a 4 en
+    // `music.test.ts`. Es tambien lo que hace que `ANCHOR_INDEX.Z` sea 2.
     const CON_CELDA_AL_CENTRO: PieceKey[] = ['I', 'X', 'Z'];
     const sobreElCentro = (p: PieceKey) => {
       const cent = centroid(SHAPES[p]);
