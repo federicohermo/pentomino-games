@@ -22,7 +22,7 @@ server sin configurar nada.
 compilar, quitando los tipos. Es tooling de desarrollo — no entra al bundle ni al deploy, así que con
 Node 20 el server no arranca y **el repo sigue funcionando igual**.
 
-## Las seis tools
+## Seis tools y un resource
 
 | Tool | Responde | En lugar de |
 |---|---|---|
@@ -80,6 +80,39 @@ Lo que sostiene todo esto es un test —`tools.test.ts`, `describe('el registro'
 lo que el código ya dice. Los dos campos son opcionales en `ToolDef`, así que el compilador no puede
 atajar a la tool número siete y el test sí.
 
+### El resource: `pentomino://constantes`
+
+Desde el [spec 041](https://github.com/federicohermo/pentomino-games/issues/111) el server expone,
+además de las tools, **un resource**: los 14 números fijos que gobiernan el instrumento —el tablero
+mínimo y el default, el máximo de piezas, el costo de cruce, las celdas y las notas por pieza, la
+octava y el régimen por defecto, el BPM, el master gain, el FFT, el lookahead, el tick y el tope de
+pasos—, cada uno con **su valor y la ruta del archivo de `src/` que lo define**.
+
+**No se llama como una tool, y esa es la diferencia que importa.** Un resource no se invoca: se
+**lista** y se **lee** por URI. En Claude Code son `ListMcpResources` y `ReadMcpResource`, con el
+server (`pentomino-domain`) y el URI `pentomino://constantes`; no aparece en `tools/list` y pedirlo
+como tool falla. A cambio es **adjuntable y enumerable**, que es justo lo que una tool no puede ser: el
+cliente puede traérselo entero al contexto sin decidir una llamada.
+
+Es un resource y no una tool porque es material de **referencia** — se lee entero y no toma argumentos.
+Una tool con `inputSchema` vacío sería la misma información detrás de una llamada que alguien tiene que
+acordarse de hacer.
+
+Las tres propiedades que lo hacen valer la pena, y las tres son la misma de siempre:
+
+- **Importa, no copia.** `resources/constantes.ts` no tiene un solo literal numérico: las 14 vienen de
+  `src/domain/constants/` y `src/audio/constants/`, agrupadas por archivo con shorthand de propiedad,
+  así que la clave **es** el identificador importado y un rename rompe el import en vez de mentir.
+- **Sin `cacheHint`, y por tipo.** `ResourceDef.config` se declara `ResourceMetadata` pelado, así que
+  escribir un `cacheHint` no compila. Lo que hace confiable a este server es que nada pueda quedar
+  viejo; una respuesta cacheada es una copia con otro nombre.
+- **La ruta viaja al lado del valor.** Sin ella el resource sería otra copia, sólo que generada: se
+  sabría el número y no dónde cambiarlo. El test abre en el disco el archivo que cada constante declara
+  y verifica que de verdad la exporta — una ruta mal copiada es lo único que el compilador no ataja.
+
+**El criterio de entrada es que hoy esté copiado en `docs/` o en `CLAUDE.md`.** Es verificable; «lo que
+parezca útil» no lo es, y sin esa regla el resource se vuelve un cajón que nadie lee.
+
 ## Cuándo preferirlas a leer el código
 
 La regla corta: **simular el modelo es caro, y localizar dejó de ser gratis.** Lo caro sigue siendo
@@ -111,6 +144,10 @@ Preguntar en vez de leer cuando la pregunta es:
   que abrir el archivo, y `usedBy` sale del grafo de imports: un archivo que lo llama quince veces
   aparece una vez, y un homónimo de otro módulo no aparece.
 - *¿Qué exporta `src/` en total?* → `find_symbol` sin argumentos: el mapa entero en ~2 KB.
+- *¿Cuánto mide el tablero mínimo, cuál es el BPM por defecto, cuánto es el lookahead?* →
+  `pentomino://constantes` con `ReadMcpResource`, **no** el valor transcripto en `CLAUDE.md` o acá: esas
+  transcripciones no tienen quién las verifique, y el resource trae además la ruta del archivo que hay
+  que editar para cambiarlas.
 
 Y **leer el código igual** cuando la pregunta es por qué algo está hecho así: eso vive en los
 comentarios, no en la salida de una tool.
