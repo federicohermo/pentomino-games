@@ -59,6 +59,12 @@ const sinReclamar = deudaDelCenso(issues, mapa);
 const abiertos = sinReclamar.filter((i) => i.state === 'OPEN')
   .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 const cerrados = sinReclamar.length - abiertos.length;
+// Los que YA tienen duenio, contados por resta y no por `Object.keys(mapa).length`: un
+// spec reclama por su `issue` y ademas por cada `origen`, asi que contar filas del mapa
+// deja afuera justo a los issues de deuda que un spec tomo — el dato que este script
+// existe para mostrar. Con la resta las tres cifras cierran contra el total, y que
+// cierren es lo que distingue «no hay» de «no se contaron».
+const reclamados = issues.length - sinReclamar.length;
 
 const ahora = Date.now();
 for (const issue of abiertos) {
@@ -68,7 +74,8 @@ for (const issue of abiertos) {
 }
 
 console.log(`\n${abiertos.length} issues abiertos sin entrada en el mapa, de ${issues.length} en el repo.`);
-console.log(`${Object.keys(mapa).length} son de un spec, y ${cerrados} cerrados sin spec no se listan.`);
+console.log(`${reclamados} ya tienen duenio —el issue de un spec, o el \`origen\` de uno— y ${cerrados} `
+  + 'cerrados sin reclamar no se listan.');
 // El triage NO se automatiza, y decirlo aca es parte del instrumento: un listado ordenado
 // por antiguedad se lee como una cola, y no lo es. El repo es joven —la deuda abierta iba
 // de 0,2 a 2,6 dias al medirlo— asi que la antiguedad todavia no dice nada; ordena por
