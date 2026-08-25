@@ -36,10 +36,14 @@
  */
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { dirname, resolve, relative, sep } from 'node:path';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+// `path` se importa entero y se le PASA a `estaProtegida`: el caso que rompio al gate —dos
+// discos de Windows— solo se puede probar inyectando `path.win32`, y por eso esa decision
+// vive afuera y recibe el modulo. El porque entero, en el encabezado de ese archivo.
+import { estaProtegida } from './lib/rutas-protegidas.mjs';
 
-const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const RAIZ = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 /**
  * Lo que el gate protege.
@@ -162,22 +166,6 @@ function rutasDelPayload(crudo) {
   }
 }
 
-/**
- * Si la ruta cae dentro de una carpeta protegida.
- *
- * Compara por RUTA RESUELTA y no por el string: `relative` normaliza los `..`, las
- * barras invertidas de Windows y las rutas relativas, asi que
- * `src/../mcp-server/src/x.ts` cae donde tiene que caer. Comparar el string dejaria
- * pasar cualquiera de esas tres formas.
- */
-function estaProtegida(ruta) {
-  const abs = resolve(RAIZ, ruta);
-  return PROTEGIDAS.some((carpeta) => {
-    const rel = relative(resolve(RAIZ, carpeta), abs);
-    return rel !== '' && !rel.startsWith('..') && !rel.startsWith(`..${sep}`);
-  });
-}
-
 const crudo = readFileSync(0, 'utf8');
 const rutas = rutasDelPayload(crudo);
 
@@ -189,7 +177,7 @@ if (rutas === null) {
 
 // La primera protegida es la que nombra el mensaje. Alcanza con una: el comando se
 // bloquea entero, y listar las cinco de un `rm -rf` no cambia lo que hay que hacer.
-const ruta = rutas.find(estaProtegida);
+const ruta = rutas.find((candidata) => estaProtegida(path, RAIZ, PROTEGIDAS, candidata));
 if (ruta === undefined) pasar();
 
 let rama;
@@ -223,7 +211,7 @@ if (match === null) {
 const id = match[1];
 let mapa;
 try {
-  mapa = JSON.parse(readFileSync(resolve(RAIZ, 'specs/mapa.json'), 'utf8'));
+  mapa = JSON.parse(readFileSync(path.resolve(RAIZ, 'specs/mapa.json'), 'utf8'));
 } catch {
   pasar('gate-de-spec: no se pudo leer `specs/mapa.json`, no se verifico el spec de la rama');
 }

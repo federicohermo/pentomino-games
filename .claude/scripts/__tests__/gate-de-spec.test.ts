@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 
@@ -30,6 +30,7 @@ import { join, dirname, resolve } from 'node:path';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const GATE_REAL = resolve(AQUI, '../gate-de-spec.mjs');
+const LIB_REAL = resolve(AQUI, '../lib');
 
 let repo: string;
 
@@ -59,7 +60,9 @@ beforeAll(() => {
   mkdirSync(join(repo, 'specs'), { recursive: true });
 
   // El gate de verdad, no una copia escrita a mano: si alguien lo edita, esto lo prueba.
+  // Con su `lib/`, que es de donde importa la decision de si una ruta esta protegida.
   cpSync(GATE_REAL, join(repo, '.claude/scripts/gate-de-spec.mjs'));
+  cpSync(LIB_REAL, join(repo, '.claude/scripts/lib'), { recursive: true });
   writeFileSync(join(repo, 'specs/mapa.json'), JSON.stringify({
     '037': { issue: 104, carpeta: '037-un-cambio', fecha: '2026-08-24', estado: 'Propuesto', titulo: 'Spec 037' },
   }));
@@ -145,6 +148,82 @@ describe('deja pasar lo que no le toca', () => {
     // `src-viejo/` no es `src/`. Sin `relative`, un `startsWith` lo bloquearia.
     git('checkout', 'main');
     expect(correr(payload('src-viejo/board.ts')).permissionDecision).toBe('allow');
+  });
+});
+
+/**
+ * El bug de los dos discos, y por que este bloque no se parece a ninguno de los de arriba.
+ *
+ * `relative()` entre `D:` y `C:` devuelve la ruta ABSOLUTA del destino: no hay ningun camino
+ * con `..` que lleve de un disco al otro. Decidiendo solo por ese prefijo, esa respuesta era
+ * indistinguible de una que cae adentro, asi que el gate daba por protegido cualquier archivo
+ * del otro disco y bloqueaba desde `main` toda escritura ahi — con el repo en `D:` y el
+ * temporal en `C:`, el scratchpad entero. Mordio dos veces.
+ *
+ * **No se puede fabricar con el repo de juguete**: el gate usa el modulo de rutas de la
+ * plataforma, asi que reproducirlo pide dos discos de verdad. Eso depende de la maquina y no
+ * existe en el `ubuntu-latest` de la CI, donde un test asi seria verde sin probar nada.
+ *
+ * Por eso la decision se mudo a `lib/rutas-protegidas.mjs` y recibe el modulo de rutas por
+ * parametro: con `path.win32` inyectado el caso da lo MISMO en las tres plataformas. Se
+ * ejerce por subproceso, como todo lo demas de este archivo, porque `allowJs` esta apagado a
+ * proposito y un `.ts` no puede importar un `.mjs` — y el modulo es `.mjs` y no `.ts` porque
+ * el gate lo carga en cada llamada a una herramienta y compilar TypeScript ahi cuesta 38 ms
+ * medidos por llamada. El porque entero vive en el encabezado de ese archivo.
+ */
+describe('`estaProtegida`, con el modulo de rutas inyectado', () => {
+  const LIB = pathToFileURL(resolve(AQUI, '../lib/rutas-protegidas.mjs')).href;
+  const PROTEGIDAS = ['src', 'mcp-server/src', 'docs'];
+
+  /**
+   * Las respuestas a un lote de rutas, con `path.win32` o `path.posix` de por medio.
+   *
+   * Van en lote y no de a una para que el bloque cueste una llamada a `node` por caso de
+   * test y no una por asercion: el subproceso es lo caro, y las rutas son strings.
+   */
+  function decidir(sabor: 'win32' | 'posix', raiz: string, rutas: readonly string[]): boolean[] {
+    const guion = [
+      "import path from 'node:path';",
+      `import { estaProtegida } from ${JSON.stringify(LIB)};`,
+      `const respuestas = ${JSON.stringify(rutas)}.map(`,
+      `  (r) => estaProtegida(path.${sabor}, ${JSON.stringify(raiz)}, ${JSON.stringify(PROTEGIDAS)}, r));`,
+      'process.stdout.write(JSON.stringify(respuestas));',
+    ].join('\n');
+    const salida = execFileSync(process.execPath, ['--input-type=module', '-e', guion], { encoding: 'utf8' });
+    // `JSON.parse` y no un `=== 'true'`: si el guion imprimiera cualquier otra cosa, esto
+    // revienta en vez de contestar `false` y dar verde por el motivo equivocado.
+    return JSON.parse(salida) as boolean[];
+  }
+
+  const RAIZ_WIN = 'D:\\repo';
+
+  it('una ruta de OTRO disco no esta protegida, aunque no empiece con `..`', () => {
+    // El bug, exactamente. Sin `isAbsolute` las dos dan `true`.
+    expect(decidir('win32', RAIZ_WIN, ['C:\\Users\\fede_\\AppData\\Local\\Temp\\nota.txt', 'C:\\src\\board.ts']))
+      .toEqual([false, false]);
+  });
+
+  it('afuera del repo pero en SU disco tampoco, que es el camino donde el `..` si existe', () => {
+    // El vecino del caso de arriba, y el que dice que el arreglo no fue apagar la
+    // comparacion: por aca `relative` sigue devolviendo `..\\otro\\x.ts` y decide como antes.
+    expect(decidir('win32', RAIZ_WIN, ['D:\\otro\\x.ts'])).toEqual([false]);
+    expect(decidir('posix', '/repo', ['/otro/x.ts'])).toEqual([false]);
+  });
+
+  it('las tres protegidas siguen estando adentro, con los dos separadores', () => {
+    const adentro = ['src/domain/board.ts', 'mcp-server/src/pieces.ts', 'docs/architecture/overview.md'];
+    expect(decidir('win32', RAIZ_WIN, [...adentro, 'D:\\repo\\src\\domain\\board.ts']))
+      .toEqual([true, true, true, true]);
+    expect(decidir('posix', '/repo', adentro)).toEqual([true, true, true]);
+  });
+
+  it('y los cuatro que el gate ya distinguia, que son los que el cambio podia aflojar', () => {
+    // Los mismos casos que los `it` de arriba prueban contra el gate entero, aca contra
+    // `win32` fijo: el `..` que vuelve a entrar, el prefijo que no alcanza, la raiz y
+    // `.claude/`. Son los vecinos del caso nuevo, y los que el cambio de criterio podia
+    // aflojar sin que nadie lo notara hasta que el gate dejara de servir.
+    const casos = ['specs/../src/domain/board.ts', 'src-viejo/board.ts', 'package.json', '.claude/scripts/gate-de-spec.mjs'];
+    expect(decidir('win32', RAIZ_WIN, casos)).toEqual([true, false, false, false]);
   });
 });
 
