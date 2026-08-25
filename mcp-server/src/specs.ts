@@ -233,16 +233,28 @@ export interface TasksInfo {
    */
   seguimiento: number;
   /**
-   * Cuantas del total llevan `[M]`: piden una persona —navegador, oido, captura—
-   * y por eso sobreviven al merge. Se cuentan aparte por el mismo motivo que las
-   * de seguimiento, pero no son lo mismo: `Seguimiento` es *donde* esta anotada
-   * la tarea, `[M]` es *quien* la puede hacer. Una tarea puede ser las dos cosas,
-   * y entonces suma en los dos contadores.
+   * Cuantas del total llevan `[M]`, y es un conteo **historico**: cuenta lo que los
+   * specs anteriores al 039 ya tienen escrito, y en un spec nuevo vale siempre `0`.
+   *
+   * `[M]` marcaba una tarea que pedia una persona —navegador, oido, captura— y que
+   * por eso no bloqueaba el cierre del spec. El 039 la derogo con la medicion que la
+   * desmiente: de las **137** casillas `[M]` que hay en **35** specs, solo **7** se
+   * cerraron alguna vez, o sea que `[M]` no significaba «espera a una persona» sino
+   * «no se va a hacer, pero queda escrito». La regla desde el 039 es volver la tarea
+   * verificable o no anotarla — el ultimo spec que trae una `[M]` es el **037**.
+   *
+   * Se sigue contando porque un spec mergeado no se reescribe, y para esos 35 sigue
+   * valiendo que es un eje distinto del de `seguimiento`: `Seguimiento` es *donde*
+   * esta anotada la tarea, `[M]` era *quien* la podia hacer. Una tarea vieja puede
+   * ser las dos cosas, y entonces suma en los dos contadores.
    */
   manual: number;
   /**
    * Las que de verdad faltan: sin marcar, fuera de `Seguimiento` y sin `[M]`.
    * Vale `0` exactamente cuando `proxima` es `null`.
+   *
+   * El descuento de `[M]` es historico igual que el contador — ver `manual` y el
+   * comentario del descuento en `parseTasks`.
    */
   pendientes: number;
   /** La primera de las `pendientes`. */
@@ -269,6 +281,9 @@ export interface TasksInfo {
  * opcionales, asi que los specs anteriores a la convencion se leen igual. Los
  * grupos son estado, ID, marcadores y texto — el texto sale sin el ID ni los
  * marcadores, que ya estan parseados y repetirlos ensuciaria `proxima`.
+ *
+ * `[M]` se sigue parseando aunque el 039 lo derogue: un spec nuevo no lo escribe,
+ * pero los 35 que lo tienen estan en disco y hay que leerlos — ver `manual`.
  *
  * Una tarea puede ocupar varias lineas —el texto sigue indentado abajo—, asi que
  * las continuaciones se pegan a la tarea abierta. Sin eso, `proxima` responderia
@@ -311,8 +326,16 @@ export function parseTasks(md: string): TasksInfo {
       idAbierto = t[2] ?? null;
       extraerCitas(t[4], idAbierto, citas);
       extraerCruces(t[4], idAbierto, cruces);
-      // La primera sin marcar que no es de seguimiento ni pide una persona se
-      // queda como `proxima`, y sigue abierta para recibir sus continuaciones.
+      // La primera sin marcar que no es de seguimiento ni lleva `[M]` se queda como
+      // `proxima`, y sigue abierta para recibir sus continuaciones.
+      //
+      // El `!esManual` lo CONSERVA el 039 a proposito, que es lo contraintuitivo del
+      // cambio: el spec deroga `[M]` **hacia adelante** y un spec mergeado no se
+      // reescribe, asi que las 137 casillas `[M]` de los 35 specs que las tienen
+      // siguen en disco. Sacar el descuento las convertiria de historia en deuda de un
+      // dia para el otro y pondria en rojo, sobre 35 specs que nadie toco, el gate del
+      // 038 que exige `pendientes: 0` en todo spec cerrado. En un spec nuevo el
+      // descuento no descuenta nada, porque no hay `[M]` que descontar.
       if (!marcada && !enSeguimiento && !esManual) {
         pendientes++;
         if (proxima === null) {

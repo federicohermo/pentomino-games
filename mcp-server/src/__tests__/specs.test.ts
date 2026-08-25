@@ -54,6 +54,26 @@ const MARCADAS = `# Tareas — Con ID y marcadores
 - [ ] T004 [M] Capturas del tablero
 `;
 
+/**
+ * La forma de todo spec escrito desde el 039: **ni una sola `[M]`**.
+ *
+ * El 039 derogó el marcador con la medición que lo desmiente —137 casillas `[M]` en
+ * 35 specs y sólo 7 cerradas alguna vez—, así que la regla pasó a ser volver la tarea
+ * verificable o no anotarla. El descuento sigue en el código para los 35 que ya están
+ * en disco; acá no tiene nada que descontar, y eso es lo que este fixture fija.
+ */
+const SIN_MANUAL = `# Tareas — Spec posterior al 039
+
+## Backlog
+- [x] T001 Commitear el spec
+- [ ] T002 [P] Escribir el dominio
+- [ ] T003 [P] Escribir los tests
+- [ ] T004 Verificar con \`pnpm verify\`
+
+## Seguimiento (no bloquea)
+- [ ] T005 Deuda anotada a propósito
+`;
+
 describe('parseMapa', () => {
   test('saca los cinco campos de cada entrada', () => {
     const mapa = parseMapa(MAPA);
@@ -186,6 +206,20 @@ describe('parseTasks — ID y marcadores', () => {
     const t = parseTasks(MARCADAS);
     assert.equal(t.manual, 2);
     assert.equal(t.pendientes, 1);
+  });
+
+  test('un spec posterior al 039 no trae `[M]`: `manual` 0 y nada que descontar', () => {
+    // La otra mitad del test de arriba, y la única forma que se va a escribir de acá
+    // en adelante. Que `manual` valga 0 no alcanza como aserción: lo que hay que fijar
+    // es que el descuento sea un no-op, o sea que `pendientes` sea exactamente lo que
+    // queda al sacar las hechas y las de seguimiento. Con una `[M]` en el medio esa
+    // igualdad no se cumple —ver `MARCADAS`, donde da 2 y `pendientes` es 1—.
+    const t = parseTasks(SIN_MANUAL);
+    assert.equal(t.manual, 0);
+    assert.deepEqual([t.total, t.hechas, t.seguimiento], [5, 1, 1]);
+    assert.equal(t.pendientes, 3);
+    assert.equal(t.pendientes, t.total - t.hechas - t.seguimiento);
+    assert.equal(t.proximaId, 'T002');
   });
 
   test('`[P]` se parsea pero no cambia el conteo', () => {
