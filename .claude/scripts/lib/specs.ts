@@ -91,9 +91,10 @@ const CERRADOS: ReadonlySet<string> = new Set(['Implementado', 'Descartado', 'Su
 /**
  * Si el spec sigue en vuelo, o sea si de el todavia puede salir trabajo.
  *
- * Lo usan los dos scripts comunes y por motivos distintos —`hidratar-specs.mjs` para
- * elegir que traer por default, `publicar-spec.mjs` para decidir si cierra el issue—,
- * y esa es exactamente la razon de que viva una sola vez: mientras el publicador tenia
+ * Lo usan tres consumidores y por motivos distintos —`hidratar-specs.mjs` para elegir
+ * que traer por default, `publicar-spec.mjs` para decidir si cierra el issue, y el
+ * gate del mapa para saber que estado del issue esperar—, y esa es exactamente la
+ * razon de que viva una sola vez: mientras el publicador tenia
  * su propio `estado !== 'Propuesto' && estado !== 'En curso'` escrito a mano, sacar un
  * estado del conjunto lo dejaba mirando uno que ya no existe, en verde.
  *

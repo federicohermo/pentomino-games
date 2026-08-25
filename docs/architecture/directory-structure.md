@@ -231,8 +231,10 @@ por lo que el test necesita:
     repo), `mapa-de-directorios.test.ts` (que este archivo nombre cada archivo de producción) y
     `claude-md-acotado.test.ts` (el techo de 200 líneas de `CLAUDE.md`).
   - `specs/__tests__/` — los dos del **registro** (spec 035): `mapa-de-specs.test.ts` verifica
-    `mapa.json` contra sí mismo y —cuando hay `gh`— contra los issues, y `specs-convencion.test.ts`
-    que las carpetas y el registro digan lo mismo.
+    `mapa.json` contra sí mismo, —cuando hay `gh`— contra los issues y contra **el PR** de cada spec,
+    y —cuando hay carpetas hidratadas— contra los `pendientes` que calcula `readSpecStatus`, para que
+    un spec cerrado con trabajo abierto dé rojo (spec 038); y `specs-convencion.test.ts` que las
+    carpetas y el registro digan lo mismo.
   - `.claude/scripts/__tests__/` — los dos de los **scripts**: `scripts-de-specs.test.ts` sobre lo puro
     de `publicar-spec.mjs` e `hidratar-specs.mjs`, y `gate-de-spec.test.ts` sobre el gate de rama del
     spec 037. Están acá y no en `specs/` porque **el test es del script**, y `specs/` es lo que el
