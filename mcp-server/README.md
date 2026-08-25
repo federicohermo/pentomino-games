@@ -35,17 +35,22 @@ mcp-server/
     ├── tools/
     │   ├── index.ts        el array de tools; una línea por tool
     │   ├── types.ts        ToolDef, defineTool y los helpers de respuesta
-    │   └── <tool>.ts       una por archivo: nombre, descripción, schema y handler
+    │   └── <tool>.ts       una por archivo: nombre, título, anotaciones, descripción, schema y handler
     └── __tests__/          node --test, un archivo por módulo
 ```
 
 ## Cómo agregar una tool
 
-1. Un archivo en `src/tools/`, que exporte `defineTool({ name, description, inputSchema, run })`.
+1. Un archivo en `src/tools/`, que exporte
+   `defineTool({ name, title, description, annotations, inputSchema, run })`.
 2. Una línea en `src/tools/index.ts`.
 
 El entrypoint no se toca y no hay ningún `switch`. **No escribir validación de argumentos**: la hace el
 SDK contra el schema de zod antes de llamar al handler.
+
+`title` y `annotations` son **opcionales en el tipo y obligatorios en la práctica**: quien los exige es
+`__tests__/tools.test.ts`, que recorre el registro entero, y no el compilador. El detalle de qué hint
+va en cada caso está en [`.claude/rules/mcp-server.md`](../.claude/rules/mcp-server.md).
 
 La descripción se escribe **por intención** —cuándo conviene llamarla en vez de leer el código—, no por
 mecanismo. Sin adopción no hay ahorro, y lo único que decide la adopción es esa descripción.

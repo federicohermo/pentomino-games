@@ -19,8 +19,9 @@ Es tooling: no entra al bundle ni al deploy.
   commit que amplía el contrato no espera a que las seis estén hechas— y por eso el compilador no
   ataja al que se los olvide: lo ataja `tools.test.ts`, que recorre `tools` y los exige en todas.
   `readOnlyHint` habla de si la tool **modifica** su entorno, no de si toca el filesystem: leer
-  `src/` o `specs/` del disco sigue siendo `true`. Y si un hint sería falso la mitad de las veces se
-  **omite**, no se elige un valor — `spec_write` no lleva `idempotentHint` por eso.
+  `src/` o `specs/` del disco sigue siendo `true`. Y un hint que no sea cierto se **omite** en vez de
+  afirmarse: `spec_write` no lleva `idempotentHint` porque `marcar` **falla** si la tarea ya estaba
+  marcada, o sea que llamarla dos veces es un error y no un no-op.
 - **`find_symbol` es la única que mira el código como texto, y su índice no se persiste.** Se construye
   en cada consulta desde disco (medido: 112 ms en frío, ~50 ms después, sobre 36 archivos indexados y
   16 que solo aportan aristas). Si alguna vez hace falta acelerarlo, cachear por `mtime` — **no**
