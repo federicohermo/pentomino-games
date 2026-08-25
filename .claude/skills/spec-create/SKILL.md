@@ -82,6 +82,10 @@ medición que no arregla: eso no va. Con la lectura ancha el gate daría rojo so
 apagaría en una semana. Y va en el **encabezado**, antes del primer `##`: un `#127` suelto en la prosa
 no cuenta.
 
+La línea se puede agregar o corregir **después** de publicar el spec: `crear` reconcilia el `origen`
+de cada fila en cada corrida, así que volver a correrlo alcanza. Y si te olvidás, un gate de
+`specs/__tests__/mapa-de-specs.test.ts` compara la fila contra el `spec.md` hidratado y da rojo.
+
 Si el pedido no viene de ningún issue, no hay línea que escribir y el campo no se pone —vacío no, que
 `leerMapa` lo rechaza—. Seguí al paso 1.
 

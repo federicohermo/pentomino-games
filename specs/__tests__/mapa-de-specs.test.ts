@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname, resolve } from 'node:path';
 import {
   ESTADOS, enVuelo, NO_LOS_MUEVE_UN_MERGE, agruparPrsPorSpec, aterrizo, RAMA_DE_SPEC,
-  LIMITE_DE_LISTA,
+  LIMITE_DE_LISTA, origenDe,
   type PrDeSpec, type IssueDeSpec,
 } from '../../.claude/scripts/lib/specs.ts';
 import { readSpecStatus } from '../../mcp-server/src/specs.ts';
@@ -476,6 +476,59 @@ describe.runIf(HIDRATADOS.length > 0)('un spec cerrado no debe trabajo', () => {
       'ni cuenta el `## Seguimiento`: lo que queda es trabajo que alguien dio por hecho. La\n' +
       'salida es cerrar la casilla, o marcarla como lo que es y volver a publicar el\n' +
       `spec con \`publicar-spec.mjs publicar\`:\n${debiendo.join('\n')}`,
+    ).toEqual([]);
+  });
+});
+
+/**
+ * El gate del `origen` contra su fuente: **la fila dice lo que dice el `spec.md`.**
+ *
+ * `specs/README.md` declara que la línea `**Origen:** #127` del encabezado ES la fuente única,
+ * y hasta acá esa declaración era falsa apenas el spec quedaba publicado: `publicar-spec.mjs`
+ * `crear` cortocircuita en `if (mapa[id]) … continue`, así que agregar o corregir el `**Origen:**`
+ * después no llegaba nunca al mapa **y nada comparaba los dos**. La prueba es este mismo spec: su
+ * `origen` hubo que escribirlo a mano en `mapa.json`.
+ *
+ * Son las dos mitades y hacen falta las dos: `crear` ahora reconcilia el campo en cada corrida, y
+ * esto pone en rojo la deriva de quien no la corrió. No es lo mismo que el gate del `origen`
+ * abierto —aquél mira GitHub y éste mira el disco—, y por eso no vive en el bloque de red.
+ *
+ * **Necesita la caché y se saltea declarándolo**, igual que el chequeo de `pendientes` de arriba:
+ * `specs/[0-9]*` está ignorado desde el 034, así que la CI y un clone nuevo tienen cero carpetas.
+ * Donde importa —la máquina de quien escribe el spec— están todas.
+ */
+const CON_SPEC_MD = IDS
+  .map((id) => ({ id, ruta: join(RAIZ, 'specs', MAPA[id].carpeta, 'spec.md') }))
+  .filter(({ ruta }) => existsSync(ruta));
+
+const unOrigen = (o: number[] | null) => (o === null ? '(sin origen)' : o.map((n) => `#${n}`).join(', '));
+
+it('dice sobre cuántos specs se contrastó el `origen` contra su `spec.md`, en vez de callarse', () => {
+  const veredicto = CON_SPEC_MD.length === 0
+    ? 'sin specs hidratados: NO se verificó que el `origen` del mapa salga del `spec.md`. '
+      + '`node .claude/scripts/hidratar-specs.mjs --todos`'
+    : `${CON_SPEC_MD.length} de ${IDS.length} specs hidratados: su ` + '`origen` se contrasta abajo';
+
+  expect(veredicto).toBeTruthy();
+  console.info(`[mapa.json] ${veredicto}`);
+});
+
+describe.runIf(CON_SPEC_MD.length > 0)('el `origen` de la fila sale del `spec.md`', () => {
+  it('ninguna fila declara un `origen` distinto del que declara su spec', () => {
+    const derivados = CON_SPEC_MD.flatMap(({ id, ruta }) => {
+      // `origenDe` grita ante un `**Origen:**` que no nombra ningún `#N`, y acá eso es lo que
+      // se quiere: es un error de quien escribe el spec, y el rojo lo nombra con su mensaje.
+      const declarado = origenDe(readFileSync(ruta, 'utf8'));
+      const enElMapa = MAPA[id].origen ?? null;
+      if (JSON.stringify(declarado) === JSON.stringify(enElMapa)) return [];
+      return [`${id}: el spec.md dice ${unOrigen(declarado)} y el mapa dice ${unOrigen(enElMapa)}`];
+    });
+
+    expect(
+      derivados,
+      'El `origen` de una fila dejó de decir lo que dice su `spec.md`. La fuente es\n' +
+      'el spec, y la fila se pone al día sola con `publicar-spec.mjs crear`, que reconcilia\n' +
+      `el campo en cada corrida:\n${derivados.join('\n')}`,
     ).toEqual([]);
   });
 });

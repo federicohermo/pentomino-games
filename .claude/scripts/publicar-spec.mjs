@@ -185,7 +185,39 @@ if (fase === 'crear') {
     guardarMapa(mapa);
     console.log(`${id}  creado → #${numero}`);
   }
+
+  // **`origen` se reconcilia en cada corrida, y es el unico campo de la fila que lo hace.**
+  // Los otros cinco describen la publicacion —`issue`, `fecha`— o son cosas que el spec no
+  // vuelve a decir. `origen` si: es una linea del `spec.md`, y `specs/README.md` la declara
+  // la fuente unica. Sin esto la declaracion era falsa apenas el spec quedaba publicado: el
+  // bucle de arriba cortocircuita en `if (mapa[id]) … continue`, asi que agregar o corregir el
+  // `**Origen:**` despues no llegaba NUNCA al mapa, y nada comparaba los dos. El `origen` del
+  // 044 hubo que escribirlo a mano en `mapa.json`, y esa es la prueba de que faltaba.
+  //
+  // Va DESPUES del bucle que crea y no adentro, por el mismo motivo que alla arriba las dos
+  // lecturas de disco van antes del `create`: `origenDe` grita ante un `**Origen:**` mal
+  // escrito, y un spec viejo roto en la cache no tiene por que impedir que se publique uno
+  // nuevo. Lo que se creo ya esta guardado en disco cuando esto corre.
+  //
+  // Y mira solo las carpetas que estan en disco: `specs/` es cache desde el 034, asi que un
+  // spec no hidratado no dice nada sobre su `origen` — y «no dice» no es «no tiene».
+  const muestra = (o) => (o === null ? '(sin origen)' : o.map((n) => `#${n}`).join(', '));
+  let reconciliados = 0;
+  for (const carpeta of carpetas) {
+    const id = carpeta.slice(0, 3);
+    const declarado = origenDeCarpeta(carpeta);
+    const enElMapa = mapa[id].origen ?? null;
+    if (JSON.stringify(declarado) === JSON.stringify(enElMapa)) continue;
+    if (declarado === null) delete mapa[id].origen;
+    else mapa[id].origen = declarado;
+    guardarMapa(mapa);
+    reconciliados += 1;
+    console.log(`${id}  origen: ${muestra(enElMapa)} → ${muestra(declarado)}`);
+  }
+
   console.log(`\nmapa: ${Object.keys(mapa).length} specs en ${MAPA_JSON}`);
+  console.log(`${carpetas.length} carpetas hidratadas, ${reconciliados} con el `
+    + '`origen` puesto al dia contra su `spec.md`');
 }
 
 /* ── Fase 2: publicar el contenido, ya traducido ──────────────────────────── */

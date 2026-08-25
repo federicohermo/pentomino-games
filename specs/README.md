@@ -261,12 +261,18 @@ cerraron solos, por la palabra clave, **un segundo después del merge** de su PR
 > commit. Por eso el vínculo no se puede resolver escribiéndolo en el `spec.md` y nada más — tiene que
 > llegar al PR.
 
-**Y por eso existe `origen`.** La línea `**Origen:** #127` del encabezado del `spec.md` la parsea
-`publicar-spec.mjs crear` —igual que ya parsea el título del H1— y la escribe en la fila del mapa. De
-ahí la lee el gate de [`__tests__/mapa-de-specs.test.ts`](./__tests__/mapa-de-specs.test.ts), que pone
-en rojo un spec que ya no está en vuelo y cuyo `origen` sigue abierto. **Sin ese dato nada podía exigir
-el `Closes`**, y se nota: 4 de los 43 specs nombran un issue de deuda **en prosa** y tres de esos cuatro
-siguen abiertos.
+**Y por eso existe `origen`.** La línea `**Origen:** #127` del encabezado del `spec.md` la
+parsea `publicar-spec.mjs crear` —igual que ya parsea el título del H1— y la escribe en la fila del
+mapa. De ahí la lee el gate de [`__tests__/mapa-de-specs.test.ts`](./__tests__/mapa-de-specs.test.ts),
+que pone en rojo un spec que ya no está en vuelo y cuyo `origen` sigue abierto. **Sin ese dato nada
+podía exigir el `Closes`**, y se nota: 4 de los 43 specs nombran un issue de deuda **en prosa** y tres
+de esos cuatro siguen abiertos.
+
+**La línea del `spec.md` es la fuente y no una copia**, y eso `crear` lo sostiene reconciliando el
+campo **en cada corrida y no sólo en la primera**: agregar o corregir el `**Origen:**` de un spec ya
+publicado llega al mapa igual. Lo que quede sin reconciliar lo caza un segundo gate del mismo
+archivo, que compara la fila contra su `spec.md` cuando la carpeta está hidratada y **declara que se
+salteó** cuando no — `specs/[0-9]*` es caché desde el 034, así que la CI tiene cero.
 
 **`origen` significa saldar, no citar**, y la diferencia es la que decide si el gate sirve o se apaga en
 una semana. El spec 035 cita al #97 como contexto de una medición que **no** arregla; con la lectura
