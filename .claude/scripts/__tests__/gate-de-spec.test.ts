@@ -152,8 +152,13 @@ describe('falla abierto, y lo declara', () => {
   it('un payload sin `file_path` pasa, pero deja escrito que no verifico', () => {
     // Un payload que cambie de forma dejaria el gate mudo para siempre. Este mensaje es
     // lo unico que lo delata.
+    //
+    // El payload es de `Edit` y no de `Bash`, y el cambio es del spec 037 mismo: desde
+    // que el gate entiende `Bash`, un `{tool_name:'Bash', command:'ls'}` ya NO es un
+    // payload ilegible — es uno legible que no escribe nada, y pasa callado con razon.
+    // Para probar «no se pudo leer» hace falta una herramienta de archivo sin su ruta.
     git('checkout', 'main');
-    const r = correr(JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'ls' } }));
+    const r = correr(JSON.stringify({ tool_name: 'Edit', tool_input: { comando: 'ls' } }));
     expect(r.permissionDecision).toBe('allow');
     expect(r.permissionDecisionReason).toContain('no se pudo verificar');
   });
@@ -176,5 +181,124 @@ describe('falla abierto, y lo declara', () => {
         '037': { issue: 104, carpeta: '037-un-cambio', fecha: '2026-08-24', estado: 'Propuesto', titulo: 'Spec 037' },
       }));
     }
+  });
+});
+
+/**
+ * El agujero que tenia el gate cuando solo miraba `Edit|Write|MultiEdit`.
+ *
+ * No es un eje mas: es un agujero **dirigido**. Negarle `Edit` sobre `src/` a un agente
+ * lo empuja justo hacia `sed -i` y hacia la redireccion, asi que la mitad que faltaba era
+ * la que el propio `deny` de la otra mitad iba a producir.
+ *
+ * La direccion del `allow` pesa MAS que en el resto del archivo, y por eso hay mas casos
+ * de ese lado: `Bash` es la herramienta con la que se lee, se busca y se corre la suite.
+ * Un gate que se pase de listo aca no molesta de vez en cuando — molesta todo el tiempo,
+ * y se apaga entero el mismo dia.
+ */
+describe('lo que escribe `Bash`', () => {
+  const bash = (command: string) => JSON.stringify({ tool_name: 'Bash', tool_input: { command } });
+
+  describe('bloquea la escritura', () => {
+    it('la redireccion, que es el escape mas corto: no necesita ningun comando conocido', () => {
+      git('checkout', 'main');
+      expect(correr(bash('echo "// nada" > src/domain/board.ts')).permissionDecision).toBe('deny');
+    });
+
+    it('`>>`, que es el mismo escape sin truncar', () => {
+      git('checkout', 'main');
+      expect(correr(bash('echo x >> mcp-server/src/pieces.ts')).permissionDecision).toBe('deny');
+    });
+
+    it('`sed -i`, que es la forma con la que un agente edita sin `Edit`', () => {
+      git('checkout', 'main');
+      expect(correr(bash("sed -i 's/viejo/nuevo/' src/domain/board.ts")).permissionDecision).toBe('deny');
+    });
+
+    it('`tee` en el segundo tramo de un pipe, donde vive el destino', () => {
+      // Mirar el comando entero de una atribuiria el destino al `cat`, que solo lee.
+      git('checkout', 'main');
+      expect(correr(bash('cat /tmp/x | tee docs/architecture/overview.md')).permissionDecision).toBe('deny');
+    });
+
+    it('`rm`, porque borrar es escribir', () => {
+      git('checkout', 'main');
+      expect(correr(bash('rm -f src/domain/board.ts;')).permissionDecision).toBe('deny');
+    });
+
+    it('el destino de un `mv`, y no su origen', () => {
+      git('checkout', 'main');
+      expect(correr(bash('mv /tmp/board.ts src/domain/board.ts')).permissionDecision).toBe('deny');
+    });
+
+    it('una ruta entrecomillada, que sin desentrecomillar se leeria con las comillas adentro', () => {
+      git('checkout', 'main');
+      expect(correr(bash('echo x > "src/domain/board.ts"')).permissionDecision).toBe('deny');
+    });
+
+    it('no se lo esquiva con un `..` por la ventana de `Bash` tampoco', () => {
+      // El mismo caso que ya se probaba sobre `Edit`, por el otro camino.
+      git('checkout', 'main');
+      expect(correr(bash('echo x > specs/../src/domain/board.ts')).permissionDecision).toBe('deny');
+    });
+
+    it('el nombre del comando se compara sin su ruta: `/usr/bin/sed` es `sed`', () => {
+      git('checkout', 'main');
+      expect(correr(bash("/usr/bin/sed -i 's/a/b/' src/domain/board.ts")).permissionDecision).toBe('deny');
+    });
+  });
+
+  describe('deja pasar lo que solo LEE', () => {
+    it('un `cat` de un archivo protegido', () => {
+      git('checkout', 'main');
+      expect(correr(bash('cat src/domain/board.ts')).permissionDecision).toBe('allow');
+    });
+
+    it('un `grep` sobre `src/` que redirige a OTRO lado', () => {
+      // El falso positivo caro: el comando nombra una carpeta protegida y ademas trae un
+      // `>`, pero lo que escribe es `/tmp`. Emparejar el operador con SU destino es lo
+      // unico que lo distingue de un `> src/…`.
+      git('checkout', 'main');
+      expect(correr(bash('grep -rn foo src/domain > /tmp/hallazgos.txt')).permissionDecision).toBe('allow');
+    });
+
+    it('`sed` SIN `-i`, que imprime y no toca el archivo', () => {
+      git('checkout', 'main');
+      expect(correr(bash("sed 's/a/b/' src/domain/board.ts")).permissionDecision).toBe('allow');
+    });
+
+    it('un `cp` que usa el archivo protegido como ORIGEN', () => {
+      git('checkout', 'main');
+      expect(correr(bash('cp src/domain/board.ts /tmp/copia.ts')).permissionDecision).toBe('allow');
+    });
+
+    it('`2>&1` no es un archivo: redirige un descriptor', () => {
+      // Sin el `(?!&)` esto se leeria como «escribe en el archivo `1`» y, peor, cualquier
+      // comando con `2>&1` adentro entraria al camino de bloqueo.
+      git('checkout', 'main');
+      expect(correr(bash('pnpm test 2>&1')).permissionDecision).toBe('allow');
+    });
+
+    it('escribir en `specs/` y en `.claude/`, que estan fuera del gate a proposito', () => {
+      git('checkout', 'main');
+      for (const c of ['echo x > specs/037-un-cambio/spec.md', 'sed -i s/a/b/ .claude/scripts/gate-de-spec.mjs']) {
+        expect(correr(bash(c)).permissionDecision, c).toBe('allow');
+      }
+    });
+
+    it('escribir en `src/` desde la rama de un spec que existe', () => {
+      // La direccion que importa mas: con la rama correcta, `Bash` no se entera del gate.
+      git('checkout', '-B', 'feature/037-un-cambio', 'main');
+      expect(correr(bash('echo x > src/domain/board.ts')).permissionDecision).toBe('allow');
+    });
+  });
+
+  it('un `Bash` sin `command` pasa, pero deja escrito que no verifico', () => {
+    // Mismo motivo que el payload sin `file_path`: si el payload cambia de forma, este
+    // mensaje es lo unico que lo delata antes de que el gate quede mudo para siempre.
+    git('checkout', 'main');
+    const r = correr(JSON.stringify({ tool_name: 'Bash', tool_input: {} }));
+    expect(r.permissionDecision).toBe('allow');
+    expect(r.permissionDecisionReason).toContain('no se pudo verificar');
   });
 });

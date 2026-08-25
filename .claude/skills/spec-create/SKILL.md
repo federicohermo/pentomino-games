@@ -10,6 +10,7 @@ allowed-tools:
   - Grep
   - Skill
   - mcp__pentomino-domain__spec_status
+  - mcp__pentomino-domain__spec_write
   - mcp__pentomino-domain__describe_piece
   - mcp__pentomino-domain__simulate_board
   - mcp__pentomino-domain__check_invariants
