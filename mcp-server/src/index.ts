@@ -29,7 +29,12 @@ serveStdio(() => {
   for (const t of tools) {
     server.registerTool(
       t.name,
-      { description: t.description, inputSchema: t.inputSchema },
+      {
+        description: t.description,
+        title: t.title,
+        annotations: t.annotations,
+        inputSchema: t.inputSchema,
+      },
       t.run,
     );
   }

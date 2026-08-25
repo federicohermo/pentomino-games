@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type { CallToolResult } from '@modelcontextprotocol/server';
+import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/server';
 
 /**
  * El contrato de una tool: nombre, descripcion, schema y handler COLOCADOS en un
@@ -12,10 +12,23 @@ import type { CallToolResult } from '@modelcontextprotocol/server';
  * algo plausible en vez de fallar.
  */
 
+/**
+ * `title` y `annotations` van OPCIONALES a proposito. Con un campo requerido, el
+ * commit que amplia el contrato no compila hasta que las seis tools esten hechas,
+ * y tres commits chicos se vuelven uno grande. Quien exige que ninguna se lo
+ * saltee es el test de `__tests__/tools.test.ts`, no el tipo — y ese test cubre
+ * ademas la tool numero siete, que es el modo de falla real.
+ *
+ * `ToolAnnotations` se IMPORTA del SDK en vez de redeclararse: una copia local no
+ * ve el hint que el protocolo agregue manana.
+ */
+
 /** Lo que escribe un archivo de tool: el handler ya recibe los argumentos tipados. */
 export interface ToolSpec<S extends z.ZodType> {
   name: string;
   description: string;
+  title?: string;
+  annotations?: ToolAnnotations;
   inputSchema: S;
   run: (args: z.output<S>) => CallToolResult;
 }
@@ -24,6 +37,8 @@ export interface ToolSpec<S extends z.ZodType> {
 export interface ToolDef {
   name: string;
   description: string;
+  title?: string;
+  annotations?: ToolAnnotations;
   inputSchema: z.ZodType;
   run: (args: unknown) => CallToolResult;
 }
@@ -41,6 +56,8 @@ export function defineTool<S extends z.ZodType>(spec: ToolSpec<S>): ToolDef {
   return {
     name: spec.name,
     description: spec.description,
+    title: spec.title,
+    annotations: spec.annotations,
     inputSchema: spec.inputSchema,
     run: (args: unknown) => spec.run(spec.inputSchema.parse(args)),
   };
