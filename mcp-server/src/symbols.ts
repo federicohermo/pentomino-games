@@ -9,9 +9,10 @@ import { join, relative, posix } from 'node:path';
  * conviene ser explicito con lo que NO cambia: no hay archivo de indice, no hay
  * paso de build y no hay `generatedAt`. Cada llamada parsea `src/` de nuevo desde
  * disco, asi que la respuesta es HEAD en el momento de preguntar. Se puede porque
- * medido son 112 ms en frio y ~50 ms despues, sobre 92 archivos indexados mas 22
- * que solo aportan aristas; el dia que eso duela, la respuesta es cachear por
- * mtime, no generar un artefacto que alguien tenga que regenerar.
+ * medirlo dio, sobre los 36 + 16 archivos de entonces, 112 ms en frio y ~50 ms
+ * despues. Hoy el indice son 92 archivos mas 22 que solo aportan aristas; el dia
+ * que eso duela, la respuesta es cachear por mtime, no generar un artefacto que
+ * alguien tenga que regenerar.
  *
  * Por que un AST y no una regex: la pregunta que se quiere contestar es "quien
  * USA este simbolo", y eso se resuelve por el grafo de imports —specifier

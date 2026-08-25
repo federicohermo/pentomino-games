@@ -206,9 +206,10 @@ bytes.
 El `grep` de la comparación barre los dos paquetes porque es lo que hace falta para igualar la
 respuesta: `usedBy` incluye a `mcp-server/`, y ahí está justamente la parte que es fácil olvidar.
 
-Costo de construirlo: **112 ms** la primera consulta, ~50 ms las siguientes, sobre 92 archivos
-indexados más 22 que solo aportan aristas. Es lo que permite no persistirlo. El día que eso duela, la
-respuesta es cachear por `mtime`, no generar un artefacto que alguien tenga que regenerar.
+Costo de construirlo: **112 ms** la primera consulta y ~50 ms las siguientes, medido en su momento
+sobre 36 + 16 archivos. Hoy el índice son 92 archivos más 22 que solo aportan aristas. Es lo que
+permite no persistirlo. El día que eso duela, la respuesta es cachear por `mtime`, no generar un
+artefacto que alguien tenga que regenerar.
 
 ### El alcance del grafo, y por qué es asimétrico
 
