@@ -255,6 +255,17 @@ describe.runIf(REMOTO !== null)('el mapa dice lo mismo que el issue', () => {
    * —los skills los abren— y no salía nunca. Medido: 4 de los 43 specs nombran un issue de
    * deuda **en prosa** y 3 de esos 4 siguen abiertos, porque nada podía exigir el
    * `Closes`. El dato lo pone `origen`; el rojo lo pone esto.
+   *
+   * **Este rojo no llega en el PR del spec ni al mergearlo, y hay que saberlo.** Mientras
+   * el PR está abierto el mapa dice `Propuesto` —el gate del 038 prohíbe otra cosa— y
+   * `enVuelo` lo excluye; en el push a `main`, `verify.yml` manda `GH_TOKEN: ''` y este
+   * bloque entero se saltea. El primero que puede verlo es **el PR siguiente, que es de
+   * otra persona**, con el `Closes` faltante ya mergeado y fuera de su alcance.
+   *
+   * Es la misma forma que los otros gates del mapa —viven en el PR y cazan la deriva
+   * venga de donde venga—, pero con una diferencia que importa: allá el arreglo es editar
+   * un archivo del repo y acá es cerrar un issue que quizá no esté hecho. Por eso
+   * `spec-create` pide el `Closes` **antes** en vez de confiar en que el rojo avise.
    */
   it('el `origen` de un spec que ya no está en vuelo tiene que estar cerrado', () => {
     // **La partición sale de `enVuelo`, importado.** Un `Propuesto` con su origen abierto

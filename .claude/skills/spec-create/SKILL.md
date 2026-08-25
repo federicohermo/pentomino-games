@@ -186,8 +186,12 @@ No es parte de abrir un spec, pero es la otra mitad y se saltea igual de fácil:
    El plural llegó con el 044 y es la mitad que faltaba. Decía `Closes #N` en singular, y ese `N` era
    justo el único que ya se cerraba solo: el issue del propio spec. El de deuda que lo parió no lo
    cerraba nadie, así que quedaban **dos issues por el mismo trabajo** y uno abierto para siempre. El
-   `origen` de la fila es lo que ahora lo pone en rojo — pero el rojo llega **al mergear**, así que la
-   línea se escribe antes.
+   `origen` de la fila es lo que ahora lo pone en rojo — pero **ese rojo no llega en tu PR, y tampoco
+   al mergear**: mientras el PR está abierto el mapa dice `Propuesto` y el gate no mira los que siguen
+   en vuelo, y el push a `main` corre `verify` con el token vacío, así que el bloque de red se saltea
+   entero. El primero que lo ve es **el PR siguiente, que es de otra persona** — y esa persona no
+   puede arreglarlo, porque el `Closes` que falta va en un PR que ya está mergeado. Por eso la línea
+   se escribe antes, y no después.
 3. Lo que salió distinto de lo previsto, **como comentario en el issue**.
 
 El paso 1 se saltea solo: el spec 035 se mergeó y su registro siguió diciendo `Propuesto` veinte horas,
