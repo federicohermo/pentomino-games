@@ -46,7 +46,15 @@ export interface EntradaDeMapa {
   carpeta: string;
   /** La fecha en que se escribio el spec. Es un hecho del pasado: no puede derivar. */
   fecha: string;
-  /** `Propuesto` · `En curso` · `Implementado` · `Descartado` · `Superado`. */
+  /**
+   * `Propuesto` · `Implementado` · `Descartado` · `Superado`.
+   *
+   * Son cuatro desde el 038, que saco `En curso`: el conjunto cerrado lo aceptaba y el
+   * mapa no lo usaba en ninguna de sus 42 entradas, porque ningun paso del flujo lo
+   * escribe. La lista que manda es `ESTADOS` en `.claude/scripts/lib/specs.ts`, y el
+   * gate del mapa es quien la verifica — esto es la version legible, no una segunda
+   * fuente.
+   */
   estado: string;
   /**
    * El titulo del issue, **verbatim** — con el `Spec NNN — ` adelante y todo.
@@ -455,7 +463,12 @@ export function readSpecStatus(specsDir: string): { specs: SpecStatus[]; totales
     if (dir === null) {
       // No es un error: el spec vive en el issue y la carpeta es una cache. Se dice
       // como reconstruirla, porque quien pregunta suele necesitar el `tasks.md`.
-      notas.push(`sin hidratar: el spec vive en el issue #${e.issue}. \`node .claude/scripts/hidratar-specs.mjs\``);
+      //
+      // **Con el `NNN` y no pelado**, desde el 038: el default del hidratador pasó a
+      // traer sólo los que siguen en vuelo, asi que el comando sin argumentos no trae
+      // un spec cerrado — que es justo el caso en el que esta nota aparece. Decirlo
+      // pelado mandaria a correr algo que termina en exito sin traer lo que se pidio.
+      notas.push(`sin hidratar: el spec vive en el issue #${e.issue}. \`node .claude/scripts/hidratar-specs.mjs ${id}\``);
     } else if (dir !== e.carpeta) {
       notas.push(`la carpeta en disco se llama ${dir} y el mapa dice ${e.carpeta}: cache vieja, volver a hidratar`);
     }

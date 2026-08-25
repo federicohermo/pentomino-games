@@ -128,9 +128,14 @@ it('dice cuantos specs hidratados se miraron, en vez de callarse', () => {
   // del gate remoto en `mapa-de-specs.test.ts`. No falla con cero —eso obligaria a
   // hidratar 35 specs para correr `pnpm verify`, y la CI no tiene por que— pero deja
   // la linea escrita al lado de los `skipped`.
+  //
+  // **`--todos` y no el comando pelado**, desde el 038: el default pasó a traer sólo
+  // los que siguen en vuelo, o sea uno o dos. Decir el comando pelado acá dejaria a
+  // quien lo copie con `HIDRATADOS = 1` y estos gates en verde habiendo mirado un
+  // spec — que es el mismo «fallar en verde» que este test existe para evitar.
   const veredicto = HIDRATADOS === 0
     ? `sin specs hidratados: el formato de las ${CUATRO.length} archivos y de las tareas NO se verifico. ` +
-      '`node .claude/scripts/hidratar-specs.mjs`'
+      '`node .claude/scripts/hidratar-specs.mjs --todos`'
     : `${HIDRATADOS} de ${IDS.length} specs hidratados: se verifican abajo`;
 
   expect(veredicto).toBeTruthy();
