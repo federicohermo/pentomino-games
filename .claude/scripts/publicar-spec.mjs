@@ -150,9 +150,18 @@ if (fase === 'crear') {
     const id = carpeta.slice(0, 3);
     if (mapa[id]) { console.log(`${id}  ya existe → #${mapa[id].issue}`); continue; }
 
+    // **Todo lo que lee el disco va ANTES del `issue create`**, y no es orden estetico:
+    // crear el issue es lo unico irreversible del bucle. Un `**Origen:**` que no nombra
+    // ningun `#N` hace gritar a `origenDe` — a proposito—, y si ese grito saliera despues
+    // del `create` el issue ya existiria con el mapa sin su fila: la corrida siguiente no
+    // reconoceria el spec y abriria un issue DUPLICADO, que es el modo de falla que el
+    // comentario de `MAPA_JSON` mide en 34 copias. `tituloDe` ya estaba de este lado.
+    const titulo = tituloDe(carpeta);
+    const origen = origenDeCarpeta(carpeta);
+
     const url = gh([
       'issue', 'create', '--repo', REPO,
-      '--title', tituloDe(carpeta),
+      '--title', titulo,
       // Cuerpo minimo a proposito: el de verdad lo sube la fase 2, ya traducido. Si
       // esto quedara publicado por un fallo a mitad, dice que le falta.
       '--body', `Spec \`${carpeta}\`. El contenido lo sube la fase 2 de \`publicar-spec.mjs\`.`,
@@ -162,13 +171,12 @@ if (fase === 'crear') {
     // arranca en `Propuesto` porque un spec recien publicado no puede estar en otro, y
     // `fecha` es la de hoy: es la que `log.md` ponia en su columna Fecha, que era el dia
     // en que el spec se escribio — y publicarlo es el mismo dia.
-    const origen = origenDeCarpeta(carpeta);
     mapa[id] = {
       issue: numero,
       carpeta,
       fecha: new Date().toISOString().slice(0, 10),
       estado: 'Propuesto',
-      titulo: tituloDe(carpeta),
+      titulo,
       // El sexto, y **solo si el spec lo declara** (044): sin la linea `**Origen:**` la
       // fila no trae el campo, no lo trae vacio. `origen: []` lo rechaza `leerMapa`,
       // porque «no nace de un issue» ya se dice omitiendolo.
