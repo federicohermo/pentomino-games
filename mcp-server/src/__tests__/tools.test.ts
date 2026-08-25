@@ -1010,6 +1010,92 @@ describe('spec_status y spec_write — sobre un registro fabricado', () => {
     });
   });
 
+  /** Los tres numeros que la nota dice, sacados del texto que le llega al cliente. */
+  function medidas(nota: string): { pesan: number; respuesta: number; factor: number } {
+    const m = /son ([\d.]+) bytes contra los ([\d.]+) de esta respuesta, o sea ([\d,]+)x/.exec(nota);
+    assert.ok(m !== null, `la nota tiene que traer los dos pesos y el factor, y dice: ${nota}`);
+    return {
+      pesan: Number(m[1].replaceAll('.', '')),
+      respuesta: Number(m[2].replaceAll('.', '')),
+      factor: Number(m[3].replace(',', '.')),
+    };
+  }
+
+  /**
+   * Un registro de un spec con DOS tareas hechas que nombran `citas` archivos cada
+   * una, mas una pendiente que no nombra ninguno.
+   *
+   * Las dos decisiones del fixture son las que hacen al test:
+   *
+   * - las citas cuelgan de tareas `[x]`, asi que no salen en `proxima` y el texto
+   *   que las trae no viaja en la respuesta acotada;
+   * - la CANTIDAD de tareas no cambia entre registros —solo cuantos archivos
+   *   nombra cada una—, asi que `hechas`, `total` y `pendientes` se serializan con
+   *   los mismos digitos.
+   *
+   * Juntas dejan la respuesta sin citas byte a byte identica, de modo que subir
+   * `citas` mueve UN solo numero de los dos. Es lo que convierte al test en una
+   * medicion de la relacion en vez de una comparacion contra un valor esperado,
+   * que es el bug que este spec arregla.
+   */
+  function registroDeCitas(citas: number): string {
+    const raiz = mkdtempSync(join(tmpdir(), 'spec-nota-'));
+    writeFileSync(join(raiz, 'mapa.json'), JSON.stringify({
+      '001': { issue: 1, carpeta: '001-pesado', fecha: '2026-08-24', estado: 'Propuesto', titulo: 'Spec 001 — El pesado' },
+    }), 'utf8');
+    mkdirSync(join(raiz, '001-pesado'));
+    const archivos = Array.from({ length: citas }, (_, i) => `\`src/domain/archivo-${i}.ts\``).join(' ');
+    writeFileSync(join(raiz, '001-pesado', 'tasks.md'), [
+      '# Tareas — Fixture', '', '## Paso 1',
+      `- [x] T001 Toca ${archivos}`,
+      `- [x] T002 Toca ${archivos}`,
+      '- [ ] T003 La pendiente, sin citar nada', '',
+    ].join('\r\n'), 'utf8');
+    return raiz;
+  }
+
+  /** Corre `fn` sobre un registro de N citas y lo borra pase lo que pase. */
+  function conCitas(citas: number, fn: (m: ReturnType<typeof medidas>) => void): void {
+    const raiz = registroDeCitas(citas);
+    try {
+      const r = call(crearSpecStatus(raiz), {});
+      assert.ok(typeof r.nota === 'string');
+      fn(medidas(r.nota));
+    } finally {
+      rmSync(raiz, { recursive: true, force: true });
+    }
+  }
+
+  test('la nota mide ESTA consulta: el peso de las citas acompaña, el de la respuesta no', () => {
+    // Se verifica la RELACION y no un valor esperado. Un numero esperado seria otra
+    // constante escrita a mano que envejece con el repo — exactamente lo que la nota
+    // hacia hasta el spec 041, cuando decia 84.097 contra 29.742 y median 89.987
+    // contra 16.528.
+    conCitas(1, (poco) => {
+      conCitas(20, (mucho) => {
+        // Solo las citas engordan: la respuesta acotada de los dos registros es la
+        // misma, porque las tareas que citan estan hechas y no salen en `proxima`.
+        assert.ok(mucho.pesan > poco.pesan,
+          `mas citas tienen que pesar mas: ${mucho.pesan} contra ${poco.pesan}`);
+        assert.equal(mucho.respuesta, poco.respuesta,
+          'la respuesta sin citas no cambia, asi que los dos numeros no estan cruzados');
+        // La resta del lado correcto: invertirla da un peso negativo y un factor < 1,
+        // y las dos cosas pasarian igual el test de arriba (spec 041, T042).
+        assert.ok(poco.pesan > 0, 'las citas pesan algo, no menos que nada');
+        assert.ok(mucho.factor > poco.factor && poco.factor > 1,
+          `el factor sube con las citas y nunca baja de 1: ${poco.factor} → ${mucho.factor}`);
+      });
+    });
+    // Y es la DIFERENCIA, no el total con citas: un spec que no nombra ni un
+    // archivo deja `citas: []`, que pesa una decena de bytes contra los cientos
+    // de la respuesta. Sin esta linea, reportar el total entero pasa las cuatro
+    // aserciones de arriba —sigue creciendo y sigue siendo mayor que cero—.
+    conCitas(0, (nada) => {
+      assert.ok(nada.pesan < nada.respuesta,
+        `sin citas que traer, el numero tiene que ser chico: ${nada.pesan} contra ${nada.respuesta}`);
+    });
+  });
+
   test('con `spec` viene ese solo, con sus citas', () => {
     con((_raiz, status) => {
       const r = call(status, { spec: '1' });

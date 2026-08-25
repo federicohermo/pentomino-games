@@ -24,6 +24,16 @@ function sinCitas(s: SpecStatus): SpecStatus {
   return { ...s, tareas };
 }
 
+/**
+ * Los bytes que de verdad viajan: `JSON.stringify` compacto, el mismo que arma el
+ * helper `json`. Medir una version indentada seria medir una respuesta que nadie
+ * manda.
+ */
+const bytes = (value: unknown): number => Buffer.byteLength(JSON.stringify(value), 'utf8');
+
+/** Miles con punto, como el resto de la prosa del repo. */
+const miles = (n: number): string => n.toLocaleString('es-AR');
+
 const inputSchema = z.object({
   spec: z.string().optional()
     .describe('Un spec: su número ("33" o "033") o el nombre de su carpeta. Acota la respuesta a ese spec y le agrega `citas`. Sin él vienen todos los specs, sin `citas`.'),
@@ -68,10 +78,23 @@ export const crearSpecStatus = (specsDir: string) => defineTool({
     const { specs, totales } = readSpecStatus(specsDir);
 
     if (spec === undefined) {
+      // La nota se MIDE sobre esta consulta en vez de citar dos constantes.
+      // Escritas se movieron —y en direcciones contrarias, por eso el factor
+      // seguia sonando plausible— y nadie lo noto en seis specs: es el problema
+      // que este server dice no tener, un artefacto que alguien tiene que
+      // acordarse de regenerar (spec 041).
+      const acotada = { specs: specs.map(sinCitas), totales };
+      // Los dos objetos ya se arman: la diferencia es una resta, no un recorrido.
+      const pesan = bytes({ specs, totales }) - bytes(acotada);
+      const respuesta = bytes(acotada);
+      // El factor tambien se calcula: es el numero que mas se cita y el que peor
+      // envejece, porque un porcentaje viejo sigue pareciendo razonable.
+      const factor = ((respuesta + pesan) / respuesta).toFixed(2).replace('.', ',');
       return json({
-        specs: specs.map(sinCitas),
-        totales,
-        nota: 'Sin `spec` las `citas` no viajan: son 84.097 bytes contra los 29.742 de esta respuesta. Pedir un spec para tenerlas.',
+        ...acotada,
+        // `respuesta` no cuenta esta nota —unos 200 bytes— porque contarla seria
+        // circular: el largo del texto depende de los numeros que trae adentro.
+        nota: `Sin \`spec\` las \`citas\` no viajan: son ${miles(pesan)} bytes contra los ${miles(respuesta)} de esta respuesta, o sea ${factor}x. Medido sobre ESTA consulta. Pedir un spec para tenerlas.`,
       });
     }
 
