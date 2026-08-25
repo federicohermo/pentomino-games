@@ -161,6 +161,23 @@ export default defineConfig({
         // Bootstrap: `createRoot(...).render(<App />)`. Cubrirlo verifica que
         // React monta, no que este repo funcione.
         'src/main.tsx',
+        // ## El otro paquete, que tiene su propio gate al 100
+        //
+        // `include` es `src/**` y aun asi esto hace falta: v8 reporta todo archivo que
+        // se EJECUTO, y `include` solo decide cuales de los que nadie toco se suman al
+        // denominador. Desde el 038 `specs/__tests__/mapa-de-specs.test.ts` importa
+        // `readSpecStatus` de `mcp-server/src/specs.ts` —a proposito: `pendientes` no
+        // se reimplementa, que es el bug de ese spec un nivel mas abajo—, asi que el
+        // archivo entero entra a la tabla por una sola funcion. Medido: 64 % de
+        // statements y 55 % de ramas, y el umbral 100 en rojo.
+        //
+        // El numero no significa nada: ese paquete corre sus tests con `node --test` y
+        // `pnpm mcp:test` ya lo tiene en **100 en las cuatro metricas**. Contarlo aca
+        // pediria escribir tests de vitest para codigo que ya esta cubierto por su
+        // propio runner, o —peor— bajar el umbral. Se excluye del denominador de
+        // vitest, no de la verificacion: el gate del paquete sigue siendo `mcp:test`,
+        // que es un nodo de `verify`.
+        'mcp-server/**',
       ],
 
       // `text` y nada mas: el gate es binario, y para leerlo alcanza la tabla en
