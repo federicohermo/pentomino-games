@@ -1,13 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
-  checkArrayOrder, checkAnchors, checkShapes, checkBaseMap, checkNotes, checkDistinct, checkAll,
+  checkArrayOrder, checkAnchors, checkShapes, checkBaseMap, checkNotes, checkDistinct,
+  checkLetters, checkAll,
 } from '../invariants.ts';
 import { SHAPES } from '../constants/pieces.constants.ts';
 import { BASE_MAP, PENT_MAJOR, REGIMEN } from '../constants/music.constants.ts';
+import { PENTOMINOS_CANONICOS } from '../constants/invariants.constants.ts';
 import type { Cell } from '../types/transform.types.ts';
 import type { PieceKey } from '../types/pieces.types.ts';
 
-describe('los seis chequeos sobre las 96 combinaciones', () => {
+describe('los siete chequeos sobre las 96 combinaciones', () => {
   it('orden del array', () => {
     const r = checkArrayOrder();
     expect(r.failures).toEqual([]);
@@ -44,11 +46,17 @@ describe('los seis chequeos sobre las 96 combinaciones', () => {
     expect(r.ok).toBe(true);
   });
 
-  it('checkAll devuelve los seis, todos en verde', () => {
+  it('letras', () => {
+    const r = checkLetters();
+    expect(r.failures).toEqual([]);
+    expect(r.ok).toBe(true);
+  });
+
+  it('checkAll devuelve los siete, todos en verde', () => {
     const all = checkAll();
-    expect(all).toHaveLength(6);
+    expect(all).toHaveLength(7);
     expect(all.map(r => r.name)).toEqual([
-      'orden del array', 'ancla', 'formas', 'BASE_MAP', 'notas', 'piezas distintas',
+      'orden del array', 'ancla', 'formas', 'BASE_MAP', 'notas', 'piezas distintas', 'letras',
     ]);
     expect(all.every(r => r.ok)).toBe(true);
   });
@@ -160,6 +168,83 @@ describe('los chequeos detectan una regresion', () => {
       const r = checkDistinct();
       expect(r.ok).toBe(true);
     });
+  });
+
+  /** Corre `fn` con las formas de `a` y `b` cambiadas de lugar, y despues las restaura. */
+  function conLetrasIntercambiadas(a: PieceKey, b: PieceKey, fn: () => void): void {
+    const formaA = SHAPES[a];
+    const formaB = SHAPES[b];
+    SHAPES[a] = formaB;
+    SHAPES[b] = formaA;
+    try { fn(); } finally { SHAPES[a] = formaA; SHAPES[b] = formaB; }
+  }
+
+  /**
+   * El agujero que el seguimiento del 036 dejo anotado, medido.
+   *
+   * Un INTERCAMBIO de dos letras no cambia el conjunto de las 12 claves canonicas, asi
+   * que `checkDistinct` no tiene de que quejarse: sigue viendo 12 formas distintas. Y sin
+   * embargo el tablero suena cruzado, porque la letra es lo que le da a la pieza su
+   * tonica via `BASE_MAP`. Es el mismo modo de falla que el de la `Z`, un escalon mas
+   * arriba: no «hay una repetida» sino «esta no es la que dice ser».
+   *
+   * Las dos mitades de la afirmacion van en el MISMO test a proposito: que el chequeo
+   * nuevo de rojo no vale nada si no se ve, al lado, que el viejo se queda en verde.
+   */
+  it('checkLetters ve una L intercambiada con la Y, que checkDistinct no ve', () => {
+    conLetrasIntercambiadas('L', 'Y', () => {
+      const distinct = checkDistinct();
+      expect(distinct.ok).toBe(true);          // el chequeo 6 no lo ve, y ese es el punto
+      expect(distinct.failures).toEqual([]);
+
+      const r = checkLetters();
+      expect(r.ok).toBe(false);
+      expect(r.failures).toEqual([
+        'L: no es el pentomino L, es el Y',
+        'Y: no es el pentomino Y, es el L',
+      ]);
+    });
+  });
+
+  /**
+   * Y una forma que no es NINGUNO de los 12 se reporta como tal en vez de mentir un
+   * culpable. El mensaje del caso anterior sale de buscar la letra que la forma si es;
+   * cuando esa busqueda no encuentra nada —acá, cinco celdas desconectadas— decir «es el
+   * undefined» mandaria a revisar una pieza que no tiene nada que ver.
+   */
+  it('checkLetters no le inventa letra a una forma que no es un pentomino', () => {
+    conFormaMutada('Z', [[0,0],[1,0],[2,0],[3,0],[9,9]], () => {
+      const r = checkLetters();
+      expect(r.ok).toBe(false);
+      expect(r.failures).toEqual(['Z: no es el pentomino Z, ni ningun otro de los 12']);
+    });
+  });
+
+  /**
+   * La tabla de referencia tiene que seguir siendo 12 pentominos distintos entre si.
+   *
+   * Es la propiedad de la que depende que `checkLetters` sirva: si dos entradas de
+   * `PENTOMINOS_CANONICOS` fueran la misma forma, un `SHAPES` con esas dos letras
+   * cruzadas pasaria el chequeo. Se verifica sobre la TABLA y no sobre `SHAPES` —de eso
+   * ya se ocupa `checkDistinct`—, y no se deriva de `SHAPES` por lo mismo que la tabla
+   * no se deriva de `SHAPES`.
+   */
+  it('la tabla de referencia son 12 pentominos distintos', () => {
+    const letras = Object.keys(PENTOMINOS_CANONICOS) as PieceKey[];
+    expect(letras).toHaveLength(12);
+
+    // Se comparan sustituyendo la tabla EN `SHAPES` y preguntandole a `checkDistinct`,
+    // que es el que ya sabe reducir una forma a su clave canonica. Reimplementar acá esa
+    // reduccion seria la segunda copia que el docblock de `canonicalKey` prohibe.
+    const originales = letras.map(p => SHAPES[p]);
+    for (const p of letras) SHAPES[p] = PENTOMINOS_CANONICOS[p];
+    try {
+      expect(checkDistinct().failures).toEqual([]);
+      // Y cada una tiene cinco celdas, conexas: son pentominos y no cualquier cosa.
+      expect(checkShapes().failures).toEqual([]);
+    } finally {
+      letras.forEach((p, i) => { SHAPES[p] = originales[i]; });
+    }
   });
 
   it('checkBaseMap ve dos piezas con la misma tonica', () => {
@@ -287,7 +372,7 @@ describe('los chequeos detectan una regresion', () => {
   /**
    * El chequeo que el docblock de `checkNotes` explica: sin el,
    * una formula de cuatro notas con `NOTES_PER_PIECE = 4` pasaba los cinco invariantes
-   * que habia entonces —hoy son seis— y todos los tests, y la celda de grado 4
+   * que habia entonces —hoy son siete— y todos los tests, y la celda de grado 4
    * renderizaba `undefinedNaN`.
    *
    * Se rompe por el lado barato —la constante, no la formula— y con eso caen los dos
