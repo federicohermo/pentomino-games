@@ -138,7 +138,7 @@ que se lee sino una **interfaz**, y cinco skills la implementaban a mano hasta q
 | `simulate_board` | recorrer el lookahead a mano para saber qué suena junto |
 | `check_invariants` | y después de tocar geometría, `SHAPES` o el modelo musical |
 | `spec_status` | leer `mapa.json` y todos los `tasks.md` para saber qué falta de verdad, qué archivos cita una tarea o qué `X → Y` mueve |
-| `spec_write` | abrir un `tasks.md` para marcar una casilla o anotar seguimiento — es la única que escribe |
+| `spec_write` | abrir un `tasks.md` para marcar una casilla — es la única que escribe, y desde el 042 marcar es lo único que hace |
 | `find_symbol` | `grep` para ubicar un símbolo, o abrir un archivo para ver una firma |
 
 Su `usedBy` incluye a `mcp-server/`, que importa 31 símbolos del dominio: tocar una firma de `domain/`
@@ -176,10 +176,10 @@ uno. Las dependencias entre specs no se declaran: las calcula `spec_status` en `
 `X → Y` de cada `tasks.md`. Y el porqué de cada decisión vive como comentario en el issue de su
 spec. Son la única fuente: no se duplican acá para que no se desactualicen.
 
-**La deuda sin spec vive en [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues)**
-y ya no en un archivo. `deuda.md` era un tracker escrito a mano y perdía ítems: al mudarlo aparecieron
-**seis** que nunca habían llegado ahí —enterrados en el `tasks.md` de specs ya cerrados—, dos de ellos
-bugs medidos con `OfflineAudioContext` que llevaban veinte días invisibles. Un issue tiene estado
+**La deuda sin spec vive en [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues)**,
+no en un archivo —ni, desde el 042, en el `## Seguimiento` del spec que la parió—. `deuda.md` era un
+tracker escrito a mano y perdía ítems: al mudarlo aparecieron **seis** enterrados en el `tasks.md` de
+specs ya cerrados, dos de ellos bugs medidos que llevaban veinte días invisibles. Un issue tiene estado
 propio, se cierra desde un commit con `Closes #N` y no hereda el estado del spec que lo parió.
 
 ---

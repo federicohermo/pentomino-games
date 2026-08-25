@@ -286,12 +286,14 @@ describe('describe_piece', () => {
 });
 
 describe('check_invariants', () => {
-  test('AC6 — los seis chequeos, por separado y en verde', () => {
+  test('AC6 — los siete chequeos, por separado y en verde', () => {
     const r = call(checkInvariants, {});
     assert.equal(r.ok, true);
     const checks = r.checks as { name: string; ok: boolean; failures: string[] }[];
-    // Seis desde el spec 036, y la tool los expone sin listarlos: itera `checkAll()`.
-    assert.equal(checks.length, 6);
+    // Seis desde el spec 036 y SIETE desde el 039, que agrego `letras`. La tool los
+    // expone sin listarlos —itera `checkAll()`— asi que este numero es lo unico del
+    // server que hay que mover cuando el dominio suma un chequeo.
+    assert.equal(checks.length, 7);
     for (const c of checks) {
       assert.equal(c.ok, true, `${c.name}: ${c.failures.join(' · ')}`);
       assert.deepEqual(c.failures, []);
@@ -311,7 +313,7 @@ describe('check_invariants', () => {
   });
 
   test('con un fallo real, el filtro acota los mensajes y no el veredicto', () => {
-    // El docblock de `pieceOf` dice por que se exporta: «con los seis chequeos en
+    // El docblock de `pieceOf` dice por que se exporta: «con los siete chequeos en
     // verde no hay ni un fallo real con el que ejercitar el filtro desde la tool».
     // Se fabrica uno rompiendo una forma, que es la unica manera de recorrer el
     // camino que la tool toma cuando algo esta mal — o sea, el unico que importa.
@@ -1145,22 +1147,16 @@ describe('spec_status y spec_write — sobre un registro fabricado', () => {
     });
   });
 
-  test('`seguimiento` agrega la tarea con el ID que sigue', () => {
-    con((raiz, _status, write) => {
-      const r = call(write, { op: 'seguimiento', spec: '1', texto: 'Un hallazgo del review' });
-      assert.equal(r.tarea, 'T011');
-
-      const md = readFileSync(join(raiz, '001-completo', 'tasks.md'), 'utf8');
-      assert.ok(md.includes('- [ ] T011 Un hallazgo del review'));
-      // Y cae DESPUÉS de la que ya estaba, no arriba.
-      assert.ok(md.indexOf('T011') > md.indexOf('T010'));
-    });
-  });
-
-  test('las dos operaciones y ninguna más', () => {
-    // AC3 del spec 033: el schema es el que impide que esta tool se convierta en
-    // un editor de texto y devuelva el formato a manos de quien llama.
+  test('una sola operación, y la que se fue FALLA en vez de ser ignorada', () => {
+    // AC3 del spec 033: el schema es el que impide que esta tool se convierta en un
+    // editor de texto y devuelva el formato a manos de quien llama.
+    //
+    // Y desde el 042 el caso que de verdad puede llegar no es un `op` inventado sino
+    // `"seguimiento"`, que era válido hasta ayer y que una skill vieja puede seguir
+    // mandando. Que el enum haya quedado con UN solo valor es lo que hace que eso
+    // explote con error de schema en vez de escribir en otro lado o no hacer nada.
     con((_raiz, _status, write) => {
+      assert.throws(() => write.run({ op: 'seguimiento', spec: '1', texto: 'x' }));
       assert.throws(() => write.run({ op: 'borrar', spec: '1' }));
     });
   });
@@ -1169,8 +1165,6 @@ describe('spec_status y spec_write — sobre un registro fabricado', () => {
     con((_raiz, _status, write) => {
       assert.match(motivo(write, { op: 'marcar', spec: '999', tarea: 'T001' }), /coincide con "999"/);
       assert.match(motivo(write, { op: 'marcar', spec: '002-sin-tasks', tarea: 'T001' }), /no tiene tasks\.md/);
-      assert.match(motivo(write, { op: 'marcar', spec: '1' }), /necesita `tarea`/);
-      assert.match(motivo(write, { op: 'seguimiento', spec: '1' }), /necesita `texto`/);
       assert.match(motivo(write, { op: 'marcar', spec: '1', tarea: 'T900' }), /No hay ninguna tarea T900/);
       assert.match(motivo(write, { op: 'marcar', spec: '1', tarea: 'T002' }), /ya estaba marcada/);
     });

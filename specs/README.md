@@ -13,9 +13,20 @@ Trabajo planificado. Un spec por unidad de trabajo, en su propia carpeta numerad
 > **El directorio local es una caché, no la fuente.** Si no está, se trae:
 >
 > ```bash
-> node .claude/scripts/hidratar-specs.mjs        # los que falten
-> node .claude/scripts/hidratar-specs.mjs 021    # o uno solo
+> node .claude/scripts/hidratar-specs.mjs           # los que están EN VUELO y falten
+> node .claude/scripts/hidratar-specs.mjs 021       # o uno solo, esté como esté
+> node .claude/scripts/hidratar-specs.mjs --todos   # los 42, cerrados incluidos
 > ```
+>
+> **El default trae poco a propósito, desde el 038.** Hasta entonces «los que falten» eran los 42, y
+> el caso normal es querer **uno**: el que se está implementando. Con `/spec-implement-batch`
+> corriendo N worktrees eso son 42×N llamadas a `gh`. Las tres formas **declaran cuántas saltearon y
+> por qué** — un default que trae menos y no lo dice se lee como «ese spec no existe», que es peor que
+> traer de más.
+>
+> **Lo que mira el árbol entero va con `--todos`**, y no es una preferencia: `specs-convencion.test.ts`
+> corre `runIf(HIDRATADOS > 0)`, así que con el default nuevo pasaría habiendo mirado un solo spec. Es
+> «fallar en verde».
 >
 > Hace falta correrlo **en cada worktree**: `git worktree add` hace checkout de lo trackeado, y un
 > archivo ignorado no viaja. Medido: antes del 034 a un worktree llegaban 136 archivos de `specs/` y
@@ -112,49 +123,117 @@ specs/<NNN>-<descripcion-kebab>/
 > El `README.md` de acá **no** está en ese carril: es documentación viva y se mantiene al día, así
 > que va con el preset completo.
 
+## Los cuatro estados
+
+El campo `estado` de [`mapa.json`](./mapa.json) es un conjunto cerrado, y la lista vive una sola vez:
+`ESTADOS` en [`.claude/scripts/lib/specs.ts`](../.claude/scripts/lib/specs.ts). El orden es el del
+ciclo de vida, no alfabético.
+
+| Estado | Qué dice | ¿En vuelo? | Su issue |
+|---|---|---|---|
+| `Propuesto` | escrito y publicado; de él todavía puede salir trabajo | **Sí** | abierto |
+| `Implementado` | su PR aterrizó en `main` | No | cerrado |
+| `Descartado` | se abandonó sin implementar (el 001) | No | cerrado |
+| `Superado` | otro spec lo reemplazó (el 004) | No | cerrado |
+
+**«En vuelo» es la partición que importa**, y es una sola función —`enVuelo`— porque de ella dependen
+tres cosas distintas: qué trae `hidratar-specs.mjs` por default, si `publicar-spec.mjs` cierra el
+issue, y qué estado del issue espera el gate del mapa. Mientras el publicador tenía su propia copia
+escrita a mano, sacar un estado del conjunto lo dejaba mirando uno que ya no existe, **en verde**. Un
+estado desconocido cuenta como en vuelo: lo que no se entiende no cierra nada, y que además sea ilegal
+lo grita el gate.
+
+> **`En curso` existió hasta el 038 y se sacó, con una medición**: el conjunto cerrado lo aceptaba y
+> el mapa **no lo usaba en ninguna de sus 42 entradas**. No fue descuido — ningún paso del flujo lo
+> escribe: `publicar-spec.mjs` pone `Propuesto` al crear el issue y el merge pone `Implementado`, y
+> entre esos dos no hay ningún momento en el que alguien vuelva al mapa a anotar que empezó. Agregar
+> ese momento sería un **tercer punto de escritura manual**, que es justo el mecanismo que el 038
+> demostró que falla. La pregunta que `En curso` prometía responder —¿esto ya aterrizó?— la contesta
+> el cruce contra el PR, que no depende de que nadie se acuerde.
+
 ## Formato de una tarea
 
 ```markdown
-- [ ] T012 [P] [M] Descripción, con la ruta del archivo que toca
+- [ ] T012 [P] Descripción, con la ruta del archivo que toca
 ```
 
 | Parte | Qué dice | Obligatorio |
 |---|---|---|
 | `T012` | ID estable dentro del spec, para que una tarea pueda nombrar a otra | En specs nuevos |
 | `[P]` | Se puede hacer en paralelo con las otras `[P]` de su bloque: no comparten archivo ni dependen entre sí | No |
-| `[M]` | Pide una persona — navegador, oído, captura. No bloquea el cierre del spec | No |
 
 Los IDs son **estables**: no se renumeran al insertar una tarea nueva, se sigue contando. Un ID
-libre no molesta a nadie; uno reusado rompe la referencia que otra tarea le hacía.
+libre no molesta a nadie; uno reusado rompe la referencia que otra tarea le hacía. Los diez specs
+anteriores a esta convención no llevan ID y no se reescriben para agregárselo, por la Desviación 2.
 
-**`[M]` es la parte que hace legible el estado.** Sin él, un spec `Implementado` con casillas abiertas
-es ambiguo: no se distingue "falta trabajo" de "quedó una verificación a oído que ya nadie va a hacer".
-Con él, `spec_status` reporta `pendientes: 0` y el spec se lee cerrado. Los diez specs anteriores a
-esta convención no llevan ID —no se reescriben, por la desviación 2— pero sí se les marcó `[M]` lo que
-correspondía, porque eso no reescribe la historia: la aclara.
+**`[M]` dejó de ser parte del formato, desde el spec 039.** Marcaba una tarea que pide una persona
+—oído, ojo, navegador— y que por eso no bloqueaba el cierre del spec. Medido hoy sobre los 42 specs
+hidratados: **137 casillas `[M]` repartidas en 35 specs**, y de todas ellas sólo **6** se
+cerraron alguna vez. O sea que `[M]` no decía «espera a una persona» sino «no se va a
+hacer, pero queda escrito», y las que siguen abiertas no son un registro de trabajo pendiente: son
+una lista de intenciones con formato de checklist, que `spec_status` reporta como `pendientes: 0`.
+
+**En su lugar hay dos salidas, y anotarlo no es ninguna de las dos**: o la verificación se vuelve
+**verificable** —un test de `*.browser.test.tsx`, una medición, un invariante— y entonces es una tarea
+normal que bloquea como cualquier otra, o no se escribe en el `tasks.md` —y desde el 042 tampoco hay
+un `## Seguimiento` donde escribirla—. El número va acá a propósito: una convención que se cambia sin
+dejar escrito qué la desmintió se vuelve a proponer igual dentro de un año, con los mismos argumentos,
+que siguen sonando razonables — **137 contra 6** es lo único que no se puede volver a sostener.
+
+**Los specs anteriores conservan sus `[M]`, los 137.** Por la Desviación 2 un spec mergeado no se
+reescribe, y sacarlos a mano movería el `pendientes` de 35 specs ya cerrados para satisfacer una
+convención que llegó después. De ahí que la regla sea por número: **en specs `NNN >= 039` no se
+escriben `[M]` nuevos**, y los `NNN < 039` se leen con la convención con la que fueron escritos. Lo
+que sí se sigue pudiendo es **corregir la clasificación** de una tarea vieja que quedó mal marcada: el
+review del spec 038 le puso `[M]` a la T019 del 015 —verificar de oído que una pieza muteada no
+suena— porque la única alternativa era marcarla `[x]`, o sea afirmar que alguien escuchó cuando nadie
+escuchó. Eso no es un `[M]` nuevo; es dejar de mentir sobre uno viejo, y es el ítem **137** de la
+cuenta de arriba: corregir una clasificación mueve el número, así que se re-mide y no se copia.
 
 **`[P]` es lo que `spec-implement` hoy deriva solo.** Declararlo al escribir el spec, que es cuando se
 conocen las dependencias reales, sale más barato y más confiable que inferirlo en cada corrida.
 
-Las tareas de `## Seguimiento (no bloquea)` son deuda anotada a propósito y tampoco cuentan como
-pendientes. Es un eje distinto de `[M]`: `Seguimiento` es *dónde* está anotada la tarea, `[M]` es
-*quién* la puede hacer. Una tarea puede ser las dos cosas.
+**`## Seguimiento (no bloquea)` dejó de ser parte del formato, desde el spec 042.** Era la sección
+donde se anotaba la deuda que aparecía implementando, y no contaba como pendiente a propósito: un spec
+podía quedar `Implementado` con diez casillas abiertas sin deberle nada a nadie. La medición que lo
+derogó son dos números puestos uno al lado del otro: **129** ítems vivos en seguimientos contra **17**
+issues de deuda abiertos, y **116 de esos 129 en el seguimiento de un spec ya cerrado** — o sea deuda
+que hereda un estado terminal y que por eso nadie vuelve a mirar. Un issue no hereda nada: tiene
+estado propio y se cierra desde un commit con `Closes #N`.
 
-**Y `Seguimiento` no es donde va todo lo que quedó pendiente.** Cerrar de una vez los seguimientos de
-cuatro specs mostró que de sus 16 ítems, **la mitad no eran tareas** sino deuda de registro — y
-confundirlas es lo que los había dejado abiertos tanto tiempo. Las cuatro clases que no son una tarea,
-con la señal que las delata:
+**La deuda que aparece implementando se abre como issue**, con el título entendible fuera del contexto
+del spec, la evidencia en el cuerpo y un `Detectado en #N` que cita el issue del spec que la encontró
+—eso es lo que reemplaza al enlace que daba estar escrito adentro del `tasks.md`—. Y la herramienta
+acompaña, que es la mitad que faltaba: `parseTasks` **corta** al entrar a la sección en vez de contarla
+aparte, y `spec_write` se quedó con una sola operación, `marcar`. Mientras anotar fuera una llamada a
+una tool y abrir un issue no tuviera ninguna, ganaba la tool — es el mismo hallazgo del spec 030.
+
+**La sección sigue escrita en los 40 specs que la tienen, y no se reescribe.** Por la Desviación 2 un
+spec mergeado es un ADR, y migrar los 129 ítems a ciegas duplicaría los que ya son issue —«Rotación
+como tipo cerrado», del seguimiento del 005, **es** el issue #53— y abriría issues de cosas ya hechas.
+Encontrarse un `## Seguimiento` en un `tasks.md` viejo no es un bug: es historia, y lo que cambió es
+que las herramientas dejaron de mirarla.
+
+**Lo que se queda entero es el criterio de ruteo**, que es de donde salió el 042. Cerrar de una vez los
+seguimientos de cuatro specs mostró que de sus 16 ítems, **la mitad no eran tareas** sino deuda de
+registro — y confundirlas es lo que los había dejado abiertos tanto tiempo. Las tres clases que no son
+una tarea, con la señal que las delata:
 
 | No es una tarea, es… | La señal | Dónde va |
 |---|---|---|
 | una **decisión ya tomada** | está escrita como pendiente y nadie la discute | al lado de lo que decide: la constante, la firma, el módulo |
-| algo **sin dueño** | vive en el seguimiento de un spec ya cerrado | [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues), que es la única fuente que este repo declara |
+| algo **sin dueño** | sobrevive al spec que la encontró y ningún otro la tiene en su alcance | [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues), que es la única fuente que este repo declara |
 | **otro spec** | otro spec ya la absorbió, a veces cambiando el enfoque | se cierra citando al spec que la absorbió |
-| algo **que no se cierra leyendo código** | pide oído, ojo o navegador | se queda, con `[M]` y el motivo escrito al lado |
 
-La señal más barata de todas: **una tarea anotada en cuatro seguimientos distintos ya no es de nadie.**
-`PlacedPiece.notes` estaba en los seguimientos del 001, el 007, el 009 y el 010, y cada spec la
-postergaba al siguiente; cerrarla no llevó más de un commit.
+**A la fila del medio el 042 le cambió la señal y no el destino.** Decía «vive en el seguimiento de un
+spec ya cerrado», que era el síntoma mientras había dónde esconderla: se veía al abrir el `tasks.md` de
+un spec cerrado meses antes, si es que alguien lo abría. Sin la sección la señal se adelanta al final
+del spec que la encontró — quedó afuera de su alcance y ningún otro la tiene en el suyo. Es el mismo
+diagnóstico, un año antes y sin depender de que alguien pase por ahí.
+
+La señal más barata de todas, mientras hubo seguimientos: **una tarea anotada en cuatro seguimientos
+distintos ya no es de nadie.** `PlacedPiece.notes` estaba en los del 001, el 007, el 009 y el 010, y
+cada spec la postergaba al siguiente; cerrarla no llevó más de un commit.
 
 ## Flujo
 
@@ -163,11 +242,24 @@ postergaba al siguiente; cerrarla no llevó más de un commit.
    [mapa.json](./mapa.json) con estado `Propuesto`. **Esa entrada es el mapa**, y es lo único del spec
    que se commitea.
 3. Crear la rama `feature/<NNN>-<descripcion-kebab>`.
-4. Implementar, marcando `tasks.md` a medida que se avanza. El archivo local es caché — si no está,
+4. Implementar, marcando `tasks.md` a medida que se avanza —con `spec_write`, que valida el ID en vez
+   de dejar creer que escribió—. El archivo local es caché: si no está,
    `node .claude/scripts/hidratar-specs.mjs <NNN>`.
-5. Al mergear, actualizar el estado en [mapa.json](./mapa.json), **cerrar el issue**, y anotar en el
+5. **Devolver las marcas al issue** con `node .claude/scripts/publicar-spec.mjs publicar`, antes de
+   cerrar. `spec_write` escribe **al disco**, y el disco es una caché: la próxima hidratación baja el
+   `tasks.md` del issue y **se lleva puesta cada casilla marcada**. Verificado en vivo al implementar
+   el 038 — se marcó una tarea, se rehidrató el spec, y la marca ya no estaba. La fase `publicar` es
+   idempotente de verdad (mapea los comentarios por archivo y hace `PATCH`), así que repetirla no
+   duplica nada; su `--dry`, en cambio, **no sirve para confirmarlo**: saltea el fetch, así que no ve
+   los comentarios que ya existen.
+6. Al mergear, actualizar el estado en [mapa.json](./mapa.json), **cerrar el issue**, y anotar en el
    issue —como comentario— qué se aprendió si el spec salió distinto de lo previsto. Los dos primeros
    son la misma cosa vista de dos lados, y el gate del mapa falla si no coinciden.
+
+**Los pasos 5 y 6 son uno solo para el gate.** Desde el 038 el mapa se cruza contra el PR —que está
+mergeado o no, y eso no lo escribe nadie a mano— y contra los `pendientes` del spec: un spec cerrado
+con trabajo abierto es rojo. Saltear el paso 5 hace que el 6 nazca en rojo la próxima vez que alguien
+hidrate, y no en la máquina de quien lo cerró.
 
 `spec_status` (MCP) responde el estado de todos los specs en una llamada, en vez de abrir el mapa y
 treinta y cinco `tasks.md`. Y responde **sin hidratar**: lo que falta en ese caso es `tareas`, y lo

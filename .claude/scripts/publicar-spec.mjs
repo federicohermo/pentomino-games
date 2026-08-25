@@ -39,7 +39,7 @@ import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { leerMapa, estadoDe, traducir, NOMBRE_PUBLICABLE } from './lib/specs.ts';
+import { leerMapa, estadoDe, enVuelo, traducir, NOMBRE_PUBLICABLE } from './lib/specs.ts';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '../..');
@@ -229,7 +229,10 @@ if (fase === 'publicar') {
     // clase de bug que los comentarios duplicados — una herramienta que se usa una vez
     // igual tiene que poder correrse dos.
     const estado = estadoDe(mapa, id);
-    const cerrar = estado !== null && estado !== 'Propuesto' && estado !== 'En curso';
+    // `enVuelo` y no el conjunto escrito acá a mano: mientras lo estuvo, decía
+    // `estado !== 'Propuesto' && estado !== 'En curso'`, así que el 038 —que saca `En
+    // curso`— habría dejado esta línea mirando un estado que ya no existe, en verde.
+    const cerrar = estado !== null && !enVuelo(estado);
     if (estado === null) {
       console.log(`${id}  SIN ESTADO en el registro: se deja abierto y no se toca`);
     } else if (cerrar && actual.state === 'OPEN') {

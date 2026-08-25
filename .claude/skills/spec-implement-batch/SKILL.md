@@ -110,19 +110,29 @@ Lo que ningún `/spec-implement` suelto puede ver, porque mira un spec. Corré l
    falla si la tarea ya estaba marcada, en vez de dejar creer que escribió— pero un carril que se
    frena con ese error igual costó la corrida.
 
-Lo que salga es una decisión de diseño que le falta al spec. **Decidila vos, escribila con `spec_write`
-(`op: "seguimiento"`) en el spec que corresponda antes de lanzar, y seguí** — no se frena con
-`AskUserQuestion`. El ID de la tarea lo pone la tool, contando desde el mayor del archivo, así que dos
-decisiones escritas seguidas no se pisan el número. Sigue valiendo el argumento de por qué se resuelve
-*acá* y no en el carril: arreglar un spec cuesta un párrafo y arreglar dos carriles cuesta un rebase;
-lo que cambia es quién contesta. La recomendación se toma, no se ofrece.
+Lo que salga es una decisión de diseño que le falta al spec. **Decidila vos, abrila como issue con
+`mcp__github__issue_write` antes de lanzar, y seguí** — no se frena con `AskUserQuestion`. Sigue
+valiendo el argumento de por qué se resuelve *acá* y no en el carril: arreglar un spec cuesta un
+párrafo y arreglar dos carriles cuesta un rebase; lo que cambia es quién contesta. La recomendación se
+toma, no se ofrece.
 
-Va escrita **como tarea con su porqué y su AC**, no como nota al pie: el carril la va a leer sin este
-contexto. Y la va a leer de verdad, que antes no estaba garantizado: la escritura cae en el **registro
-central**, no en el árbol de quien la hace (D1 del spec 033), así que el carril la ve con `spec_status`
-aunque su worktree haya nacido en `origin/main` sin ella. Y va al reporte del Paso 5, que es donde el
-usuario la ve — si quiere revertirla, revierte un párrafo escrito, que es más barato que el turno de
-ida y vuelta que la habría evitado.
+El issue lleva las tres cosas que el `texto` del viejo seguimiento no pedía:
+
+- **Título que se entienda fuera del contexto del spec** — el cruce abarca dos, así que no hay uno
+  solo que sirva de contexto.
+- **Cuerpo con la evidencia**: los dos `path:línea`, el número que se movió, y qué AC queda
+  infalsificable si nadie lo toca.
+- **`Detectado en #N`**, con el issue del spec al que le falta la decisión. **Sale de
+  `specs/mapa.json`, no del `NNN`**: el spec 001 es el issue #63.
+
+**El label es `bug` o `enhancement`**, los dos que el repo ya usa; no se inventa uno.
+
+**Y va además en el prompt del carril, escrita como tarea con su porqué y su AC**, no como nota al
+pie: el carril la va a leer sin este contexto. Eso no es redundante, y es el precio de que el destino
+esté fuera del repo — `spec_status` no ve los issues, así que un issue solo no le llega a nadie que
+esté implementando. Vos sos quien lanza los carriles: es el único canal que no depende de que alguien
+vaya a mirar. Y va al reporte del Paso 5, que es donde el usuario la ve — si quiere revertirla,
+revierte un párrafo escrito, que es más barato que el turno de ida y vuelta que la habría evitado.
 
 Lo único que sigue frenando es lo de siempre: que proceder bajo cualquier supuesto sea inseguro, o
 deje el lote inservible si el supuesto está mal. Eso casi nunca es una decisión de diseño de un spec.
@@ -165,9 +175,12 @@ Cada agente de carril recibe:
   que se ve, commit por nodo del grafo, push a `origin`, y PR;
 - **la base de cada PR**: el primer spec del carril apunta a `main`; los que le siguen, a la rama del
   spec anterior del mismo carril;
-- **que marque `[x]` solo lo que hizo**, con `spec_write` (`op: "marcar"`). Lo `[M]` queda abierto:
-  pide una persona, y `spec_status` ya lo descuenta. **Esa marca no viaja en el commit del carril**: cae
-  en el registro central y no en su worktree (D1 del spec 033), así que el avance del lote se lee
+- **que marque `[x]` solo lo que hizo**, con `spec_write` (`op: "marcar"`). Si el spec es anterior al
+  039 puede traer tareas `[M]`, que quedan abiertas —piden una persona— y `spec_status` ya las
+  descuenta; de un spec `NNN >= 039` no se espera ninguna, porque no se escriben más: una tarea que
+  sólo se cierra mirando o escuchando es un hallazgo sobre el spec, no una casilla a marcar. **Esa
+  marca no viaja en el commit del carril**: cae en el registro central y no en su worktree (D1 del
+  spec 033), así que el avance del lote se lee
   entero con `spec_status` sin esperar los merges — y a la inversa, no esperes verlo en el diff del PR.
 
 Esperá a que vuelvan todos antes del reporte.
@@ -196,7 +209,9 @@ Playwright que quedó vivo—. Decilo en el reporte: lo cierra el usuario, no vo
 
 - Los carriles, su ancho, y **cuántas de las aristas declaradas resultaron falsas**.
 - **Qué encontró el Paso 2 y qué se decidió** — es el entregable propio de este skill.
-- Por spec: verde o rojo de `pnpm verify`, número de PR, y qué quedó `[M]`.
+- Por spec: verde o rojo de `pnpm verify`, número de PR, y qué quedó abierto — en un spec anterior al
+  039, sus `[M]`; en uno del 039 en adelante, cualquier tarea que no se haya podido cerrar, que ahí ya
+  no hay marcador que la excuse.
 - **El orden de merge, y que un squash obliga a rebasear el carril de abajo.** Los PR apilados dependen
   de la historia de su base.
 

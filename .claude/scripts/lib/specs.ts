@@ -49,7 +49,7 @@ export interface EntradaDeMapa {
    */
   carpeta: string;
   fecha: string;
-  /** `Propuesto` · `En curso` · `Implementado` · `Descartado` · `Superado`. */
+  /** Uno de `ESTADOS`. */
   estado: string;
   /** El titulo del issue, **verbatim**, para que el gate sea una igualdad de strings. */
   titulo: string;
@@ -57,6 +57,51 @@ export interface EntradaDeMapa {
 
 /** El registro entero: `NNN` → su entrada. */
 export type Mapa = Record<string, EntradaDeMapa>;
+
+/**
+ * Los estados que un spec puede tener, y **son cuatro y no cinco desde el 038**.
+ *
+ * `En curso` se fue, y con una medicion: el conjunto cerrado lo aceptaba y el mapa **no
+ * lo usaba en ninguna de sus 42 entradas**. No fue descuido — es que ningun paso del
+ * flujo lo escribe. `publicar-spec.mjs` pone `Propuesto` al crear el issue y el merge
+ * pone `Implementado`; entre esos dos no hay ningun momento en el que alguien vuelva
+ * al mapa a anotar que empezo.
+ *
+ * Y agregar ese momento seria empeorar justo lo que el 038 arregla: este spec existe
+ * porque **la transicion escrita a mano falla**, asi que un tercer punto de escritura
+ * manual es un tercer lugar donde mentir. La pregunta que `En curso` prometia
+ * responder —¿esto ya aterrizo?— la contesta ahora el cruce contra el PR, que no
+ * depende de que nadie se acuerde.
+ *
+ * El orden es el del ciclo de vida y no alfabetico: es el que se lee al escribirlo.
+ */
+export const ESTADOS: readonly string[] = ['Propuesto', 'Implementado', 'Descartado', 'Superado'];
+
+/**
+ * Los estados de los que **no sale mas trabajo**: el spec aterrizo, se abandono o lo
+ * reemplazo otro. Su issue esta cerrado.
+ *
+ * No es lo mismo que `ESTADOS_TERMINALES` de `mcp-server/src/specs.ts`, que son dos
+ * —`Descartado` y `Superado`—: alla la pregunta es si las casillas abiertas son deuda
+ * o historia, y un `Implementado` **si** puede deber seguimiento. Aca la pregunta es
+ * si el spec sigue en vuelo, y un `Implementado` no.
+ */
+const CERRADOS: ReadonlySet<string> = new Set(['Implementado', 'Descartado', 'Superado']);
+
+/**
+ * Si el spec sigue en vuelo, o sea si de el todavia puede salir trabajo.
+ *
+ * Lo usan tres consumidores y por motivos distintos —`hidratar-specs.mjs` para elegir
+ * que traer por default, `publicar-spec.mjs` para decidir si cierra el issue, y el
+ * gate del mapa para saber que estado del issue esperar—, y esa es exactamente la
+ * razon de que viva una sola vez: mientras el publicador tenia
+ * su propio `estado !== 'Propuesto' && estado !== 'En curso'` escrito a mano, sacar un
+ * estado del conjunto lo dejaba mirando uno que ya no existe, en verde.
+ *
+ * Un estado que no esta en `ESTADOS` cuenta como en vuelo: lo desconocido no cierra
+ * nada. Que sea ademas ilegal lo dice el gate del mapa, que es quien tiene que gritar.
+ */
+export const enVuelo = (estado: string): boolean => !CERRADOS.has(estado);
 
 /**
  * `specs/mapa.json` parseado, y **grita** ante un mapa vacio o que no es un objeto.

@@ -127,11 +127,11 @@ justificarse.
 |---|---|
 | 🔴 Bloqueante | **se arregla siempre** |
 | 🟡 con fix acotado que no toca lo que el PR garantiza | se arregla |
-| 🟡 cuyo fix pelea con un AC o con el invariante del propio PR | **no se toca** — se declara y se escribe al `## Seguimiento (no bloquea)` de ese spec con `mcp__pentomino-domain__spec_write` (`op: "seguimiento"`); el `T0NN` lo numera la tool |
+| 🟡 cuyo fix pelea con un AC o con el invariante del propio PR | **no se toca** — se declara y se abre como issue con `mcp__github__issue_write`; el número lo pone GitHub |
 | 🟡 preexistente que el diff sólo agrava | se arregla **si el archivo ya está tocado por el PR**; ver «preexistente» abajo |
-| 🟡 cuyo fix sería un cambio de diseño más grande que el PR | se declara al `## Seguimiento`, y el texto dice **qué diseño haría falta**, no sólo qué está mal |
+| 🟡 cuyo fix sería un cambio de diseño más grande que el PR | se declara como issue, y el cuerpo dice **qué diseño haría falta**, no sólo qué está mal |
 | Fix que una herramienta te bloqueó | **no es un 🟡** — ver «bloqueado» abajo |
-| AC que pide una persona (`[M]`) | no se puede arreglar — se declara pendiente |
+| AC de un spec anterior al 039 que pide una persona (`[M]`) | no se puede arreglar — se declara pendiente. Del 039 en adelante no existe: un AC que pide una persona es un hallazgo sobre el spec, y el arreglo es volverlo verificable |
 
 **Las tres filas de "no se toca" son la lista completa.** Si tu motivo para no aplicar un fix no es
 uno de esos tres —pelea con un AC, pediría rediseñar, o lo cierra una persona—, entonces **no hay
@@ -141,7 +141,7 @@ pude" no están en la lista, y los cuatro aparecieron en corridas reales.
 ### "Bloqueado" no es "descartado"
 
 Si una herramienta te niega el fix —el clasificador de permisos, un `deny` de hook, un archivo de
-sólo lectura—, **eso no es una decisión de triage y no va al `## Seguimiento` como si lo fuera.** Un
+sólo lectura—, **eso no es una decisión de triage y no se abre como issue de deuda como si lo fuera.** Un
 🟡 archivado y un fix que no te dejaron aplicar se leen igual en el reporte, y son cosas opuestas:
 del primero ya se decidió, del segundo no decidió nadie.
 
@@ -149,7 +149,7 @@ del primero ya se decidió, del segundo no decidió nadie.
    bloqueo es del hook del spec 037, mirá el nombre de tu rama antes que nada.
 2. Si sigue bloqueado, **paralo ahí y reportalo como `BLOQUEADO: <qué> — <quién lo bloqueó>`**, con
    el fix exacto que ibas a aplicar, en una línea que se pueda copiar.
-3. **Escribilo igual al `## Seguimiento`**, pero diciendo que quedó bloqueado y no que se descartó.
+3. **Abrilo igual como issue**, pero diciendo que quedó bloqueado y no que se descartó.
 
 El padre corre en el checkout principal y con otros permisos: un fix que a vos te bloquearon, él lo
 aplica. Pero sólo si el reporte lo distingue.
@@ -168,16 +168,37 @@ Medido: en una corrida un agente encontró un número falso en un comentario que
 reflowado, razonó que "lo falsificó el spec 017, no el mío", y lo declaró en vez de arreglarlo. El
 archivo estaba en su diff y las líneas eran `+`. La cláusula decía arreglar.
 
-**El `## Seguimiento` es el destino, no el chat.** Un 🟡 que no se aplica y solo se cuenta en el
-reporte se pierde con la conversación; escrito con `spec_write` sobrevive **aunque el PR no se
-mergee** —la escritura es al registro central y no al worktree— y `spec_status` lo descuenta. El
-`texto` tiene que decir qué se encontró y con qué evidencia: es lo único que va a quedar cuando el
-diff ya no esté. Y el precio de esa centralización, que está en el `SKILL.md`: el reviewer del PR
-**ya no lo ve en el diff**, así que va sí o sí al reporte.
+### El destino de un 🟡 que no se aplica es un issue
+
+No el chat, y desde el 042 tampoco el spec. Un 🟡 que solo se cuenta en el reporte se pierde con la
+conversación. Y anotado en el `## Seguimiento` del spec del PR se perdía igual, más despacio: el ítem
+**heredaba el estado del spec**, así que un spec `Implementado` podía deber diez cosas y no
+deberle nada a nadie. Al mudar `deuda.md` a Issues aparecieron **seis** ítems que nunca habían llegado
+al tracker, enterrados en `tasks.md` de specs cerrados, dos de ellos bugs medidos que llevaban veinte
+días invisibles. Un issue tiene estado propio, se cierra con `Closes #N` desde un commit, y sobrevive
+**aunque el PR no se mergee**.
+
+Se abre con `mcp__github__issue_write`, y lleva **tres cosas que el `texto` del seguimiento no
+pedía** porque estar escrito adentro del `tasks.md` se las daba gratis:
+
+- **Título que se entienda fuera del contexto del spec.** Adentro del `tasks.md` el spec era el
+  contexto; en la lista de issues no hay más contexto que el título. Es la diferencia entre un ítem
+  que se encuentra buscando y uno que hay que abrir para entender de qué habla.
+- **Cuerpo con la evidencia** —`archivo:línea`, el número medido, qué hace falta para verlo—. Es lo
+  que el `texto` ya pedía y hay que conservar: es lo único que queda cuando el diff ya no está.
+- **`Detectado en #N`**, con el issue del spec del PR. Repone el vínculo que daba estar escrito
+  adentro del spec, y sin él el hallazgo queda sin origen. **El `#N` sale de `specs/mapa.json`, no
+  del `NNN`**: el spec 001 es el issue #63.
+
+**El label es `bug` o `enhancement`**, los dos que el repo ya usa. No inventes uno: un label propio
+vuelve a partir el tracker en dos, que es exactamente el problema que este destino cierra.
+
+Y el precio de que el destino esté fuera del repo, que está en el `SKILL.md`: el reviewer del PR
+**no lo ve en el diff**, así que va sí o sí al reporte.
 
 **Propagá cada fix a todo lo que lo describe.** Un cambio de firma toca el código **y** el `spec.md`,
 cada doc que muestre el snippet viejo, y las tareas del spec que lo nombran. Eso último no se busca
 abriendo archivos: `spec_status` acotado al spec devuelve las `citas` —qué tarea nombra qué archivo y
-en qué línea—, y como la tool sólo sabe marcar y agregar seguimiento, una tarea cuyo texto quedó viejo
-se anota con `op: "seguimiento"` en vez de reescribirse. Un fix de código que deja mintiendo a la doc
-del propio PR es medio fix — y en este repo es exactamente el hallazgo que más apareció.
+en qué línea—, y como `spec_write` sólo sabe marcar, una tarea cuyo texto quedó viejo se abre como
+issue en vez de reescribirse. Un fix de código que deja mintiendo a la doc del propio PR es medio
+fix — y en este repo es exactamente el hallazgo que más apareció.

@@ -66,11 +66,16 @@ export const crearSpecStatus = (specsDir: string) => defineTool({
     'mapa y los tasks.md, que son decenas de KB y crecen con cada spec. ' +
     'Un spec puede venir sin "tareas": su carpeta es una caché de lo que vive en el issue y este ' +
     'checkout puede no haberla hidratado. La nota lo dice y "totales.sinHidratar" los cuenta. Una casilla abierta no siempre ' +
-    'es deuda, así que se descuentan tres clases y queda "pendientes", que vale 0 exactamente ' +
-    'cuando no hay "proxima": las que están bajo un encabezado "Seguimiento" (deuda anotada a ' +
-    'propósito), las marcadas "[M]" (piden una persona: navegador, oído, captura) y todas las de un ' +
-    'spec Descartado o Superado (de ahí no sale trabajo, y la nota lo dice). Por eso un spec puede ' +
-    'estar Implementado con seis casillas abiertas y no deberle nada a nadie.\n' +
+    'es deuda, así que se descuentan dos clases y queda "pendientes", que vale 0 exactamente ' +
+    'cuando no hay "proxima": las marcadas "[M]" (un marcador HISTÓRICO: el spec 039 lo derogó, ' +
+    'así que un spec nuevo no lo escribe y ahí "manual" vale 0; las 137 que quedaron en los 35 ' +
+    'specs de antes se siguen descontando porque un spec mergeado no se reescribe) y todas las ' +
+    'de un spec Descartado o Superado (de ahí no sale trabajo, y la nota lo dice). Por eso un ' +
+    'spec puede estar Implementado con casillas abiertas y no deberle nada a nadie.\n' +
+    'Lo que hay bajo un encabezado "Seguimiento" no se descuenta: desde el spec 042 NO SE CUENTA. ' +
+    'El parser corta al entrar a esa sección, así que esas tareas tampoco entran a "total" ni ' +
+    'aportan citas ni cruces. La sección salió del formato —la deuda que aparece implementando se ' +
+    'abre como issue— y las 40 que ya están escritas son historia que no se reescribe.\n' +
     'Cada spec trae además "cruces": los pares `X → Y` de sus tareas, o sea los números que una ' +
     'tarea mueve de un valor a otro. Es la dependencia entre specs que ningún import delata — dos ' +
     'specs que mueven la misma constante parecen un conflicto de merge y son una cadena. Se leen ' +
@@ -79,7 +84,7 @@ export const crearSpecStatus = (specsDir: string) => defineTool({
     'entre backticks, con su línea cuando la trae. Son la materia prima del reparto en carriles y ' +
     'se devuelven como DATO, no como verdad: un tasks.md nombra un archivo también cuando la tarea ' +
     'es actualizar un doc que lo enumera, así que filtrar por el verbo sigue siendo de quien lee.\n' +
-    'Para MARCAR una tarea o anotar seguimiento está spec_write: esta tool no escribe.',
+    'Para MARCAR una tarea está spec_write, que es lo único que escribe: esta tool no escribe.',
   inputSchema,
   run: ({ spec }) => {
     const { specs, totales } = readSpecStatus(specsDir);

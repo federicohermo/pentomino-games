@@ -48,9 +48,16 @@ clone nuevo llegan **4** archivos de `specs/` —`README.md`, `mapa.json` y los 
 `__tests__/`— y no 136. Ninguno es un spec: el directorio es una **caché**, y se trae:
 
 ```bash
-node .claude/scripts/hidratar-specs.mjs        # los que falten
-node .claude/scripts/hidratar-specs.mjs 021    # o uno solo
+node .claude/scripts/hidratar-specs.mjs           # los que están en vuelo y falten
+node .claude/scripts/hidratar-specs.mjs 021       # o uno solo, esté como esté
+node .claude/scripts/hidratar-specs.mjs --todos   # los 42, cerrados incluidos
 ```
+
+**El default trae sólo los que siguen en vuelo** (spec 038): el caso normal es querer el spec que se
+está implementando, no los 42. Para leer uno ya cerrado va su `<NNN>`, y para lo que mira el árbol
+entero —la prueba fuerte del 034, o un `pnpm verify` que quiera ejercitar de verdad los gates de
+`specs/`— va `--todos`, porque esos gates corren `runIf(HIDRATADOS > 0)` y con el default pasarían
+habiendo mirado un solo spec. Las tres formas dicen cuántas saltearon y por qué.
 
 Necesita [`gh`](https://cli.github.com/) autenticado, y hay que correrlo **en cada worktree**:
 `git worktree add` hace checkout de lo trackeado, y un archivo ignorado no viaja. No hace falta para

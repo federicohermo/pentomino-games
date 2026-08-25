@@ -607,9 +607,16 @@ export default tseslint.config([
     rules: {
       // Apagada en los DOS carriles, y no porque moleste: en este repo **no puede
       // acertar**. Lo que dispara la regla es el formato de tarea que `specs/README.md`
-      // documenta —el `[P]` y el `[M]` de cada `- [ ] T012 [P] [M] texto`—, que para
-      // Markdown es una referencia de etiqueta sin definir. Medido: 341 hallazgos, 191 de
+      // documenta —el `[P]` de cada `- [ ] T012 [P] texto`—, que para Markdown es una
+      // referencia de etiqueta sin definir. Medido en su momento: 341 hallazgos, 191 de
       // `[P]`, 131 de `[M]` y el resto prosa entre corchetes.
+      //
+      // **El `[M]` de esa cuenta es historico desde el spec 039**, que lo saco del
+      // formato: `specs/README.md` ya no lo documenta y ningun spec nuevo lo escribe, y
+      // eso lo verifica `specs/__tests__/specs-convencion.test.ts`. Pero los que ya
+      // estan escritos no se tocan —Desviacion 2, y hoy son **137 en 35 specs**— asi que
+      // siguen disparando la regla. El `[P]`, que es la mayoria, sigue vivo. O sea que
+      // la regla se queda apagada por el mismo motivo de siempre y no por inercia.
       'markdown/no-missing-label-refs': 'off',
 
       // Tambien apagada, y esta con un motivo mas fuerte: **arreglar lo que marca lo

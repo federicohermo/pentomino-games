@@ -40,7 +40,7 @@ Además de lo que pide el eje F del global, en este repo un `tasks.md` nuevo tie
 formato de [`specs/README.md`](../../../specs/README.md#formato-de-una-tarea):
 
 ```markdown
-- [ ] T012 [P] [M] Descripción, con la ruta del archivo que toca
+- [ ] T012 [P] Descripción, con la ruta del archivo que toca
 ```
 
 **Esas tareas se le piden a `spec_status` con el argumento `spec`, no abriendo el archivo.** Acotada
@@ -48,22 +48,39 @@ así, la respuesta trae ese spec solo y suma `citas`: por tarea, los archivos qu
 backticks, con su línea y con su `T0NN` —o `null` en los specs anteriores a la convención—. Pesa una
 fracción del registro entero —**cuánta lo dice la nota** de la respuesta sin `spec`, medida sobre esa
 consulta y no copiada de acá— y llega parseada, que es la diferencia que importa:
-cruzar archivos a ojo sobre el texto crudo es justo donde se escapa el choque del tercer punto.
+cruzar archivos a ojo sobre el texto crudo es justo donde se escapa el choque de dos `[P]`.
 
 Al revisar, verificá:
 
 - **Cada tarea lleva su `T0NN`**, sin duplicados ni saltos, y **los IDs no se renumeraron** respecto
   de la versión anterior del archivo. Renumerar rompe toda referencia que otra tarea le hiciera.
-- **`[M]` está donde corresponde.** El global ya pide que "un AC que solo un humano puede firmar esté
-  marcado como tal: no es material de loop" — `[M]` es cómo se marca acá. Una tarea que dice
-  *escuchar*, *a oído*, *a ojo*, *captura*, *GIF* o *en el navegador* y **no** lleva `[M]` es un
-  hallazgo: sin el marcador, `spec_status` la reporta como trabajo pendiente para siempre.
+- **Ninguna tarea se cierra mirando o escuchando.** El global pide que "un AC que solo un humano puede
+  firmar esté marcado como tal: no es material de loop", y hasta el 039 acá eso se marcaba `[M]`. La
+  medición lo dio vuelta: de **137** casillas `[M]` en **35** specs, sólo **6** se cerraron alguna
+  vez, o sea que el marcador no significaba "espera a una persona" sino "no se va a hacer nunca, pero
+  queda escrito". Así que **una tarea que dice *escuchar*, *a oído*, *a ojo*, *captura*, *GIF* o *en
+  el navegador* es un hallazgo**, y el arreglo es **volverla verificable** —medirla en el DOM, un test
+  con `OfflineAudioContext`, un valor que un gate pueda leer— o **sacarla del `tasks.md`**. Marcarla
+  no es una salida.
+- **Los `[M]` que ya existen no son un hallazgo.** Un spec anterior al 039 puede traerlos y se
+  respetan tal cual: no se reescriben para sacárselos, `spec_status` los sigue descontando de
+  `pendientes` —si dejara de hacerlo, los specs ya cerrados pasarían a deber 137 ítems de un día para
+  el otro— y hasta se le puede corregir la clasificación a una tarea vieja que estaba mal marcada. Lo
+  que no se hace es escribir uno nuevo.
 - **`[P]` no miente.** Dos tareas `[P]` del mismo bloque no pueden tocar el mismo archivo — y eso lo
   contesta `citas`: el choque es un `archivo` que aparece bajo dos `tarea` distintas. Es el hallazgo
   más caro de los tres, porque `spec-implement` las abanica en paralelo y el conflicto aparece recién
   al escribir.
-- Las de `## Seguimiento (no bloquea)` son deuda anotada a propósito y **no** cuentan como pendientes
-  — `spec_status` ya las separa en `seguimiento`, así que la cuenta no hay que rehacerla.
+- **Un `## Seguimiento (no bloquea)` es historia y no se reescribe.** La sección salió del formato con
+  el 042 —un ítem anotado ahí heredaba el estado del spec, y llegaron a ser **129** contra **17**
+  issues de deuda abiertos— pero los 40 specs que ya la tienen quedan como están. `spec_status` ya no
+  la mira: sus ítems no entran ni en `total` ni en `pendientes`, así que ni la cuenta hay que rehacer
+  ni la sección es un hallazgo. **Lo que sí es hallazgo es un `## Seguimiento` en un spec nuevo**, y
+  el arreglo es sacarlo: esa deuda se abre como issue con `mcp__github__issue_write`, con label `bug`
+  o `enhancement` —los dos que el repo ya usa, que inventar uno vuelve a partir el tracker en dos—,
+  **un título que se entienda fuera del contexto del spec**, **el cuerpo con la evidencia** y
+  **`Detectado en #N`** con el issue del spec, que repone el vínculo que daba estar escrito adentro
+  del `tasks.md`. El `#N` sale de `specs/mapa.json` y no del `NNN`: el spec 001 es el issue #63.
 
 Los specs 001–010 son anteriores a esta convención y **no se reescriben** (ver abajo): no lleves su
 falta de IDs como hallazgo.
@@ -89,7 +106,7 @@ y no puede quedar viejo:
 
 | En vez de | Usá |
 |---|---|
-| Leer `mapa.json` y los `tasks.md` para saber en qué quedó cada spec, o abrir uno para auditarle las tareas | `spec_status` — estado, hechas/total y `pendientes`, que descuenta `Seguimiento`, `[M]` y specs terminales; con el argumento `spec`, ese spec solo más `citas` y `cruces` |
+| Leer `mapa.json` y los `tasks.md` para saber en qué quedó cada spec, o abrir uno para auditarle las tareas | `spec_status` — estado, hechas/total y `pendientes`, que descuenta `[M]` y specs terminales y ni mira el `## Seguimiento` de los specs viejos; con el argumento `spec`, ese spec solo más `citas` y `cruces` |
 | Abrir el `spec.md` o el `research.md` del spec que se audita, y encontrar que no está | `node .claude/scripts/hidratar-specs.mjs <NNN>` **antes de leer**. Desde el spec 034 viven en issues y `specs/[0-9]*/` está en el `.gitignore`: el directorio es una caché que puede no estar, y un review sobre un directorio vacío **no falla** — audita un spec que no leyó |
 | Derivar a mano una rotación, una escala o un retrógrado que el spec afirma | `describe_piece` |
 | Recorrer el lookahead a mano para saber qué suena junto | `simulate_board` |

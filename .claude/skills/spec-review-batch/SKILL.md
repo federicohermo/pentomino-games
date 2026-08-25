@@ -5,6 +5,10 @@ argument-hint: "<NNN NNN ...> | <NNN-MMM> | --propuestos [--dry]"
 # `describe_piece` y `simulate_board` estuvieron acá y se fueron: ningún paso las nombraba.
 # No costaban contexto —`allowed-tools` no entra al prompt del agente— pero le daban a un
 # review la capacidad de simular un tablero, que no es lo suyo.
+#
+# `spec_write` se fue con el 042 por el mismo criterio: lo único que este skill escribía era
+# el `## Seguimiento`, y desde que la tool sólo marca casillas —cosa que un review no hace—
+# ningún paso la nombra. La escritura que quedó es `issue_write`, y la hace el padre.
 allowed-tools:
   - Agent
   - Skill
@@ -14,8 +18,10 @@ allowed-tools:
   - Edit
   - AskUserQuestion
   - mcp__pentomino-domain__spec_status
-  - mcp__pentomino-domain__spec_write
   - mcp__pentomino-domain__find_symbol
+  - mcp__github__issue_write
+  - mcp__github__list_issues
+  - mcp__github__add_issue_comment
   - Bash(git status:*)
   - Bash(git worktree list:*)
   - Bash(git branch:*)
@@ -54,7 +60,7 @@ allowed-tools:
 Un review de spec audita **uno** contra el repo. Este audita **N contra el repo y entre sí**.
 
 Lo segundo es el entregable: una contradicción entre dos specs del lote no la ve ningún review suelto,
-porque cada uno mira un archivo. Y acá sale barata — arreglarla es una llamada a `spec_write`. La misma
+porque cada uno mira un archivo. Y acá sale barata — arreglarla es un párrafo, o un issue. La misma
 contradicción sobrevive intacta hasta que dos ramas del lote se pisan, y ahí ya cuesta un rebase.
 
 ## Por qué no hay worktrees
@@ -99,12 +105,12 @@ Sin argumentos, **preguntá**: no asumas los últimos.
   **Y esto reemplaza al viejo gate de «árbol limpio en `specs/`», que dejó de poder funcionar**:
   `git status --short specs/` ya no ve nada de `specs/[0-9]*/` porque está ignorado, así que decía
   «limpio» siempre. Lo que ese gate protegía —que el `git diff` fuera el registro auditable del
-  review— **ya no aplica**: desde el 033 las escrituras van por `spec_write` al registro central, y
-  desde el 034 el registro es el issue. El historial del review es el del issue.
+  review— **ya no aplica**: desde el 033 las escrituras salen del árbol de quien las hace, y desde el
+  034 el registro es el issue. El historial del review es el del issue.
 - **Loop activo.** `git worktree list`: el spec que tenga un worktree abierto cae a `--dry` **él solo**,
-  no el lote. Al resto no se le mueve el piso por un vecino. Y `--dry` ahora quiere decir **no llamar a
-  `spec_write`**: la tool escribe en el registro central y no en el árbol de quien la llama, así que un
-  worktree abierto ya no contiene la escritura como la contenía un `Edit`.
+  no el lote. Al resto no se le mueve el piso por un vecino. Y `--dry` quiere decir **no abrir
+  issues**: el destino está fuera del repo, así que un worktree abierto ya no contiene la escritura
+  como la contenía un `Edit`.
 
 ## Paso 1 — El preámbulo, destilado una vez
 
@@ -199,7 +205,8 @@ espera de vuelta—:
 - **Criterios de aceptación** — cada uno falsable, con su contraparte en verificación, más el AC
   mecánico y el de no-regresión si hubo superficie compartida.
 - **Estructura** — los cuatro archivos, las secciones canónicas, los `T0NN` sin renumerar, `[P]` que
-  no miente y `[M]` donde hace falta.
+  no miente, y ninguna tarea que sólo se cierre mirando o escuchando: desde el 039 eso se vuelve
+  verificable o no se anota, y ya no se marca `[M]`.
 
 Y este contrato, que es lo propio del batch:
 
@@ -208,11 +215,11 @@ Y este contrato, que es lo propio del batch:
 > N a la vez y no hay merge que lo arregle. Devolvelos como **edición propuesta**, con `path:línea` y
 > el texto exacto. **Tampoco abrís ni cerrás issues**, por lo mismo: el padre los consolida.
 >
-> **Y «otro spec» ya no es una ruta sino un argumento: `spec_write` sólo con tu propio número.**
-> Cuando escribir en el spec del vecino era abrir un archivo suyo, respetar la carpeta propia alcanzaba
-> para que no pasara. Con la tool el spec ajeno es el parámetro `spec` de una llamada que ya tenés
-> permitida, así que nada en la forma de la operación delata que estás escribiendo afuera — la única
-> barrera que queda es esta línea.
+> **Y esta barrera es hoy sólo una línea escrita, que es lo que la vuelve frágil.** Cuando escribir en
+> el spec del vecino era abrir un archivo suyo, respetar la carpeta propia alcanzaba para que no
+> pasara. Desde el 033 el destino dejó de ser una ruta —primero un argumento de la tool, y desde el
+> 042 un issue que ni siquiera vive en el repo—, así que nada en la forma de la operación delata que
+> estás escribiendo afuera.
 
 Y devuelve dos cosas: su reporte, comprimido a **40–60 líneas** —veredicto en la primera, después los
 bloqueantes con evidencia, y lo editado a conteos—, y esa lista de ediciones propuestas afuera. Sin la
@@ -231,11 +238,24 @@ re-audita: cruza.
 - **Si los dos contradicen al orden que derivaste en el Paso 2, gana la evidencia y decilo**: un orden
   mal derivado es un hallazgo sobre el `tasks.md` que lo declara, no un detalle de proceso.
 
-La asimetría del review vale igual acá: **endurecer se aplica** —un cruce que falta se escribe con
-`spec_write` (`op: "seguimiento"`) en el spec que corresponda, y el `texto` tiene que decir qué se
-encontró y con qué evidencia, porque el ID lo pone la tool y esa línea es todo lo que queda del
-hallazgo—; **aflojar se propone**. Si el cruce obliga a elegir entre dos
-diseños, frená con `AskUserQuestion`: un párrafo ahora contra dos ramas rebaseadas después.
+La asimetría del review vale igual acá: **endurecer se aplica** —un cruce que falta se corrige en el
+spec al que le falta, y si excede al lote se abre como issue con `mcp__github__issue_write`—;
+**aflojar se propone**. Si el cruce obliga a elegir entre dos diseños, frená con `AskUserQuestion`: un
+párrafo ahora contra dos ramas rebaseadas después.
+
+El issue lleva las tres cosas que el `texto` del viejo `## Seguimiento` no pedía, porque estar escrito
+adentro del `tasks.md` se las daba gratis:
+
+- **Título que se entienda fuera del contexto del spec.** Un cruce abarca dos, así que no hay un spec
+  solo que le sirva de contexto — es el caso donde más duele.
+- **Cuerpo con la evidencia**: los dos `path:línea`, el número medido y qué AC queda infalsificable si
+  nadie lo toca.
+- **`Detectado en #N`**, con el issue del spec en el que iba la edición. Repone el vínculo que daba
+  estar escrito adentro del `tasks.md`. **El `#N` sale de `specs/mapa.json` y no del `NNN`**: el spec
+  001 es el issue #63.
+
+**El label es `bug` o `enhancement`**, los dos que el repo ya usa. Inventar uno para la deuda de los
+specs vuelve a partir el tracker en dos, que es el problema que el 042 cerró.
 
 > **Y por eso este skill NO lleva `context: fork`.** Correrlo forkeado sacaría de esta conversación
 > los N+1 reportes y la convergencia entera, que es el gasto de contexto más grande del skill — es
@@ -255,11 +275,11 @@ diseños, frená con `AskUserQuestion`: un párrafo ahora contra dos ramas rebas
 ## Paso 5 — Aplicar lo compartido y reportar
 
 El padre aplica las ediciones fuera-de-carpeta que juntó en el Paso 3, **una por hallazgo** y en serie,
-para que el `git diff` se lea, y las llamadas a `spec_write` van también de a una — aunque el motivo
-no es el que parece. **No hay carrera**: el handler de la tool es síncrono y el server es un solo
-proceso, así que el leer-modificar-escribir del `tasks.md` no se interrumpe y dos seguimientos no
-pueden derivar el mismo `T0NN`. Lo que la serie compra es el **orden**: los IDs quedan en el orden en
-que se decidieron los hallazgos y no en el que contestaron las llamadas. **No commitea.**
+para que el `git diff` se lea, y los issues se abren también de a uno — aunque el motivo cambió. **La
+carrera no existe**: el número lo asigna GitHub, no un leer-modificar-escribir sobre un archivo. Lo
+que la serie compra ahora es no duplicar: **un issue de más no se borra**, y el riesgo está medido —
+«Rotación como tipo cerrado», anotada en el seguimiento del 005, ya **era** el issue #53. Antes de
+abrir uno, `mcp__github__list_issues` con el label. **No commitea.**
 
 El reporte, en este orden:
 

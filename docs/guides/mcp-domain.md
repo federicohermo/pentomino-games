@@ -29,9 +29,9 @@ Node 20 el server no arranca y **el repo sigue funcionando igual**.
 | `find_symbol` | dónde está definido un símbolo de `src/` (archivo, línea, firma, primera frase del doc) y qué archivos lo importan, `mcp-server/` incluido | `grep` + abrir el archivo para ver la firma |
 | `describe_piece` | forma transformada, dos ASCII —uno con el ancla marcada, otro con el **paso** de cada celda—, tónica, escala, `cellMap` (grado **y** paso por celda) y las 5 notas con el retrógrado aplicado | componer cuatro puras a mano sobre cinco pares de coordenadas |
 | `simulate_board` | validez de cada colocación, el orden del circuito con sus saltos, y la línea de tiempo de notas y clicks que produce el recorrido | leer el scheduler y recorrer el lookahead a mano, o escuchar |
-| `check_invariants` | los seis chequeos de `domain/invariants.ts`, con contraejemplos y el espacio del modelo (96 orientaciones) | correr los tests y leer la salida |
-| `spec_status` | por spec: estado, tareas hechas/total, cuántas de las abiertas no son deuda (`Seguimiento`, `[M]`, spec terminal), la próxima que de verdad falta, y los `cruces` `X → Y` de sus tareas. Con `spec`, ese solo y con las `citas` de cada tarea | leer `mapa.json` + todos los `tasks.md`, que crecen con cada spec |
-| `spec_write` | **escribe**: `marcar` pasa una tarea a `[x]`, `seguimiento` agrega un `T0NN` al `## Seguimiento` con el ID que sigue | abrir el `tasks.md` y editarlo a mano, que en un worktree con `specs/` ignorado falla en verde |
+| `check_invariants` | los siete chequeos de `domain/invariants.ts`, con contraejemplos y el espacio del modelo (96 orientaciones) | correr los tests y leer la salida |
+| `spec_status` | por spec: estado, tareas hechas/total, cuántas de las abiertas no son deuda (`[M]`, spec terminal), la próxima que de verdad falta, y los `cruces` `X → Y` de sus tareas. Con `spec`, ese solo y con las `citas` de cada tarea | leer `mapa.json` + todos los `tasks.md`, que crecen con cada spec |
+| `spec_write` | **escribe**, y hace una sola cosa: `marcar` pasa una tarea a `[x]` | abrir el `tasks.md` y editarlo a mano, que en un worktree con `specs/` ignorado falla en verde |
 
 **Ninguna de las cuatro de dominio reimplementa nada.** `simulate_board` llama a `cellsAt`/`isValid` de
 `domain/board.ts` y a `buildSequence` de `domain/sequence.ts` para armar el circuito; `check_invariants`
@@ -49,11 +49,21 @@ artefacto que regenerar ni que pueda quedar viejo.
 el repo tenía a medio construir — `tasks.md` no es un archivo que se lee sino una **interfaz**, y
 hasta ese spec cinco skills la implementaban a mano. Dos de ellas corren cada agente en su propio
 worktree, y `git worktree add` hace checkout de lo **trackeado**: el día que `specs/` entre al
-`.gitignore`, un agente que abre el archivo no lo encuentra, **no falla, y sigue**. Tiene dos
-operaciones y ninguna más, y las dos garantizan algo que editar el archivo a mano no garantiza: el ID
-de `seguimiento` nunca reusa uno libre, y `marcar` **falla** si la tarea no existe o ya estaba marcada.
-Y escribe en el registro **central** aunque quien la llame esté en un worktree — con el precio escrito
-en la D1 del spec: el hallazgo deja de viajar en el diff del PR.
+`.gitignore`, un agente que abre el archivo no lo encuentra, **no falla, y sigue**. Tiene **una sola
+operación**, y garantiza algo que editar el archivo a mano no garantiza: `marcar` **falla** si la tarea
+no existe o ya estaba marcada, en vez de dejar creer que escribió. Y escribe en el registro **central**
+aunque quien la llame esté en un worktree — con el precio escrito en la D1 del spec 033: el hallazgo
+deja de viajar en el diff del PR.
+
+**Tenía dos, y el [spec 042](https://github.com/federicohermo/pentomino-games/issues/112) le sacó la
+otra.** `seguimiento` agregaba un `T0NN` al `## Seguimiento` del `tasks.md`, y era el camino barato
+hacia el lugar equivocado: anotar deuda ahí costaba una llamada a una tool y abrir un issue no tenía
+ninguna, así que ganaba la tool. Cuando el 042 midió el resultado eran **129** ítems en seguimientos
+contra **17** issues de deuda abiertos, **116** de ellos en un spec ya cerrado, o sea heredando un
+estado terminal. El `op` quedó como un enum de **un** valor a propósito: una llamada vieja con
+`op: "seguimiento"` falla con error de schema en vez de ser ignorada en silencio. La deuda que aparece
+implementando la abre la **skill**, con `mcp__github__issue_write` — el server sigue sin red, que es la
+restricción del spec 035.
 
 ### Que cinco lean y una escriba es un campo, no sólo esta prosa
 
@@ -138,8 +148,9 @@ Preguntar en vez de leer cuando la pregunta es:
   orden del circuito, sus saltos y el largo del ciclo. Es lo que el
   [spec 009](https://github.com/federicohermo/pentomino-games/issues/71) hizo audible.
 - *¿Rompí algo del modelo?* → `check_invariants`, antes y después de tocar geometría o piezas.
-- *¿En qué quedó el trabajo planificado?* → `spec_status`. Y para **marcar** una tarea o anotar un
-  hallazgo en el `## Seguimiento`, `spec_write` — no abrir el `tasks.md`.
+- *¿En qué quedó el trabajo planificado?* → `spec_status`. Y para **marcar** una tarea, `spec_write` —
+  no abrir el `tasks.md`. Un hallazgo que no sea una tarea del spec **no va al `tasks.md`**: se abre
+  como issue, desde el 042.
 - *¿Dónde está `cellsAt` y quién lo usa?* → `find_symbol`, **no `grep`**. Trae la firma, así que no hay
   que abrir el archivo, y `usedBy` sale del grafo de imports: un archivo que lo llama quince veces
   aparece una vez, y un homónimo de otro módulo no aparece.

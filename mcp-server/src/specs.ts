@@ -46,7 +46,15 @@ export interface EntradaDeMapa {
   carpeta: string;
   /** La fecha en que se escribio el spec. Es un hecho del pasado: no puede derivar. */
   fecha: string;
-  /** `Propuesto` · `En curso` · `Implementado` · `Descartado` · `Superado`. */
+  /**
+   * `Propuesto` · `Implementado` · `Descartado` · `Superado`.
+   *
+   * Son cuatro desde el 038, que saco `En curso`: el conjunto cerrado lo aceptaba y el
+   * mapa no lo usaba en ninguna de sus 42 entradas, porque ningun paso del flujo lo
+   * escribe. La lista que manda es `ESTADOS` en `.claude/scripts/lib/specs.ts`, y el
+   * gate del mapa es quien la verifica — esto es la version legible, no una segunda
+   * fuente.
+   */
   estado: string;
   /**
    * El titulo del issue, **verbatim** — con el `Spec NNN — ` adelante y todo.
@@ -219,22 +227,33 @@ export interface TasksInfo {
   hechas: number;
   total: number;
   /**
-   * Cuantas del total estan bajo un encabezado `Seguimiento`. Se cuentan aparte
-   * porque son deuda anotada a proposito: un spec puede estar `Implementado` con
-   * seis sin marcar y no deberle nada a nadie.
-   */
-  seguimiento: number;
-  /**
-   * Cuantas del total llevan `[M]`: piden una persona —navegador, oido, captura—
-   * y por eso sobreviven al merge. Se cuentan aparte por el mismo motivo que las
-   * de seguimiento, pero no son lo mismo: `Seguimiento` es *donde* esta anotada
-   * la tarea, `[M]` es *quien* la puede hacer. Una tarea puede ser las dos cosas,
-   * y entonces suma en los dos contadores.
+   * Cuantas del total llevan `[M]`, y es un conteo **historico**: cuenta lo que los
+   * specs anteriores al 039 ya tienen escrito, y en un spec nuevo vale siempre `0`.
+   *
+   * `[M]` marcaba una tarea que pedia una persona —navegador, oido, captura— y que
+   * por eso no bloqueaba el cierre del spec. El 039 la derogo con la medicion que la
+   * desmiente: de las **137** casillas `[M]` que hay en **35** specs, solo **6** se
+   * cerraron alguna vez, o sea que `[M]` no significaba «espera a una persona» sino
+   * «no se va a hacer, pero queda escrito». La regla desde el 039 es volver la tarea
+   * verificable o no anotarla — el ultimo spec que trae una `[M]` es el **037**.
+   *
+   * Se sigue contando porque un spec mergeado no se reescribe. El contador hermano
+   * —`seguimiento`, el otro eje: `Seguimiento` era *donde* estaba anotada la tarea y
+   * `[M]` *quien* la podia hacer— se fue con el 042, que hizo que `parseTasks` CORTE
+   * en esa seccion en vez de contarla aparte. O sea que una tarea vieja que era las
+   * dos cosas hoy no llega hasta aca: la de `Seguimiento` ya no se ve.
    */
   manual: number;
   /**
-   * Las que de verdad faltan: sin marcar, fuera de `Seguimiento` y sin `[M]`.
-   * Vale `0` exactamente cuando `proxima` es `null`.
+   * Las que de verdad faltan: sin marcar y sin `[M]`. Vale `0` exactamente cuando
+   * `proxima` es `null`.
+   *
+   * Lo que hay bajo `## Seguimiento` no se descuenta: desde el 042 **no se cuenta**,
+   * porque `parseTasks` corta al entrar a esa seccion. La diferencia importa para
+   * `total`, que antes incluia esos items y ahora no.
+   *
+   * El descuento de `[M]` es historico igual que el contador — ver `manual` y el
+   * comentario del descuento en `parseTasks`.
    */
   pendientes: number;
   /** La primera de las `pendientes`. */
@@ -264,6 +283,9 @@ export interface TasksInfo {
  * grupos son estado, ID, marcadores y texto — el texto sale sin el ID ni los
  * marcadores, que ya estan parseados y repetirlos ensuciaria `proxima`.
  *
+ * `[M]` se sigue parseando aunque el 039 lo derogue: un spec nuevo no lo escribe,
+ * pero los 35 que lo tienen estan en disco y hay que leerlos — ver `manual`.
+ *
  * Una tarea puede ocupar varias lineas —el texto sigue indentado abajo—, asi que
  * las continuaciones se pegan a la tarea abierta. Sin eso, `proxima` responderia
  * media frase.
@@ -273,7 +295,7 @@ export function parseTasks(md: string): TasksInfo {
   const tarea = /^\s*-\s\[([ xX])\]\s*(?:(T\d{3})\s+)?((?:\[[PM]\]\s*)*)(.*)$/;
   const continuacion = /^\s+\S/;
 
-  let hechas = 0, total = 0, seguimiento = 0, manual = 0, pendientes = 0;
+  let hechas = 0, total = 0, manual = 0, pendientes = 0;
   let enSeguimiento = false;
   let proxima: string[] | null = null;
   let proximaId: string | null = null;
@@ -292,22 +314,46 @@ export function parseTasks(md: string): TasksInfo {
       continue;
     }
 
+    // **El corte del 042.** Adentro de `## Seguimiento` no se cuenta ni se extrae
+    // NADA hasta el proximo `##`: ni tareas, ni citas, ni cruces.
+    //
+    // Antes el flag discriminaba contadores —la tarea se contaba en `total` y se
+    // desviaba a `seguimiento`— y eso hacia que la seccion existiera para todo el que
+    // leyera la tool. Este spec la saca del formato: la deuda que aparece implementando
+    // se abre como issue, porque un item anotado adentro del spec que lo pario **hereda
+    // su estado** y nadie lo mira. Al mudar el tracker aparecieron seis que nunca habian
+    // llegado, dos de ellos bugs medidos que llevaban veinte dias invisibles.
+    //
+    // Cortar y no seguir contando aparte es lo que hace que las 40 secciones que ya
+    // existen sean historia de verdad: la Desviacion 2 las deja donde estan, y desde
+    // aca no se ven. El modo de falla a evitar era el otro —empujar esos items a
+    // `pendientes`—, que es silencioso y dejaria inaplicable el gate del 038.
+    if (enSeguimiento) continue;
+
     const t = tarea.exec(line);
     if (t) {
       const marcada = t[1] !== ' ';
       const esManual = t[3].includes('[M]');
       total++;
       if (marcada) hechas++;
-      if (enSeguimiento) seguimiento++;
       if (esManual) manual++;
 
       abierta = [t[4].trim()];
       idAbierto = t[2] ?? null;
       extraerCitas(t[4], idAbierto, citas);
       extraerCruces(t[4], idAbierto, cruces);
-      // La primera sin marcar que no es de seguimiento ni pide una persona se
-      // queda como `proxima`, y sigue abierta para recibir sus continuaciones.
-      if (!marcada && !enSeguimiento && !esManual) {
+      // La primera sin marcar que no lleva `[M]` se queda como `proxima`, y sigue
+      // abierta para recibir sus continuaciones. Lo de `Seguimiento` ni llega: el
+      // corte de arriba lo dejo afuera antes de contarlo.
+      //
+      // El `!esManual` lo CONSERVA el 039 a proposito, que es lo contraintuitivo del
+      // cambio: el spec deroga `[M]` **hacia adelante** y un spec mergeado no se
+      // reescribe, asi que las 137 casillas `[M]` de los 35 specs que las tienen
+      // siguen en disco. Sacar el descuento las convertiria de historia en deuda de un
+      // dia para el otro y pondria en rojo, sobre 35 specs que nadie toco, el gate del
+      // 038 que exige `pendientes: 0` en todo spec cerrado. En un spec nuevo el
+      // descuento no descuenta nada, porque no hay `[M]` que descontar.
+      if (!marcada && !esManual) {
         pendientes++;
         if (proxima === null) {
           proxima = abierta;
@@ -325,7 +371,7 @@ export function parseTasks(md: string): TasksInfo {
   }
 
   return {
-    hechas, total, seguimiento, manual, pendientes,
+    hechas, total, manual, pendientes,
     proxima: proxima === null ? null : proxima.join(' '),
     proximaId,
     citas, cruces,
@@ -457,7 +503,12 @@ export function readSpecStatus(specsDir: string): { specs: SpecStatus[]; totales
     if (dir === null) {
       // No es un error: el spec vive en el issue y la carpeta es una cache. Se dice
       // como reconstruirla, porque quien pregunta suele necesitar el `tasks.md`.
-      notas.push(`sin hidratar: el spec vive en el issue #${e.issue}. \`node .claude/scripts/hidratar-specs.mjs\``);
+      //
+      // **Con el `NNN` y no pelado**, desde el 038: el default del hidratador pasó a
+      // traer sólo los que siguen en vuelo, asi que el comando sin argumentos no trae
+      // un spec cerrado — que es justo el caso en el que esta nota aparece. Decirlo
+      // pelado mandaria a correr algo que termina en exito sin traer lo que se pidio.
+      notas.push(`sin hidratar: el spec vive en el issue #${e.issue}. \`node .claude/scripts/hidratar-specs.mjs ${id}\``);
     } else if (dir !== e.carpeta) {
       notas.push(`la carpeta en disco se llama ${dir} y el mapa dice ${e.carpeta}: cache vieja, volver a hidratar`);
     }
@@ -528,9 +579,6 @@ export type Escritura =
  */
 const partir = (md: string): string[] => md.split(/(\r?\n)/);
 
-/** El terminador que ya usa el archivo, para las lineas que se agregan. */
-const finDeLinea = (partes: string[]): string => partes.length > 1 ? partes[1] : '\n';
-
 /**
  * Una tarea pasa de `- [ ]` a `- [x]`.
  *
@@ -555,63 +603,3 @@ export function marcarTarea(md: string, id: string): Escritura {
   return { ok: false, motivo: `No hay ninguna tarea ${id} en este spec.` };
 }
 
-/**
- * Agrega una tarea al `## Seguimiento` de un spec, con el `T0NN` que sigue.
- *
- * El ID **sigue contando desde el mayor del archivo entero** y nunca reusa uno
- * libre (`specs/README.md`: «un ID libre no molesta a nadie; uno reusado rompe la
- * referencia que otra tarea le hacia»). Por eso el maximo se busca sobre todo el
- * archivo y no sobre la seccion.
- *
- * Si el spec no tiene la seccion, se crea: medido, uno de los 33 —el 018— no la
- * tiene, asi que fallar ahi seria negarse a anotar deuda justo donde no hay
- * ninguna anotada.
- */
-export function agregarSeguimiento(md: string, texto: string): Escritura {
-  const partes = partir(md);
-  const eol = finDeLinea(partes);
-
-  let mayor = 0;
-  for (const m of md.matchAll(/^\s*-\s\[[ xX]\]\s*T(\d{3})\b/gm)) {
-    mayor = Math.max(mayor, Number(m[1]));
-  }
-  // `T\d{3}` es el formato que parsea `parseTasks`. Pasado el 999 la tarea nueva
-  // seria invisible para la propia tool que la escribio, asi que se dice.
-  if (mayor >= 999) return { ok: false, motivo: 'El spec ya llego a T999: no hay ID siguiente de tres digitos.' };
-  const id = `T${String(mayor + 1).padStart(3, '0')}`;
-  const linea = `- [ ] ${id} ${texto}`;
-
-  // Dos indices y no uno: el encabezado dice si la seccion existe, la ultima
-  // linea con contenido dice donde termina. Una seccion que existe pero esta
-  // vacia tiene el primero y no el segundo, y colapsarlos escribia un SEGUNDO
-  // encabezado debajo del que ya estaba.
-  let dentro = false;
-  let inicio = -1;
-  let ultima = -1;
-  for (let i = 0; i < partes.length; i += 2) {
-    const h = /^#{2,}\s+(.*)$/.exec(partes[i]);
-    if (h !== null) {
-      if (dentro) break;
-      dentro = /^seguimiento/i.test(h[1].trim());
-      if (dentro) inicio = i;
-      continue;
-    }
-    if (dentro && partes[i].trim() !== '') ultima = i;
-  }
-
-  if (inicio === -1) {
-    // Sin seccion, la tarea nueva se lleva su encabezado. El texto exacto es el
-    // que documenta `specs/README.md`.
-    const cola = md.endsWith(eol) ? '' : eol;
-    const nuevo = `${md}${cola}${eol}## Seguimiento (no bloquea)${eol}${eol}${linea}${eol}`;
-    // La linea nueva es la anteultima de `partir`: atras quedan su terminador y
-    // el tramo vacio que todo archivo terminado en salto deja al final.
-    return { ok: true, md: nuevo, tarea: id, linea: (partir(nuevo).length - 3) / 2 + 1, texto };
-  }
-
-  // Al final de la seccion y no debajo del encabezado: el orden de lectura
-  // termina siendo el de escritura, que es lo que hace legible el seguimiento.
-  const anclaje = ultima === -1 ? inicio : ultima;
-  partes.splice(anclaje + 1, 0, eol, linea);
-  return { ok: true, md: partes.join(''), tarea: id, linea: (anclaje + 2) / 2 + 1, texto };
-}

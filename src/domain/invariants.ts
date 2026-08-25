@@ -3,12 +3,12 @@ import type { PieceKey } from './types/pieces.types.ts';
 import { rotate90, normalize, rotateN, reflect } from './transform.ts';
 import { notesForRotation } from './music.ts';
 import { SHAPES, ANCHOR_INDEX, CELLS_PER_PIECE } from './constants/pieces.constants.ts';
-import { ROTATIONS } from './constants/invariants.constants.ts';
+import { ROTATIONS, PENTOMINOS_CANONICOS } from './constants/invariants.constants.ts';
 import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE, NOTES_PER_PIECE, REGIMEN } from './constants/music.constants.ts';
 import type { RegimenDeRotacion } from './types/music.types.ts';
 
 /**
- * Los seis chequeos del modelo.
+ * Los siete chequeos del modelo.
  *
  * El espacio son las 96 combinaciones de pieza x rotacion x reflexion, pero cada
  * chequeo recorre lo que le corresponde y no las 96 por inercia: `checkArrayOrder`
@@ -16,13 +16,16 @@ import type { RegimenDeRotacion } from './types/music.types.ts';
  * pueden romper—, `checkNotes` las 96 (12 piezas x 4 rotaciones x 2
  * REGIMENES; el espejo sigue afuera porque solo invierte el orden),
  * `checkShapes` las 12 formas canonicas porque rotar no cambia ni la cantidad de
- * celdas ni la conexidad, `checkDistinct` tambien las 96 —necesita las 8
- * orientaciones de cada forma para reducirla a su clave canonica— y `checkBaseMap`
+ * celdas ni la conexidad, `checkDistinct` y `checkLetters` tambien las 96 —necesitan
+ * las 8 orientaciones de cada forma para reducirla a su clave canonica— y `checkBaseMap`
  * el conjunto una sola vez.
  *
- * Cinco de los seis miran la FORMA de cada pieza por separado —`checkBaseMap` si cruza
- * piezas, pero por su TONICA—; `checkDistinct` es el unico que compara dos FORMAS a la
- * vez, y por eso fue el unico capaz de ver que la `Z` era la `N` reflejada.
+ * Cinco de los siete miran la FORMA de cada pieza por separado —`checkBaseMap` si cruza
+ * piezas, pero por su TONICA—. Los otros dos son los unicos que salen de la pieza:
+ * `checkDistinct` compara dos FORMAS a la vez, y por eso fue el unico capaz de ver que la
+ * `Z` era la `N` reflejada; `checkLetters` compara cada forma contra una tabla EXTERNA,
+ * y es el unico que puede ver un intercambio de dos letras entre si —que deja el conjunto
+ * de las 12 claves intacto y por lo tanto pasa `checkDistinct`—.
  *
  * DEVUELVEN el resultado en vez de lanzar o asertar: asi los usa igual el test de
  * este modulo y la tool `check_invariants` del MCP server, que necesita responder
@@ -215,7 +218,7 @@ export function checkBaseMap(): CheckResult {
  * `degreeByCellIndex` empareja las dos listas por indice, `NOTES_PER_PIECE` y
  * `CELLS_PER_PIECE` pasaron de coincidir a TENER que coincidir. Sin este chequeo
  * una formula de 4 notas con `NOTES_PER_PIECE = 4` pasaba los cinco invariantes
- * que habia entonces —hoy son seis— y todos los tests, y la celda de grado 4
+ * que habia entonces —hoy son siete— y todos los tests, y la celda de grado 4
  * renderizaba `undefinedNaN` —
  * `midiName(undefined)` no explota, devuelve basura.
  *
@@ -320,9 +323,13 @@ export function checkNotes(): CheckResult {
 /**
  * Clave canonica de una forma: la menor de sus 8 orientaciones, serializada.
  *
- * Ordena las celdas antes de unirlas porque este chequeo mira el CONJUNTO y no el
- * orden —de ese se ocupa `checkArrayOrder`—, y suma 0 a cada coordenada por lo
- * mismo que `sameCell`: `rotate90` produce `-0`, y `-0` no serializa igual que `0`.
+ * Ordena las celdas antes de unirlas porque sus dos consumidores —`checkDistinct` y
+ * `checkLetters`— miran el CONJUNTO y no el orden —de ese se ocupa `checkArrayOrder`—,
+ * y suma 0 a cada coordenada por lo mismo que `sameCell`: `rotate90` produce `-0`, y
+ * `-0` no serializa igual que `0`.
+ *
+ * Sigue sin exportarse a proposito: los dos chequeos que la usan viven en este modulo,
+ * y una segunda copia de esta logica afuera se desincronizaria.
  */
 function canonicalKey(cells: Cell[]): string {
   const variantes: string[] = [];
@@ -363,7 +370,50 @@ export function checkDistinct(): CheckResult {
   return result('piezas distintas', failures);
 }
 
-/** Los seis de una. Es lo que consume la tool `check_invariants`. */
+/**
+ * 7. Letras — cada forma es el pentomino QUE SU LETRA DICE, y no solo una distinta de
+ *    las otras once.
+ *
+ * Es el agujero que el seguimiento del 036 dejo anotado al cerrar `checkDistinct`: una
+ * `L` que fuera una `J` pasa, y un INTERCAMBIO de dos letras entre si tambien —el
+ * conjunto de las 12 claves no cambia, asi que `checkDistinct` no tiene de que
+ * quejarse—. Medido intercambiando `L` con `Y` en `SHAPES`: `checkDistinct` queda en
+ * verde con 0 fallos y este chequeo reporta 2.
+ *
+ * No lo tapa la vista tampoco: la letra es lo que le da a la pieza su tonica via
+ * `BASE_MAP`, asi que dos letras cruzadas suenan cruzadas, y el unico sintoma es que la
+ * pieza que se ve como `L` toca la nota de la `Y`.
+ *
+ * Se compara contra `PENTOMINOS_CANONICOS`, que esta escrita desde el nomenclador
+ * estandar: si la tabla saliera de `SHAPES`, el chequeo se verificaria contra si mismo.
+ * Y se compara con `canonicalKey` en vez de con una segunda copia de esa logica, que se
+ * desincronizaria — que es exactamente la familia de bug que este archivo persigue. La
+ * degeneracion de `canonicalKey` no es un punto ciego compartido: una clave que
+ * colapsara formas distintas deja este chequeo en verde pero pone a `checkDistinct` en
+ * rojo, porque las 12 pasarian a compartir clave.
+ */
+export function checkLetters(): CheckResult {
+  const failures: string[] = [];
+  for (const p of PIECES) {
+    const esperada = canonicalKey(PENTOMINOS_CANONICOS[p]);
+    const tiene = canonicalKey(SHAPES[p]);
+    if (tiene !== esperada) {
+      // El mensaje nombra la letra que la forma SI es cuando esa letra existe: es el
+      // dato que convierte «la Z esta mal» en «la Z es la N», que fue el bug real.
+      const enRealidad = PIECES.find(otra => canonicalKey(PENTOMINOS_CANONICOS[otra]) === tiene);
+      failures.push(
+        `${p}: no es el pentomino ${p}, ` +
+        (enRealidad === undefined ? 'ni ningun otro de los 12' : `es el ${enRealidad}`),
+      );
+    }
+  }
+  return result('letras', failures);
+}
+
+/** Los siete de una. Es lo que consume la tool `check_invariants`. */
 export function checkAll(): CheckResult[] {
-  return [checkArrayOrder(), checkAnchors(), checkShapes(), checkBaseMap(), checkNotes(), checkDistinct()];
+  return [
+    checkArrayOrder(), checkAnchors(), checkShapes(), checkBaseMap(), checkNotes(),
+    checkDistinct(), checkLetters(),
+  ];
 }
