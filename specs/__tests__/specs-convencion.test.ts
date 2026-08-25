@@ -335,9 +335,10 @@ describe.runIf(HIDRATADOS > 0)('los specs nuevos no anotan trabajo que nadie va 
       nuevos,
       'Un `[M]` en un spec del 039 para adelante. `[M]` dejo de ser parte del formato:\n' +
       'la salida es **volver la tarea verificable** —un test, una medicion, un invariante—\n' +
-      'y entonces bloquea como cualquier otra, o **no anotarla en ningun lado**, ni\n' +
-      'siquiera en `## Seguimiento`. Lo que no es una opcion es dejarla escrita sin que\n' +
-      'nadie la pueda cerrar: eso ya se midio y da 137 casillas en 35 specs, de las que\n' +
+      'y entonces bloquea como cualquier otra, o **no anotarla en ningun lado** —y\n' +
+      'desde el 042 tampoco hay un `## Seguimiento` donde escribirla—. Lo que no es una\n' +
+      'opcion es dejarla escrita sin que nadie la pueda cerrar: eso ya se midio y da\n' +
+      '137 casillas en 35 specs, de las que\n' +
       `se cerraron 6:\n${nuevos.join('\n')}`,
     ).toEqual([]);
 
