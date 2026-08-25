@@ -217,6 +217,15 @@ describe('`estaProtegida`, con el modulo de rutas inyectado', () => {
     expect(decidir('posix', '/repo', adentro)).toEqual([true, true, true]);
   });
 
+  it('la carpeta protegida ES una ruta protegida, y sus vecinos de nombre no', () => {
+    // `relative(raiz/src, raiz/src)` da `''`, y el criterio anterior lo excluia. Los tres
+    // vecinos van al lado porque son los que un criterio demasiado laxo confundiria con el
+    // caso nuevo: el que empieza igual, el hermano, y la raiz que las contiene a todas.
+    const casos = ['src', 'mcp-server/src', 'docs', 'src-viejo', 'mcp-server', '.'];
+    expect(decidir('win32', RAIZ_WIN, casos)).toEqual([true, true, true, false, false, false]);
+    expect(decidir('posix', '/repo', casos)).toEqual([true, true, true, false, false, false]);
+  });
+
   it('y los cuatro que el gate ya distinguia, que son los que el cambio podia aflojar', () => {
     // Los mismos casos que los `it` de arriba prueban contra el gate entero, aca contra
     // `win32` fijo: el `..` que vuelve a entrar, el prefijo que no alcanza, la raiz y
@@ -303,6 +312,23 @@ describe('lo que escribe `Bash`', () => {
     it('`rm`, porque borrar es escribir', () => {
       git('checkout', 'main');
       expect(correr(bash('rm -f src/domain/board.ts;')).permissionDecision).toBe('deny');
+    });
+
+    it('`rm -rf src`: la carpeta protegida tambien se protege a si misma', () => {
+      // El agujero que dejaba el `rel !== ''`, y es el peor de todos: un archivo de adentro
+      // se bloqueaba y la carpeta ENTERA pasaba. Vale para las tres, asi que las tres van.
+      git('checkout', 'main');
+      for (const carpeta of ['src', 'mcp-server/src', 'docs']) {
+        expect(correr(bash(`rm -rf ${carpeta}`)).permissionDecision, carpeta).toBe('deny');
+      }
+    });
+
+    it('y tampoco se la esquiva nombrandola con una barra al final o con un `..`', () => {
+      // Las dos formas que `resolve` normaliza al mismo string vacio. Sin `relative` de por
+      // medio, cualquiera de las dos seria un `rm -rf` distinto del que se bloquea.
+      git('checkout', 'main');
+      expect(correr(bash('rm -rf src/')).permissionDecision).toBe('deny');
+      expect(correr(bash('rm -rf specs/../src')).permissionDecision).toBe('deny');
     });
 
     it('el destino de un `mv`, y no su origen', () => {

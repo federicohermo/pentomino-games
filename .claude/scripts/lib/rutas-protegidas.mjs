@@ -55,6 +55,14 @@ export function estaProtegida(path, raiz, protegidas, ruta) {
     const rel = path.relative(path.resolve(raiz, carpeta), abs);
     // `isAbsolute` es el caso cross-drive: si no hubo camino relativo posible, la respuesta
     // es que NO esta adentro. Sin el, «no empieza con `..`» se cumple por vacio.
-    return rel !== '' && !path.isAbsolute(rel) && !rel.startsWith('..') && !rel.startsWith(`..${path.sep}`);
+    //
+    // Y `rel === ''` —la ruta ES la carpeta protegida— cuenta como ADENTRO. Estuvo excluido
+    // desde el gate original y ahi era inalcanzable: el gate corria solo sobre
+    // `Edit|Write|MultiEdit`, y ninguna de las tres puede tener un directorio como
+    // `file_path`. Al sumar `Bash` al matcher entro `rm`, y con el la unica ruta que la
+    // exclusion dejaba pasar resulto ser `rm -rf src`: el borrado que mas importa por la
+    // unica puerta que quedaba abierta. La condicion no cambio de sentido, cambio lo que le
+    // llega.
+    return !path.isAbsolute(rel) && !rel.startsWith('..') && !rel.startsWith(`..${path.sep}`);
   });
 }
