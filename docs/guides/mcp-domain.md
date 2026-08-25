@@ -29,7 +29,7 @@ Node 20 el server no arranca y **el repo sigue funcionando igual**.
 | `find_symbol` | dónde está definido un símbolo de `src/` (archivo, línea, firma, primera frase del doc) y qué archivos lo importan, `mcp-server/` incluido | `grep` + abrir el archivo para ver la firma |
 | `describe_piece` | forma transformada, dos ASCII —uno con el ancla marcada, otro con el **paso** de cada celda—, tónica, escala, `cellMap` (grado **y** paso por celda) y las 5 notas con el retrógrado aplicado | componer cuatro puras a mano sobre cinco pares de coordenadas |
 | `simulate_board` | validez de cada colocación, el orden del circuito con sus saltos, y la línea de tiempo de notas y clicks que produce el recorrido | leer el scheduler y recorrer el lookahead a mano, o escuchar |
-| `check_invariants` | los seis chequeos de `domain/invariants.ts`, con contraejemplos y el espacio del modelo (96 orientaciones) | correr los tests y leer la salida |
+| `check_invariants` | los siete chequeos de `domain/invariants.ts`, con contraejemplos y el espacio del modelo (96 orientaciones) | correr los tests y leer la salida |
 | `spec_status` | por spec: estado, tareas hechas/total, cuántas de las abiertas no son deuda (`Seguimiento`, `[M]`, spec terminal), la próxima que de verdad falta, y los `cruces` `X → Y` de sus tareas. Con `spec`, ese solo y con las `citas` de cada tarea | leer `mapa.json` + todos los `tasks.md`, que crecen con cada spec |
 | `spec_write` | **escribe**: `marcar` pasa una tarea a `[x]`, `seguimiento` agrega un `T0NN` al `## Seguimiento` con el ID que sigue | abrir el `tasks.md` y editarlo a mano, que en un worktree con `specs/` ignorado falla en verde |
 

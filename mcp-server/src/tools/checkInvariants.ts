@@ -9,20 +9,22 @@ import { checkAll } from '../../../src/domain/invariants.ts';
  * aca no hay ni un chequeo escrito, solo el formato de la respuesta.
  *
  * Itera sobre lo que devuelve `checkAll()` y no sobre una lista propia, y eso se
- * cobro: el spec 036 agrego el sexto —`piezas distintas`— y la tool lo expuso sin que
- * hubiera que tocar una linea de codigo aca. Lo unico que se edito a mano fueron las
+ * cobro: el spec 036 agrego el sexto —`piezas distintas`— y el 039 el septimo —`letras`—,
+ * y la tool los expuso sin que hubiera que tocar una linea de codigo aca. Lo unico que se edito a mano fueron las
  * cadenas de `description`, que es justo lo que el comentario de abajo declara.
  */
 
 /**
  * Rotaciones x reflexion: el ESPACIO del modelo por pieza.
  *
- * No es cobertura, y la diferencia importa: de los seis chequeos, `orden del array`,
+ * No es cobertura, y la diferencia importa: de los siete chequeos, `orden del array`,
  * `ancla` y —desde el spec 036— `piezas distintas` recorren las 96 orientaciones.
  * `formas` mira las 12 formas canonicas —rotar y reflejar no cambian ni la cantidad de
  * celdas ni la conexidad—, `notas` recorre 48 porque el espejo solo invierte el orden,
- * y `BASE_MAP` mira el conjunto una sola vez. Por eso la respuesta lo reporta como
- * `modelSpace` y no como `checked`: afirmar 96 para los seis seria prometer de mas.
+ * `BASE_MAP` mira el conjunto una sola vez, y —desde el 039— `letras` compara las 12
+ * formas contra la tabla canonica, o sea 12 claves y no 96. Por eso la respuesta lo
+ * reporta como `modelSpace` y no como `checked`: afirmar 96 para los siete seria
+ * prometer de mas.
  *
  * Es, junto con `SCALE_LABEL` de `describePiece.ts`, uno de los dos supuestos del
  * server sobre el dominio: si `invariants.ts` cambia la grilla que recorre, esto
@@ -39,7 +41,7 @@ const ORIENTATIONS_PER_PIECE = 4 * 2;
  * al filtrar. Los mensajes que no empiezan con una letra de pieza —los de
  * `BASE_MAP`, que hablan del conjunto— son globales de verdad.
  *
- * Se exporta para testearla: con los seis chequeos en verde no hay ni un fallo
+ * Se exporta para testearla: con los siete chequeos en verde no hay ni un fallo
  * real con el que ejercitar el filtro desde la tool.
  */
 export function pieceOf(failure: string): string | null {
@@ -55,10 +57,10 @@ const inputSchema = z.object({
 export const checkInvariants = defineTool({
   name: 'check_invariants',
   description:
-    'Corre los seis chequeos del modelo y devuelve cuáles pasan, con contraejemplos. El espacio ' +
+    'Corre los siete chequeos del modelo y devuelve cuáles pasan, con contraejemplos. El espacio ' +
     'del modelo son 12 piezas × 4 rotaciones × reflexión = 96 orientaciones, y cada chequeo ' +
     'recorre lo que le corresponde: el orden del array, el ancla y las piezas distintas las 96, ' +
-    'las notas 48, las formas las 12 canónicas y BASE_MAP el conjunto una vez. ' +
+    'las notas 48, las formas y las letras las 12 canónicas, y BASE_MAP el conjunto una vez. ' +
     'Usar antes de tocar geometría, tablas de piezas o ' +
     'el modelo musical, y otra vez después: el invariante más peligroso del repo —que la celda del ' +
     'índice k siga siendo la misma celda lógica después de transformar— se rompe SIN producir ' +

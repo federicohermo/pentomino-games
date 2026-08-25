@@ -66,7 +66,7 @@ src/
 │   ├── sequence.ts               # buildSequence — el circuito (Held-Karp) y los offsets del ciclo —,
 │   │                             #   cellsByPlayOrder, gates —las dos puertas, las usa simulate_board—
 │   │                             #   y noteAtCell, qué nota hay en una celda
-│   ├── invariants.ts             # los seis chequeos del modelo + checkAll
+│   ├── invariants.ts             # los siete chequeos del modelo + checkAll
 │   ├── types/                    # el contrato de la capa. Cero imports de afuera
 │   │   ├── transform.types.ts    #   Cell
 │   │   ├── pieces.types.ts       #   PieceKey

@@ -255,12 +255,14 @@ describe('describe_piece', () => {
 });
 
 describe('check_invariants', () => {
-  test('AC6 — los seis chequeos, por separado y en verde', () => {
+  test('AC6 — los siete chequeos, por separado y en verde', () => {
     const r = call(checkInvariants, {});
     assert.equal(r.ok, true);
     const checks = r.checks as { name: string; ok: boolean; failures: string[] }[];
-    // Seis desde el spec 036, y la tool los expone sin listarlos: itera `checkAll()`.
-    assert.equal(checks.length, 6);
+    // Seis desde el spec 036 y SIETE desde el 039, que agrego `letras`. La tool los
+    // expone sin listarlos —itera `checkAll()`— asi que este numero es lo unico del
+    // server que hay que mover cuando el dominio suma un chequeo.
+    assert.equal(checks.length, 7);
     for (const c of checks) {
       assert.equal(c.ok, true, `${c.name}: ${c.failures.join(' · ')}`);
       assert.deepEqual(c.failures, []);
@@ -280,7 +282,7 @@ describe('check_invariants', () => {
   });
 
   test('con un fallo real, el filtro acota los mensajes y no el veredicto', () => {
-    // El docblock de `pieceOf` dice por que se exporta: «con los seis chequeos en
+    // El docblock de `pieceOf` dice por que se exporta: «con los siete chequeos en
     // verde no hay ni un fallo real con el que ejercitar el filtro desde la tool».
     // Se fabrica uno rompiendo una forma, que es la unica manera de recorrer el
     // camino que la tool toma cuando algo esta mal — o sea, el unico que importa.
