@@ -108,19 +108,29 @@ Lo que ningún `/spec-implement` suelto puede ver, porque mira un spec. Corré l
    falla si la tarea ya estaba marcada, en vez de dejar creer que escribió— pero un carril que se
    frena con ese error igual costó la corrida.
 
-Lo que salga es una decisión de diseño que le falta al spec. **Decidila vos, escribila con `spec_write`
-(`op: "seguimiento"`) en el spec que corresponda antes de lanzar, y seguí** — no se frena con
-`AskUserQuestion`. El ID de la tarea lo pone la tool, contando desde el mayor del archivo, así que dos
-decisiones escritas seguidas no se pisan el número. Sigue valiendo el argumento de por qué se resuelve
-*acá* y no en el carril: arreglar un spec cuesta un párrafo y arreglar dos carriles cuesta un rebase;
-lo que cambia es quién contesta. La recomendación se toma, no se ofrece.
+Lo que salga es una decisión de diseño que le falta al spec. **Decidila vos, abrila como issue con
+`mcp__github__issue_write` antes de lanzar, y seguí** — no se frena con `AskUserQuestion`. Sigue
+valiendo el argumento de por qué se resuelve *acá* y no en el carril: arreglar un spec cuesta un
+párrafo y arreglar dos carriles cuesta un rebase; lo que cambia es quién contesta. La recomendación se
+toma, no se ofrece.
 
-Va escrita **como tarea con su porqué y su AC**, no como nota al pie: el carril la va a leer sin este
-contexto. Y la va a leer de verdad, que antes no estaba garantizado: la escritura cae en el **registro
-central**, no en el árbol de quien la hace (D1 del spec 033), así que el carril la ve con `spec_status`
-aunque su worktree haya nacido en `origin/main` sin ella. Y va al reporte del Paso 5, que es donde el
-usuario la ve — si quiere revertirla, revierte un párrafo escrito, que es más barato que el turno de
-ida y vuelta que la habría evitado.
+El issue lleva las tres cosas que el `texto` del viejo seguimiento no pedía:
+
+- **Título que se entienda fuera del contexto del spec** — el cruce abarca dos, así que no hay uno
+  solo que sirva de contexto.
+- **Cuerpo con la evidencia**: los dos `path:línea`, el número que se movió, y qué AC queda
+  infalsificable si nadie lo toca.
+- **`Detectado en #N`**, con el issue del spec al que le falta la decisión. **Sale de
+  `specs/mapa.json`, no del `NNN`**: el spec 001 es el issue #63.
+
+**El label es `bug` o `enhancement`**, los dos que el repo ya usa; no se inventa uno.
+
+**Y va además en el prompt del carril, escrita como tarea con su porqué y su AC**, no como nota al
+pie: el carril la va a leer sin este contexto. Eso no es redundante, y es el precio de que el destino
+esté fuera del repo — `spec_status` no ve los issues, así que un issue solo no le llega a nadie que
+esté implementando. Vos sos quien lanza los carriles: es el único canal que no depende de que alguien
+vaya a mirar. Y va al reporte del Paso 5, que es donde el usuario la ve — si quiere revertirla,
+revierte un párrafo escrito, que es más barato que el turno de ida y vuelta que la habría evitado.
 
 Lo único que sigue frenando es lo de siempre: que proceder bajo cualquier supuesto sea inseguro, o
 deje el lote inservible si el supuesto está mal. Eso casi nunca es una decisión de diseño de un spec.

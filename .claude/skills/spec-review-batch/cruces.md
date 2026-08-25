@@ -5,8 +5,24 @@ precedente **medido en este repo** que la fijó, cómo se detecta y qué se edit
 respuestas: el lote que tengas enfrente se deriva igual, y las siete se recorren aunque seis den que no.
 
 Todas se pagan tarde y caro: cuando se descubren, dos ramas del lote ya están escritas y el arreglo es
-un rebase. Acá el spec todavía es texto — el hallazgo se anota con `spec_write` (`op: "seguimiento"`) en
-el spec que corresponda y listo.
+un rebase. Acá el spec todavía es texto — el hallazgo se corrige en el spec que corresponda y listo.
+
+**Vos no escribís ninguno de esos arreglos.** El contrato del Paso 3 vale entero: devolvés la edición
+propuesta con `path:línea` y el texto exacto, y no abrís ni cerrás issues. Lo que sí tenés que devolver
+listo para copiar es lo que el padre va a necesitar para el cruce que **excede al lote** y sale como
+issue, que son tres cosas y no una:
+
+- **Un título que se entienda fuera del contexto del spec.** Un cruce abarca dos, así que no hay un
+  spec solo que le sirva de contexto: es donde un título que arranque con «el problema del 019» no le
+  dice nada a nadie dentro de seis meses.
+- **El cuerpo con la evidencia**: los dos `path:línea`, el número medido y qué AC queda infalsificable
+  si nadie lo toca.
+- **`Detectado en #N`**, con el issue del spec en el que iba la edición. Es lo que repone el vínculo
+  que daba estar escrito adentro del `tasks.md`; el `#N` sale de `specs/mapa.json` y no del `NNN` —el
+  spec 001 es el issue #63—.
+
+Y el label que va a llevar: **`bug` o `enhancement`**, los dos que el repo ya usa. Ninguno propio: un
+label para la deuda de los specs vuelve a partir el tracker en dos.
 
 ## 1 · Una medición vence cuando otro spec mueve lo medido
 
@@ -64,21 +80,23 @@ que se apoye en que suenan queda sin piso.
 ## 5 · Un spec cierra una tarea de otro
 
 Es el único caso en que un spec escribe **sobre otro**, así que es también el único que dos agentes
-pueden pisar a la vez — por eso lo aplica el padre, nunca el agente. Con `spec_write` ese argumento no
-se cae: cambia de forma y se vuelve **más frágil**. Antes «fuera de la carpeta propia» era un path, y un
-agente que respetaba `specs/<NNN>-*/` no podía hacerlo ni queriendo; ahora el spec ajeno es el
-parámetro `spec` de una llamada que el agente ya tiene permitida, así que nada en la forma de la
-operación delata que está escribiendo afuera. Lo que era una disyunción de rutas quedó reducido a una
-regla escrita, y una regla escrita se respeta o no se respeta — de ahí que siga siendo del padre.
+pueden pisar a la vez — por eso lo aplica el padre, nunca el agente. Ese argumento no se cae con el
+042: se vuelve **más frágil todavía**. Antes «fuera de la carpeta propia» era un path, y un agente que
+respetaba `specs/<NNN>-*/` no podía escribirle al vecino ni queriendo; hoy el registro del spec ajeno
+es un issue, y un comentario en un issue no tiene carpeta que lo contenga. Lo que era una disyunción
+de rutas quedó reducido a una regla escrita, y una regla escrita se respeta o no se respeta — de ahí
+que siga siendo del padre.
 
 Medido: el 015 **cierra el `T070` del 011 con un "no"**: el 011 quería borrar el botón de clicks y el
 015 lo deja más necesario, porque con el default apagado es la única forma de encenderlos.
 
 - **Se detecta** leyendo las tareas de cada spec que nombran otro spec.
-- **Se edita** en los dos lados, un `spec_write` (`op: "seguimiento"`) por spec: en el viejo, que su
-  `T0NN` la cierra el nuevo; en el nuevo, que la cierra y por qué. Anotarlo sólo de un lado deja
-  `spec_status` reportando trabajo que ya no existe — y como el conteo sale del mismo `spec_status`, el
-  olvido se ve en la consulta siguiente.
+- **Se edita** en los dos lados, y desde el 042 no del mismo modo: el spec nuevo **todavía es texto**,
+  así que ahí la nota va en su propio `tasks.md` —que cierra el `T0NN` del viejo, y por qué—; el viejo
+  está mergeado y **no se reescribe**, así que lo suyo va como comentario en su issue, que es donde
+  este repo guarda el porqué de una decisión. Anotarlo sólo de un lado deja `spec_status` reportando
+  trabajo que ya no existe — y como el conteo sale del mismo `spec_status`, el olvido se ve en la
+  consulta siguiente.
 
 ## 6 · Lo que un spec declara es intención, no grafo
 

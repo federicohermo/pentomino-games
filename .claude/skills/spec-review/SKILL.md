@@ -71,8 +71,16 @@ Al revisar, verificá:
   contesta `citas`: el choque es un `archivo` que aparece bajo dos `tarea` distintas. Es el hallazgo
   más caro de los tres, porque `spec-implement` las abanica en paralelo y el conflicto aparece recién
   al escribir.
-- Las de `## Seguimiento (no bloquea)` son deuda anotada a propósito y **no** cuentan como pendientes
-  — `spec_status` ya las separa en `seguimiento`, así que la cuenta no hay que rehacerla.
+- **Un `## Seguimiento (no bloquea)` es historia y no se reescribe.** La sección salió del formato con
+  el 042 —un ítem anotado ahí heredaba el estado del spec, y llegaron a ser **129** contra **17**
+  issues de deuda abiertos— pero los 40 specs que ya la tienen quedan como están. `spec_status` ya no
+  la mira: sus ítems no entran ni en `total` ni en `pendientes`, así que ni la cuenta hay que rehacer
+  ni la sección es un hallazgo. **Lo que sí es hallazgo es un `## Seguimiento` en un spec nuevo**, y
+  el arreglo es sacarlo: esa deuda se abre como issue con `mcp__github__issue_write`, con label `bug`
+  o `enhancement` —los dos que el repo ya usa, que inventar uno vuelve a partir el tracker en dos—,
+  **un título que se entienda fuera del contexto del spec**, **el cuerpo con la evidencia** y
+  **`Detectado en #N`** con el issue del spec, que repone el vínculo que daba estar escrito adentro
+  del `tasks.md`. El `#N` sale de `specs/mapa.json` y no del `NNN`: el spec 001 es el issue #63.
 
 Los specs 001–010 son anteriores a esta convención y **no se reescriben** (ver abajo): no lleves su
 falta de IDs como hallazgo.
@@ -98,7 +106,7 @@ y no puede quedar viejo:
 
 | En vez de | Usá |
 |---|---|
-| Leer `mapa.json` y los `tasks.md` para saber en qué quedó cada spec, o abrir uno para auditarle las tareas | `spec_status` — estado, hechas/total y `pendientes`, que descuenta `Seguimiento`, `[M]` y specs terminales; con el argumento `spec`, ese spec solo más `citas` y `cruces` |
+| Leer `mapa.json` y los `tasks.md` para saber en qué quedó cada spec, o abrir uno para auditarle las tareas | `spec_status` — estado, hechas/total y `pendientes`, que descuenta `[M]` y specs terminales y ni mira el `## Seguimiento` de los specs viejos; con el argumento `spec`, ese spec solo más `citas` y `cruces` |
 | Abrir el `spec.md` o el `research.md` del spec que se audita, y encontrar que no está | `node .claude/scripts/hidratar-specs.mjs <NNN>` **antes de leer**. Desde el spec 034 viven en issues y `specs/[0-9]*/` está en el `.gitignore`: el directorio es una caché que puede no estar, y un review sobre un directorio vacío **no falla** — audita un spec que no leyó |
 | Derivar a mano una rotación, una escala o un retrógrado que el spec afirma | `describe_piece` |
 | Recorrer el lookahead a mano para saber qué suena junto | `simulate_board` |

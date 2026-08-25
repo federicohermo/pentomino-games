@@ -34,8 +34,9 @@ respuesta se acota a ese spec y suma `citas`: por tarea, los archivos que nombra
 su línea. Eso es la materia prima del fake-edge test ya parseada, y acotada pesa 3.135 bytes —el peor
 spec, el 021, 7.962— contra los 29.742 del registro entero. `cruces` da los pares `X → Y` que la
 tarea declara **en su propia línea**, no en su prosa de abajo —`de` y `a` son
-string, que en este repo hay un `4,0 → 11,8`— y `proximaId` dice cuál falta de verdad, con
-`Seguimiento`, `[M]` —histórico, ver abajo— y los specs terminales ya descontados.
+string, que en este repo hay un `4,0 → 11,8`— y `proximaId` dice cuál falta de verdad, con `[M]`
+—histórico, ver abajo— y los specs terminales ya descontados. Un `## Seguimiento` de un spec anterior
+al 042 la tool ni lo mira: sus ítems no entran en `total` ni en `pendientes`.
 
 **Seguí usando el fake-edge test sobre los `[P]` declarados, no en su lugar.** Un `[P]` mal puesto es
 un conflicto de escritura que aparece recién al implementar; si el test contradice a la declaración,
@@ -79,10 +80,23 @@ escuchando, eso es un hallazgo sobre el spec —decilo— y no una casilla nueva
   se ve en el acto en vez de quedar como un reemplazo que no reemplazó nada; y escribe en el registro
   **central**, no en el worktree de quien la llama, que es lo que hace que dos carriles en paralelo no
   terminen con dos versiones del mismo estado.
-- **La deuda que aparece implementando se anota con `spec_write` y `op: "seguimiento"`**, que la
-  agrega al final de `## Seguimiento (no bloquea)` —y crea la sección si el spec no la tenía—. **El ID
-  lo pone la tool**: sigue contando desde el mayor del archivo y nunca reusa uno libre, que es
-  exactamente el error que comete quien numera a ojo mirando el último bloque.
+- **La deuda que aparece implementando se abre como issue** con `mcp__github__issue_write`, y **no se
+  anota en el spec**. Adentro de un `tasks.md` el ítem hereda el estado de su spec: un spec
+  `Implementado` puede tener diez casillas abiertas y no deberle nada a nadie, y así es como al mudar
+  `deuda.md` a Issues aparecieron **seis** ítems que nunca habían llegado al tracker —enterrados en
+  specs ya cerrados, dos de ellos bugs medidos que llevaban veinte días invisibles—. Un issue tiene
+  estado propio y se cierra con `Closes #N` desde un commit. Lleva tres cosas que el `texto` del
+  seguimiento no pedía, porque estar escrito adentro del spec se las daba gratis:
+  - **Título que se entienda fuera del contexto del spec.** En la lista de issues no hay más contexto
+    que el título, y es la diferencia entre un ítem que se encuentra buscando y uno que hay que abrir
+    para saber de qué habla.
+  - **Cuerpo con la evidencia**: `archivo:línea`, el número medido, qué hace falta para verlo.
+  - **`Detectado en #N`**, con el issue del spec que la encontró. Repone el vínculo que daba estar
+    escrito adentro del `tasks.md`, y sin él el hallazgo queda sin origen. **El `#N` sale de
+    `specs/mapa.json` y no del `NNN`**: el spec 001 es el issue #63.
+
+  **El label es `bug` o `enhancement`**, los dos que el repo ya usa. Inventar uno propio para la deuda
+  de los specs vuelve a partir el tracker en dos, que es el problema que esto cierra.
 - El estado del spec en `specs/mapa.json` lo mueve el **merge**, no la rama.
 - Si el spec falsificó algo que la documentación afirma en presente, actualizá `docs/` y
   `.claude/rules/` —no los specs viejos, que son historia— y anotá el aprendizaje en

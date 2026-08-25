@@ -137,10 +137,11 @@ Con el issue publicado y la rama creada, el trabajo de este skill terminó.
 
 No es parte de abrir un spec, pero es la otra mitad y se saltea igual de fácil:
 
-1. `spec_status` con el número del spec. **`pendientes` tiene que dar 0** — descuenta las de
-   `## Seguimiento`, que no bloquean, y las `[M]` de los specs anteriores al 039. En un spec tuyo no
-   va a haber ninguna `[M]`: no se escriben más (ver arriba), así que acá `pendientes: 0` quiere decir
-   que se cerró **todo**.
+1. `spec_status` con el número del spec. **`pendientes` tiene que dar 0** — lo único que descuenta
+   son las `[M]` de los specs anteriores al 039. En un spec tuyo no va a haber ninguna: no se
+   escriben más (ver arriba), y desde el spec 042 tampoco hay un `## Seguimiento` donde anotar lo
+   que quedó. Así que acá `pendientes: 0` quiere decir que se cerró **todo**, sin excepciones que
+   valga la pena explicar.
 2. `estado` a `Implementado` en `specs/mapa.json`, y `Closes #N` en el PR.
 3. Lo que salió distinto de lo previsto, **como comentario en el issue**.
 

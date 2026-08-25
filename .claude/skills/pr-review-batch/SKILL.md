@@ -31,7 +31,7 @@ Cuatro sustituciones. Las cuatro se descubrieron corriendo, no leyendo:
 | Localiza el PR con las tools de Bitbucket | **`mcp__github__list_pull_requests`** y `pull_request_read`. **`gh` no está en el PATH** de esta máquina: no hay fallback por CLI |
 | Saca los criterios de aceptación de un ticket de Jira | **`specs/NNN-*/spec.md`**, sección de AC, más lo que `mcp__pentomino-domain__spec_status` contesta del estado de sus tareas. El número del spec sale del nombre de la rama: `feature/NNN-...` |
 | Cierra con un `land.sh` que corre `npm run verify` | **`pnpm verify`, a mano.** `npm` acá deja un `package-lock.json` que Netlify puede llegar a preferir, y un `node_modules` plano |
-| Eleva todo a comentarios del PR | **El chat y el `## Seguimiento`, que se escribe con `mcp__pentomino-domain__spec_write`.** La escritura cae en el **registro central** y no en el worktree, así que el hallazgo **ya no viaja en el diff del PR**. `--comentar` publica además un general por PR, para cuando lo mergea otra persona |
+| Eleva todo a comentarios del PR | **El chat y un issue, que se abre con `mcp__github__issue_write`.** El issue vive fuera del repo, así que el hallazgo **no viaja en el diff del PR**, y a cambio no hereda el estado de nada. `--comentar` publica además un general por PR, para cuando lo mergea otra persona |
 
 ---
 
@@ -98,14 +98,15 @@ Cinco cláusulas, que van **literales** en el preámbulo del Paso 1:
 4. **Hunk chico y quieto** en todo archivo de la lista caliente. Un arreglo que además re-justifica un
    párrafo, re-envuelve líneas o reordena una tabla convierte un conflicto de una línea en uno de
    veinte.
-5. **El `## Seguimiento` se escribe con `mcp__pentomino-domain__spec_write` (`op: "seguimiento"`) y
-   siempre con el `spec` propio.** El viejo argumento —«libre de conflicto por construcción, un
-   `tasks.md` por PR»— **dejó de hacer falta**: la escritura cae en el registro central y ya no hay
-   archivo que mergear. Lo que sí pesa más que antes es **a cuál spec**: el `spec` va como argumento
-   explícito, y uno equivocado escribe en el registro de otro **sin que ningún diff lo delate**. Un 🟡
-   que pertenece a otro spec del lote **no** se escribe: se reporta como `PERTENECE-A-PR-<N>`.
-   El precio de la escritura central se paga acá y hay que decirlo en el reporte: **el reviewer del PR
-   ya no ve el seguimiento en el diff**, así que el Paso 5 es el único canal por el que se entera.
+5. **Un 🟡 que no se aplica se abre como issue con `mcp__github__issue_write`, y su `Detectado en #N`
+   es siempre el issue del spec propio.** El viejo argumento —«libre de conflicto por construcción,
+   un `tasks.md` por PR»— **dejó de hacer falta**: el destino ya no es un archivo que mergear. Lo que
+   sí pesa más que antes es **a cuál spec se lo atribuye**: un `#N` equivocado cuelga el hallazgo del
+   spec que no es **sin que ningún diff lo delate**, y el `#N` sale de `specs/mapa.json`, no del
+   `NNN` —el spec 001 es el issue #63—. Un 🟡 que pertenece a otro spec del lote **no** se abre: se
+   reporta como `PERTENECE-A-PR-<N>`. El precio de que el destino esté fuera del repo se paga acá y
+   hay que decirlo en el reporte: **el reviewer del PR no ve el issue en el diff**, así que el Paso 5
+   es el único canal por el que se entera.
 
 Y nadie rebasea, mergea ni usa `--force`. El push es `git push origin HEAD:refs/heads/<head.ref>`.
 
@@ -228,11 +229,12 @@ Y este contrato, en este orden:
 5. **Encontrá con el método de `hallazgos.md`**, y solo en los ejes que el gate abrió.
 6. **Arreglá con la política de triage de `hallazgos.md`**, y con las cinco cláusulas del Paso 0 bis
    encima: lo que no sea `+` en el propio diff se reporta como `PERTENECE-A-PR-<N>` y no se toca, el
-   hunk se queda quieto en los archivos de la lista caliente, y los 🟡 que no se aplican se escriben
-   al `## Seguimiento (no bloquea)` **de su propio spec** con `mcp__pentomino-domain__spec_write`
-   (`op: "seguimiento"`, `spec` el propio). **El `T0NN` lo numera la tool**, que cuenta desde el mayor
-   del archivo y nunca reusa uno libre — así que el `texto` es todo lo que aportás y tiene que decir
-   qué se encontró y con qué evidencia: es lo único que queda cuando el diff ya no está.
+   hunk se queda quieto en los archivos de la lista caliente, y los 🟡 que no se aplican **se abren
+   como issue** con `mcp__github__issue_write`, con label `bug` o `enhancement` —los dos que el repo
+   ya usa; inventar uno vuelve a partir el tracker en dos—, **un título que se entienda fuera del
+   contexto del spec**, **el cuerpo con la evidencia** —es lo único que queda cuando el diff ya no
+   está— y **`Detectado en #N`** con el issue del spec propio, que es lo que repone el vínculo que
+   daba estar escrito adentro del `tasks.md`. El `#N` sale de `specs/mapa.json`, no del `NNN`.
 7. **`pnpm verify` en verde**, con el Paso 4 de este archivo adelante.
 8. **Commit y push**, sin `--force`:
    ```bash
@@ -304,8 +306,8 @@ El padre no re-audita: cruza.
   con una medición propia puede estar descartando bien por el motivo equivocado — o mal. Los dos casos
   aparecieron en la misma corrida. Y hay un tercero, más caro porque se lee como un hallazgo bueno:
   un 🟡 **que no era cierto**. Medido — un agente reportó que un doc afirmaba un número falso, y las
-  dos cifras eran correctas contando ejes distintos. Corregilo en el `## Seguimiento` con
-  `spec_write`: escrito como estaba, el próximo que pase lo «arregla» a un número peor.
+  dos cifras eran correctas contando ejes distintos. Corregilo antes de que salga, y si el issue ya
+  está abierto, editalo: escrito como estaba, el próximo que pase lo «arregla» a un número peor.
 
 - **El lote no está cerrado mientras quede un fix conocido sin aplicar** —salvo con `--dry`, donde no
   se escribe nada y todo esto se reporta en vez de aplicarse—. Es el único paso que puede cerrarlos,
@@ -330,9 +332,9 @@ El reporte, en este orden y en ~40 líneas más la tabla:
    primera o a la segunda.
 2. **Lo que apareció en más de un PR** — el patrón transversal es el entregable propio del batch. En
    la corrida medida fueron 17 de 21 hallazgos de la misma clase: prosa que dejó de ser cierta.
-3. **Lo no aplicado**, y en el `## Seguimiento` de qué spec quedó escrito, con el `T0NN` que devolvió
-   la tool. Desde que la escritura es central esto **no es redundante con el PR**: el seguimiento no
-   está en el diff, así que quien mergea sólo lo ve acá.
+3. **Lo no aplicado**, con el número del issue que quedó abierto y el `Detectado en #N` que lleva.
+   Desde que el destino está fuera del repo esto **no es redundante con el PR**: el issue no está en
+   el diff, así que quien mergea sólo lo ve acá.
 4. **El orden de merge, de abajo hacia arriba**, y que un squash obliga a rebasear el PR de arriba de
    la cadena.
 5. **Los archivos que el review dejó disputados, con el costo de cada rebase.** Es el punto que
