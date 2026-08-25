@@ -27,11 +27,15 @@ mcp-server/
 ├── package.json            deps propias: @modelcontextprotocol/server + zod + typescript
 ├── tsconfig.json           noEmit; lib incluye DOM (ver abajo)
 └── src/
-    ├── index.ts            entrypoint: serveStdio + registro de tools
+    ├── index.ts            entrypoint: serveStdio + registro de tools y resources
     ├── pieces.ts           las 12 letras, sacadas de SHAPES
     ├── render.ts           ASCII de una pieza (puro)
     ├── specs.ts            parseo de mapa.json y de los tasks.md (puro + lectura)
     ├── symbols.ts          índice de símbolos de src/, por AST (puro + lectura)
+    ├── resources/
+    │   ├── index.ts        el array de resources; una línea por resource
+    │   ├── types.ts        ResourceDef y el helper de respuesta
+    │   └── <resource>.ts   uno por archivo: nombre, URI, metadata y handler
     ├── tools/
     │   ├── index.ts        el array de tools; una línea por tool
     │   ├── types.ts        ToolDef, defineTool y los helpers de respuesta
@@ -46,6 +50,10 @@ mcp-server/
 
 El entrypoint no se toca y no hay ningún `switch`. **No escribir validación de argumentos**: la hace el
 SDK contra el schema de zod antes de llamar al handler.
+
+Un **resource** se agrega igual, con `src/resources/` en lugar de `src/tools/`: un archivo que exporte
+un `ResourceDef` y una línea en `src/resources/index.ts`. Y **no copia valores de `src/`, los importa** —
+si uno no se puede importar, falta un export, que es un cambio de `src/` en su propio commit.
 
 La descripción se escribe **por intención** —cuándo conviene llamarla en vez de leer el código—, no por
 mecanismo. Sin adopción no hay ahorro, y lo único que decide la adopción es esa descripción.

@@ -83,7 +83,7 @@ atajar a la tool número siete y el test sí.
 ### El resource: `pentomino://constantes`
 
 Desde el [spec 041](https://github.com/federicohermo/pentomino-games/issues/111) el server expone,
-además de las tools, **un resource**: los 14 números fijos que gobiernan el instrumento —el tablero
+además de las tools, **un resource**: los 14 valores fijos que gobiernan el instrumento —el tablero
 mínimo y el default, el máximo de piezas, el costo de cruce, las celdas y las notas por pieza, la
 octava y el régimen por defecto, el BPM, el master gain, el FFT, el lookahead, el tick y el tope de
 pasos—, cada uno con **su valor y la ruta del archivo de `src/` que lo define**.

@@ -7,7 +7,11 @@ import { LOOKAHEAD, TICK_MS } from '../../../src/audio/constants/scheduler.const
 import { jsonResource, type ResourceDef } from './types.ts';
 
 /**
- * Los numeros que gobiernan el instrumento, IMPORTADOS de `src/` y no copiados.
+ * Los valores que gobiernan el instrumento, IMPORTADOS de `src/` y no copiados.
+ *
+ * «Valores» y no «numeros» porque uno no lo es: `DEFAULT_REGIMEN` es `REGIMEN.escala`,
+ * un string. Entra igual —esta copiado en `docs/`, que es el criterio— y llamarlos a
+ * todos numeros seria otra afirmacion falsa, que es de lo que trata este archivo.
  *
  * Ni un valor escrito aca: el archivo no tiene un solo literal numerico. Ese es el punto
  * entero del resource — un cuadro de constantes escrito a mano es una copia, y una copia
@@ -81,7 +85,7 @@ export const constantes: ResourceDef = {
     // La `description` es lo que lee el cliente, no un comentario: va en español con
     // acentos, como las de las tools.
     description:
-      'Los números fijos del dominio y del motor de audio —tablero, piezas, modelo musical, scheduler—, cada uno con su valor y con la ruta del archivo de `src/` que lo define. Se importan en cada consulta: no hay copia que pueda quedar vieja. Usarlo en lugar de leer los valores que `CLAUDE.md` y `docs/` transcriben.',
+      'Los valores fijos del dominio y del motor de audio —tablero, piezas, modelo musical, scheduler—, cada uno con su valor y con la ruta del archivo de `src/` que lo define. Se importan en cada consulta: no hay copia que pueda quedar vieja. Usarlo en lugar de leer los valores que `CLAUDE.md` y `docs/` transcriben.',
     mimeType: 'application/json',
   },
   read: (uri) => jsonResource(uri, CONSTANTES),
