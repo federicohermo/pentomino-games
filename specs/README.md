@@ -154,34 +154,54 @@ lo grita el gate.
 ## Formato de una tarea
 
 ```markdown
-- [ ] T012 [P] [M] Descripción, con la ruta del archivo que toca
+- [ ] T012 [P] Descripción, con la ruta del archivo que toca
 ```
 
 | Parte | Qué dice | Obligatorio |
 |---|---|---|
 | `T012` | ID estable dentro del spec, para que una tarea pueda nombrar a otra | En specs nuevos |
 | `[P]` | Se puede hacer en paralelo con las otras `[P]` de su bloque: no comparten archivo ni dependen entre sí | No |
-| `[M]` | Pide una persona — navegador, oído, captura. No bloquea el cierre del spec | No |
 
 Los IDs son **estables**: no se renumeran al insertar una tarea nueva, se sigue contando. Un ID
-libre no molesta a nadie; uno reusado rompe la referencia que otra tarea le hacía.
+libre no molesta a nadie; uno reusado rompe la referencia que otra tarea le hacía. Los diez specs
+anteriores a esta convención no llevan ID y no se reescriben para agregárselo, por la Desviación 2.
 
-**`[M]` es la parte que hace legible el estado.** Sin él, un spec `Implementado` con casillas abiertas
-es ambiguo: no se distingue "falta trabajo" de "quedó una verificación a oído que ya nadie va a hacer".
-Con él, `spec_status` reporta `pendientes: 0` y el spec se lee cerrado. Los diez specs anteriores a
-esta convención no llevan ID —no se reescriben, por la desviación 2— pero sí se les marcó `[M]` lo que
-correspondía, porque eso no reescribe la historia: la aclara.
+**`[M]` dejó de ser parte del formato, desde el spec 039.** Marcaba una tarea que pide una persona
+—oído, ojo, navegador— y que por eso no bloqueaba el cierre del spec. Medido hoy sobre los 42 specs
+hidratados: **137 casillas `[M]` repartidas en 35 specs**, y de todas ellas el research del 039
+encontró **7** cerradas alguna vez. O sea que `[M]` no decía «espera a una persona» sino «no se va a
+hacer, pero queda escrito», y las que siguen abiertas no son un registro de trabajo pendiente: son
+una lista de intenciones con formato de checklist, que `spec_status` reporta como `pendientes: 0`.
+
+**En su lugar hay dos salidas, y anotarlo no es ninguna de las dos**: o la verificación se vuelve
+**verificable** —un test de `*.browser.test.tsx`, una medición, un invariante— y entonces es una tarea
+normal que bloquea como cualquier otra, o no se escribe en ningún lado, tampoco en
+`## Seguimiento`. El número va acá a propósito: una convención que se cambia sin dejar escrito qué la
+desmintió se vuelve a proponer igual dentro de un año, con los mismos argumentos, que siguen sonando
+razonables — **137 contra 7** es lo único que no se puede volver a sostener.
+
+**Los specs anteriores conservan sus `[M]`, los 137.** Por la Desviación 2 un spec mergeado no se
+reescribe, y sacarlos a mano movería el `pendientes` de 35 specs ya cerrados para satisfacer una
+convención que llegó después. De ahí que la regla sea por número: **en specs `NNN >= 039` no se
+escriben `[M]` nuevos**, y los `NNN < 039` se leen con la convención con la que fueron escritos. Lo
+que sí se sigue pudiendo es **corregir la clasificación** de una tarea vieja: el spec 038 le puso
+`[M]` a la T019 del 015 —verificar de oído que una pieza muteada no suena— porque la única
+alternativa era marcarla `[x]`, o sea afirmar que alguien escuchó cuando nadie escuchó. Eso no es un
+`[M]` nuevo; es dejar de mentir sobre uno viejo.
 
 **`[P]` es lo que `spec-implement` hoy deriva solo.** Declararlo al escribir el spec, que es cuando se
 conocen las dependencias reales, sale más barato y más confiable que inferirlo en cada corrida.
 
 Las tareas de `## Seguimiento (no bloquea)` son deuda anotada a propósito y tampoco cuentan como
-pendientes. Es un eje distinto de `[M]`: `Seguimiento` es *dónde* está anotada la tarea, `[M]` es
-*quién* la puede hacer. Una tarea puede ser las dos cosas.
+pendientes. **Fue un eje distinto de `[M]`** mientras `[M]` era parte del formato: `Seguimiento` es
+*dónde* está anotada la tarea, `[M]` era *quién* podía hacerla, y una tarea de un spec anterior al 039
+puede ser las dos cosas. Los dos ejes se descuentan por separado y siguen vivos en el código —es lo
+que hace legibles los 137 `[M]` de los 35 specs anteriores—, pero a una tarea nueva le queda uno solo,
+porque el otro ya no se escribe.
 
 **Y `Seguimiento` no es donde va todo lo que quedó pendiente.** Cerrar de una vez los seguimientos de
 cuatro specs mostró que de sus 16 ítems, **la mitad no eran tareas** sino deuda de registro — y
-confundirlas es lo que los había dejado abiertos tanto tiempo. Las cuatro clases que no son una tarea,
+confundirlas es lo que los había dejado abiertos tanto tiempo. Las tres clases que no son una tarea,
 con la señal que las delata:
 
 | No es una tarea, es… | La señal | Dónde va |
@@ -189,7 +209,6 @@ con la señal que las delata:
 | una **decisión ya tomada** | está escrita como pendiente y nadie la discute | al lado de lo que decide: la constante, la firma, el módulo |
 | algo **sin dueño** | vive en el seguimiento de un spec ya cerrado | [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues), que es la única fuente que este repo declara |
 | **otro spec** | otro spec ya la absorbió, a veces cambiando el enfoque | se cierra citando al spec que la absorbió |
-| algo **que no se cierra leyendo código** | pide oído, ojo o navegador | se queda, con `[M]` y el motivo escrito al lado |
 
 La señal más barata de todas: **una tarea anotada en cuatro seguimientos distintos ya no es de nadie.**
 `PlacedPiece.notes` estaba en los seguimientos del 001, el 007, el 009 y el 010, y cada spec la
