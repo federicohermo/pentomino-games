@@ -34,7 +34,7 @@ import { readSpecStatus } from '../../mcp-server/src/specs.ts';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const MAPA = JSON.parse(readFileSync(join(RAIZ, 'specs', 'mapa.json'), 'utf8')) as Record<string, {
-  issue: number; carpeta: string; fecha: string; estado: string; titulo: string;
+  issue: number; carpeta: string; fecha: string; estado: string; titulo: string; origen?: number[];
 }>;
 const IDS = Object.keys(MAPA);
 
@@ -117,6 +117,27 @@ describe('specs/mapa.json es el registro, y se verifica solo', () => {
       .map(([n, ids]) => `#${n} ← ${ids.join(', ')}`);
 
     expect(repetidos, `issues repetidos:\n${repetidos.join('\n')}`).toEqual([]);
+  });
+
+  it('ningún `origen` apunta al issue de otro spec', () => {
+    // Un spec **no salda a otro spec**: para eso está `Superado`, y confundirlos haría
+    // que cerrar uno cerrara al otro — el `Closes #N` del PR no distingue.
+    //
+    // **Va acá y no en el bloque de red**, aunque el `tasks.md` del 044 pedía los tres
+    // `origen` juntos adentro del `runIf`: esto se verifica **contra el mapa mismo**, que
+    // es la partición que el encabezado de este archivo declara. Metido allá se saltearía
+    // sin `gh`, o sea justo donde corre la CI, y un gate que no necesita red no tiene por
+    // qué heredar el motivo por el que otro se apaga.
+    const deSpec = new Map(IDS.map((id) => [MAPA[id].issue, id]));
+    const mal = IDS.flatMap((id) => (MAPA[id].origen ?? [])
+      .filter((n) => deSpec.has(n))
+      .map((n) => `${id}: declara saldar #${n}, que es el issue del spec ${deSpec.get(n)}`));
+
+    expect(
+      mal,
+      '`origen` es deuda que el spec salda, no otro spec. Un spec que reemplaza a otro se\n' +
+      `dice con el estado \`Superado\` del reemplazado:\n${mal.join('\n')}`,
+    ).toEqual([]);
   });
 });
 
@@ -222,6 +243,45 @@ describe.runIf(REMOTO !== null)('el mapa dice lo mismo que el issue', () => {
     });
 
     expect(distintos, `títulos que no coinciden:\n${distintos.join('\n')}`).toEqual([]);
+  });
+
+  /*
+   * El gate del `origen` (spec 044), y **no cuesta una llamada de red más**: lee del
+   * mismo `Map` que los tres tests de arriba. Que siga siendo una sola llamada lo mira el
+   * bloque del final de este archivo, porque la forma barata de escribir un gate nuevo es
+   * pedir la lista otra vez y eso duplica el costo sin que nada avise.
+   *
+   * Lo que cierra es la mitad de salida que el 042 no tenía: la deuda entra a Issues sola
+   * —los skills los abren— y no salía nunca. Medido: 4 de los 43 specs nombran un issue de
+   * deuda **en prosa** y 3 de esos 4 siguen abiertos, porque nada podía exigir el
+   * `Closes`. El dato lo pone `origen`; el rojo lo pone esto.
+   */
+  it('el `origen` de un spec que ya no está en vuelo tiene que estar cerrado', () => {
+    // **La partición sale de `enVuelo`, importado.** Un `Propuesto` con su origen abierto
+    // es lo normal —es el estado de este mismo spec mientras se implementa—, así que el
+    // gate sólo mira los que ya aterrizaron. Escribir el conjunto a mano acá es cómo
+    // `publicar-spec.mjs` terminó mirando un `'En curso'` que ya no existía.
+    const debiendo = IDS.filter((id) => !enVuelo(MAPA[id].estado))
+      .flatMap((id) => (MAPA[id].origen ?? [])
+        .filter((n) => remoto.get(n)?.state === 'OPEN')
+        .map((n) => `${id} ("${MAPA[id].estado}"): salda #${n}, y #${n} sigue abierto`));
+
+    expect(
+      debiendo,
+      'Un spec cerrado que declaró saldar un issue y lo dejó abierto. Al PR le faltó un\n' +
+      '`Closes #N` por cada `origen` — el issue del propio spec no es el único que se\n' +
+      `cierra:\n${debiendo.join('\n')}`,
+    ).toEqual([]);
+  });
+
+  it('y cada `origen` es un issue que existe', () => {
+    // El mismo modo de falla que el gate ya cubre para el `issue` del propio spec: un
+    // número tipeado a mano que no apunta a nada se lee igual que uno correcto.
+    const perdidos = IDS.flatMap((id) => (MAPA[id].origen ?? [])
+      .filter((n) => !remoto.has(n))
+      .map((n) => `${id} → #${n}`));
+
+    expect(perdidos, `\`origen\` que apunta a un issue que no existe:\n${perdidos.join('\n')}`).toEqual([]);
   });
 });
 
@@ -500,5 +560,35 @@ describe('la regla del cruce contra el PR vive una sola vez', () => {
       sinUsar,
       'se importa y no se usa: o sobra, o la regla se volvió a escribir al lado.',
     ).toEqual([]);
+  });
+});
+
+/**
+ * El gate del AC5 del spec 044: **el gate del `origen` no agregó una llamada a la red.**
+ *
+ * Es la misma forma que el AC7 del 043 —un test que falla si un literal reaparece— y
+ * existe porque la forma barata de escribir el gate nuevo es pedir la lista de issues otra
+ * vez. `estadosRemotos()` ya la pide entera —68 issues contra un límite de 1000— y el
+ * `Map` está en memoria, así que la segunda llamada no compraría nada y duplicaría el
+ * costo de red de `pnpm verify` sin que nada avise: las dos serían verdes.
+ *
+ * **La aguja se arma en vez de escribirse**, y ésa es la lección que el 043 pagó: su
+ * primera versión cerraba con un `toContain` de un literal que estaba en esa misma línea,
+ * o sea una aserción que no podía fallar. Escribir acá la invocación buscada la
+ * convertiría en la segunda aparición, y este test no podría pasar nunca — la misma falla
+ * dada vuelta.
+ */
+describe('el gate del `origen` no cuesta una llamada de red más', () => {
+  it('la lista de issues se pide exactamente una vez en este archivo', () => {
+    const fuente = readFileSync(fileURLToPath(import.meta.url), 'utf8');
+    const aguja = ["'issue'", "'list'"].join(', ');
+    const veces = fuente.split(aguja).length - 1;
+
+    expect(
+      veces,
+      'La lista de issues se pide más de una vez (o dejó de pedirse). El gate del `origen`\n' +
+      'lee del `Map` que `estadosRemotos()` ya trajo: una segunda consulta duplica el costo\n' +
+      'de red de `pnpm verify` y no compra nada.',
+    ).toBe(1);
   });
 });

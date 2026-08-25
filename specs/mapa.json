@@ -42,5 +42,5 @@
   "041": {"issue":111,"carpeta":"041-un-numero-medido-no-se-copia","fecha":"2026-08-25","estado":"Implementado","titulo":"Spec 041 — Un número medido no se copia"},
   "042": {"issue":112,"carpeta":"042-la-deuda-no-vive-en-el-spec-que-la-pario","fecha":"2026-08-25","estado":"Implementado","titulo":"Spec 042 — La deuda no vive en el spec que la parió"},
   "043": {"issue":131,"carpeta":"043-el-mapa-lo-deriva-la-maquina","fecha":"2026-08-25","estado":"Implementado","titulo":"Spec 043 — El mapa lo deriva la máquina"},
-  "044": {"issue":132,"carpeta":"044-el-issue-que-pario-un-spec-se-cierra-con-el","fecha":"2026-08-25","estado":"Propuesto","titulo":"Spec 044 — El issue que parió un spec se cierra con él"}
+  "044": {"issue":132,"carpeta":"044-el-issue-que-pario-un-spec-se-cierra-con-el","fecha":"2026-08-25","estado":"Propuesto","titulo":"Spec 044 — El issue que parió un spec se cierra con él","origen":[127]}
 }
