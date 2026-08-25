@@ -40,7 +40,7 @@ Además de lo que pide el eje F del global, en este repo un `tasks.md` nuevo tie
 formato de [`specs/README.md`](../../../specs/README.md#formato-de-una-tarea):
 
 ```markdown
-- [ ] T012 [P] [M] Descripción, con la ruta del archivo que toca
+- [ ] T012 [P] Descripción, con la ruta del archivo que toca
 ```
 
 **Esas tareas se le piden a `spec_status` con el argumento `spec`, no abriendo el archivo.** Acotada
@@ -48,16 +48,25 @@ así, la respuesta trae ese spec solo y suma `citas`: por tarea, los archivos qu
 backticks, con su línea y con su `T0NN` —o `null` en los specs anteriores a la convención—. Pesa
 3.135 bytes de mediana —7.962 el peor— contra los 29.742 del registro entero, y llega parseada, que es
 la diferencia que importa:
-cruzar archivos a ojo sobre el texto crudo es justo donde se escapa el choque del tercer punto.
+cruzar archivos a ojo sobre el texto crudo es justo donde se escapa el choque de dos `[P]`.
 
 Al revisar, verificá:
 
 - **Cada tarea lleva su `T0NN`**, sin duplicados ni saltos, y **los IDs no se renumeraron** respecto
   de la versión anterior del archivo. Renumerar rompe toda referencia que otra tarea le hiciera.
-- **`[M]` está donde corresponde.** El global ya pide que "un AC que solo un humano puede firmar esté
-  marcado como tal: no es material de loop" — `[M]` es cómo se marca acá. Una tarea que dice
-  *escuchar*, *a oído*, *a ojo*, *captura*, *GIF* o *en el navegador* y **no** lleva `[M]` es un
-  hallazgo: sin el marcador, `spec_status` la reporta como trabajo pendiente para siempre.
+- **Ninguna tarea se cierra mirando o escuchando.** El global pide que "un AC que solo un humano puede
+  firmar esté marcado como tal: no es material de loop", y hasta el 039 acá eso se marcaba `[M]`. La
+  medición lo dio vuelta: de **137** casillas `[M]` en **35** specs, sólo **7** se cerraron alguna
+  vez, o sea que el marcador no significaba "espera a una persona" sino "no se va a hacer nunca, pero
+  queda escrito". Así que **una tarea que dice *escuchar*, *a oído*, *a ojo*, *captura*, *GIF* o *en
+  el navegador* es un hallazgo**, y el arreglo es **volverla verificable** —medirla en el DOM, un test
+  con `OfflineAudioContext`, un valor que un gate pueda leer— o **sacarla del `tasks.md`**. Marcarla
+  no es una salida.
+- **Los `[M]` que ya existen no son un hallazgo.** Un spec anterior al 039 puede traerlos y se
+  respetan tal cual: no se reescriben para sacárselos, `spec_status` los sigue descontando de
+  `pendientes` —si dejara de hacerlo, los specs ya cerrados pasarían a deber 137 ítems de un día para
+  el otro— y hasta se le puede corregir la clasificación a una tarea vieja que estaba mal marcada. Lo
+  que no se hace es escribir uno nuevo.
 - **`[P]` no miente.** Dos tareas `[P]` del mismo bloque no pueden tocar el mismo archivo — y eso lo
   contesta `citas`: el choque es un `archivo` que aparece bajo dos `tarea` distintas. Es el hallazgo
   más caro de los tres, porque `spec-implement` las abanica en paralelo y el conflicto aparece recién

@@ -374,4 +374,6 @@ Después borrá las ramas `rev-pr-<N>`, **pero recién después de verificar que
   rebase.
 - **No abre PRs ni ramas de feature.** Trabaja sobre lo que ya está abierto.
 - **No corre la app.** Si un fix toca algo que se ve, la verificación en el DOM la pide el spec y la
-  hace una persona: queda declarada como `[M]`.
+  corre `/spec-implement`, que sí levanta la app: acá queda **declarada en el reporte** como
+  pendiente, con qué habría que medir. Lo que no se hace es anotarla como `[M]` en el `tasks.md` —
+  desde el 039 eso ya no se escribe.

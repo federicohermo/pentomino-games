@@ -163,9 +163,12 @@ Cada agente de carril recibe:
   que se ve, commit por nodo del grafo, push a `origin`, y PR;
 - **la base de cada PR**: el primer spec del carril apunta a `main`; los que le siguen, a la rama del
   spec anterior del mismo carril;
-- **que marque `[x]` solo lo que hizo**, con `spec_write` (`op: "marcar"`). Lo `[M]` queda abierto:
-  pide una persona, y `spec_status` ya lo descuenta. **Esa marca no viaja en el commit del carril**: cae
-  en el registro central y no en su worktree (D1 del spec 033), así que el avance del lote se lee
+- **que marque `[x]` solo lo que hizo**, con `spec_write` (`op: "marcar"`). Si el spec es anterior al
+  039 puede traer tareas `[M]`, que quedan abiertas —piden una persona— y `spec_status` ya las
+  descuenta; de un spec `NNN >= 039` no se espera ninguna, porque no se escriben más: una tarea que
+  sólo se cierra mirando o escuchando es un hallazgo sobre el spec, no una casilla a marcar. **Esa
+  marca no viaja en el commit del carril**: cae en el registro central y no en su worktree (D1 del
+  spec 033), así que el avance del lote se lee
   entero con `spec_status` sin esperar los merges — y a la inversa, no esperes verlo en el diff del PR.
 
 Esperá a que vuelvan todos antes del reporte.
@@ -194,7 +197,9 @@ Playwright que quedó vivo—. Decilo en el reporte: lo cierra el usuario, no vo
 
 - Los carriles, su ancho, y **cuántas de las aristas declaradas resultaron falsas**.
 - **Qué encontró el Paso 2 y qué se decidió** — es el entregable propio de este skill.
-- Por spec: verde o rojo de `pnpm verify`, número de PR, y qué quedó `[M]`.
+- Por spec: verde o rojo de `pnpm verify`, número de PR, y qué quedó abierto — en un spec anterior al
+  039, sus `[M]`; en uno del 039 en adelante, cualquier tarea que no se haya podido cerrar, que ahí ya
+  no hay marcador que la excuse.
 - **El orden de merge, y que un squash obliga a rebasear el carril de abajo.** Los PR apilados dependen
   de la historia de su base.
 

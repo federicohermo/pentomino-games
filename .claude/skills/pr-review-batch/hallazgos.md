@@ -131,7 +131,7 @@ justificarse.
 | 🟡 preexistente que el diff sólo agrava | se arregla **si el archivo ya está tocado por el PR**; ver «preexistente» abajo |
 | 🟡 cuyo fix sería un cambio de diseño más grande que el PR | se declara al `## Seguimiento`, y el texto dice **qué diseño haría falta**, no sólo qué está mal |
 | Fix que una herramienta te bloqueó | **no es un 🟡** — ver «bloqueado» abajo |
-| AC que pide una persona (`[M]`) | no se puede arreglar — se declara pendiente |
+| AC de un spec anterior al 039 que pide una persona (`[M]`) | no se puede arreglar — se declara pendiente. Del 039 en adelante no existe: un AC que pide una persona es un hallazgo sobre el spec, y el arreglo es volverlo verificable |
 
 **Las tres filas de "no se toca" son la lista completa.** Si tu motivo para no aplicar un fix no es
 uno de esos tres —pelea con un AC, pediría rediseñar, o lo cierra una persona—, entonces **no hay

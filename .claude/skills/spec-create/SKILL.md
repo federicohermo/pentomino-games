@@ -88,6 +88,14 @@ Dos cosas que este repo pide y que no son obvias:
 
 - **Cada AC tiene que ser falsificable.** «El gate funciona» no lo es; «con el dato viejo puesto a
   mano, el gate da rojo» sí. Si un AC no se puede ver fallar, no verifica nada.
+- **Y cada tarea tiene que poder cerrarla un agente: no escribas tareas que pidan una persona.** Hasta
+  el 038 se marcaban `[M]` —oído, navegador, captura— y quedaban fuera de `pendientes`. El 039 lo
+  midió: de **137** casillas `[M]` repartidas en **35** specs, sólo **7** se cerraron alguna vez, así
+  que el marcador no significaba «espera a una persona» sino «no se va a hacer nunca, pero queda
+  escrito». La regla que lo reemplaza, y que te toca a vos que sos quien escribe el `tasks.md`:
+  **volverla verificable —medirla en el DOM, un test con `OfflineAudioContext`, un valor que un gate
+  pueda leer— o no anotarla en ningún lado.** Los specs anteriores al 039 conservan sus `[M]` y no se
+  reescriben; los tuyos no llevan ninguno.
 - **Los `X → Y` de `tasks.md` son la única fuente de las dependencias entre specs.** `spec_status` las
   lee de ahí en `cruces`. Escribí los números que la tarea mueve, no una prosa que los rodee.
 
@@ -130,7 +138,9 @@ Con el issue publicado y la rama creada, el trabajo de este skill terminó.
 No es parte de abrir un spec, pero es la otra mitad y se saltea igual de fácil:
 
 1. `spec_status` con el número del spec. **`pendientes` tiene que dar 0** — descuenta las de
-   `## Seguimiento` y las `[M]`, que no bloquean.
+   `## Seguimiento`, que no bloquean, y las `[M]` de los specs anteriores al 039. En un spec tuyo no
+   va a haber ninguna `[M]`: no se escriben más (ver arriba), así que acá `pendientes: 0` quiere decir
+   que se cerró **todo**.
 2. `estado` a `Implementado` en `specs/mapa.json`, y `Closes #N` en el PR.
 3. Lo que salió distinto de lo previsto, **como comentario en el issue**.
 

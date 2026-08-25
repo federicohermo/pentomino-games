@@ -199,7 +199,8 @@ espera de vuelta—:
 - **Criterios de aceptación** — cada uno falsable, con su contraparte en verificación, más el AC
   mecánico y el de no-regresión si hubo superficie compartida.
 - **Estructura** — los cuatro archivos, las secciones canónicas, los `T0NN` sin renumerar, `[P]` que
-  no miente y `[M]` donde hace falta.
+  no miente, y ninguna tarea que sólo se cierre mirando o escuchando: desde el 039 eso se vuelve
+  verificable o no se anota, y ya no se marca `[M]`.
 
 Y este contrato, que es lo propio del batch:
 

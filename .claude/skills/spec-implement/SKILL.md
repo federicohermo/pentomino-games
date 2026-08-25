@@ -1,6 +1,6 @@
 ---
 name: spec-implement
-description: Especialización de /spec-implement para pentomino-games: el paralelismo viene declarado por tarea con [P], y [M] marca lo que ningún agente cierra. Se lee junto con el skill global.
+description: Especialización de /spec-implement para pentomino-games: el paralelismo viene declarado por tarea con [P], y toda tarea de un spec nuevo la cierra un agente. Se lee junto con el skill global.
 ---
 
 # spec-implement — pentomino-games
@@ -20,14 +20,11 @@ trabajo que se pisa"*. En este repo, desde el spec 011, la declaración viene po
 ([`specs/README.md`](../../../specs/README.md#formato-de-una-tarea)):
 
 ```markdown
-- [ ] T012 [P] [M] Descripción, con la ruta del archivo que toca
+- [ ] T012 [P] Descripción, con la ruta del archivo que toca
 ```
 
 - **`[P]`** — no depende de las otras `[P]` de su bloque ni comparte archivo con ellas. Lo escribió
   quien conocía las dependencias reales, al escribir el spec.
-- **`[M]`** — pide una persona: oído, navegador, captura. **Ningún agente la puede cerrar.** No la
-  metas en el grafo y no la pases por `spec_write`: queda abierta a propósito y `spec_status` ya la
-  descuenta.
 - **`T0NN`** — ID estable. Usalo para nombrar nodos y aristas en el `--dry`, que es lo que hace
   revisable el grafo antes de lanzar nada. Es también la dirección con la que se marca: `spec_write`
   toma el ID, no un número de línea.
@@ -38,7 +35,7 @@ su línea. Eso es la materia prima del fake-edge test ya parseada, y acotada pes
 spec, el 021, 7.962— contra los 29.742 del registro entero. `cruces` da los pares `X → Y` que la
 tarea declara **en su propia línea**, no en su prosa de abajo —`de` y `a` son
 string, que en este repo hay un `4,0 → 11,8`— y `proximaId` dice cuál falta de verdad, con
-`Seguimiento`, `[M]` y los specs terminales ya descontados.
+`Seguimiento`, `[M]` —histórico, ver abajo— y los specs terminales ya descontados.
 
 **Seguí usando el fake-edge test sobre los `[P]` declarados, no en su lugar.** Un `[P]` mal puesto es
 un conflicto de escritura que aparece recién al implementar; si el test contradice a la declaración,
@@ -46,6 +43,21 @@ gana el test y **decilo** — es un hallazgo sobre el spec, no un detalle.
 
 Los specs 001–010 son anteriores a la convención y no llevan marcadores: ahí el grafo se deriva como
 dice el global. No los reescribas para agregárselos.
+
+### `[M]` es histórico: se respeta donde está, no se escribe uno nuevo
+
+**Un spec anterior al 039 puede traer tareas marcadas `[M]`** — «pide una persona: oído, navegador,
+captura»—. Cuando te toque implementar uno de ésos, la mecánica no cambió: **no la metas en el grafo y
+no la pases por `spec_write`**, que queda abierta a propósito y `spec_status` ya la descuenta de
+`pendientes`. Si dejara de descontarla, los specs cerrados pasarían a deber trabajo de un día para el
+otro.
+
+**Pero en un spec `NNN >= 039` no hay `[M]` que respetar, porque no se escriben.** Lo midió el propio
+039: de las **137** casillas `[M]` repartidas en **35** specs, sólo **7** se
+cerraron alguna vez. O sea que en la práctica `[M]` no significaba «espera a una persona» sino «no se
+va a hacer nunca, pero queda escrito». La regla que lo reemplaza: **volverlo verificable, o no
+anotarlo en ningún lado.** Si implementando encontrás una tarea que sólo se puede cerrar mirando o
+escuchando, eso es un hallazgo sobre el spec —decilo— y no una casilla nueva para marcar.
 
 ## Antes de arrancar
 
@@ -60,8 +72,9 @@ dice el global. No los reescribas para agregárselos.
 ## Al cerrar
 
 - **Marcar es `spec_write` con `op: "marcar"` y el `T0NN`**, no una edición del archivo. Marcá sólo lo
-  que hiciste. Lo `[M]` queda abierto — es la diferencia entre "falta" y "espera a una persona", y es
-  lo que hace que `spec_status` reporte `pendientes: 0` sin mentir. Lo que la tool garantiza y una
+  que hiciste. En un spec anterior al 039, lo `[M]` queda abierto y es lo que hace que `spec_status`
+  reporte `pendientes: 0` sin mentir; en uno del 039 en adelante no hay `[M]`, así que `pendientes: 0`
+  quiere decir que **todo** se cerró. Lo que la tool garantiza y una
   edición a mano no: **falla** si la tarea no existe o si ya estaba marcada, así que un ID mal tipeado
   se ve en el acto en vez de quedar como un reemplazo que no reemplazó nada; y escribe en el registro
   **central**, no en el worktree de quien la llama, que es lo que hace que dos carriles en paralelo no
