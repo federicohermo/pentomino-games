@@ -53,6 +53,21 @@ export interface EntradaDeMapa {
   estado: string;
   /** El titulo del issue, **verbatim**, para que el gate sea una igualdad de strings. */
   titulo: string;
+  /**
+   * Los issues de deuda que este spec **salda**, si nacio de alguno (spec 044).
+   *
+   * **Saldar, no citar**, y esa diferencia es la que decide si el gate sirve o se apaga
+   * en una semana. Medido: 4 de los 43 specs nombran hoy un issue de deuda en su cuerpo
+   * —033→#58, 035→#97, 042→#53, 043→#125— y el 035 solo **cita** al #97 como contexto de
+   * una medicion que no arregla. Con la lectura ancha, el gate del `origen` daria rojo
+   * sobre un spec correcto; de ahi que se declare a mano en el `**Origen:**` del
+   * `spec.md` y no se derive de un grep.
+   *
+   * **Opcional, y ausente NO es vacio.** Un spec que no nace de un issue no lleva el
+   * campo; `leerMapa` rechaza `origen: []` porque «no tiene origen» ya se dice
+   * omitiendolo, y dos formas de decir lo mismo son la puerta de la desincronizacion.
+   */
+  origen?: number[];
 }
 
 /** El registro entero: `NNN` → su entrada. */
@@ -121,6 +136,38 @@ export const enVuelo = (estado: string): boolean => !CERRADOS.has(estado);
  */
 const CAMPOS: readonly (keyof EntradaDeMapa)[] = ['issue', 'carpeta', 'fecha', 'estado', 'titulo'];
 
+/**
+ * Que `origen` sea una lista de numeros con al menos uno, si esta (spec 044).
+ *
+ * **Fuera de `CAMPOS` porque `CAMPOS` no puede expresarlo**: esa lista son los
+ * requeridos, cada uno con UN tipo escalar esperado, y `origen` es opcional y es un
+ * array. O se valida aparte o no se valida nunca — y «nunca» esta medido: antes del 044,
+ * `origen: 127` entraba al registro **en silencio**, que es el mismo modo de falla que el
+ * 034 midio en `filasDeLog`. El registro acepta algo que nadie puede usar y el error
+ * aparece tres pasos mas alla, cuando el consumidor hace `for…of` sobre un numero.
+ *
+ * El campo se lee como `unknown` a proposito: el `crudo as Mapa` de `leerMapa` es
+ * justamente la afirmacion que esta funcion verifica, asi que confiar en el tipo aca
+ * seria preguntarle al mentiroso.
+ */
+const validarOrigen = (id: string, entrada: EntradaDeMapa): void => {
+  const { origen } = entrada as { origen?: unknown };
+  if (origen === undefined) return;
+  if (!Array.isArray(origen)) {
+    throw new Error(`specs/mapa.json: la entrada ${id} trae \`origen\` y no es una lista.`);
+  }
+  if (origen.length === 0) {
+    // Un array vacio no es «no tiene origen»: eso se dice omitiendo el campo. Aceptar las
+    // dos formas es aceptar que el dia que una se lea y la otra no, nadie se entere.
+    throw new Error(`specs/mapa.json: la entrada ${id} trae \`origen\` vacio: omitilo en vez de vaciarlo.`);
+  }
+  if (origen.some((n: unknown) => typeof n !== 'number')) {
+    // Strings no cruzan: el `Map` de issues esta indexado por numero, asi que un
+    // `"127"` no encuentra al #127 y sale como «el issue no existe», que es mentira.
+    throw new Error(`specs/mapa.json: la entrada ${id} trae un \`origen\` que no es un numero.`);
+  }
+};
+
 export const leerMapa = (json: string): Mapa => {
   let crudo: unknown;
   try {
@@ -145,6 +192,7 @@ export const leerMapa = (json: string): Mapa => {
         throw new Error(`specs/mapa.json: la entrada ${id} no trae \`${campo}\` como ${esperado}.`);
       }
     }
+    validarOrigen(id, entrada);
   }
   return mapa;
 };
@@ -253,7 +301,6 @@ export const traducir = (texto: string, mapa: Mapa, repo: string): string => tex
  */
 export const carpetaExistente = (carpetas: string[], id: string): string | null =>
   carpetas.find((c) => c.startsWith(`${id}-`)) ?? null;
-
 /* ── Derivar el mapa desde los PR (spec 043) ──────────────────────────────── */
 
 /**
@@ -404,6 +451,10 @@ export interface Derivacion {
  * - **`fecha`**, porque es cuando se escribio el spec, no cuando aterrizo.
  * - **`issue`**, porque es la clave que une las dos fuentes: derivarlo seria derivar de
  *   si mismo.
+ * - **`origen`** (spec 044), porque es una declaracion de intencion —que issue de deuda
+ *   SALDA este spec— y no una consecuencia observable: GitHub no distingue «lo cierra»
+ *   de «lo menciona». Lo conserva el spread de abajo, que es tambien por que agregar el
+ *   campo no costo tocar esta funcion: lo que la derivacion no nombra, no lo pierde.
  * - **Las entradas que no estan.** Un spec entra al registro con `publicar-spec.mjs
  *   crear` y no de otra forma. Un PR cuya rama nombra un `NNN` ausente del mapa no
  *   agrega nada: es una rama mal nombrada o un spec sin publicar, y las dos veces

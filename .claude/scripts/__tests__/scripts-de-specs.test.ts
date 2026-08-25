@@ -88,8 +88,43 @@ describe('leerMapa', () => {
   it('una entrada completa pasa', () => {
     expect(() => leerMapa(JSON.stringify(MAPA_DE(['001', 63])))).not.toThrow();
   });
-});
 
+  /*
+   * Y grita ante un `origen` mal formado, que es el campo que el 044 agrega.
+   *
+   * Los tres casos se midieron ANTES de escribir la validacion, sobre el mapa real: los
+   * tres **pasaban en silencio**. `CAMPOS` es una lista de requeridos con un tipo escalar
+   * esperado, asi que un campo opcional que es un array queda afuera por construccion — o
+   * se valida aparte o no se valida nunca. Es el mismo modo de falla que el 034 midio: el
+   * registro acepta algo que nadie puede usar y el error sale tres pasos mas alla.
+   *
+   * El vacio esta en la lista a proposito. No es un dato roto: es una SEGUNDA forma de
+   * decir «no tiene origen», y la primera es omitir el campo. Dos formas de decir lo
+   * mismo es la puerta de la desincronizacion.
+   */
+  const CON_ORIGEN = (origen: unknown) =>
+    JSON.stringify({ '044': { ...ENTRADA('044', 132), origen } });
+
+  it.each<[string, unknown, string]>([
+    ['un numero suelto', 127, 'no es una lista'],
+    ['una lista de strings', ['127'], 'no es un numero'],
+    ['una lista vacia', [], 'vacio'],
+  ])('grita ante un `origen` que es %s', (_caso, origen, esperado) => {
+    expect(() => leerMapa(CON_ORIGEN(origen))).toThrow(esperado);
+  });
+
+  it('y un `origen` bien formado pasa, con el campo entero', () => {
+    const mapa = leerMapa(CON_ORIGEN([127, 124]));
+
+    expect(mapa['044'].origen).toEqual([127, 124]);
+  });
+
+  it('la entrada SIN `origen` sigue pasando: el campo es opcional', () => {
+    // Los 43 specs de hoy no lo llevan y no se reescriben (Desviacion 2). Si esto
+    // fallara, agregar el campo seria una migracion en vez de un campo nuevo.
+    expect(leerMapa(JSON.stringify(MAPA_DE(['001', 63])))['001'].origen).toBeUndefined();
+  });
+});
 /**
  * El `specs-por-estado.mjs` de cada skill: **una copia por skill, y las dos iguales**.
  *
@@ -412,6 +447,26 @@ describe('`derivarMapa` deduce el estado en vez de recordarlo', () => {
       id: '043', campo: 'titulo', de: 'Un titulo que alguien edito y el mapa no se entero', a: 'Spec 043',
     });
     expect(derivado['043'].titulo).toBe('Spec 043');
+  });
+
+  it('conserva el `origen`, que es lo que hace que el 044 no le cueste una lista', () => {
+    // El cruce que los dos specs dejaron escrito en prosa: el AC5 del 043 enumera lo que
+    // sale identico —`issue`, `carpeta`, `fecha`— y `origen` no esta en esa lista, asi
+    // que al que aterrizara segundo le tocaba agregarlo. Aterrizo segundo el 044, y no
+    // hubo nada que agregar: quien lo conserva es el `{ ...entrada }` de `derivarMapa`,
+    // que copia todo lo que la derivacion no nombra.
+    //
+    // El test existe porque esa propiedad es un efecto del spread y no una decision
+    // escrita: cambiar el spread por un literal de cinco campos —una simplificacion que
+    // se ve razonable— borraria el vinculo spec↔issue de deuda en el push siguiente a
+    // `main`, en verde y sin diff que lo delate mas que la linea que desaparece.
+    const mapa = MAPA_DE_PRUEBA();
+    mapa['043'].origen = [125];
+
+    const { mapa: derivado } = derivarMapa(mapa, ISSUES_DE_PRUEBA, PRS_DE_PRUEBA());
+
+    expect(derivado['043'].origen).toEqual([125]);
+    expect(derivado['038'].origen).toBeUndefined();
   });
 
   it('a `Descartado` y `Superado` no los mueve un PR mergeado', () => {
