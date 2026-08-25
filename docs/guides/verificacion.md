@@ -21,6 +21,29 @@ de `verify` ya costó dos trampas, y enumerarla en el YAML crearía un segundo l
 evidencia no es hipotética — el 029 le cambió `test` por `suite`, y un workflow con la lista habría
 seguido en verde sin el gate de coverage.
 
+### Desde el 043 los workflows son dos, y el segundo no verifica: escribe
+
+`.github/workflows/mapa.yml` corre sólo en el push a `main` y **deriva `specs/mapa.json`** desde los
+PR y los issues, commiteándolo si cambió. Tarda ~20 s contra los 87 s de `verify`, porque no instala
+dependencias ni baja Chromium: `.claude/scripts/lib/specs.ts` no importa nada y node corre el `.ts`
+directo.
+
+Ese mismo spec le dio a `verify` los permisos que le faltaban —`issues: read` y `pull-requests: read`,
+más `GH_TOKEN`—, y con eso **el gate del mapa deja de saltearse en la CI**. Estaba salteándose desde
+que existe: el runner trae `gh`, pero el token sólo tenía `Contents: read`, así que las dos consultas
+fallaban y el gate declaraba «sin `gh` disponible» — 7 de sus 17 tests, en verde.
+
+**El token va sólo en el trigger `pull_request`, y es deliberado.** En el push a `main` de un merge de
+spec conviven un mapa que todavía dice `Propuesto` y un PR ya mergeado —la condición que el gate
+declara mentira— porque `mapa.yml` corre **en paralelo** con `verify`, no antes. Con el token puesto
+en los dos triggers, cada merge de spec dejaría `main` en rojo con un rojo ya arreglado. En el PR el
+gate confirma; en `main` la Action corrige. El comentario del YAML tiene las dos alternativas que se
+descartaron.
+
+Lo que sigue salteándose en la CI es el tercer bloque del gate, el que exige `pendientes: 0` a los
+specs cerrados: necesita `specs/` hidratado, que desde el 034 es caché. Se saltea **declarándolo**,
+que es la diferencia entre un gate que no aplica y uno que se apagó.
+
 ### Su forma exacta tiene dos cosas que no son cosméticas
 
 `pnpm --filter "{.}" run --parallel "/^(…)$/"`, y las dos se descubrieron fallando en verde:

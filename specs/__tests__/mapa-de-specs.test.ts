@@ -3,7 +3,10 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname, resolve } from 'node:path';
-import { ESTADOS, enVuelo } from '../../.claude/scripts/lib/specs.ts';
+import {
+  ESTADOS, enVuelo, NO_LOS_MUEVE_UN_MERGE, agruparPrsPorSpec, aterrizo, RAMA_DE_SPEC,
+  type PrDeSpec, type IssueDeSpec,
+} from '../../.claude/scripts/lib/specs.ts';
 import { readSpecStatus } from '../../mcp-server/src/specs.ts';
 
 /**
@@ -44,15 +47,6 @@ const IDS = Object.keys(MAPA);
  * existir.
  */
 const estadoDelIssue = (estado: string): 'OPEN' | 'CLOSED' => (enVuelo(estado) ? 'OPEN' : 'CLOSED');
-
-/**
- * Los específicamente terminales: los que **no los mueve un merge**.
- *
- * Quedan fuera del cruce contra el PR y no del cruce contra el issue. Un `Superado`
- * puede tener su PR mergeado —el 004 lo tiene, es el #3— y eso no dice nada de su
- * estado: lo superó otro spec después. Y un `Descartado` puede no tener ninguno.
- */
-const NO_LOS_MUEVE_UN_MERGE: ReadonlySet<string> = new Set(['Descartado', 'Superado']);
 
 describe('specs/mapa.json es el registro, y se verifica solo', () => {
   it('tiene entradas que verificar', () => {
@@ -125,9 +119,6 @@ describe('specs/mapa.json es el registro, y se verifica solo', () => {
   });
 });
 
-/** Lo que `gh` devuelve de cada issue, sin aplanar: dos campos son dos campos. */
-interface Issue { number: number; state: string; title: string }
-
 /**
  * Cuántos issues se piden. **Una lista truncada es peor que ninguna**, y ese es el
  * motivo del número.
@@ -152,14 +143,14 @@ const LIMITE = 1000;
  * puede ser un issue que no existe o uno que no entró, y las dos no se distinguen. «No
  * pude verificar» es la única respuesta cierta, y sale declarada en el reporte.
  */
-const estadosRemotos = (): Map<number, Issue> | null => {
+const estadosRemotos = (): Map<number, IssueDeSpec> | null => {
   try {
     const salida = execFileSync('gh', [
       'issue', 'list', '--repo', 'federicohermo/pentomino-games',
       '--state', 'all', '--limit', String(LIMITE), '--json', 'number,state,title',
     ], { encoding: 'utf8', timeout: 20_000, stdio: ['ignore', 'pipe', 'pipe'] });
 
-    const issues = JSON.parse(salida) as Issue[];
+    const issues = JSON.parse(salida) as IssueDeSpec[];
     if (issues.length >= LIMITE) return null;
     return new Map(issues.map((i) => [i.number, i]));
   } catch {
@@ -192,7 +183,7 @@ it('dice si el gate remoto pudo correr, en vez de callarse', () => {
  * prosa por spec, esto copia dos campos cortos.
  */
 describe.runIf(REMOTO !== null)('el mapa dice lo mismo que el issue', () => {
-  const remoto = REMOTO as Map<number, Issue>;
+  const remoto = REMOTO as Map<number, IssueDeSpec>;
 
   it('cada spec tiene su issue en el repo', () => {
     const perdidos = IDS.filter((id) => !remoto.has(MAPA[id].issue))
@@ -234,11 +225,16 @@ describe.runIf(REMOTO !== null)('el mapa dice lo mismo que el issue', () => {
   });
 });
 
-/** Lo que hace falta de un PR: cuál es y si sigue abierto. */
-interface Pr { number: number; headRefName: string; state: string }
-
 /**
  * Los PR de cada spec, agrupados por su `NNN`, o `null` si no se pudo preguntar.
+ *
+ * **El agrupamiento y el criterio de «aterrizó» ya no viven acá.** Desde el spec 043
+ * salen de `lib/specs.ts`, porque los lee también el derivador que la Action corre en
+ * el push a `main`: éste **confirma** el estado que aquél **escribe**, y dos copias de
+ * la misma regla que se separen dan un gate que confirma un cálculo que ya no es el
+ * suyo, en verde. Lo que queda acá es la consulta y la guarda de truncado.
+ *
+ * Lo de abajo es el porqué de la regla, y se queda porque es la medición que la eligió.
  *
  * ## Por qué la RAMA y no `closedByPullRequestsReferences`
  *
@@ -273,25 +269,19 @@ interface Pr { number: number; headRefName: string; state: string }
  */
 const LIMITE_PR = 1000;
 
-const prsPorSpec = (): Map<string, Pr[]> | null => {
+const prsPorSpec = (): Map<string, PrDeSpec[]> | null => {
   try {
     const salida = execFileSync('gh', [
       'pr', 'list', '--repo', 'federicohermo/pentomino-games',
       '--state', 'all', '--limit', String(LIMITE_PR), '--json', 'number,headRefName,state',
     ], { encoding: 'utf8', timeout: 20_000, maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'pipe'] });
 
-    const prs = JSON.parse(salida) as Pr[];
+    const prs = JSON.parse(salida) as PrDeSpec[];
     // Igual que con los issues: una lista truncada no distingue «este spec no tiene PR»
     // de «su PR no entró en la página», y las dos respuestas son opuestas.
     if (prs.length >= LIMITE_PR) return null;
 
-    const porSpec = new Map<string, Pr[]>();
-    for (const pr of prs) {
-      const id = /^[^/]+\/(\d{3})-/.exec(pr.headRefName)?.[1];
-      if (id === undefined) continue;
-      porSpec.set(id, [...(porSpec.get(id) ?? []), pr]);
-    }
-    return porSpec;
+    return agruparPrsPorSpec(prs);
   } catch {
     return null;
   }
@@ -321,10 +311,10 @@ it('dice si el cruce contra los PR pudo correr, en vez de callarse', () => {
  * El PR es otra cosa: **o está mergeado o no**, y eso no lo escribe nadie a mano.
  */
 describe.runIf(PRS !== null)('el estado del mapa dice lo mismo que el PR', () => {
-  const prs = PRS as Map<string, Pr[]>;
+  const prs = PRS as Map<string, PrDeSpec[]>;
 
-  /** Si el trabajo del spec llegó a `main`. Ver el docblock de `prsPorSpec`. */
-  const aterrizo = (id: string): boolean => (prs.get(id) ?? []).some((pr) => pr.state !== 'OPEN');
+  /** Si el trabajo del spec llegó a `main`. El criterio es el de `lib/specs.ts`. */
+  const aterrizoElSpec = (id: string): boolean => aterrizo(prs.get(id));
 
   /** Los que un merge sí mueve: todos menos `Descartado` y `Superado`. */
   const cruzables = IDS.filter((id) => !NO_LOS_MUEVE_UN_MERGE.has(MAPA[id].estado));
@@ -334,13 +324,13 @@ describe.runIf(PRS !== null)('el estado del mapa dice lo mismo que el PR', () =>
     // sería `[]` y los dos tests de abajo pasarían sin haber mirado nada — que es el
     // «fallar en verde» que este archivo entero persigue.
     expect(cruzables.length).toBeGreaterThan(20);
-    expect(cruzables.filter(aterrizo).length).toBeGreaterThan(20);
+    expect(cruzables.filter(aterrizoElSpec).length).toBeGreaterThan(20);
   });
 
   it('un spec con su PR aterrizado no puede seguir `Propuesto`', () => {
     // La mentira de este spec, exactamente. El trabajo está en `main` y el registro
     // dice que todavía se está pensando.
-    const mentiras = cruzables.filter((id) => enVuelo(MAPA[id].estado) && aterrizo(id))
+    const mentiras = cruzables.filter((id) => enVuelo(MAPA[id].estado) && aterrizoElSpec(id))
       .map((id) => `${id}: el mapa dice "${MAPA[id].estado}" y su PR ` +
         `${(prs.get(id) ?? []).map((p) => `#${p.number}`).join(', ')} ya no está abierto`);
 
@@ -352,7 +342,7 @@ describe.runIf(PRS !== null)('el estado del mapa dice lo mismo que el PR', () =>
   });
 
   it('un spec `Implementado` sin PR aterrizado es la mentira al revés', () => {
-    const mentiras = cruzables.filter((id) => !enVuelo(MAPA[id].estado) && !aterrizo(id))
+    const mentiras = cruzables.filter((id) => !enVuelo(MAPA[id].estado) && !aterrizoElSpec(id))
       .map((id) => `${id}: el mapa dice "${MAPA[id].estado}" y no hay PR suyo cerrado ni mergeado`);
 
     expect(
@@ -417,5 +407,50 @@ describe.runIf(HIDRATADOS.length > 0)('un spec cerrado no debe trabajo', () => {
       'salida es cerrar la casilla, o marcarla como lo que es y volver a publicar el\n' +
       `spec con \`publicar-spec.mjs publicar\`:\n${debiendo.join('\n')}`,
     ).toEqual([]);
+  });
+});
+
+/**
+ * El gate del AC7 del spec 043: **la regla del cruce vive una sola vez.**
+ *
+ * Este archivo tuvo hasta el 043 su propia copia del patrón rama→spec y su propia
+ * construcción del conjunto de estados que un merge no mueve. Mientras fue el único que
+ * los usaba, copiarlos no costaba nada. Desde el 043 los usa también el derivador que la
+ * Action corre en el push a `main`, y ahí el costo aparece entero: **éste confirma el
+ * estado que aquél escribe**, así que dos copias que se separen dan un gate que confirma
+ * un cálculo que ya no es el suyo — en verde, que es el modo de falla que este archivo
+ * entero persigue.
+ *
+ * Un `import` no alcanza para impedirlo: alguien puede importar y además reescribir el
+ * literal al lado. Lo que lo impide es mirar **el texto de este archivo**, que es la
+ * misma técnica con la que `docs/__tests__/claude-md-acotado.test.ts` le cuenta las
+ * líneas a `CLAUDE.md` — verificar sobre el fuente una propiedad que el compilador no
+ * ve.
+ *
+ * Los dos literales prohibidos se **derivan de los valores importados** en vez de
+ * escribirse. No es elegancia: escribirlos acá haría que el test se encontrara a sí
+ * mismo y fallara siempre.
+ */
+describe('la regla del cruce contra el PR vive una sola vez', () => {
+  const FUENTE = readFileSync(fileURLToPath(import.meta.url), 'utf8');
+
+  it('el patrón rama→spec no está escrito acá: se importa', () => {
+    expect(
+      FUENTE.includes(RAMA_DE_SPEC.source),
+      'El patrón volvió a este archivo. Sale de `RAMA_DE_SPEC` en `lib/specs.ts`, que es\n' +
+      'de donde también lo lee `derivar-mapa.mjs`.',
+    ).toBe(false);
+    // La contraparte: que no esté copiado no sirve si además dejó de usarse el de allá.
+    expect(FUENTE).toContain('agruparPrsPorSpec');
+  });
+
+  it('ni se vuelve a construir el conjunto de estados que un merge no mueve', () => {
+    const construccion = `new Set([${[...NO_LOS_MUEVE_UN_MERGE].map((e) => `'${e}'`).join(', ')}])`;
+
+    expect(
+      FUENTE.includes(construccion),
+      `Volvió a construirse \`${construccion}\` acá. Sale de \`NO_LOS_MUEVE_UN_MERGE\`.`,
+    ).toBe(false);
+    expect(FUENTE).toContain('NO_LOS_MUEVE_UN_MERGE');
   });
 });

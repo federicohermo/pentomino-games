@@ -252,9 +252,24 @@ cada spec la postergaba al siguiente; cerrarla no llevó más de un commit.
    idempotente de verdad (mapea los comentarios por archivo y hace `PATCH`), así que repetirla no
    duplica nada; su `--dry`, en cambio, **no sirve para confirmarlo**: saltea el fetch, así que no ve
    los comentarios que ya existen.
-6. Al mergear, actualizar el estado en [mapa.json](./mapa.json), **cerrar el issue**, y anotar en el
-   issue —como comentario— qué se aprendió si el spec salió distinto de lo previsto. Los dos primeros
-   son la misma cosa vista de dos lados, y el gate del mapa falla si no coinciden.
+6. Al mergear, **anotar en el issue —como comentario— qué se aprendió** si el spec salió distinto de
+   lo previsto. Es lo único que queda a mano: las otras dos mitades del cierre se hacen solas.
+
+> **El estado del mapa y el cierre del issue ya no son tareas, desde el 043.** El issue lo cierra el
+> `Closes #N` del PR —medido: los cinco issues de los specs 038 a 042 se cerraron **un segundo
+> después** del merge—, y el `estado` de [mapa.json](./mapa.json) lo deriva
+> [`.github/workflows/mapa.yml`](../.github/workflows/mapa.yml) en el push a `main`, con
+> `.claude/scripts/derivar-mapa.mjs`.
+>
+> No era disciplina floja: el gate del 038 tiene dos tests en espejo —un PR aterrizado con el mapa en
+> `Propuesto` es mentira, y un `Implementado` sin PR aterrizado es la mentira al revés— y juntos
+> **prohíben actualizar el mapa adentro del PR que lo justifica**. El paso sólo podía ocurrir en un
+> commit posterior escrito a mano en `main`, y por eso los specs 038 a 042 se desincronizaron los
+> cinco. El estado de un spec no es un dato que alguien escribe: es una consecuencia de si su PR
+> aterrizó, y eso no lo escribe nadie.
+>
+> Se puede correr a mano —`node .claude/scripts/derivar-mapa.mjs`, o con `--verificar` para que no
+> escriba y salga 1 si escribiría—, pero no hace falta.
 
 **Los pasos 5 y 6 son uno solo para el gate.** Desde el 038 el mapa se cruza contra el PR —que está
 mergeado o no, y eso no lo escribe nadie a mano— y contra los `pendientes` del spec: un spec cerrado

@@ -172,9 +172,9 @@ así — eso vive en los comentarios, no en la salida de una tool.
 **Trabajo planificado:** desde el spec 034 cada spec **es un issue**, y
 [specs/mapa.json](./specs/mapa.json) —lo que se commitea de `specs/` son él, el `README.md` y los
 dos gates de `specs/__tests__/`, y ninguno es un spec— es el **mapa spec↔issue** y el estado de cada
-uno. Las dependencias entre specs no se declaran: las calcula `spec_status` en `cruces`, leyendo los
-`X → Y` de cada `tasks.md`. Y el porqué de cada decisión vive como comentario en el issue de su
-spec. Son la única fuente: no se duplican acá para que no se desactualicen.
+uno. **Su `estado` lo deriva `mapa.yml`** en el push a `main` desde el 043: el gate del 038 prohíbe
+tocarlo dentro del PR que lo justifica. Las dependencias tampoco: las calcula `spec_status` en
+`cruces`, leyendo los `X → Y` de cada `tasks.md`. El porqué de cada decisión, en el issue de su spec.
 
 **La deuda sin spec vive en [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues)**,
 no en un archivo —ni, desde el 042, en el `## Seguimiento` del spec que la parió—. `deuda.md` era un

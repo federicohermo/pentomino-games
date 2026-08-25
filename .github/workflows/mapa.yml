@@ -1,0 +1,86 @@
+# El registro se deriva, no se recuerda (spec 043).
+#
+# `specs/mapa.json` dijo `Propuesto` sobre CINCO specs mergeados —038 a 042—, con sus cinco issues
+# cerrados y sus cinco PR en `main`. No fue un descuido de una vez: el gate del spec 038 tiene dos
+# tests que se miran en espejo —un PR aterrizado con el mapa en `Propuesto` es mentira, y un
+# `Implementado` sin PR aterrizado es la mentira al reves— y juntos **prohiben actualizar el mapa
+# adentro del PR que lo justifica**. No hay ningun commit de ese PR que deje las dos cosas ciertas,
+# asi que el paso queda para un commit posterior, a mano, en `main` — el que se olvida.
+#
+# La salida no es acordarse mejor: es que el estado deje de ser una afirmacion humana. Un PR aterrizo
+# o no, y eso no lo escribe nadie. Este workflow lo calcula y lo commitea; el gate del 038 queda como
+# confirmacion de un calculo, no como recordatorio de una tarea.
+#
+# Lo que este workflow NO hace, a proposito:
+#
+#   - **No cierra issues**, y por eso no pide `issues: write`. Medido sobre los specs 038 a 042: sus
+#     cinco issues se cerraron UN SEGUNDO despues del merge de su PR, solos, por el `Closes #N` del
+#     cuerpo. Esa mitad ya es automatica.
+#   - **No corre `pnpm verify`.** Eso lo hace `verify.yml` sobre el mismo push. Este hace una cosa, y
+#     por eso tarda ~20 s contra los 87 s de aquel: no instala dependencias ni baja Chromium.
+#   - **No hidrata `specs/`.** El tercer bloque del gate del 038 —«ningun spec cerrado tiene
+#     pendientes > 0»— necesita los `tasks.md`, que son cache desde el 034. Sigue salteandose, y
+#     sigue declarandolo.
+name: mapa
+
+on:
+  push:
+    branches: [main]
+
+# `contents: write` porque commitea. Los otros dos son de lectura y son lo que le faltaba a la CI
+# para poder preguntar: el default del repo es `read` a secas —`default_workflow_permissions`— asi
+# que todo permiso hay que declararlo, y el log de cada corrida imprime los efectivos.
+permissions:
+  contents: write
+  issues: read
+  pull-requests: read
+
+# Dos corridas escribiendo el mismo archivo se pisan, y la segunda fallaria al pushear sobre un
+# `main` que se movio. Se encolan en vez de cancelarse: la que ya arranco esta a punto de dejar el
+# registro al dia, y cancelarla no ahorra nada que importe.
+concurrency:
+  group: mapa
+  cancel-in-progress: false
+
+jobs:
+  derivar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # La misma version EXACTA que `verify.yml`, por el mismo motivo que alla: `22` a secas resuelve
+      # a la ultima 22.x del dia. Y no hace falta `pnpm install`: `lib/specs.ts` no importa nada
+      # —cero lineas de `import`— y `lib/gh.ts` importa solo `node:child_process` y `node:fs`, asi
+      # que node corre el `.ts` directo por type stripping y no hay `node_modules` que traer.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.18.0
+
+      # Si las listas de `gh` vuelven truncadas, el script sale 1 sin escribir y el job falla. Es lo
+      # correcto: en una lista cortada «este spec no tiene PR» y «su PR no entro en la pagina» no se
+      # distinguen, y derivar sobre eso pondria en `Propuesto` a todo spec que quedo afuera.
+      - name: Derivar specs/mapa.json desde los PR y los issues
+        run: node .claude/scripts/derivar-mapa.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      # `if` y no `&&`: los pasos corren con `bash -e`, y `git diff --quiet ... && exit 0` devuelve 1
+      # cuando SI hay cambios, o sea que el paso fallaria justo en el caso que tiene trabajo.
+      #
+      # Se pushea `HEAD:main` porque el checkout de un evento `push` deja el HEAD desprendido. Si
+      # `main` se movio mientras tanto el push falla, y falla fuerte: la corrida siguiente vuelve a
+      # derivar sobre el `main` nuevo, asi que el registro se pone al dia igual.
+      - name: Commitear si el mapa cambio
+        run: |
+          if git diff --quiet specs/mapa.json; then
+            echo "el mapa ya estaba al dia: no hay nada que commitear"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add specs/mapa.json
+          git commit -m "El mapa se pone al dia con lo que los PR ya decidieron
+
+          Derivado por .github/workflows/mapa.yml (spec 043). El estado de un spec es
+          una consecuencia de si su PR aterrizo, no un dato que alguien escribe."
+          git push origin HEAD:main
