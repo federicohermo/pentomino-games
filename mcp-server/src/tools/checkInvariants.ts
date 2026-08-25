@@ -54,6 +54,8 @@ const inputSchema = z.object({
 
 export const checkInvariants = defineTool({
   name: 'check_invariants',
+  title: 'Chequear los invariantes',
+  annotations: { readOnlyHint: true, openWorldHint: false },
   description:
     'Corre los seis chequeos del modelo y devuelve cuáles pasan, con contraejemplos. El espacio ' +
     'del modelo son 12 piezas × 4 rotaciones × reflexión = 96 orientaciones, y cada chequeo ' +

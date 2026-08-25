@@ -21,6 +21,12 @@ import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/serv
  *
  * `ToolAnnotations` se IMPORTA del SDK en vez de redeclararse: una copia local no
  * ve el hint que el protocolo agregue manana.
+ *
+ * **`openWorldHint: false` en las seis, y el porque se dice ACA una sola vez**: el
+ * dominio de entidades de este server es CERRADO —doce piezas, un `src/`, un
+ * `specs/`—, que es exactamente la propiedad que lo hace confiable y que hasta
+ * ahora solo estaba dicha en prosa. Repetir el motivo tool por tool seria escribir
+ * seis veces lo que el campo ya dice.
  */
 
 /** Lo que escribe un archivo de tool: el handler ya recibe los argumentos tipados. */

@@ -40,6 +40,9 @@ const inputSchema = z.object({
  */
 export const crearSpecStatus = (specsDir: string) => defineTool({
   name: 'spec_status',
+  title: 'Estado de los specs',
+  // Mismo caso que `find_symbol`: lee `specs/` del disco y no lo modifica.
+  annotations: { readOnlyHint: true, openWorldHint: false },
   description:
     'Estado del trabajo planificado: por spec, su estado en specs/mapa.json, su issue, cuántas tareas ' +
     'están marcadas sobre el total y cuál es la próxima que de verdad falta. Usar en lugar de leer el ' +
