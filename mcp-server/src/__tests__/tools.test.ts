@@ -989,8 +989,11 @@ describe('spec_status y spec_write — sobre un registro fabricado', () => {
   }
 
   test('sin `spec` vienen todos y las citas NO viajan', () => {
-    // Medido sobre el repo real: las citas son 84.097 bytes contra los 29.742
-    // que la respuesta ya pesa, para una lectura que siempre es sobre UN spec.
+    // Medido sobre los 33 specs del repo real al 2026-08-23: las citas eran
+    // 84.097 bytes contra los 29.742 que la respuesta ya pesaba, para una lectura
+    // que siempre es sobre UN spec. La fecha va porque los dos numeros se
+    // movieron: hoy los mide la nota, y el test de abajo verifica que los mida
+    // del lado correcto.
     con((_raiz, status) => {
       const r = call(status, {});
       const specs = r.specs as { dir: string; enDisco: string | null; tareas: { citas?: unknown[]; cruces: unknown[] } | null }[];

@@ -6,10 +6,17 @@ import { SPECS_DIR } from './specsDir.ts';
 /**
  * Las `citas` se piden, no vienen puestas.
  *
- * Medido sobre los 33 specs de hoy: la respuesta entera pesa **29.742 bytes** y
- * las citas suman **84.097** —o sea que ponerlas la lleva a **3,8x**— para una
- * lectura que siempre se hace sobre UN spec. Acotada, la respuesta mediana son
- * 3.135 bytes y el peor spec del repo —el 021— **7.962**.
+ * Medido sobre los **33 specs del 2026-08-23**, que es cuando se tomo la
+ * decision: la respuesta entera pesaba 29.742 bytes y las citas sumaban 84.097
+ * —o sea que ponerlas la llevaba a 3,8x— para una lectura que siempre se hace
+ * sobre UN spec. Acotada, la respuesta mediana eran 3.135 bytes y el peor spec
+ * del repo —el 021— 7.962.
+ *
+ * La fecha va escrita porque **ninguno de esos numeros vale hoy** y el comentario
+ * se leia como si valieran: seis specs mas y el 035, que saco los registros
+ * largos de los `tasks.md`, los movieron en direcciones contrarias. El numero de
+ * hoy lo mide la nota, sobre la consulta que se este contestando (spec 041). Lo
+ * que sigue en pie es la decision; lo que caduco es la aritmetica.
  *
  * Se OMITE el campo en vez de mandarlo vacio: un `citas: []` se lee como "esta
  * tarea no nombra ningun archivo", que es falso, y una respuesta que miente
