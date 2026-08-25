@@ -90,7 +90,7 @@ Dos cosas que este repo pide y que no son obvias:
   mano, el gate da rojo» sí. Si un AC no se puede ver fallar, no verifica nada.
 - **Y cada tarea tiene que poder cerrarla un agente: no escribas tareas que pidan una persona.** Hasta
   el 038 se marcaban `[M]` —oído, navegador, captura— y quedaban fuera de `pendientes`. El 039 lo
-  midió: de **137** casillas `[M]` repartidas en **35** specs, sólo **7** se cerraron alguna vez, así
+  midió: de **136** casillas `[M]` repartidas en **35** specs, sólo **6** se cerraron alguna vez, así
   que el marcador no significaba «espera a una persona» sino «no se va a hacer nunca, pero queda
   escrito». La regla que lo reemplaza, y que te toca a vos que sos quien escribe el `tasks.md`:
   **volverla verificable —medirla en el DOM, un test con `OfflineAudioContext`, un valor que un gate

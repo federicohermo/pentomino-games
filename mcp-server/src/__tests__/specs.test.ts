@@ -57,8 +57,8 @@ const MARCADAS = `# Tareas — Con ID y marcadores
 /**
  * La forma de todo spec escrito desde el 039: **ni una sola `[M]`**.
  *
- * El 039 derogó el marcador con la medición que lo desmiente —137 casillas `[M]` en
- * 35 specs y sólo 7 cerradas alguna vez—, así que la regla pasó a ser volver la tarea
+ * El 039 derogó el marcador con la medición que lo desmiente —136 casillas `[M]` en
+ * 35 specs y sólo 6 cerradas alguna vez—, así que la regla pasó a ser volver la tarea
  * verificable o no anotarla. El descuento sigue en el código para los 35 que ya están
  * en disco; acá no tiene nada que descontar, y eso es lo que este fixture fija.
  */

@@ -53,7 +53,7 @@ no la pases por `spec_write`**, que queda abierta a propósito y `spec_status` y
 otro.
 
 **Pero en un spec `NNN >= 039` no hay `[M]` que respetar, porque no se escriben.** Lo midió el propio
-039: de las **137** casillas `[M]` repartidas en **35** specs, sólo **7** se
+039: de las **136** casillas `[M]` repartidas en **35** specs, sólo **6** se
 cerraron alguna vez. O sea que en la práctica `[M]` no significaba «espera a una persona» sino «no se
 va a hacer nunca, pero queda escrito». La regla que lo reemplaza: **volverlo verificable, o no
 anotarlo en ningún lado.** Si implementando encontrás una tarea que sólo se puede cerrar mirando o
