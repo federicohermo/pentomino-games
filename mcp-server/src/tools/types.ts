@@ -1,10 +1,10 @@
 import type { z } from 'zod';
-import type { CallToolResult } from '@modelcontextprotocol/server';
+import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/server';
 
 /**
- * El contrato de una tool: nombre, descripcion, schema y handler COLOCADOS en un
- * solo archivo. Agregar una tool es un archivo nuevo mas una linea en
- * `tools/index.ts`; el entrypoint no se toca y no hay ningun `switch`.
+ * El contrato de una tool: nombre, titulo, anotaciones, descripcion, schema y
+ * handler COLOCADOS en un solo archivo. Agregar una tool es un archivo nuevo mas
+ * una linea en `tools/index.ts`; el entrypoint no se toca y no hay ningun `switch`.
  *
  * Lo que NO hay aca es una capa de validacion de argumentos: la hace el SDK
  * contra el schema de zod antes de llamar al handler. Es la diferencia con el
@@ -12,10 +12,29 @@ import type { CallToolResult } from '@modelcontextprotocol/server';
  * algo plausible en vez de fallar.
  */
 
+/**
+ * `title` y `annotations` van OPCIONALES a proposito. Con un campo requerido, el
+ * commit que amplia el contrato no compila hasta que las seis tools esten hechas,
+ * y tres commits chicos se vuelven uno grande. Quien exige que ninguna se lo
+ * saltee es el test de `__tests__/tools.test.ts`, no el tipo — y ese test cubre
+ * ademas la tool numero siete, que es el modo de falla real.
+ *
+ * `ToolAnnotations` se IMPORTA del SDK en vez de redeclararse: una copia local no
+ * ve el hint que el protocolo agregue manana.
+ *
+ * **`openWorldHint: false` en las seis, y el porque se dice ACA una sola vez**: el
+ * dominio de entidades de este server es CERRADO —doce piezas, un `src/`, un
+ * `specs/`—, que es exactamente la propiedad que lo hace confiable y que hasta
+ * ahora solo estaba dicha en prosa. Repetir el motivo tool por tool seria escribir
+ * seis veces lo que el campo ya dice.
+ */
+
 /** Lo que escribe un archivo de tool: el handler ya recibe los argumentos tipados. */
 export interface ToolSpec<S extends z.ZodType> {
   name: string;
   description: string;
+  title?: string;
+  annotations?: ToolAnnotations;
   inputSchema: S;
   run: (args: z.output<S>) => CallToolResult;
 }
@@ -24,12 +43,14 @@ export interface ToolSpec<S extends z.ZodType> {
 export interface ToolDef {
   name: string;
   description: string;
+  title?: string;
+  annotations?: ToolAnnotations;
   inputSchema: z.ZodType;
   run: (args: unknown) => CallToolResult;
 }
 
 /**
- * Borra el parametro de tipo del schema para que las cuatro tools entren en un
+ * Borra el parametro de tipo del schema para que las seis tools entren en un
  * mismo array.
  *
  * El `parse` de adentro no es una segunda capa de validacion: el SDK ya valido
@@ -41,6 +62,8 @@ export function defineTool<S extends z.ZodType>(spec: ToolSpec<S>): ToolDef {
   return {
     name: spec.name,
     description: spec.description,
+    title: spec.title,
+    annotations: spec.annotations,
     inputSchema: spec.inputSchema,
     run: (args: unknown) => spec.run(spec.inputSchema.parse(args)),
   };

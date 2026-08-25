@@ -48,6 +48,10 @@ const inputSchema = z.object({
 
 export const findSymbol = defineTool({
   name: 'find_symbol',
+  title: 'Ubicar un símbolo',
+  // `readOnlyHint` habla de si la tool MODIFICA su entorno, no de si toca el
+  // filesystem: ésta lee `src/` del disco y construye el índice en la consulta.
+  annotations: { readOnlyHint: true, openWorldHint: false },
   description:
     'Dónde está definido un símbolo de src/ y qué archivos lo importan. Usar EN LUGAR de grep para ' +
     'ubicar una función, una constante o un tipo: devuelve archivo y línea, la firma en una sola ' +

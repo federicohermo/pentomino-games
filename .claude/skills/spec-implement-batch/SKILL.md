@@ -53,10 +53,12 @@ Para separarlos, **leé la tarea y su cita de línea**: las devuelve `spec_statu
 (`{tarea, archivo, linea}` — `PiecePalette.tsx:36`, `Board.tsx:132`). Regiones lejanas del mismo
 archivo son conflicto barato; la misma función, arista.
 
-`citas` **sólo viene al pedir un spec por vez**: las de los 33 pesan 84.097 bytes contra los 29.742 de
-la respuesta entera —la llevan a 3,8×—, así que el listado no las trae. Acotada a un spec la respuesta
-baja de 29.742 bytes a 3.135 de mediana —7.962 el peor, que es el 021—, y la matriz de archivos de un
-lote sale de una consulta por spec en vez de una sola grande.
+`citas` **sólo viene al pedir un spec por vez**: las de todos pesan varias veces lo que pesa la
+respuesta entera, así que el listado no las trae. **Cuántas veces lo dice la nota** de esa misma
+respuesta, medido sobre la consulta que acabás de hacer y no sobre una constante escrita — el número
+crece con cada spec nuevo, así que cualquiera copiado acá estaría viejo. Acotada a un spec la
+respuesta baja a una fracción, y la matriz de archivos de un lote sale de una consulta por spec en vez
+de una sola grande.
 
 ---
 

@@ -166,7 +166,7 @@ así — eso vive en los comentarios, no en la salida de una tool.
 | Verificación | [docs/guides/verificacion.md](./docs/guides/verificacion.md) | `verify` entero: los cuatro nodos, las dos pasadas de `suite`, el umbral 100, los dos proyectos de Vitest y los dos carriles de Markdown |
 | Convenciones | [docs/guides/conventions.md](./docs/guides/conventions.md) | Organización de `src/`, TypeScript, geometría, estado, comentarios |
 | Troubleshooting | [docs/guides/troubleshooting.md](./docs/guides/troubleshooting.md) | Errores reales ya pisados en este repo |
-| MCP server de dominio | [docs/guides/mcp-domain.md](./docs/guides/mcp-domain.md) | Las seis tools: cinco que ejecutan el dominio o lo leen, y la que escribe |
+| MCP server de dominio | [docs/guides/mcp-domain.md](./docs/guides/mcp-domain.md) | Las seis tools —cinco que ejecutan el dominio o lo leen, y la que escribe— y el resource `pentomino://constantes`, que no se llama como una tool |
 | Deploy | [docs/infra/deploy.md](./docs/infra/deploy.md) | Netlify, `publish = "dist"`, versión de Node |
 
 **Trabajo planificado:** desde el spec 034 cada spec **es un issue**, y

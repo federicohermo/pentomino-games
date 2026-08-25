@@ -237,6 +237,8 @@ function timeline(sequence: Sequence, bpm: number, cycles: number): Hit[] {
 
 export const simulateBoard = defineTool({
   name: 'simulate_board',
+  title: 'Simular el tablero',
+  annotations: { readOnlyHint: true, openWorldHint: false },
   description:
     'Qué suena un tablero dado, sin escucharlo. Usar en lugar de leer el scheduler y recorrer el ' +
     'lookahead a mano: valida cada colocación con las mismas funciones que la app, arma la secuencia ' +

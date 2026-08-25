@@ -30,11 +30,12 @@ es una sola: `mcp-server/` importa de `src/`, nunca al revés.**
 ```text
 mcp-server/
 └── src/
-    ├── index.ts                  entrypoint: serveStdio + registro de tools
+    ├── index.ts                  entrypoint: serveStdio + registro de tools y resources
     ├── pieces.ts                 las 12 letras, derivadas de SHAPES
     ├── render.ts                 ASCII de una pieza (puro)
     ├── specs.ts                  parseo de mapa.json y de los tasks.md, y la escritura del 033
     ├── symbols.ts                índice de símbolos de src/, construido en la consulta
+    ├── resources/                un resource por archivo + el array de index.ts
     ├── tools/                    una tool por archivo + el array de index.ts
     └── __tests__/                node --test, uno por tool + los de parseo y render
 ```
@@ -320,6 +321,7 @@ viven en la carpeta de su rol.** Un `.ts` de capa tiene funciones y nada más.
 | gate que verifica un archivo de la raíz | `__tests__/` en la raíz | `<qué-verifica>.test.ts`, sin importar `src/` |
 | trabajo planificado | `specs/<NNN>-<desc>/` | cuatro archivos, ver [specs/README.md](../../specs/README.md) |
 | tool nueva del MCP server | `mcp-server/src/tools/` | `<tool>.ts` + una línea en `tools/index.ts` |
+| resource nuevo del MCP server | `mcp-server/src/resources/` | `<resource>.ts` + una línea en `resources/index.ts` |
 | regla que el server necesita ejecutar | `src/domain/` | **no** en `mcp-server/`: es un cambio de `src/`, en su propio commit |
 
 **Las carpetas de rol se crean cuando tienen su primer archivo.** No hay `schemas/`, `utils/`, `hooks/`

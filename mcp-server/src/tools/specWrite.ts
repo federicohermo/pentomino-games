@@ -53,6 +53,18 @@ const falla = (motivo: string) => ({ content: [{ type: 'text' as const, text: mo
  */
 export const crearSpecWrite = (specsDir: string) => defineTool({
   name: 'spec_write',
+  title: 'Escribir en un spec',
+  // La ÚNICA tool del server que escribe. Es el hecho que `CLAUDE.md` declara en
+  // prosa —«spec_write … es la única que escribe»— y que acá deja de ser prosa:
+  // varios clientes usan `readOnlyHint` para NO pedir permiso, así que hasta hoy
+  // las cinco que sólo leen pagaban la misma fricción que ésta.
+  // `destructiveHint: false` porque agrega y marca, no borra ni sobrescribe.
+  //
+  // NO lleva `idempotentHint`, y omitir es preferible a afirmar algo falso:
+  // `marcar` FALLA si la tarea ya estaba marcada, así que llamarla dos veces no es
+  // «sin efecto adicional» sino un error, y eso no es idempotencia. Es la misma
+  // política con la que `spec_status` omite las `citas` en vez de mandarlas vacías.
+  annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   description:
     'Escribe en el tasks.md de un spec, y sólo las dos cosas que se escriben: "marcar" pasa una ' +
     'tarea de "- [ ]" a "- [x]", y "seguimiento" agrega una tarea nueva al "## Seguimiento (no ' +

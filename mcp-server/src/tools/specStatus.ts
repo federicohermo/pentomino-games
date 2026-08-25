@@ -6,10 +6,17 @@ import { SPECS_DIR } from './specsDir.ts';
 /**
  * Las `citas` se piden, no vienen puestas.
  *
- * Medido sobre los 33 specs de hoy: la respuesta entera pesa **29.742 bytes** y
- * las citas suman **84.097** —o sea que ponerlas la lleva a **3,8x**— para una
- * lectura que siempre se hace sobre UN spec. Acotada, la respuesta mediana son
- * 3.135 bytes y el peor spec del repo —el 021— **7.962**.
+ * Medido sobre los **33 specs del 2026-08-23**, que es cuando se tomo la
+ * decision: la respuesta entera pesaba 29.742 bytes y las citas sumaban 84.097
+ * —o sea que ponerlas la llevaba a 3,8x— para una lectura que siempre se hace
+ * sobre UN spec. Acotada, la respuesta mediana eran 3.135 bytes y el peor spec
+ * del repo —el 021— 7.962.
+ *
+ * La fecha va escrita porque **ninguno de esos numeros vale hoy** y el comentario
+ * se leia como si valieran: seis specs mas y el 035, que saco los registros
+ * largos de los `tasks.md`, los movieron en direcciones contrarias. El numero de
+ * hoy lo mide la nota, sobre la consulta que se este contestando (spec 041). Lo
+ * que sigue en pie es la decision; lo que caduco es la aritmetica.
  *
  * Se OMITE el campo en vez de mandarlo vacio: un `citas: []` se lee como "esta
  * tarea no nombra ningun archivo", que es falso, y una respuesta que miente
@@ -23,6 +30,16 @@ function sinCitas(s: SpecStatus): SpecStatus {
   delete tareas.citas;
   return { ...s, tareas };
 }
+
+/**
+ * Los bytes que de verdad viajan: `JSON.stringify` compacto, el mismo que arma el
+ * helper `json`. Medir una version indentada seria medir una respuesta que nadie
+ * manda.
+ */
+const bytes = (value: unknown): number => Buffer.byteLength(JSON.stringify(value), 'utf8');
+
+/** Miles con punto, como el resto de la prosa del repo. */
+const miles = (n: number): string => n.toLocaleString('es-AR');
 
 const inputSchema = z.object({
   spec: z.string().optional()
@@ -40,6 +57,9 @@ const inputSchema = z.object({
  */
 export const crearSpecStatus = (specsDir: string) => defineTool({
   name: 'spec_status',
+  title: 'Estado de los specs',
+  // Mismo caso que `find_symbol`: lee `specs/` del disco y no lo modifica.
+  annotations: { readOnlyHint: true, openWorldHint: false },
   description:
     'Estado del trabajo planificado: por spec, su estado en specs/mapa.json, su issue, cuántas tareas ' +
     'están marcadas sobre el total y cuál es la próxima que de verdad falta. Usar en lugar de leer el ' +
@@ -65,10 +85,23 @@ export const crearSpecStatus = (specsDir: string) => defineTool({
     const { specs, totales } = readSpecStatus(specsDir);
 
     if (spec === undefined) {
+      // La nota se MIDE sobre esta consulta en vez de citar dos constantes.
+      // Escritas se movieron —y en direcciones contrarias, por eso el factor
+      // seguia sonando plausible— y nadie lo noto en seis specs: es el problema
+      // que este server dice no tener, un artefacto que alguien tiene que
+      // acordarse de regenerar (spec 041).
+      const acotada = { specs: specs.map(sinCitas), totales };
+      // Los dos objetos ya se arman: la diferencia es una resta, no un recorrido.
+      const pesan = bytes({ specs, totales }) - bytes(acotada);
+      const respuesta = bytes(acotada);
+      // El factor tambien se calcula: es el numero que mas se cita y el que peor
+      // envejece, porque un porcentaje viejo sigue pareciendo razonable.
+      const factor = ((respuesta + pesan) / respuesta).toFixed(2).replace('.', ',');
       return json({
-        specs: specs.map(sinCitas),
-        totales,
-        nota: 'Sin `spec` las `citas` no viajan: son 84.097 bytes contra los 29.742 de esta respuesta. Pedir un spec para tenerlas.',
+        ...acotada,
+        // `respuesta` no cuenta esta nota —unos 200 bytes— porque contarla seria
+        // circular: el largo del texto depende de los numeros que trae adentro.
+        nota: `Sin \`spec\` las \`citas\` no viajan: son ${miles(pesan)} bytes contra los ${miles(respuesta)} de esta respuesta, o sea ${factor}x. Medido sobre ESTA consulta. Pedir un spec para tenerlas.`,
       });
     }
 
