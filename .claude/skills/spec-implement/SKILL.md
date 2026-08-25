@@ -63,6 +63,20 @@ escuchando, eso es un hallazgo sobre el spec —decilo— y no una casilla nueva
 
 ## Antes de arrancar
 
+- **La rama la abrís vos, y es el primer movimiento.** `spec-create` deja el spec publicado y su fila
+  en `main`, y nada más: escribir un spec y decidir implementarlo son dos decisiones distintas, y una
+  rama abierta entre las dos queda colgada cada vez que no son la misma. Sale del `NNN` del mapa y se
+  llama `feature/<NNN>-<descripcion-kebab>`, que **es de donde el gate del 037 saca el número** —una
+  rama con otro nombre bloquea la primera edición de `src/`—.
+
+  ```bash
+  git checkout main && git pull                          # el mapa ya tiene la fila del spec
+  git checkout -b feature/<NNN>-<descripcion-kebab>
+  node .claude/scripts/hidratar-specs.mjs <NNN>          # specs/ es caché: hace falta en CADA worktree
+  ```
+
+  Si el spec ya tiene rama, no la vuelvas a crear: puede haberla abierto otra sesión, y ahí lo que
+  corresponde es un worktree propio sobre esa rama.
 - **`check_invariants` en proceso fresco**, antes y después. El MCP de la sesión cachea los módulos y
   contesta con el código viejo — está pisado como tarea en varios specs porque ya pasó.
 - **`pnpm verify` es el nodo de convergencia**, no `pnpm test`. Corre lint ‖ typecheck ‖ suite ‖

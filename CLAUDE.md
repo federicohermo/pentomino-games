@@ -188,7 +188,7 @@ propio, se cierra desde un commit con `Closes #N` y no hereda el estado del spec
 
 Escribir los cuatro archivos (`spec` · `research` · `plan` · `tasks`), **publicarlo como issue** con
 `node .claude/scripts/publicar-spec.mjs`, que le escribe su entrada en `specs/mapa.json` — lo único del spec
-que se commitea. Recién ahí la rama, y **desde el 037 lo bloquea un hook** y no la buena voluntad: sin un spec detrás de la rama no se edita `src/`, `mcp-server/src/` ni `docs/`. La convención, en [specs/README.md](./specs/README.md); el flujo entero y qué NO necesita spec, en el skill [spec-create](./.claude/skills/spec-create/SKILL.md).
+que se commitea. **Ahí termina abrir un spec: la rama la abre el implementador**, porque escribirlo y decidir implementarlo son dos decisiones distintas y una rama entre las dos queda colgada. Y **desde el 037 lo bloquea un hook** y no la buena voluntad: sin un spec detrás de la rama no se edita `src/`, `mcp-server/src/` ni `docs/`. La convención, en [specs/README.md](./specs/README.md); el flujo entero y qué NO necesita spec, en el skill [spec-create](./.claude/skills/spec-create/SKILL.md).
 
 Desde el spec 034 `specs/[0-9]*/` está en el `.gitignore`: el directorio es una **caché** que se trae
 con `node .claude/scripts/hidratar-specs.mjs <NNN>`, y hace falta **en cada worktree**. Leerlos anda

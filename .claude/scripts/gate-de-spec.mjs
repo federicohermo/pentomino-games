@@ -189,10 +189,11 @@ try {
 }
 
 const COMO_SALIR =
-  'La salida es el skill `spec-create`: medir, escribir los cuatro archivos en ' +
+  'Si el spec no existe, la salida es el skill `spec-create`: medir, escribir los cuatro archivos en ' +
   '`specs/<NNN>-<kebab>/`, publicarlos con `node .claude/scripts/publicar-spec.mjs crear` y ' +
-  '`publicar`, commitear SOLO `specs/mapa.json` a `main`, y recien ahi ' +
-  '`git checkout -b feature/<NNN>-<kebab>`. Si el cambio de verdad no necesita spec —un typo, ' +
+  '`publicar`, y commitear SOLO `specs/mapa.json` a `main`. Si el spec YA esta publicado, lo que ' +
+  'falta es la rama, que la abre el implementador: `git checkout -b feature/<NNN>-<kebab>` con el ' +
+  '`NNN` que el mapa ya tiene. Si el cambio de verdad no necesita spec —un typo, ' +
   'un bump de version, revertir el commit anterior— el skill lo dice por escrito, pero la rama ' +
   'igual no puede ser `main`.';
 

@@ -80,7 +80,9 @@ specs/<NNN>-<descripcion-kebab>/
   tiene un `baseline.md` con la medición previa— y Spec Kit prevé lo mismo (`data-model.md`,
   `contracts/`, `quickstart.md`). Los tres de Spec Kit que este repo no genera son de API y de schema,
   y acá no hay ni una ni la otra.
-- El spec se commitea a `main` **antes** de crear la rama de feature.
+- El spec se commitea a `main` **antes** de que exista ninguna rama de feature. La rama la abre el
+  implementador, no quien escribe el spec: son dos decisiones distintas, y entre una y otra el spec
+  puede revisarse, descartarse o esperar al que lo bloquea.
 
 > **Desviación 1.** Spec Kit crea la rama primero y le da su nombre a la carpeta. Acá el spec entra a
 > `main` antes, así que un spec abandonado no se va con su rama: el 001 (`Descartado`) y el 004
@@ -241,7 +243,8 @@ cada spec la postergaba al siguiente; cerrarla no llevó más de un commit.
 2. Publicarlo como issue con `node .claude/scripts/publicar-spec.mjs`, que le escribe su entrada en
    [mapa.json](./mapa.json) con estado `Propuesto`. **Esa entrada es el mapa**, y es lo único del spec
    que se commitea.
-3. Crear la rama `feature/<NNN>-<descripcion-kebab>`.
+3. Crear la rama `feature/<NNN>-<descripcion-kebab>`, y **eso ya es el primer paso de implementar**:
+   la abre quien toma el spec, no quien lo escribió. El paso 2 termina en `main`.
 4. Implementar, marcando `tasks.md` a medida que se avanza —con `spec_write`, que valida el ID en vez
    de dejar creer que escribió—. El archivo local es caché: si no está,
    `node .claude/scripts/hidratar-specs.mjs <NNN>`.

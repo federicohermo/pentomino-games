@@ -115,23 +115,29 @@ ese issue ya exista. Las dos son idempotentes: se pueden correr de nuevo.
 **El veredicto sale del exit code, nunca de un grep de la salida.** Un `| grep` que no matchea devuelve
 1 y se traga la salida entera: es cómo este repo declaró un `verify` verde con el lint roto.
 
-### 4. Commit del mapa, y recién ahí la rama
+### 4. Commit del mapa
 
 ```bash
 git add specs/mapa.json                                  # lo ÚNICO del spec que se trackea
 git commit && git push origin main
-git checkout -b feature/<NNN>-<descripcion-kebab>
 ```
 
-En ese orden. El spec entra a `main` **antes** que la rama para que un spec abandonado no se vaya con
-ella — el 001 (`Descartado`) y el 004 (`Superado`) siguen en el registro.
-
-El nombre de la rama no es decorativo: **es de donde el gate saca el número del spec**, y también
-`/pr-review-batch`.
+El spec entra a `main` y ahí termina: un spec abandonado no se va con ninguna rama, y por eso el 001
+(`Descartado`) y el 004 (`Superado`) siguen en el registro.
 
 ### 5. Entregarle el control a `/spec-implement`
 
-Con el issue publicado y la rama creada, el trabajo de este skill terminó.
+Con el issue publicado y el mapa en `main`, el trabajo de este skill terminó.
+
+**La rama NO se crea acá.** Escribir un spec y decidir implementarlo son dos decisiones distintas, y
+entre una y otra puede pasar cualquier cosa: que se revise y cambie, que se descarte, que lo tome otra
+sesión, que espere a que aterrice el spec del que depende. Una rama abierta en el paso 4 es una rama
+que existe antes de que exista el trabajo, y que va a quedar colgada cada vez que esas dos decisiones
+no sean la misma.
+
+La crea el implementador, como primer movimiento y en su propio worktree si hay más de un carril. El
+nombre no es decorativo —**es de donde el gate del 037 saca el número del spec**, y también
+`/pr-review-batch`— así que es `feature/<NNN>-<descripcion-kebab>` y sale del `NNN` del mapa.
 
 ## Al cerrar
 
@@ -152,8 +158,9 @@ pone el gate.
 ## Si el gate te frenó
 
 El hook de `PreToolUse` bloquea editar `src/`, `mcp-server/src/` y `docs/` desde `main` o desde una rama
-sin spec. Si saltó, no lo saltees: o estás en el caso «no necesita spec» —y entonces la rama igual no
-puede ser `main`— o te falta el paso 3.
+sin spec. Si saltó, no lo saltees, y son tres casos distintos: o estás en el caso «no necesita spec»
+—y entonces la rama igual no puede ser `main`—, o te falta el paso 3, o el spec ya está publicado y lo
+que falta es **la rama**, que desde ahora la abre el implementador y no este skill.
 
 `.claude/` y `specs/` **no** están protegidos, a propósito: son adonde este skill te manda a escribir
 primero.
