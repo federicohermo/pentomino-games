@@ -45,9 +45,9 @@ formato de [`specs/README.md`](../../../specs/README.md#formato-de-una-tarea):
 
 **Esas tareas se le piden a `spec_status` con el argumento `spec`, no abriendo el archivo.** Acotada
 así, la respuesta trae ese spec solo y suma `citas`: por tarea, los archivos que nombra entre
-backticks, con su línea y con su `T0NN` —o `null` en los specs anteriores a la convención—. Pesa
-3.135 bytes de mediana —7.962 el peor— contra los 29.742 del registro entero, y llega parseada, que es
-la diferencia que importa:
+backticks, con su línea y con su `T0NN` —o `null` en los specs anteriores a la convención—. Pesa una
+fracción del registro entero —**cuánta lo dice la nota** de la respuesta sin `spec`, medida sobre esa
+consulta y no copiada de acá— y llega parseada, que es la diferencia que importa:
 cruzar archivos a ojo sobre el texto crudo es justo donde se escapa el choque de dos `[P]`.
 
 Al revisar, verificá:

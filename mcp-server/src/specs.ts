@@ -263,8 +263,10 @@ export interface TasksInfo {
   proximaId: string | null;
   /**
    * Los archivos que cada tarea nombra. Opcional porque `spec_status` las omite
-   * cuando responde por los 33 specs: pesan 84.097 bytes sobre los 29.742 que la
-   * respuesta ya pesa, y son una lectura que siempre se hace sobre UN spec.
+   * cuando responde por todos: medido sobre los 33 specs del 2026-08-23 pesaban
+   * 84.097 bytes sobre los 29.742 que la respuesta ya pesaba, y son una lectura
+   * que siempre se hace sobre UN spec. La fecha va escrita porque los dos numeros
+   * se movieron; el de cada consulta lo mide la nota de la tool (spec 041).
    */
   citas?: Cita[];
   /**

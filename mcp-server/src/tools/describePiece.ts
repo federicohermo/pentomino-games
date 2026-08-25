@@ -75,6 +75,8 @@ const inputSchema = z.object({
 
 export const describePiece = defineTool({
   name: 'describe_piece',
+  title: 'Describir una pieza',
+  annotations: { readOnlyHint: true, openWorldHint: false },
   description:
     'Qué forma tiene y qué suena una pieza en una orientación dada. Usar ANTES de simular a mano ' +
     'una rotación o un arpegio: devuelve las celdas ya transformadas (en orden de array), el ' +
