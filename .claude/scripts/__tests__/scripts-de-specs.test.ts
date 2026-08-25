@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, dirname, resolve } from 'node:path';
 import {
-  archivoDeComentario, carpetaExistente, estadoDe, leerMapa, traducir, urlDeIssue,
+  archivoDeComentario, carpetaExistente, ESTADOS, estadoDe, enVuelo, leerMapa, traducir, urlDeIssue,
 } from '../lib/specs.ts';
 
 /**
@@ -162,6 +162,26 @@ describe('estadoDe', () => {
     // recien nacido — lo contrario de lo correcto, porque un spec recien escrito es
     // justamente el que tiene que quedar abierto.
     expect(estadoDe(MAPA, '035')).toBeNull();
+  });
+});
+
+describe('ESTADOS y enVuelo', () => {
+  it('son cuatro, y `En curso` no esta', () => {
+    // El AC8 del 038, escrito como asercion: el estado se saco porque ningun paso del
+    // flujo lo escribia. Nombrarlo aca es lo que hace que volver a agregarlo sea una
+    // decision y no un descuido.
+    expect(ESTADOS).toEqual(['Propuesto', 'Implementado', 'Descartado', 'Superado']);
+  });
+
+  it('solo `Propuesto` sigue en vuelo', () => {
+    expect(ESTADOS.filter(enVuelo)).toEqual(['Propuesto']);
+  });
+
+  it('un estado que no existe cuenta como en vuelo, no como cerrado', () => {
+    // Lo desconocido no cierra nada: si un dia alguien escribe «En progreso» a mano, la
+    // respuesta segura es traerlo al hidratar y dejar su issue abierto. Que ademas sea
+    // ilegal lo grita el gate del mapa, que es de quien es esa pregunta.
+    expect(enVuelo('En progreso')).toBe(true);
   });
 });
 
