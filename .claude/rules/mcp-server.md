@@ -34,8 +34,8 @@ Es tooling: no entra al bundle ni al deploy.
   `resources/index.ts`, el entrypoint tiene que anunciar `capabilities: { …, resources: {} }`: sin eso
   el server contesta que no tiene resources, el registro corre igual y no lo ve nadie.
 - **`find_symbol` es la única que mira el código como texto, y su índice no se persiste.** Se construye
-  en cada consulta desde disco (medido: 112 ms en frío, ~50 ms después, sobre 36 archivos indexados y
-  16 que solo aportan aristas). Si alguna vez hace falta acelerarlo, cachear por `mtime` — **no**
+  en cada consulta desde disco (medido: 112 ms en frío, ~50 ms después, sobre 92 archivos indexados y
+  22 que solo aportan aristas). Si alguna vez hace falta acelerarlo, cachear por `mtime` — **no**
   generar un archivo de índice: el server no tiene paso de build y lo que lo hace confiable es que no
   haya artefacto que pueda quedar viejo.
 - **El grafo de `find_symbol` incluye a este paquete, y el índice de símbolos no.** Se leen los imports

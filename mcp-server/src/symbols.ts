@@ -9,7 +9,7 @@ import { join, relative, posix } from 'node:path';
  * conviene ser explicito con lo que NO cambia: no hay archivo de indice, no hay
  * paso de build y no hay `generatedAt`. Cada llamada parsea `src/` de nuevo desde
  * disco, asi que la respuesta es HEAD en el momento de preguntar. Se puede porque
- * medido son 112 ms en frio y ~50 ms despues, sobre 36 archivos indexados mas 16
+ * medido son 112 ms en frio y ~50 ms despues, sobre 92 archivos indexados mas 22
  * que solo aportan aristas; el dia que eso duela, la respuesta es cachear por
  * mtime, no generar un artefacto que alguien tenga que regenerar.
  *
@@ -286,7 +286,7 @@ export interface CodeIndex {
  * Lee y parsea el codigo. Es la unica parte que toca el disco.
  *
  * `soloGrafo` son directorios de los que interesan las ARISTAS y no los simbolos:
- * hoy es `mcp-server/src/`, que importa 31 cosas de `src/domain/` y `src/audio/`.
+ * hoy es `mcp-server/src/`, que importa 45 cosas de `src/domain/` y `src/audio/`.
  * Sin ellos `usedBy` sub-reporta y la tool queda menos completa que el grep que
  * vino a reemplazar — un `grep notesForRotation` encuentra `describePiece.ts` y
  * el grafo, si no se lo indexa, no. Sus exports quedan afuera a proposito: el
