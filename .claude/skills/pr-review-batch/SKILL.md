@@ -187,10 +187,18 @@ Y este contrato, en este orden:
 1. **Parate en la cabeza del PR sin robarle la rama a nadie.**
    ```bash
    git fetch origin
-   git checkout -B rev-pr-<N> origin/<head.ref>
+   git checkout -B feature/<NNN>-rev-pr-<N> origin/<head.ref>
    ```
    Una rama de andamio propia: `git checkout <head.ref>` a secas falla si esa rama ya está tomada por
    otro worktree.
+
+   **El nombre no es libre desde el spec 037**, y el `NNN` del spec del PR va adelante a propósito.
+   El gate de `.claude/scripts/gate-de-spec.mjs` corre como hook sobre `Edit|Write|MultiEdit|Bash` y
+   **bloquea toda escritura a `src/`, `mcp-server/src/` y `docs/` desde una rama que no matchee
+   `^feature/(\d{3})-` con ese número en `specs/mapa.json`**. La convención vieja —`rev-pr-<N>`— no
+   matchea, así que el review de cualquier PR que toque esas tres carpetas se quedaba sin poder
+   arreglar nada. Como el spec del PR ya está en el mapa por construcción, ponerlo adelante alcanza.
+   El nombre de la rama de andamio **no afecta el push**, que sigue siendo a `refs/heads/<head.ref>`.
 2. **`pnpm install --frozen-lockfile`.** El worktree nace sin `node_modules` y `verify` va a rojo
    hasta que lo corras. Con el store de pnpm son hardlinks, así que sale barato — pero hay que
    decirlo. El Chromium de Playwright **no** hace falta reinstalarlo: su caché es de la máquina, no
@@ -234,9 +242,16 @@ Y este contrato, en este orden:
    archivo, nunca con heredoc**: los backticks y los `$` del contenido rompen el heredoc con un
    `unexpected EOF` que cuesta más diagnosticar que reescribirlo.
 9. **Devolvé un reporte de 30–50 líneas**: veredicto en la primera, los bloqueantes con
-   `archivo:línea` y evidencia, lo aplicado a conteos, lo **no** aplicado con motivo, los
-   `PERTENECE-A-PR-<N>`, **la lista exacta de archivos tocados** —es lo único con lo que el padre
-   calcula el costo de rebase— y el SHA. Sin el SHA el padre no puede verificar que el push llegó.
+   `archivo:línea` y evidencia, lo aplicado a conteos, lo **no** aplicado con motivo, lo
+   `BLOQUEADO` con quién lo bloqueó, los `PERTENECE-A-PR-<N>`, **la lista exacta de archivos
+   tocados** —es lo único con lo que el padre calcula el costo de rebase— y el SHA. Sin el SHA el
+   padre no puede verificar que el push llegó.
+
+   **Cada 🟡 no aplicado lleva su motivo, y el motivo tiene que ser uno de los tres de
+   `hallazgos.md`**: pelea con un AC, pediría un rediseño, o lo cierra una persona. Cualquier otra
+   cosa —«es preexistente», «no lo medí», «lo intenté y no pude»— significa que el fix se aplica, o
+   que va como `BLOQUEADO` y **no** como decisión de triage. El padre lo va a cruzar contra esa
+   lista, así que declararlo mal no lo hace desaparecer: lo devuelve.
 
    Y **pedile que no afirme qué otros PR tocan sus archivos.** No lo puede saber: `origin/main..HEAD`
    sólo ve hacia abajo. Que liste lo que tocó; el cruce es del Paso 5.
@@ -287,7 +302,22 @@ El padre no re-audita: cruza.
   20 real salió de no acotar a `src` y contar también los `mcp-server/src/__tests__/`.
 - **Verificá los descartes, no sólo los hallazgos.** Un agente que descarta algo como «preexistente»
   con una medición propia puede estar descartando bien por el motivo equivocado — o mal. Los dos casos
-  aparecieron en la misma corrida.
+  aparecieron en la misma corrida. Y hay un tercero, más caro porque se lee como un hallazgo bueno:
+  un 🟡 **que no era cierto**. Medido — un agente reportó que un doc afirmaba un número falso, y las
+  dos cifras eran correctas contando ejes distintos. Corregilo en el `## Seguimiento` con
+  `spec_write`: escrito como estaba, el próximo que pase lo «arregla» a un número peor.
+
+- **El lote no está cerrado mientras quede un fix conocido sin aplicar** —salvo con `--dry`, donde no
+  se escribe nada y todo esto se reporta en vez de aplicarse—. Es el único paso que puede cerrarlos,
+  porque el padre corre en el checkout principal y con otros permisos:
+  - Cada `BLOQUEADO` del reporte de un agente **lo aplicás vos**. Que a un agente le nieguen `Edit`
+    sobre `.claude/` no es una decisión sobre el fix, y dejarlo anotado como 🟡 lo entierra.
+  - Cada 🟡 cuyo motivo no sea uno de los tres de `hallazgos.md` **vuelve**: o lo aplicás, o
+    lo despachás con `SendMessage` al agente, que sigue vivo con su worktree puesto.
+  - Un fix que el propio review destapó **sobre el skill o sobre el repo** —no sobre un PR— también
+    se aplica. Medido el 2026-08-24: el gate que introdujo el 037 rechazaba la rama de andamio que
+    este mismo `SKILL.md` prescribía. Nadie más lo iba a ver: el padre es el único que corre el
+    pipeline entero y a la vez lee su propia prescripción.
 - **Con `--comentar`**, un general por PR encabezado por el SHA, con las cuatro secciones:
   bloqueantes resueltos, mejoras aplicadas, **no aplicado con motivo**, y lo que sigue abierto. La
   tercera es la que le da valor: un pipeline que solo cuenta lo que arregló no es confiable cuando

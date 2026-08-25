@@ -117,15 +117,56 @@ un PR que cambia una firma tiene una arista que ningún import de `src/` delata.
 
 ## Política de triage — al aplicar los fixes
 
-"Arreglá todo" es la forma más rápida de romper el PR.
+"Arreglá todo" es la forma más rápida de romper el PR. Pero el error que de verdad se cometió es el
+otro: **de ocho hallazgos de una corrida medida, tres se declararon sin aplicar y sólo uno tenía
+motivo.** Los otros dos fueron un bloqueo mecánico archivado como si fuera una decisión, y una
+cláusula aplicada al revés. Por eso el default es **arreglar**, y no aplicar es lo que necesita
+justificarse.
 
 | Clase | Qué hacer |
 |---|---|
 | 🔴 Bloqueante | **se arregla siempre** |
 | 🟡 con fix acotado que no toca lo que el PR garantiza | se arregla |
 | 🟡 cuyo fix pelea con un AC o con el invariante del propio PR | **no se toca** — se declara y se escribe al `## Seguimiento (no bloquea)` de ese spec con `mcp__pentomino-domain__spec_write` (`op: "seguimiento"`); el `T0NN` lo numera la tool |
-| 🟡 preexistente que el diff solo agrava | se arregla **solo** si el archivo ya está tocado por el PR |
+| 🟡 preexistente que el diff sólo agrava | se arregla **si el archivo ya está tocado por el PR**; ver «preexistente» abajo |
+| 🟡 cuyo fix sería un cambio de diseño más grande que el PR | se declara al `## Seguimiento`, y el texto dice **qué diseño haría falta**, no sólo qué está mal |
+| Fix que una herramienta te bloqueó | **no es un 🟡** — ver «bloqueado» abajo |
 | AC que pide una persona (`[M]`) | no se puede arreglar — se declara pendiente |
+
+**Las tres filas de "no se toca" son la lista completa.** Si tu motivo para no aplicar un fix no es
+uno de esos tres —pelea con un AC, pediría rediseñar, o lo cierra una persona—, entonces **no hay
+motivo y el fix se aplica**. "Es preexistente", "es de otro spec", "no lo medí" y "lo intenté y no
+pude" no están en la lista, y los cuatro aparecieron en corridas reales.
+
+### "Bloqueado" no es "descartado"
+
+Si una herramienta te niega el fix —el clasificador de permisos, un `deny` de hook, un archivo de
+sólo lectura—, **eso no es una decisión de triage y no va al `## Seguimiento` como si lo fuera.** Un
+🟡 archivado y un fix que no te dejaron aplicar se leen igual en el reporte, y son cosas opuestas:
+del primero ya se decidió, del segundo no decidió nadie.
+
+1. **Reintentá por otro camino.** Si `Edit` no pasa, probá `Write` del archivo entero; si el
+   bloqueo es del hook del spec 037, mirá el nombre de tu rama antes que nada.
+2. Si sigue bloqueado, **paralo ahí y reportalo como `BLOQUEADO: <qué> — <quién lo bloqueó>`**, con
+   el fix exacto que ibas a aplicar, en una línea que se pueda copiar.
+3. **Escribilo igual al `## Seguimiento`**, pero diciendo que quedó bloqueado y no que se descartó.
+
+El padre corre en el checkout principal y con otros permisos: un fix que a vos te bloquearon, él lo
+aplica. Pero sólo si el reporte lo distingue.
+
+### "Preexistente" no cubre una línea que tu diff volvió a escribir
+
+Es el reverso exacto de la cláusula 1 del `SKILL.md`, y el mismo test mecánico decide las dos: **si
+la línea aparece como `+` en tu `pr.diff`, es tuya.** Vale para atribuir un hallazgo y vale para
+tener que arreglarlo.
+
+Que el número lo haya vuelto falso un spec anterior no cambia nada: lo que importa es que **tu diff
+lo volvió a escribir**, y una afirmación falsa re-tipeada es una afirmación que este PR afirma. Un
+párrafo reflowado cuenta como re-tipeado.
+
+Medido: en una corrida un agente encontró un número falso en un comentario que su propio PR había
+reflowado, razonó que "lo falsificó el spec 017, no el mío", y lo declaró en vez de arreglarlo. El
+archivo estaba en su diff y las líneas eran `+`. La cláusula decía arreglar.
 
 **El `## Seguimiento` es el destino, no el chat.** Un 🟡 que no se aplica y solo se cuenta en el
 reporte se pierde con la conversación; escrito con `spec_write` sobrevive **aunque el PR no se
