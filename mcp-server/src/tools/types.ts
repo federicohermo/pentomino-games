@@ -2,9 +2,9 @@ import type { z } from 'zod';
 import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/server';
 
 /**
- * El contrato de una tool: nombre, descripcion, schema y handler COLOCADOS en un
- * solo archivo. Agregar una tool es un archivo nuevo mas una linea en
- * `tools/index.ts`; el entrypoint no se toca y no hay ningun `switch`.
+ * El contrato de una tool: nombre, titulo, anotaciones, descripcion, schema y
+ * handler COLOCADOS en un solo archivo. Agregar una tool es un archivo nuevo mas
+ * una linea en `tools/index.ts`; el entrypoint no se toca y no hay ningun `switch`.
  *
  * Lo que NO hay aca es una capa de validacion de argumentos: la hace el SDK
  * contra el schema de zod antes de llamar al handler. Es la diferencia con el
@@ -50,7 +50,7 @@ export interface ToolDef {
 }
 
 /**
- * Borra el parametro de tipo del schema para que las cuatro tools entren en un
+ * Borra el parametro de tipo del schema para que las seis tools entren en un
  * mismo array.
  *
  * El `parse` de adentro no es una segunda capa de validacion: el SDK ya valido

@@ -56,10 +56,15 @@ describe('el registro', () => {
     // copia el codigo en el test y deja pasar a la tool numero siete, que es el
     // modo de falla real de un dato que `tsc` no puede sincronizar —los dos
     // campos son opcionales en `ToolDef` a proposito.
+    //
+    // `openWorldHint` se exige en `false` y no solo «booleano»: que el dominio de
+    // entidades sea CERRADO —doce piezas, un `src/`, un `specs/`— es la propiedad
+    // que hace confiable a este server, y hasta aca vivia solo en prosa. Si algun
+    // dia una tool tiene que abrirlo, que la discusion pase por esta linea.
     for (const t of tools) {
       assert.ok(t.annotations, t.name);
       assert.equal(typeof t.annotations.readOnlyHint, 'boolean', t.name);
-      assert.equal(typeof t.annotations.openWorldHint, 'boolean', t.name);
+      assert.equal(t.annotations.openWorldHint, false, t.name);
       assert.ok(t.title && t.title.length > 0, t.name);
     }
   });
