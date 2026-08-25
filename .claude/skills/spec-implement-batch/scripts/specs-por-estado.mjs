@@ -25,7 +25,7 @@
  *
  * Uso, desde la raiz del repo:
  *   node <este-archivo>             # Propuesto
- *   node <este-archivo> "En curso"
+ *   node <este-archivo> Implementado
  */
 import { readFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';

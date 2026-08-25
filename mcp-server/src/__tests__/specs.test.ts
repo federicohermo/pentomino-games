@@ -294,6 +294,11 @@ describe('readSpecStatus', () => {
       assert.equal(specs[0].enDisco, null);
       assert.equal(specs[0].tareas, null);
       assert.match(specs[0].notas[0], /^sin hidratar: el spec vive en el issue #61/);
+      // Y el comando que la nota propone lleva el `NNN`. Desde el 038 el default del
+      // hidratador trae solo los que siguen en vuelo, asi que el comando pelado
+      // terminaria en exito **sin traer este spec** si estuviera cerrado — o sea que
+      // la nota mandaria a correr algo que no resuelve lo que la nota dice.
+      assert.match(specs[0].notas[0], /hidratar-specs\.mjs 001`$/);
       assert.equal(totales.sinHidratar, 1);
     } finally {
       rmSync(raiz, { recursive: true, force: true });

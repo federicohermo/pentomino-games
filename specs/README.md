@@ -13,9 +13,20 @@ Trabajo planificado. Un spec por unidad de trabajo, en su propia carpeta numerad
 > **El directorio local es una caché, no la fuente.** Si no está, se trae:
 >
 > ```bash
-> node .claude/scripts/hidratar-specs.mjs        # los que falten
-> node .claude/scripts/hidratar-specs.mjs 021    # o uno solo
+> node .claude/scripts/hidratar-specs.mjs           # los que están EN VUELO y falten
+> node .claude/scripts/hidratar-specs.mjs 021       # o uno solo, esté como esté
+> node .claude/scripts/hidratar-specs.mjs --todos   # los 42, cerrados incluidos
 > ```
+>
+> **El default trae poco a propósito, desde el 038.** Hasta entonces «los que falten» eran los 42, y
+> el caso normal es querer **uno**: el que se está implementando. Con `/spec-implement-batch`
+> corriendo N worktrees eso son 42×N llamadas a `gh`. Las tres formas **declaran cuántas saltearon y
+> por qué** — un default que trae menos y no lo dice se lee como «ese spec no existe», que es peor que
+> traer de más.
+>
+> **Lo que mira el árbol entero va con `--todos`**, y no es una preferencia: `specs-convencion.test.ts`
+> corre `runIf(HIDRATADOS > 0)`, así que con el default nuevo pasaría habiendo mirado un solo spec. Es
+> «fallar en verde».
 >
 > Hace falta correrlo **en cada worktree**: `git worktree add` hace checkout de lo trackeado, y un
 > archivo ignorado no viaja. Medido: antes del 034 a un worktree llegaban 136 archivos de `specs/` y
@@ -112,6 +123,34 @@ specs/<NNN>-<descripcion-kebab>/
 > El `README.md` de acá **no** está en ese carril: es documentación viva y se mantiene al día, así
 > que va con el preset completo.
 
+## Los cuatro estados
+
+El campo `estado` de [`mapa.json`](./mapa.json) es un conjunto cerrado, y la lista vive una sola vez:
+`ESTADOS` en [`.claude/scripts/lib/specs.ts`](../.claude/scripts/lib/specs.ts). El orden es el del
+ciclo de vida, no alfabético.
+
+| Estado | Qué dice | ¿En vuelo? | Su issue |
+|---|---|---|---|
+| `Propuesto` | escrito y publicado; de él todavía puede salir trabajo | **Sí** | abierto |
+| `Implementado` | su PR aterrizó en `main` | No | cerrado |
+| `Descartado` | se abandonó sin implementar (el 001) | No | cerrado |
+| `Superado` | otro spec lo reemplazó (el 004) | No | cerrado |
+
+**«En vuelo» es la partición que importa**, y es una sola función —`enVuelo`— porque de ella dependen
+tres cosas distintas: qué trae `hidratar-specs.mjs` por default, si `publicar-spec.mjs` cierra el
+issue, y qué estado del issue espera el gate del mapa. Mientras el publicador tenía su propia copia
+escrita a mano, sacar un estado del conjunto lo dejaba mirando uno que ya no existe, **en verde**. Un
+estado desconocido cuenta como en vuelo: lo que no se entiende no cierra nada, y que además sea ilegal
+lo grita el gate.
+
+> **`En curso` existió hasta el 038 y se sacó, con una medición**: el conjunto cerrado lo aceptaba y
+> el mapa **no lo usaba en ninguna de sus 42 entradas**. No fue descuido — ningún paso del flujo lo
+> escribe: `publicar-spec.mjs` pone `Propuesto` al crear el issue y el merge pone `Implementado`, y
+> entre esos dos no hay ningún momento en el que alguien vuelva al mapa a anotar que empezó. Agregar
+> ese momento sería un **tercer punto de escritura manual**, que es justo el mecanismo que el 038
+> demostró que falla. La pregunta que `En curso` prometía responder —¿esto ya aterrizó?— la contesta
+> el cruce contra el PR, que no depende de que nadie se acuerde.
+
 ## Formato de una tarea
 
 ```markdown
@@ -163,11 +202,24 @@ postergaba al siguiente; cerrarla no llevó más de un commit.
    [mapa.json](./mapa.json) con estado `Propuesto`. **Esa entrada es el mapa**, y es lo único del spec
    que se commitea.
 3. Crear la rama `feature/<NNN>-<descripcion-kebab>`.
-4. Implementar, marcando `tasks.md` a medida que se avanza. El archivo local es caché — si no está,
+4. Implementar, marcando `tasks.md` a medida que se avanza —con `spec_write`, que valida el ID en vez
+   de dejar creer que escribió—. El archivo local es caché: si no está,
    `node .claude/scripts/hidratar-specs.mjs <NNN>`.
-5. Al mergear, actualizar el estado en [mapa.json](./mapa.json), **cerrar el issue**, y anotar en el
+5. **Devolver las marcas al issue** con `node .claude/scripts/publicar-spec.mjs publicar`, antes de
+   cerrar. `spec_write` escribe **al disco**, y el disco es una caché: la próxima hidratación baja el
+   `tasks.md` del issue y **se lleva puesta cada casilla marcada**. Verificado en vivo al implementar
+   el 038 — se marcó una tarea, se rehidrató el spec, y la marca ya no estaba. La fase `publicar` es
+   idempotente de verdad (mapea los comentarios por archivo y hace `PATCH`), así que repetirla no
+   duplica nada; su `--dry`, en cambio, **no sirve para confirmarlo**: saltea el fetch, así que no ve
+   los comentarios que ya existen.
+6. Al mergear, actualizar el estado en [mapa.json](./mapa.json), **cerrar el issue**, y anotar en el
    issue —como comentario— qué se aprendió si el spec salió distinto de lo previsto. Los dos primeros
    son la misma cosa vista de dos lados, y el gate del mapa falla si no coinciden.
+
+**Los pasos 5 y 6 son uno solo para el gate.** Desde el 038 el mapa se cruza contra el PR —que está
+mergeado o no, y eso no lo escribe nadie a mano— y contra los `pendientes` del spec: un spec cerrado
+con trabajo abierto es rojo. Saltear el paso 5 hace que el 6 nazca en rojo la próxima vez que alguien
+hidrate, y no en la máquina de quien lo cerró.
 
 `spec_status` (MCP) responde el estado de todos los specs en una llamada, en vez de abrir el mapa y
 treinta y cinco `tasks.md`. Y responde **sin hidratar**: lo que falta en ese caso es `tareas`, y lo
