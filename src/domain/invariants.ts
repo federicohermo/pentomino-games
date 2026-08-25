@@ -8,7 +8,7 @@ import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE, NOTES_PER_PIECE, REGIMEN } from '.
 import type { RegimenDeRotacion } from './types/music.types.ts';
 
 /**
- * Los cinco chequeos del modelo.
+ * Los seis chequeos del modelo.
  *
  * El espacio son las 96 combinaciones de pieza x rotacion x reflexion, pero cada
  * chequeo recorre lo que le corresponde y no las 96 por inercia: `checkArrayOrder`
@@ -16,7 +16,13 @@ import type { RegimenDeRotacion } from './types/music.types.ts';
  * pueden romper—, `checkNotes` las 96 (12 piezas x 4 rotaciones x 2
  * REGIMENES; el espejo sigue afuera porque solo invierte el orden),
  * `checkShapes` las 12 formas canonicas porque rotar no cambia ni la cantidad de
- * celdas ni la conexidad, y `checkBaseMap` el conjunto una sola vez.
+ * celdas ni la conexidad, `checkDistinct` tambien las 96 —necesita las 8
+ * orientaciones de cada forma para reducirla a su clave canonica— y `checkBaseMap`
+ * el conjunto una sola vez.
+ *
+ * Cinco de los seis miran la FORMA de cada pieza por separado —`checkBaseMap` si cruza
+ * piezas, pero por su TONICA—; `checkDistinct` es el unico que compara dos FORMAS a la
+ * vez, y por eso fue el unico capaz de ver que la `Z` era la `N` reflejada.
  *
  * DEVUELVEN el resultado en vez de lanzar o asertar: asi los usa igual el test de
  * este modulo y la tool `check_invariants` del MCP server, que necesita responder
@@ -209,7 +215,8 @@ export function checkBaseMap(): CheckResult {
  * `degreeByCellIndex` empareja las dos listas por indice, `NOTES_PER_PIECE` y
  * `CELLS_PER_PIECE` pasaron de coincidir a TENER que coincidir. Sin este chequeo
  * una formula de 4 notas con `NOTES_PER_PIECE = 4` pasaba los cinco invariantes
- * y todos los tests, y la celda de grado 4 renderizaba `undefinedNaN` —
+ * que habia entonces —hoy son seis— y todos los tests, y la celda de grado 4
+ * renderizaba `undefinedNaN` —
  * `midiName(undefined)` no explota, devuelve basura.
  *
  * ## Por que el chequeo de orden esta PARTIDO por regimen
@@ -310,7 +317,53 @@ export function checkNotes(): CheckResult {
   return result('notas', failures);
 }
 
-/** Los cinco de una. Es lo que consume la tool `check_invariants`. */
+/**
+ * Clave canonica de una forma: la menor de sus 8 orientaciones, serializada.
+ *
+ * Ordena las celdas antes de unirlas porque este chequeo mira el CONJUNTO y no el
+ * orden —de ese se ocupa `checkArrayOrder`—, y suma 0 a cada coordenada por lo
+ * mismo que `sameCell`: `rotate90` produce `-0`, y `-0` no serializa igual que `0`.
+ */
+function canonicalKey(cells: Cell[]): string {
+  const variantes: string[] = [];
+  for (const rot of ROTATIONS) {
+    for (const mirror of [false, true]) {
+      const t = transformShape(cells, rot, mirror);
+      variantes.push(t.map(([x, y]) => `${x + 0},${y + 0}`).sort().join(' '));
+    }
+  }
+  return variantes.sort()[0];
+}
+
+/**
+ * 6. Piezas distintas — las 12 formas son 12 pentominos DISTINTOS, hasta rotacion y
+ *    reflexion.
+ *
+ * Existe porque su ausencia costo un bug que vivio desde el primer commit: la `Z`
+ * era `[[0,1],[1,1],[1,0],[2,0],[3,0]]`, o sea la `N` reflejada. Pasaba `checkShapes`
+ * —cinco celdas, sin repetir, conexa— y pasaba los otros cuatro, porque ninguno compara
+ * dos FORMAS: el unico que cruza piezas es `checkBaseMap`, y las cruza por su tonica,
+ * que la `Z` y la `N` tienen distinta. El tablero tenia once pentominos y uno repetido,
+ * y lo unico que lo delataba era mirar el dibujo.
+ *
+ * Se compara por clave canonica y no por pares: son 12 claves contra 66 pares, y sobre
+ * todo el mensaje sale nombrando a la OTRA pieza, que es el dato que hace falta para
+ * arreglarlo.
+ */
+export function checkDistinct(): CheckResult {
+  const failures: string[] = [];
+  const porClave = new Map<string, PieceKey>();
+
+  for (const p of PIECES) {
+    const clave = canonicalKey(SHAPES[p]);
+    const previa = porClave.get(clave);
+    if (previa === undefined) porClave.set(clave, p);
+    else failures.push(`${p}: es la misma forma que ${previa} rotada o reflejada`);
+  }
+  return result('piezas distintas', failures);
+}
+
+/** Los seis de una. Es lo que consume la tool `check_invariants`. */
 export function checkAll(): CheckResult[] {
-  return [checkArrayOrder(), checkAnchors(), checkShapes(), checkBaseMap(), checkNotes()];
+  return [checkArrayOrder(), checkAnchors(), checkShapes(), checkBaseMap(), checkNotes(), checkDistinct()];
 }

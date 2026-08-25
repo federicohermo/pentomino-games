@@ -65,9 +65,9 @@ describe('describe_piece', () => {
   test('AC4 — Z rotada 270° y reflejada', () => {
     const r = call(describePiece, { piece: 'Z', rotation: 3, mirror: true });
     assert.deepEqual((r.notes as { name: string }[]).map(n => n.name), ['D#6', 'C#6', 'A#5', 'G#5', 'F#5']);
-    assert.equal(r.anchorIndex, 1);
+    assert.equal(r.anchorIndex, 2);
     assert.deepEqual(r.anchor, [1, 1]);
-    assert.equal(r.ascii, '.#\n#@\n#.\n#.');
+    assert.equal(r.ascii, '#..\n#@#\n..#');
     assert.equal(r.tonic, 'B');
     assert.equal(r.retrograde, true);
   });
@@ -255,11 +255,12 @@ describe('describe_piece', () => {
 });
 
 describe('check_invariants', () => {
-  test('AC6 — los cinco chequeos, por separado y en verde', () => {
+  test('AC6 — los seis chequeos, por separado y en verde', () => {
     const r = call(checkInvariants, {});
     assert.equal(r.ok, true);
     const checks = r.checks as { name: string; ok: boolean; failures: string[] }[];
-    assert.equal(checks.length, 5);
+    // Seis desde el spec 036, y la tool los expone sin listarlos: itera `checkAll()`.
+    assert.equal(checks.length, 6);
     for (const c of checks) {
       assert.equal(c.ok, true, `${c.name}: ${c.failures.join(' · ')}`);
       assert.deepEqual(c.failures, []);
@@ -279,7 +280,7 @@ describe('check_invariants', () => {
   });
 
   test('con un fallo real, el filtro acota los mensajes y no el veredicto', () => {
-    // El docblock de `pieceOf` dice por que se exporta: «con los cinco chequeos en
+    // El docblock de `pieceOf` dice por que se exporta: «con los seis chequeos en
     // verde no hay ni un fallo real con el que ejercitar el filtro desde la tool».
     // Se fabrica uno rompiendo una forma, que es la unica manera de recorrer el
     // camino que la tool toma cuando algo esta mal — o sea, el unico que importa.
@@ -333,7 +334,13 @@ describe('simulate_board', () => {
    */
   const EPS = 1e-3;
 
-  /** El tablero de la linea base del spec: tres piezas, saltos de 6, 5 y 4 celdas. */
+  /**
+   * El tablero de la linea base del spec: tres piezas, saltos de 6, 4 y 8 celdas.
+   *
+   * Los tres numeros se movieron en el spec 036 —eran 6, 5 y 4— porque la `Z` de
+   * (7,4) cambio de forma: era la `N` reflejada. Las piezas y sus posiciones son las
+   * mismas; lo que cambio es por donde entra y sale la del medio.
+   */
   const BASE = [
     { piece: 'F', at: [1, 1] },
     { piece: 'Z', at: [7, 4] },
@@ -391,23 +398,30 @@ describe('simulate_board', () => {
   test('AC7 — un salto de d celdas da d-1 clicks equiespaciados, cada uno con su celda', () => {
     const r = call(simulateBoard, { pieces: BASE });
     const hops = ruta(r).hops;
-    assert.deepEqual(hops.map(h => h.distance), [5, 1, 4]);
+    assert.deepEqual(hops.map(h => h.distance), [6, 4, 8]);
     for (const h of hops) {
       assert.equal(h.path.length, h.distance - 1, `${h.from}->${h.to}`);
     }
 
     // El primer salto en la linea de tiempo: las 5 notas de la pieza 1, despues
-    // sus 4 clicks, despues la primera nota de la pieza 2. Los clicks son
-    // consecutivos y estan separados por un intervalo exacto — el mismo que separa
-    // a las notas del arpegio.
+    // sus 5 golpes, despues la primera nota de la pieza 2. Son consecutivos y estan
+    // separados por un intervalo exacto — el mismo que separa a las notas del arpegio.
     const eventos = linea(r);
     const clicks = eventos.slice(CELLS_PER_PIECE, CELLS_PER_PIECE + hops[0].path.length);
-    // Los cuatro son clicks MUDOS: desde el spec 012 este tramo no roza ninguna pieza.
-    // Antes el primero era un cruce, porque la `F` salia por su celda del medio y el
-    // tramo arrancaba rozando su propia vecina. La distincion cross/click la ejerce
-    // ahora `T046`, con un tablero elegido para eso.
-    assert.deepEqual(clicks.map(e => e.kind), ['click', 'click', 'click', 'click']);
-    for (const c of clicks) assert.equal(c.note, undefined, 'el click mudo no lleva altura');
+    // El tercero es un CRUCE y no un click, y vale la pena decir por que: el tramo
+    // vuelve a pisar la `F` en (1,0), o sea su propia pieza de salida. Estuvo mudo entre
+    // el spec 012 y el 036 — el 012 movio la puerta de salida de la `F` y el tramo dejo
+    // de rozarla— y volvio a pisar cuando el 036 arreglo la forma de la `Z`: cambio el
+    // DESTINO, y con el todo el camino. La `F` no se movio.
+    //
+    // O sea que este tablero ejerce las dos clases de golpe, que es mas de lo que
+    // ejercia antes. El equiespaciado —que es lo que el AC7 afirma— vale para los cinco
+    // por igual: un cruce dura un intervalo, como un click.
+    assert.deepEqual(clicks.map(e => e.kind), ['click', 'click', 'cross', 'click', 'click']);
+    for (const c of clicks) {
+      if (c.kind === 'cross') assert.equal(c.note, 'D4', 'el cruce suena la celda que pisa');
+      else assert.equal(c.note, undefined, 'el click mudo no lleva altura');
+    }
     assert.equal(eventos[CELLS_PER_PIECE + hops[0].path.length].kind, 'note');
     for (let i = 1; i < clicks.length; i++) {
       assert.ok(
@@ -604,8 +618,8 @@ describe('simulate_board', () => {
     const una = call(simulateBoard, { pieces: [{ piece: 'X', at: [5, 2] }] });
     const tres = call(simulateBoard, { pieces: BASE });
     assert.equal(ciclo(una).intervals, 5);
-    assert.equal(ciclo(tres).intervals, 22);
-    assert.equal(ciclo(tres).seconds, 3);
+    assert.equal(ciclo(tres).intervals, 30);
+    assert.equal(ciclo(tres).seconds, 4.0909);
   });
 
   test('ningun onset se emite dos veces pese al solape de ventanas', () => {
@@ -869,8 +883,13 @@ describe('simulate_board — el tablero deja de ser 10x6 (spec 031)', () => {
     // No es solo el borde: la costura del spec 009 une `(0,0)` con la esquina opuesta, asi
     // que agrandar el tablero mueve una arista del grafo y con ella los caminos. Dos
     // tableros iguales en piezas y distintos en tamano tienen ciclos distintos.
+    //
+    // La `Z` esta en (8,4) y no en (7,4) desde el spec 036, y se BUSCO en vez de
+    // ajustarse: con la forma nueva, desde (7,4) el circuito pasa a ser el mismo en los
+    // dos tableros, o sea que el tablero viejo dejaba este test verde sin ejercer nada.
+    // Es la misma trampa que el comentario del empate documenta en `sequence.test.ts`.
     const saltos = (r: Record<string, unknown>) => (r.route as { hops: unknown[] }).hops;
-    const piezas = [{ piece: 'F', at: [1, 1] }, { piece: 'Z', at: [7, 4] }];
+    const piezas = [{ piece: 'F', at: [1, 1] }, { piece: 'Z', at: [8, 4] }];
     const chico = call(simulateBoard, { pieces: piezas });
     const grande = call(simulateBoard, { pieces: piezas, dims: { w: 26, h: 15 } });
     assert.notDeepEqual(saltos(grande), saltos(chico));

@@ -11,7 +11,7 @@ describe('renderAscii', () => {
   test('marca la celda de agarre y deja los huecos del bounding box', () => {
     // La Z rotada 270° y reflejada: es el caso del AC4.
     const cells = reflect(rotateN(SHAPES.Z, 3));
-    assert.equal(renderAscii(cells, ANCHOR_INDEX.Z), '.#\n#@\n#.\n#.');
+    assert.equal(renderAscii(cells, ANCHOR_INDEX.Z), '#..\n#@#\n..#');
   });
 
   test('la fila 0 es la de arriba: `y` crece hacia abajo', () => {

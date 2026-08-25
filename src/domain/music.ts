@@ -264,7 +264,8 @@ export function playOrderByCellIndex(cells: readonly Cell[], mirror: boolean): n
  * Tres reglas, en este orden:
  *
  * 1. Las celdas que caen SOBRE el centroide salen del anillo y toman los
- *    primeros lugares. Solo `I` y `X` tienen una. La excepcion no es estetica:
+ *    primeros lugares. Solo `I`, `X` y —desde el spec 036, que le arreglo la forma— la
+ *    `Z` tienen una. La excepcion no es estetica:
  *    `Math.atan2(0, 0)` devuelve `0` EN SILENCIO y las meteria en el anillo como si
  *    estuvieran al este.
  * 2. El resto se ordena por angulo ascendente alrededor del centroide, que con

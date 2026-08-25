@@ -93,17 +93,26 @@ const pasosEntre = (a: PlacedPiece, b: PlacedPiece, board: readonly PlacedPiece[
 const misma = (a: Cell, b: Cell): boolean => a[0] === b[0] && a[1] === b[1];
 
 /**
- * Un teselado del tablero entero con las 12 piezas, escrito a mano.
+ * Un teselado del tablero entero con las 12 piezas.
  *
  * No sale de colocar al azar: teselar 10x6 con las 12 piezas es un exact cover, y
- * 200 intentos aleatorios dieron 0 tableros completos (`research.md`).
+ * 200 intentos aleatorios dieron 0 tableros completos (`research.md` del 009).
  * Sus PREFIJOS son tableros validos de 1 a 12 piezas, y con eso alcanza para las
  * propiedades que hay que medir sobre muchos tableros sin meter azar en un test.
+ *
+ * **El de antes no era un teselado de las 12 piezas**, y no podia serlo: hasta el spec
+ * 036 la `Z` era la `N` reflejada, asi que este tablero se cubria con DOS `N` y ninguna
+ * `Z`. El de ahora sale de resolver el exact cover con las doce formas ya distintas
+ * —el 10x6 tiene 2.339 soluciones—, no de acomodar piezas a ojo.
+ *
+ * El ORDEN del array se dejo como estaba, y no es estetica: `PREFIJOS` corta este
+ * array, asi que el orden es lo que define los doce tableros intermedios sobre los que
+ * mide medio archivo.
  */
 const TESELADO: [PieceKey, number, boolean, number, number][] = [
-  ['F', 1, true, 1, 1], ['I', 0, false, 3, 0], ['L', 1, true, 5, 1], ['P', 0, false, 8, 0],
-  ['N', 3, false, 8, 2], ['Y', 3, true, 0, 4], ['Z', 0, false, 2, 3], ['U', 0, false, 6, 2],
-  ['W', 2, true, 2, 4], ['T', 2, false, 4, 4], ['X', 0, false, 6, 4], ['V', 1, true, 9, 5],
+  ['F', 1, true, 1, 1], ['I', 0, false, 3, 0], ['L', 1, true, 5, 1], ['P', 2, false, 8, 5],
+  ['N', 2, true, 2, 2], ['Y', 3, true, 0, 4], ['Z', 0, false, 8, 2], ['U', 0, false, 6, 2],
+  ['W', 2, true, 2, 4], ['T', 2, false, 4, 4], ['X', 0, false, 6, 4], ['V', 0, true, 9, 0],
 ];
 const DOCE = TESELADO.map(([p, r, m, x, y]) => colocar(p, r, m, x, y));
 
@@ -134,6 +143,12 @@ describe('bordes', () => {
     // obstaculos. Con la `Z` en (0,1)(1,1)(1,0)(2,0)(3,0) daba d=3 y camino
     // [[2,0],[1,0]]: dos golpes encima del arpegio que acababa de sonar, no un
     // recorrido.
+    //
+    // Esas coordenadas son las de la forma que la `Z` tuvo **hasta el spec 036**, cuando
+    // era la `N` reflejada. Quedan escritas asi y no se recalculan con la forma nueva:
+    // es la medicion que motivo la decision del 009, y reescribirla con otro numero
+    // seria inventar una medicion que nadie hizo. Lo que la decision afirma no depende
+    // de que pieza fuera.
     //
     // Rodear las piezas le saco el sintoma —medido, con la `Z` en (4,2) el tramo de la pieza
     // a si misma la RODEA y sus dos clicks caen en celdas vacias— y la decision no
@@ -747,17 +762,23 @@ describe('determinismo', () => {
     // asi que el tablero tiene que empatar en costo **Y** en pasos. Medido: F, Z, Y dejan
     // dos circuitos, 0→1→2 y 0→2→1, los dos a costo 19 y 14 pasos.
     //
-    // **El tablero se busco de nuevo TRES veces y nunca se heredo**, y ese es el punto
+    // **El tablero se busco de nuevo CUATRO veces y nunca se heredo**, y ese es el punto
     // del test: un empate depende del modelo. El que usaba el 009 (P, W, F) empataba a 16
     // con la distancia pelada, a 14 con peso 2, y con peso 5 dejo de empatar (15 contra
     // 17); el que lo reemplazo (F, I, L) empataba a 24 con las puertas del 007 y con las
     // del 012 dejo de empatar (13 contra 20), porque mover el orden de las notas mueve
     // las puertas y con ellas la matriz entera. Un tablero de empate heredado deja el
     // test verde sin ejercer nada, que es la unica forma en que este test puede mentir.
+    //
+    // La cuarta busqueda fue el spec 036: cambiar la FORMA de la `Z` —era la `N`
+    // reflejada— movio sus puertas, y con ellas el empate. Las tres piezas siguen siendo
+    // las mismas y los dos numeros tambien —19 y 14—, pero eso es un hallazgo de la
+    // busqueda y no algo que se haya conservado a proposito: el empate viejo, con la `Z`
+    // en rotacion 1 sobre (6,4), dejo de empatar.
     const board = [
-      colocar('F', 0, false, 3, 3),
-      colocar('Z', 1, false, 6, 4),
-      colocar('Y', 2, false, 4, 1),
+      colocar('F', 0, false, 8, 4),
+      colocar('Z', 0, false, 3, 4),
+      colocar('Y', 0, false, 6, 2),
     ];
     expect(circuitos(3).map((o) => costoDelCircuito(o, board))).toEqual([19, 19]);
     expect(circuitos(3).map((o) => pasosDelCircuito(o, board))).toEqual([14, 14]);
