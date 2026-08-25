@@ -141,6 +141,32 @@ describe('specs-por-estado.mjs, el de cada skill', () => {
   });
 });
 
+/**
+ * El contrato de linea de comandos del hidratador, en el unico caso que **no toca la
+ * red**: un `NNN` que el mapa no conoce.
+ *
+ * Es el caso que importa igual, porque es el que el spec 038 vino a arreglar del otro
+ * lado: hasta el 038 el default traia los 42 y el que no venia no existia. Con el
+ * default nuevo un spec puede faltar por tres motivos distintos —no lo pediste, ya esta
+ * cerrado, ya esta en disco— y **decir cual** es la mitad del cambio. Un default que
+ * trae menos y se calla se lee como «ese spec no existe».
+ */
+describe('hidratar-specs.mjs declara lo que no trajo', () => {
+  const SCRIPT = join(RAIZ, '.claude/scripts/hidratar-specs.mjs');
+
+  it('un `NNN` que no esta en el mapa lo dice, y no corre en vacio', () => {
+    // Sin `gh`: con cero specs elegidos el bucle no llega a la primera llamada, asi
+    // que este test corre igual en la CI y en un avion.
+    const salida = execFileSync('node', [SCRIPT, '999'], { encoding: 'utf8' });
+
+    expect(salida).toContain('999 no tiene entrada en specs/mapa.json');
+    expect(salida).toContain('hidratados: 0 de 0');
+    // El motivo va escrito: «salteados» sin el por que manda a adivinar si el registro
+    // esta vacio o si el filtro se los comio.
+    expect(salida).toMatch(/salteados \(no los pediste\)/);
+  });
+});
+
 describe('urlDeIssue', () => {
   it('arma la URL desde el repo y el numero', () => {
     // El repo se pasa y no se hardcodea: `lib/` no habla con git ni con la red, asi
@@ -175,6 +201,17 @@ describe('ESTADOS y enVuelo', () => {
 
   it('solo `Propuesto` sigue en vuelo', () => {
     expect(ESTADOS.filter(enVuelo)).toEqual(['Propuesto']);
+  });
+
+  it('el mapa de verdad no usa ningún estado de fuera de la lista', () => {
+    // El mismo cruce que hace `mapa-de-specs.test.ts`, y acá también porque este
+    // archivo es el que puede correr un `NNN` que no existe: si el mapa trajera un
+    // estado desconocido, `enVuelo` lo daría por en vuelo y el default del hidratador
+    // se llevaría un spec cerrado sin que nada avise.
+    const mapa = leerMapa(readFileSync(join(RAIZ, 'specs/mapa.json'), 'utf8'));
+    const fuera = Object.entries(mapa).filter(([, e]) => !ESTADOS.includes(e.estado));
+
+    expect(fuera.map(([id, e]) => `${id}: ${e.estado}`)).toEqual([]);
   });
 
   it('un estado que no existe cuenta como en vuelo, no como cerrado', () => {
