@@ -614,7 +614,7 @@ export default tseslint.config([
       // **El `[M]` de esa cuenta es historico desde el spec 039**, que lo saco del
       // formato: `specs/README.md` ya no lo documenta y ningun spec nuevo lo escribe, y
       // eso lo verifica `specs/__tests__/specs-convencion.test.ts`. Pero los que ya
-      // estan escritos no se tocan —Desviacion 2, y hoy son **136 en 35 specs**— asi que
+      // estan escritos no se tocan —Desviacion 2, y hoy son **137 en 35 specs**— asi que
       // siguen disparando la regla. El `[P]`, que es la mayoria, sigue vivo. O sea que
       // la regla se queda apagada por el mismo motivo de siempre y no por inercia.
       'markdown/no-missing-label-refs': 'off',

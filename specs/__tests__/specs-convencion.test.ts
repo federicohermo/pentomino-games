@@ -229,7 +229,7 @@ describe.runIf(HIDRATADOS > 0)('los specs hidratados cumplen la convencion que s
  * El corte: **desde el spec 039, `[M]` deja de ser un marcador legal.**
  *
  * `[M]` decia «pide una persona — navegador, oido, captura» y por eso no bloqueaba el
- * cierre del spec. La medicion lo desmintio: hay **136 casillas `[M]` repartidas en 35
+ * cierre del spec. La medicion lo desmintio: hay **137 casillas `[M]` repartidas en 35
  * specs** —contadas con el `TAREA` de arriba, que es el mismo que usa `parseTasks`— y
  * de todas ellas solo **6** se cerraron alguna vez. O sea que en la
  * practica `[M]` no significaba «espera a una persona» sino «no se va a hacer, pero
@@ -239,7 +239,7 @@ describe.runIf(HIDRATADOS > 0)('los specs hidratados cumplen la convencion que s
  *
  * ## Por que un corte por numero y no una prohibicion
  *
- * Los 136 estan en specs mergeados, y la **Desviacion 2** prohibe reescribirlos: son
+ * Los 137 estan en specs mergeados, y la **Desviacion 2** prohibe reescribirlos: son
  * ADR, registro de que se decidio y con que evidencia. Un gate sin corte daria rojo
  * sobre 35 specs que nadie puede tocar, y un gate asi se apaga a la semana — es el
  * mismo motivo por el que el test de IDs consecutivos se borro de este archivo.
@@ -337,7 +337,7 @@ describe.runIf(HIDRATADOS > 0)('los specs nuevos no anotan trabajo que nadie va 
       'la salida es **volver la tarea verificable** —un test, una medicion, un invariante—\n' +
       'y entonces bloquea como cualquier otra, o **no anotarla en ningun lado**, ni\n' +
       'siquiera en `## Seguimiento`. Lo que no es una opcion es dejarla escrita sin que\n' +
-      'nadie la pueda cerrar: eso ya se midio y da 136 casillas en 35 specs, de las que\n' +
+      'nadie la pueda cerrar: eso ya se midio y da 137 casillas en 35 specs, de las que\n' +
       `se cerraron 6:\n${nuevos.join('\n')}`,
     ).toEqual([]);
 

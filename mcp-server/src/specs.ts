@@ -238,7 +238,7 @@ export interface TasksInfo {
    *
    * `[M]` marcaba una tarea que pedia una persona —navegador, oido, captura— y que
    * por eso no bloqueaba el cierre del spec. El 039 la derogo con la medicion que la
-   * desmiente: de las **136** casillas `[M]` que hay en **35** specs, solo **6** se
+   * desmiente: de las **137** casillas `[M]` que hay en **35** specs, solo **6** se
    * cerraron alguna vez, o sea que `[M]` no significaba «espera a una persona» sino
    * «no se va a hacer, pero queda escrito». La regla desde el 039 es volver la tarea
    * verificable o no anotarla — el ultimo spec que trae una `[M]` es el **037**.
@@ -331,7 +331,7 @@ export function parseTasks(md: string): TasksInfo {
       //
       // El `!esManual` lo CONSERVA el 039 a proposito, que es lo contraintuitivo del
       // cambio: el spec deroga `[M]` **hacia adelante** y un spec mergeado no se
-      // reescribe, asi que las 136 casillas `[M]` de los 35 specs que las tienen
+      // reescribe, asi que las 137 casillas `[M]` de los 35 specs que las tienen
       // siguen en disco. Sacar el descuento las convertiria de historia en deuda de un
       // dia para el otro y pondria en rojo, sobre 35 specs que nadie toco, el gate del
       // 038 que exige `pendientes: 0` en todo spec cerrado. En un spec nuevo el

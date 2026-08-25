@@ -49,7 +49,7 @@ export const crearSpecStatus = (specsDir: string) => defineTool({
     'es deuda, así que se descuentan tres clases y queda "pendientes", que vale 0 exactamente ' +
     'cuando no hay "proxima": las que están bajo un encabezado "Seguimiento" (deuda anotada a ' +
     'propósito), las marcadas "[M]" (un marcador HISTÓRICO: el spec 039 lo derogó, así que un spec ' +
-    'nuevo no lo escribe y ahí "manual" vale 0; las 136 que quedaron en los 35 specs de antes se ' +
+    'nuevo no lo escribe y ahí "manual" vale 0; las 137 que quedaron en los 35 specs de antes se ' +
     'siguen descontando porque un spec mergeado no se reescribe) y todas las de un ' +
     'spec Descartado o Superado (de ahí no sale trabajo, y la nota lo dice). Por eso un spec puede ' +
     'estar Implementado con seis casillas abiertas y no deberle nada a nadie.\n' +

@@ -56,7 +56,7 @@ Al revisar, verificá:
   de la versión anterior del archivo. Renumerar rompe toda referencia que otra tarea le hiciera.
 - **Ninguna tarea se cierra mirando o escuchando.** El global pide que "un AC que solo un humano puede
   firmar esté marcado como tal: no es material de loop", y hasta el 039 acá eso se marcaba `[M]`. La
-  medición lo dio vuelta: de **136** casillas `[M]` en **35** specs, sólo **6** se cerraron alguna
+  medición lo dio vuelta: de **137** casillas `[M]` en **35** specs, sólo **6** se cerraron alguna
   vez, o sea que el marcador no significaba "espera a una persona" sino "no se va a hacer nunca, pero
   queda escrito". Así que **una tarea que dice *escuchar*, *a oído*, *a ojo*, *captura*, *GIF* o *en
   el navegador* es un hallazgo**, y el arreglo es **volverla verificable** —medirla en el DOM, un test
@@ -64,7 +64,7 @@ Al revisar, verificá:
   no es una salida.
 - **Los `[M]` que ya existen no son un hallazgo.** Un spec anterior al 039 puede traerlos y se
   respetan tal cual: no se reescriben para sacárselos, `spec_status` los sigue descontando de
-  `pendientes` —si dejara de hacerlo, los specs ya cerrados pasarían a deber 136 ítems de un día para
+  `pendientes` —si dejara de hacerlo, los specs ya cerrados pasarían a deber 137 ítems de un día para
   el otro— y hasta se le puede corregir la clasificación a una tarea vieja que estaba mal marcada. Lo
   que no se hace es escribir uno nuevo.
 - **`[P]` no miente.** Dos tareas `[P]` del mismo bloque no pueden tocar el mismo archivo — y eso lo
