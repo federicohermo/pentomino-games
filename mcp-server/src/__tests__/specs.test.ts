@@ -242,7 +242,7 @@ describe('parseTasks — ID y marcadores', () => {
     // en adelante. Que `manual` valga 0 no alcanza como aserción: lo que hay que fijar
     // es que el descuento sea un no-op, o sea que `pendientes` sea exactamente lo que
     // queda al sacar las hechas. Con una `[M]` en el medio esa igualdad no se cumple
-    // —ver `MARCADAS`, donde `manual` da 2 y `pendientes` es 1—.
+    // —ver `MARCADAS`, donde `total - hechas` da 2 y `pendientes` es 1—.
     //
     // El total es 4 y no 5 desde el 042: la tarea de `## Seguimiento` del fixture ya
     // no entra. Por eso la resta quedó sin el tercer término, y no porque se haya

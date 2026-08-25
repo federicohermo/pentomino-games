@@ -368,7 +368,7 @@ describe.runIf(PRS !== null)('el estado del mapa dice lo mismo que el PR', () =>
  * trabajo que declaran hecho no lo está.**
  *
  * `specs/README.md` ya define cuándo un spec «se lee cerrado» —`spec_status` reporta
- * `pendientes: 0`, o sea descontando `## Seguimiento` y `[M]`— y hasta acá **no lo
+ * `pendientes: 0`, o sea descontando `[M]` y, desde el 042, sin contar el `## Seguimiento`— y hasta acá **no lo
  * verificaba nadie**. Se vio al cerrar el 035: el chequeo se hizo a mano, dio 0, y el
  * cierre fue correcto. Pero habría funcionado igual sin correrlo, y un cierre correcto
  * por disciplina es el mismo mecanismo que el T044 del 035 ya demostró que falla.
@@ -412,8 +412,8 @@ describe.runIf(HIDRATADOS.length > 0)('un spec cerrado no debe trabajo', () => {
 
     expect(
       debiendo,
-      'Specs cerrados con trabajo abierto. `pendientes` ya descuenta `## Seguimiento` y\n' +
-      '`[M]`, así que lo que queda es trabajo que alguien dio por hecho sin hacerlo. La\n' +
+      'Specs cerrados con trabajo abierto. `pendientes` descuenta `[M]` y, desde el 042,\n' +
+      'ni cuenta el `## Seguimiento`: lo que queda es trabajo que alguien dio por hecho. La\n' +
       'salida es cerrar la casilla, o marcarla como lo que es y volver a publicar el\n' +
       `spec con \`publicar-spec.mjs publicar\`:\n${debiendo.join('\n')}`,
     ).toEqual([]);
