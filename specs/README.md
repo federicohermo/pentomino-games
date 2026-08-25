@@ -175,10 +175,10 @@ una lista de intenciones con formato de checklist, que `spec_status` reporta com
 
 **En su lugar hay dos salidas, y anotarlo no es ninguna de las dos**: o la verificación se vuelve
 **verificable** —un test de `*.browser.test.tsx`, una medición, un invariante— y entonces es una tarea
-normal que bloquea como cualquier otra, o no se escribe en ningún lado, tampoco en
-`## Seguimiento`. El número va acá a propósito: una convención que se cambia sin dejar escrito qué la
-desmintió se vuelve a proponer igual dentro de un año, con los mismos argumentos, que siguen sonando
-razonables — **137 contra 7** es lo único que no se puede volver a sostener.
+normal que bloquea como cualquier otra, o no se escribe en el `tasks.md` —y desde el 042 tampoco hay
+un `## Seguimiento` donde escribirla—. El número va acá a propósito: una convención que se cambia sin
+dejar escrito qué la desmintió se vuelve a proponer igual dentro de un año, con los mismos argumentos,
+que siguen sonando razonables — **137 contra 7** es lo único que no se puede volver a sostener.
 
 **Los specs anteriores conservan sus `[M]`, los 137.** Por la Desviación 2 un spec mergeado no se
 reescribe, y sacarlos a mano movería el `pendientes` de 35 specs ya cerrados para satisfacer una
@@ -192,27 +192,47 @@ alternativa era marcarla `[x]`, o sea afirmar que alguien escuchó cuando nadie 
 **`[P]` es lo que `spec-implement` hoy deriva solo.** Declararlo al escribir el spec, que es cuando se
 conocen las dependencias reales, sale más barato y más confiable que inferirlo en cada corrida.
 
-Las tareas de `## Seguimiento (no bloquea)` son deuda anotada a propósito y tampoco cuentan como
-pendientes. **Fue un eje distinto de `[M]`** mientras `[M]` era parte del formato: `Seguimiento` es
-*dónde* está anotada la tarea, `[M]` era *quién* podía hacerla, y una tarea de un spec anterior al 039
-puede ser las dos cosas. Los dos ejes se descuentan por separado y siguen vivos en el código —es lo
-que hace legibles los 137 `[M]` de los 35 specs anteriores—, pero a una tarea nueva le queda uno solo,
-porque el otro ya no se escribe.
+**`## Seguimiento (no bloquea)` dejó de ser parte del formato, desde el spec 042.** Era la sección
+donde se anotaba la deuda que aparecía implementando, y no contaba como pendiente a propósito: un spec
+podía quedar `Implementado` con diez casillas abiertas sin deberle nada a nadie. La medición que lo
+derogó son dos números puestos uno al lado del otro: **129** ítems vivos en seguimientos contra **17**
+issues de deuda abiertos, y **116 de esos 129 en el seguimiento de un spec ya cerrado** — o sea deuda
+que hereda un estado terminal y que por eso nadie vuelve a mirar. Un issue no hereda nada: tiene
+estado propio y se cierra desde un commit con `Closes #N`.
 
-**Y `Seguimiento` no es donde va todo lo que quedó pendiente.** Cerrar de una vez los seguimientos de
-cuatro specs mostró que de sus 16 ítems, **la mitad no eran tareas** sino deuda de registro — y
-confundirlas es lo que los había dejado abiertos tanto tiempo. Las tres clases que no son una tarea,
-con la señal que las delata:
+**La deuda que aparece implementando se abre como issue**, con el título entendible fuera del contexto
+del spec, la evidencia en el cuerpo y un `Detectado en #N` que cita el issue del spec que la encontró
+—eso es lo que reemplaza al enlace que daba estar escrito adentro del `tasks.md`—. Y la herramienta
+acompaña, que es la mitad que faltaba: `parseTasks` **corta** al entrar a la sección en vez de contarla
+aparte, y `spec_write` se quedó con una sola operación, `marcar`. Mientras anotar fuera una llamada a
+una tool y abrir un issue no tuviera ninguna, ganaba la tool — es el mismo hallazgo del spec 030.
+
+**La sección sigue escrita en los 40 specs que la tienen, y no se reescribe.** Por la Desviación 2 un
+spec mergeado es un ADR, y migrar los 129 ítems a ciegas duplicaría los que ya son issue —«Rotación
+como tipo cerrado», del seguimiento del 005, **es** el issue #53— y abriría issues de cosas ya hechas.
+Encontrarse un `## Seguimiento` en un `tasks.md` viejo no es un bug: es historia, y lo que cambió es
+que las herramientas dejaron de mirarla.
+
+**Lo que se queda entero es el criterio de ruteo**, que es de donde salió el 042. Cerrar de una vez los
+seguimientos de cuatro specs mostró que de sus 16 ítems, **la mitad no eran tareas** sino deuda de
+registro — y confundirlas es lo que los había dejado abiertos tanto tiempo. Las tres clases que no son
+una tarea, con la señal que las delata:
 
 | No es una tarea, es… | La señal | Dónde va |
 |---|---|---|
 | una **decisión ya tomada** | está escrita como pendiente y nadie la discute | al lado de lo que decide: la constante, la firma, el módulo |
-| algo **sin dueño** | vive en el seguimiento de un spec ya cerrado | [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues), que es la única fuente que este repo declara |
+| algo **sin dueño** | sobrevive al spec que la encontró y ningún otro la tiene en su alcance | [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues), que es la única fuente que este repo declara |
 | **otro spec** | otro spec ya la absorbió, a veces cambiando el enfoque | se cierra citando al spec que la absorbió |
 
-La señal más barata de todas: **una tarea anotada en cuatro seguimientos distintos ya no es de nadie.**
-`PlacedPiece.notes` estaba en los seguimientos del 001, el 007, el 009 y el 010, y cada spec la
-postergaba al siguiente; cerrarla no llevó más de un commit.
+**A la fila del medio el 042 le cambió la señal y no el destino.** Decía «vive en el seguimiento de un
+spec ya cerrado», que era el síntoma mientras había dónde esconderla: se veía al abrir el `tasks.md` de
+un spec cerrado meses antes, si es que alguien lo abría. Sin la sección la señal se adelanta al final
+del spec que la encontró — quedó afuera de su alcance y ningún otro la tiene en el suyo. Es el mismo
+diagnóstico, un año antes y sin depender de que alguien pase por ahí.
+
+La señal más barata de todas, mientras hubo seguimientos: **una tarea anotada en cuatro seguimientos
+distintos ya no es de nadie.** `PlacedPiece.notes` estaba en los del 001, el 007, el 009 y el 010, y
+cada spec la postergaba al siguiente; cerrarla no llevó más de un commit.
 
 ## Flujo
 
