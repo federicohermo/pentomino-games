@@ -40,5 +40,6 @@
   "039": {"issue":109,"carpeta":"039-una-tarea-la-cierra-un-agente","fecha":"2026-08-25","estado":"Implementado","titulo":"Spec 039 — Una tarea la cierra un agente"},
   "040": {"issue":110,"carpeta":"040-las-tools-declaran-si-escriben","fecha":"2026-08-25","estado":"Implementado","titulo":"Spec 040 — Las tools declaran si escriben"},
   "041": {"issue":111,"carpeta":"041-un-numero-medido-no-se-copia","fecha":"2026-08-25","estado":"Implementado","titulo":"Spec 041 — Un número medido no se copia"},
-  "042": {"issue":112,"carpeta":"042-la-deuda-no-vive-en-el-spec-que-la-pario","fecha":"2026-08-25","estado":"Implementado","titulo":"Spec 042 — La deuda no vive en el spec que la parió"}
+  "042": {"issue":112,"carpeta":"042-la-deuda-no-vive-en-el-spec-que-la-pario","fecha":"2026-08-25","estado":"Implementado","titulo":"Spec 042 — La deuda no vive en el spec que la parió"},
+  "043": {"issue":131,"carpeta":"043-el-mapa-lo-deriva-la-maquina","fecha":"2026-08-25","estado":"Propuesto","titulo":"Spec 043 — El mapa lo deriva la máquina"}
 }
