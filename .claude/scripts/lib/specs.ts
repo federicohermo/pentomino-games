@@ -137,7 +137,7 @@ export const enVuelo = (estado: string): boolean => !CERRADOS.has(estado);
 const CAMPOS: readonly (keyof EntradaDeMapa)[] = ['issue', 'carpeta', 'fecha', 'estado', 'titulo'];
 
 /**
- * Que `origen` sea una lista de numeros con al menos uno, si esta (spec 044).
+ * Que `origen` sea una lista de numeros de issue con al menos uno, si esta (spec 044).
  *
  * **Fuera de `CAMPOS` porque `CAMPOS` no puede expresarlo**: esa lista son los
  * requeridos, cada uno con UN tipo escalar esperado, y `origen` es opcional y es un
@@ -161,10 +161,17 @@ const validarOrigen = (id: string, entrada: EntradaDeMapa): void => {
     // dos formas es aceptar que el dia que una se lea y la otra no, nadie se entere.
     throw new Error(`specs/mapa.json: la entrada ${id} trae \`origen\` vacio: omitilo en vez de vaciarlo.`);
   }
-  if (origen.some((n: unknown) => typeof n !== 'number')) {
+  if (origen.some((n: unknown) => typeof n !== 'number' || !Number.isInteger(n) || n <= 0)) {
     // Strings no cruzan: el `Map` de issues esta indexado por numero, asi que un
     // `"127"` no encuentra al #127 y sale como «el issue no existe», que es mentira.
-    throw new Error(`specs/mapa.json: la entrada ${id} trae un \`origen\` que no es un numero.`);
+    //
+    // Y **entero positivo**, no «numero» a secas: `0`, `-3` y `1.5` no encuentran a
+    // nadie en ese mismo `Map` —lo llena `gh`, que numera issues con enteros positivos—
+    // asi que salen por la misma puerta equivocada, echandole la culpa a GitHub por un
+    // numero que se tipeo mal aca. La escritura no puede producirlos —`origenDe` matchea
+    // `#(\d+)`— y por eso justamente hay que atajarlos: la unica via de entrada es una
+    // mano editando el mapa, que es como llego el `origen` de este mismo spec.
+    throw new Error(`specs/mapa.json: la entrada ${id} trae un \`origen\` que no es un numero de issue.`);
   }
 };
 

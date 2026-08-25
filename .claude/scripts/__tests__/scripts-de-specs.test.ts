@@ -110,6 +110,13 @@ describe('leerMapa', () => {
     ['un numero suelto', 127, 'no es una lista'],
     ['una lista de strings', ['127'], 'no es un numero'],
     ['una lista vacia', [], 'vacio'],
+    // Los tres de abajo son numeros y ninguno es un numero de ISSUE. Van aparte de los
+    // strings porque fallan mas tarde y peor: un `"127"` se ve raro leyendo el mapa,
+    // pero un `0` se lee como un numero legitimo y sale por la puerta de «el issue no
+    // existe» — culpando a GitHub de algo que se tipeo aca.
+    ['una lista con un cero', [0], 'no es un numero de issue'],
+    ['una lista con un negativo', [-3], 'no es un numero de issue'],
+    ['una lista con un decimal', [1.5], 'no es un numero de issue'],
   ])('grita ante un `origen` que es %s', (_caso, origen, esperado) => {
     expect(() => leerMapa(CON_ORIGEN(origen))).toThrow(esperado);
   });
