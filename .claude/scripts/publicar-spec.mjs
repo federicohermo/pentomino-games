@@ -38,7 +38,7 @@
 import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { leerMapa, estadoDe, enVuelo, traducir, NOMBRE_PUBLICABLE } from './lib/specs.ts';
+import { leerMapa, estadoDe, enVuelo, traducir, escribirMapa, NOMBRE_PUBLICABLE } from './lib/specs.ts';
 // El lanzador de `gh` que explica sus fallos en vez de tirar un `ENOENT` crudo (issue #125).
 import { gh as lanzarGh } from './lib/gh.ts';
 
@@ -125,11 +125,11 @@ const mapaDelDisco = () => leerMapa(readFileSync(MAPA_JSON, 'utf8'));
  */
 const guardarMapa = (m) => {
   if (DRY) return;
-  // Una entrada por linea y ordenadas por `NNN`, que es el formato con el que se genero
-  // el mapa. No es estetica: con `JSON.stringify(m, null, 2)` cada entrada ocupa siete
-  // lineas y agregar un spec da un diff de siete; asi da uno.
-  const cuerpo = Object.keys(m).sort().map((id) => `  "${id}": ${JSON.stringify(m[id])}`).join(',\n');
-  writeFileSync(MAPA_JSON, `{\n${cuerpo}\n}\n`, 'utf8');
+  // El formato —una entrada por linea, ordenadas por `NNN`— vive en `escribirMapa` desde
+  // el 043, porque escriben dos: este script y el derivador de la Action. Mientras estuvo
+  // aca inline, la segunda copia habria sido el lugar donde el diff de una linea se
+  // vuelve uno de cuarenta y dos sin que nada falle.
+  writeFileSync(MAPA_JSON, escribirMapa(m), 'utf8');
 };
 
 /* ── Fase 1: crear ────────────────────────────────────────────────────────── */

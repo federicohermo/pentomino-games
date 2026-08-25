@@ -5,7 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { join, dirname, resolve } from 'node:path';
 import {
   archivoDeComentario, carpetaExistente, ESTADOS, estadoDe, enVuelo, leerMapa, traducir, urlDeIssue,
+  agruparPrsPorSpec, aterrizo, derivarMapa, escribirMapa, ATERRIZARON_A_MANO,
+  type Mapa, type IssueDeSpec, type PrDeSpec,
 } from '../lib/specs.ts';
+import { derivarYGuardar, type EntornoDerivacion } from '../lib/derivacion.ts';
 
 /**
  * Los scripts que mueven los specs entre el repo y GitHub Issues (spec 034).
@@ -333,5 +336,284 @@ describe('carpetaExistente', () => {
   it('el `-` del prefijo no es decorativo', () => {
     // Sin el, `00` matchearia `004-…` y `021` matchearia un hipotetico `0210-…`.
     expect(carpetaExistente(CARPETAS, '02')).toBeNull();
+  });
+});
+
+/* ── Derivar el mapa desde los PR (spec 043) ──────────────────────────────── */
+
+/**
+ * La derivacion del spec 043, que es la que le saca al mapa la unica parte que era una
+ * afirmacion humana.
+ *
+ * El criterio de suficiencia de este bloque son los AC del 043, uno por uno, y no un
+ * porcentaje: los tres primeros son el punto fijo —sobre el mapa correcto no cambia
+ * nada—, su contraparte —sobre el mapa de antes del PR #128 cambia exactamente lo que
+ * faltaba— y los bordes que decidirian mal si se derivaran. **Las dos primeras hacen
+ * falta juntas**: un derivador que nunca cambia nada tambien da «cero correcciones»
+ * sobre el mapa correcto, y pasaria la primera sola.
+ */
+
+/** Un mapa chico con las cuatro situaciones que existen, para no depender del repo. */
+const MAPA_DE_PRUEBA = (): Mapa => ({
+  '001': { issue: 63, carpeta: '001-uno', fecha: '2026-08-02', estado: 'Descartado', titulo: 'Spec 001' },
+  '004': { issue: 66, carpeta: '004-cuatro', fecha: '2026-08-02', estado: 'Superado', titulo: 'Spec 004' },
+  '038': { issue: 105, carpeta: '038-treinta-y-ocho', fecha: '2026-08-24', estado: 'Propuesto', titulo: 'Spec 038' },
+  '043': { issue: 131, carpeta: '043-cuarenta-y-tres', fecha: '2026-08-25', estado: 'Propuesto', titulo: 'Spec 043' },
+});
+
+const ISSUES_DE_PRUEBA = new Map<number, IssueDeSpec>([
+  [63, { number: 63, state: 'CLOSED', title: 'Spec 001' }],
+  [66, { number: 66, state: 'CLOSED', title: 'Spec 004' }],
+  [105, { number: 105, state: 'CLOSED', title: 'Spec 038' }],
+  [131, { number: 131, state: 'OPEN', title: 'Spec 043' }],
+]);
+
+/** El 004 con su PR mergeado —lo tiene de verdad, es el #3—, el 038 mergeado, el 043 abierto. */
+const PRS_DE_PRUEBA = (): Map<string, PrDeSpec[]> => agruparPrsPorSpec([
+  { number: 3, headRefName: 'feature/004-cuatro', state: 'MERGED' },
+  { number: 117, headRefName: 'feature/038-treinta-y-ocho', state: 'MERGED' },
+  { number: 132, headRefName: 'feature/043-cuarenta-y-tres', state: 'OPEN' },
+]);
+
+describe('`derivarMapa` deduce el estado en vez de recordarlo', () => {
+  it('sobre el mapa REAL del repo no cambia nada: es un punto fijo', () => {
+    // La condicion sin la cual la Action corromperia el registro en vez de arreglarlo.
+    // Corre contra `specs/mapa.json` de verdad, con los issues y los PR que el propio
+    // mapa implica: si el spec dice `Implementado`, su issue esta cerrado y su PR
+    // aterrizo. No es circular — lo que se prueba es que la REGLA no invente cambios.
+    const mapa = leerMapa(readFileSync(join(RAIZ, 'specs', 'mapa.json'), 'utf8'));
+    const issues = new Map(Object.values(mapa).map((e) => [
+      e.issue, { number: e.issue, state: enVuelo(e.estado) ? 'OPEN' : 'CLOSED', title: e.titulo },
+    ]));
+    const prs = agruparPrsPorSpec(Object.entries(mapa)
+      .filter(([, e]) => !enVuelo(e.estado))
+      .map(([id], i) => ({ number: 1000 + i, headRefName: `feature/${id}-x`, state: 'MERGED' })));
+
+    expect(derivarMapa(mapa, issues, prs).correcciones).toEqual([]);
+  });
+
+  it('y sobre el mapa de antes del PR #128 corrige exactamente lo que faltaba', () => {
+    // La contraparte, y el bug que el spec 043 existe para no volver a tener: el 038
+    // aterrizo y el registro seguia diciendo que se estaba pensando.
+    const mapa = MAPA_DE_PRUEBA();
+
+    const { correcciones } = derivarMapa(mapa, ISSUES_DE_PRUEBA, PRS_DE_PRUEBA());
+
+    expect(correcciones).toEqual([{ id: '038', campo: 'estado', de: 'Propuesto', a: 'Implementado' }]);
+  });
+
+  it('el `titulo` vuelve al del issue, verbatim', () => {
+    const mapa = MAPA_DE_PRUEBA();
+    mapa['043'].titulo = 'Un titulo que alguien edito y el mapa no se entero';
+
+    const { correcciones, mapa: derivado } = derivarMapa(mapa, ISSUES_DE_PRUEBA, PRS_DE_PRUEBA());
+
+    expect(correcciones).toContainEqual({
+      id: '043', campo: 'titulo', de: 'Un titulo que alguien edito y el mapa no se entero', a: 'Spec 043',
+    });
+    expect(derivado['043'].titulo).toBe('Spec 043');
+  });
+
+  it('a `Descartado` y `Superado` no los mueve un PR mergeado', () => {
+    // El 004 es `Superado` y su PR #3 esta mergeado: lo supero otro spec despues, y eso
+    // no lo dice el merge. El 001 es `Descartado` y no tiene PR ninguno.
+    const { mapa: derivado } = derivarMapa(MAPA_DE_PRUEBA(), ISSUES_DE_PRUEBA, PRS_DE_PRUEBA());
+
+    expect(derivado['004'].estado).toBe('Superado');
+    expect(derivado['001'].estado).toBe('Descartado');
+  });
+
+  it('un `Implementado` cuyo PR ya no aterriza vuelve a `Propuesto`', () => {
+    // La direccion contraria, que es la que hace que esto sea una derivacion y no un
+    // «marcar como hecho»: si la unica fuente dice que no aterrizo, el mapa la sigue.
+    const mapa = MAPA_DE_PRUEBA();
+    mapa['043'].estado = 'Implementado';
+
+    const { correcciones } = derivarMapa(mapa, ISSUES_DE_PRUEBA, PRS_DE_PRUEBA());
+
+    expect(correcciones).toContainEqual({ id: '043', campo: 'estado', de: 'Implementado', a: 'Propuesto' });
+  });
+
+  it('no toca `issue`, `carpeta` ni `fecha`, y no inventa ni pierde entradas', () => {
+    const mapa = MAPA_DE_PRUEBA();
+    // Una rama que nombra un spec que el mapa no tiene: es una rama mal nombrada o un
+    // spec sin publicar, y las dos veces inventarle una entrada es peor que la falta.
+    const prs = agruparPrsPorSpec([
+      ...[...PRS_DE_PRUEBA().values()].flat(),
+      { number: 999, headRefName: 'feature/099-un-spec-que-no-existe', state: 'MERGED' },
+    ]);
+
+    const { mapa: derivado } = derivarMapa(mapa, ISSUES_DE_PRUEBA, prs);
+
+    expect(Object.keys(derivado)).toEqual(['001', '004', '038', '043']);
+    for (const id of Object.keys(derivado)) {
+      expect([derivado[id].issue, derivado[id].carpeta, derivado[id].fecha])
+        .toEqual([mapa[id].issue, mapa[id].carpeta, mapa[id].fecha]);
+    }
+  });
+
+  it('un issue que no se pudo leer deja el titulo como estaba, no lo vacia', () => {
+    // «No lo pude leer» y «se llama vacio» son respuestas opuestas. Quien grita por un
+    // spec que apunta a un issue inexistente es el gate, que tiene el mensaje.
+    const { mapa: derivado, correcciones } = derivarMapa(MAPA_DE_PRUEBA(), new Map(), PRS_DE_PRUEBA());
+
+    expect(derivado['038'].titulo).toBe('Spec 038');
+    expect(correcciones.filter((c) => c.campo === 'titulo')).toEqual([]);
+  });
+
+  it('una rama que no nombra un spec no agrupa, y `feature/` no es el unico prefijo', () => {
+    // El 038 y el 042 aterrizaron por ramas `fix/` y `chore/`: un patron que solo
+    // aceptara `feature/` los perderia sin decirlo.
+    const agrupado = agruparPrsPorSpec([
+      { number: 1, headRefName: 'chore/038-algo', state: 'MERGED' },
+      { number: 2, headRefName: 'fix/041-otra-cosa', state: 'MERGED' },
+      { number: 3, headRefName: 'renovate/lock-file-maintenance', state: 'OPEN' },
+      { number: 4, headRefName: 'main', state: 'OPEN' },
+    ]);
+
+    expect([...agrupado.keys()].sort()).toEqual(['038', '041']);
+  });
+
+  it('aterriza un `MERGED`, y no un `OPEN`', () => {
+    expect(aterrizo([{ number: 1, headRefName: 'feature/020-x', state: 'MERGED' }])).toBe(true);
+    expect(aterrizo([{ number: 1, headRefName: 'feature/020-x', state: 'OPEN' }])).toBe(false);
+    expect(aterrizo([])).toBe(false);
+    expect(aterrizo(undefined)).toBe(false);
+  });
+
+  it('un `CLOSED` sin mergear NO aterriza, aunque este cerrado', () => {
+    // El modo de falla que el escritor del 043 vuelve caro: un `feature/044-x` que se
+    // abre y se cierra sin mergear pondria el 044 en `Implementado` y lo commitearia a
+    // `main`; desde ahi el cruce contra el issue —abierto— deja en rojo TODOS los PR
+    // siguientes, y arreglar el mapa a mano no sirve porque el push que viene lo
+    // reescribe. Pasa de verdad: el #23 es una primera version del 029 que se abandono.
+    expect(aterrizo([{ number: 23, headRefName: 'feature/029-x', state: 'CLOSED' }])).toBe(false);
+  });
+
+  it('salvo los dos que aterrizaron a mano, que son una lista medida', () => {
+    // Los PR #35 y #36 —specs 020 y 021— figuran `CLOSED` y no `MERGED` porque se
+    // mergearon fuera de GitHub, y sus commits (`6fffa34` y `ea4db2f`) estan en `main`.
+    // La API no los distingue de un abandonado —los dos dicen `CLOSED`, `mergedAt: null`—
+    // asi que lo unico honesto es nombrarlos.
+    expect([...ATERRIZARON_A_MANO].sort()).toEqual([35, 36]);
+    for (const number of ATERRIZARON_A_MANO) {
+      expect(aterrizo([{ number, headRefName: 'feature/020-x', state: 'CLOSED' }])).toBe(true);
+    }
+  });
+});
+
+describe('`escribirMapa` es el unico formato del registro', () => {
+  it('reproduce `specs/mapa.json` byte por byte', () => {
+    // Es lo que hace que mudarlo desde `publicar-spec.mjs` no cambie nada, y lo que
+    // permite que dos escritores no se peleen por el formato.
+    const crudo = readFileSync(join(RAIZ, 'specs', 'mapa.json'), 'utf8');
+
+    expect(escribirMapa(leerMapa(crudo))).toBe(crudo);
+  });
+
+  it('cambiar un estado da un diff de UNA linea', () => {
+    // El motivo entero del formato: con `JSON.stringify(m, null, 2)` cada entrada ocupa
+    // siete lineas, asi que el commit que la Action hace sola seria ilegible.
+    const mapa = leerMapa(readFileSync(join(RAIZ, 'specs', 'mapa.json'), 'utf8'));
+    const antes = escribirMapa(mapa).split('\n');
+    mapa['001'] = { ...mapa['001'], estado: 'Implementado' };
+    const despues = escribirMapa(mapa).split('\n');
+
+    expect(antes.length).toBe(despues.length);
+    expect(antes.filter((l, i) => l !== despues[i])).toHaveLength(1);
+  });
+});
+
+/**
+ * El tramo que habla con el mundo: que hace el derivador segun lo que le contestaron.
+ *
+ * El entorno se inyecta por lo mismo que en `gh.test.ts`: los modos de falla que
+ * importan —una lista truncada, un mapa que ya esta bien— no se pueden fabricar contra
+ * el repo real. `guardar` registra en vez de escribir, asi que «no escribio» es una
+ * asercion y no una ausencia de efecto que nadie mire.
+ */
+describe('`derivarYGuardar` decide si escribir, y con que codigo sale', () => {
+  const MAPA_TEXTO = () => escribirMapa(MAPA_DE_PRUEBA());
+
+  const entornoFalso = (opciones: {
+    issues?: IssueDeSpec[]; prs?: PrDeSpec[]; texto?: string; limite?: number; verificar?: boolean;
+  }): EntornoDerivacion & { guardados: string[]; dicho: string[] } => {
+    const guardados: string[] = [];
+    const dicho: string[] = [];
+    return {
+      guardados,
+      dicho,
+      issues: () => opciones.issues ?? [...ISSUES_DE_PRUEBA.values()],
+      prs: () => opciones.prs ?? [
+        { number: 3, headRefName: 'feature/004-cuatro', state: 'MERGED' },
+        { number: 117, headRefName: 'feature/038-treinta-y-ocho', state: 'MERGED' },
+        { number: 132, headRefName: 'feature/043-cuarenta-y-tres', state: 'OPEN' },
+      ],
+      leerTexto: () => opciones.texto ?? MAPA_TEXTO(),
+      guardar: (t: string) => { guardados.push(t); },
+      informar: (l: string) => { dicho.push(l); },
+      limite: opciones.limite ?? 1000,
+      verificar: opciones.verificar ?? false,
+    };
+  };
+
+  it('sin correcciones no escribe, y sale 0', () => {
+    // AC9: es lo que hace que el workflow no genere un commit vacio por push.
+    const mapa = MAPA_DE_PRUEBA();
+    mapa['038'].estado = 'Implementado';
+    const entorno = entornoFalso({ texto: escribirMapa(mapa) });
+
+    expect(derivarYGuardar(entorno)).toBe(0);
+    expect(entorno.guardados).toEqual([]);
+    expect(entorno.dicho.join('\n')).toContain('sin cambios');
+  });
+
+  it('con correcciones escribe una vez, sale 0, y dice cual fue cada una', () => {
+    const entorno = entornoFalso({});
+
+    expect(derivarYGuardar(entorno)).toBe(0);
+    expect(entorno.guardados).toHaveLength(1);
+    expect(leerMapa(entorno.guardados[0])['038'].estado).toBe('Implementado');
+    expect(entorno.dicho.join('\n')).toContain('038');
+  });
+
+  it('con `--verificar` no escribe nunca, y sale 1 si hubiera escrito', () => {
+    const entorno = entornoFalso({ verificar: true });
+
+    expect(derivarYGuardar(entorno)).toBe(1);
+    expect(entorno.guardados).toEqual([]);
+  });
+
+  it('y con `--verificar` sobre un mapa correcto sale 0', () => {
+    // La contraparte: si `--verificar` saliera 1 siempre, no distinguiria nada.
+    const mapa = MAPA_DE_PRUEBA();
+    mapa['038'].estado = 'Implementado';
+
+    expect(derivarYGuardar(entornoFalso({ texto: escribirMapa(mapa), verificar: true }))).toBe(0);
+  });
+
+  it('una lista de PR truncada NO escribe y sale 1', () => {
+    // AC6, y es el modo de falla que mas caro sale: en una lista cortada «este spec no
+    // tiene PR» y «su PR no entro en la pagina» no se distinguen, asi que derivar sobre
+    // eso pondria en `Propuesto` a todo spec cuyo PR quedo afuera. El derivador seria lo
+    // unico capaz de romper el registro entero de una vez.
+    const entorno = entornoFalso({
+      limite: 2,
+      prs: [
+        { number: 1, headRefName: 'feature/038-x', state: 'MERGED' },
+        { number: 2, headRefName: 'feature/043-x', state: 'OPEN' },
+      ],
+    });
+
+    expect(derivarYGuardar(entorno)).toBe(1);
+    expect(entorno.guardados).toEqual([]);
+    expect(entorno.dicho.join('\n')).toContain('truncada');
+  });
+
+  it('y una lista de issues truncada tampoco, aunque los PR esten completos', () => {
+    const entorno = entornoFalso({ limite: 4 });
+
+    expect(derivarYGuardar(entorno)).toBe(1);
+    expect(entorno.guardados).toEqual([]);
   });
 });

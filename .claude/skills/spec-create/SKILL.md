@@ -148,7 +148,10 @@ No es parte de abrir un spec, pero es la otra mitad y se saltea igual de fácil:
    escriben más (ver arriba), y desde el spec 042 tampoco hay un `## Seguimiento` donde anotar lo
    que quedó. Así que acá `pendientes: 0` quiere decir que se cerró **todo**, sin excepciones que
    valga la pena explicar.
-2. `estado` a `Implementado` en `specs/mapa.json`, y `Closes #N` en el PR.
+2. `Closes #N` en el PR, que es lo único que hace falta escribir: cierra el issue solo —medido, un
+   segundo después del merge— y el `estado` de `specs/mapa.json` lo deriva `mapa.yml` en el push a
+   `main` (spec 043). **No lo edites a mano en el PR**: mientras ese PR está abierto el mapa tiene
+   que decir `Propuesto`, y el gate del 038 da rojo si dice otra cosa.
 3. Lo que salió distinto de lo previsto, **como comentario en el issue**.
 
 El paso 1 se saltea solo: el spec 035 se mergeó y su registro siguió diciendo `Propuesto` veinte horas,

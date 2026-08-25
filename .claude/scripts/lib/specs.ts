@@ -253,3 +253,208 @@ export const traducir = (texto: string, mapa: Mapa, repo: string): string => tex
  */
 export const carpetaExistente = (carpetas: string[], id: string): string | null =>
   carpetas.find((c) => c.startsWith(`${id}-`)) ?? null;
+
+/* ── Derivar el mapa desde los PR (spec 043) ──────────────────────────────── */
+
+/**
+ * De que spec es una rama, `feature/043-el-mapa-…` → `043`.
+ *
+ * **Por la RAMA y no por `closedByPullRequestsReferences`**, y eso lo midio el gate del
+ * 038 antes de elegir: la palabra clave `Closes #N` resuelve **2 de 42** —los unicos
+ * dos PR escritos despues de que la convencion existiera— contra **37 de 42** por la
+ * rama. Los otros 33 specs cerraron su issue a mano y GitHub no tiene el vinculo.
+ *
+ * El prefijo se deja abierto —`[^/]+`— a proposito: la convencion del 037 dice
+ * `feature/`, pero el 038 y el 042 aterrizaron por ramas `fix/` y `chore/`, y un patron
+ * que solo aceptara `feature/` los perderia sin decirlo.
+ *
+ * Vive aca y no en el gate porque desde el 043 lo leen los dos, y **que coincidan no
+ * puede depender de que alguien copie bien**: el derivador escribe el estado y el gate
+ * lo confirma, asi que dos copias que se separen dan un gate que confirma un calculo
+ * que ya no es el suyo, en verde.
+ */
+export const RAMA_DE_SPEC = /^[^/]+\/(\d{3})-/;
+
+/**
+ * Cuantos issues y cuantos PR se le piden a `gh`, **y es uno solo para los dos lectores**.
+ *
+ * `gh` pagina hasta el limite y **no avisa que corto**, asi que pedir de menos convierte
+ * una lista incompleta en un dato que parece completo. De ahi el numero: hoy son ~70
+ * issues y ~57 PR, o sea una pagina, y pedir de mas no cuesta nada.
+ *
+ * Vive aca desde el 043 por lo mismo que `RAMA_DE_SPEC`: lo leen el derivador que escribe
+ * el mapa y el gate que lo confirma. Con una copia en cada uno, subirlo solo en el
+ * escritor deja al gate devolviendo `null` —o sea salteandose— mientras el derivador
+ * escribe sin nadie que lo confirme. Se declara en el reporte, asi que no seria
+ * silencioso; pero seria justo la copia que este spec argumenta que no debe existir.
+ */
+export const LIMITE_DE_LISTA = 1000;
+
+/** Lo que hace falta de un PR: cual es, de que rama sale, y si sigue abierto. */
+export interface PrDeSpec {
+  number: number;
+  headRefName: string;
+  state: string;
+}
+
+/** Lo que hace falta de un issue: cual es, si esta abierto, y como se titula. */
+export interface IssueDeSpec {
+  number: number;
+  state: string;
+  title: string;
+}
+
+/**
+ * Los estados que **no los mueve un merge**, y por eso quedan afuera del cruce contra
+ * el PR — no del cruce contra el issue.
+ *
+ * Un `Superado` puede tener su PR mergeado —el 004 lo tiene, es el #3— y eso no dice
+ * nada de su estado: lo supero otro spec despues. Y un `Descartado` puede no tener
+ * ninguno. Los dos son decisiones humanas sobre el destino del spec, no consecuencias
+ * de que el codigo haya aterrizado, asi que el derivador los deja como estan.
+ *
+ * No es lo mismo que `CERRADOS`, que son tres: alla la pregunta es si el spec sigue en
+ * vuelo, aca es si un merge puede cambiarle el estado.
+ */
+export const NO_LOS_MUEVE_UN_MERGE: ReadonlySet<string> = new Set(['Descartado', 'Superado']);
+
+/**
+ * Los PR agrupados por el `NNN` de su rama. Los que no nombran un spec no entran.
+ *
+ * Devuelve un `Map` y no un objeto por lo mismo que `carpetaExistente` empareja por
+ * numero: las claves son `NNN` de tres digitos con ceros adelante, y un objeto los
+ * reordenaria como si fueran indices de array.
+ */
+export const agruparPrsPorSpec = (prs: readonly PrDeSpec[]): Map<string, PrDeSpec[]> => {
+  const porSpec = new Map<string, PrDeSpec[]>();
+  for (const pr of prs) {
+    const id = RAMA_DE_SPEC.exec(pr.headRefName)?.[1];
+    if (id === undefined) continue;
+    porSpec.set(id, [...(porSpec.get(id) ?? []), pr]);
+  }
+  return porSpec;
+};
+
+/**
+ * Los PR que aterrizaron **a mano**: figuran `CLOSED` y no `MERGED`, y sus commits de
+ * merge estan igual en `main` (`6fffa34` y `ea4db2f`).
+ *
+ * Son los del 020 y el 021, y son una lista y no una regla porque no hay ninguna: la API
+ * no distingue un PR mergeado fuera de GitHub de uno abandonado —los dos dicen `CLOSED`
+ * con `mergedAt: null`—, asi que lo unico honesto es nombrar los dos casos medidos.
+ *
+ * Hoy hay cuatro PR `CLOSED` en el repo: estos dos, el #23 —una primera version del 029
+ * que se abandono, y cuyo spec aterrizo igual por el #24— y el #20, de una rama que no
+ * nombra ningun spec. La lista es exactamente la de los que aterrizaron.
+ *
+ * Si algun dia se vuelve a mergear a mano, el que grita es el gate: el mapa dira
+ * `Propuesto` y el issue estara cerrado, que es un rojo con una pregunta real detras
+ * —¿ese PR implemento el spec?— y se contesta agregando el numero aca.
+ */
+export const ATERRIZARON_A_MANO: ReadonlySet<number> = new Set([35, 36]);
+
+/**
+ * Si el trabajo de un spec llego a `main`.
+ *
+ * **`MERGED`, o uno de los dos que aterrizaron a mano.** Un `CLOSED` a secas NO cuenta,
+ * y eso cambio en el 043 con el motivo entero: mientras esta regla la leia solo el gate,
+ * un PR cerrado sin mergear costaba una investigacion. Desde el 043 la lee un
+ * **escritor** que commitea a `main`, y ahi el mismo error sale carisimo: se abre y se
+ * cierra sin mergear un `feature/044-x`, el push siguiente deriva el 044 a
+ * `Implementado` y lo commitea, y a partir de ahi el cruce contra el issue —abierto—
+ * pone en rojo **todos** los PR siguientes, incluidos los que no tocan nada de esto.
+ * Arreglar el mapa a mano no sirve: el push siguiente lo vuelve a escribir.
+ *
+ * El error queda del lado barato: un PR abandonado deja el spec en `Propuesto`, que es
+ * lo que era.
+ */
+export const aterrizo = (prs: readonly PrDeSpec[] | undefined): boolean =>
+  (prs ?? []).some((pr) => pr.state === 'MERGED' || ATERRIZARON_A_MANO.has(pr.number));
+
+/** Un campo del mapa que no decia lo que la fuente dice. */
+export interface Correccion {
+  id: string;
+  campo: 'estado' | 'titulo';
+  de: string;
+  a: string;
+}
+
+/** El mapa derivado, y que hubo que cambiarle para llegar a el. */
+export interface Derivacion {
+  mapa: Mapa;
+  correcciones: Correccion[];
+}
+
+/**
+ * El mapa que se deduce de los PR y los issues, y la lista de lo que cambio.
+ *
+ * **El estado de un spec no es un dato que alguien escribe: es una consecuencia.** Su
+ * PR aterrizo o no, y eso no lo escribe nadie a mano. Mientras el mapa fue una
+ * afirmacion humana se desincronizo cinco veces seguidas —los specs 038 a 042— y el
+ * gate que lo cazaba estuvo en verde todo el tiempo, porque no podia correr; y aunque
+ * hubiera corrido, tampoco lo habria arreglado: el gate del 038 **prohibe** actualizar
+ * el mapa adentro del PR que lo justifica, asi que el paso queda para un commit
+ * posterior escrito a mano, que es el que se olvida.
+ *
+ * Lo que NO se deriva, y por que:
+ *
+ * - **`carpeta`**, porque no es derivable: el 035 midio que sacarla del titulo acierta
+ *   28 de 35 y falla 7. El 001 se llama `001-notas-por-celda-en-orden-angular` y su
+ *   issue se titula «Asignar cada nota a una celda de la pieza…».
+ * - **`fecha`**, porque es cuando se escribio el spec, no cuando aterrizo.
+ * - **`issue`**, porque es la clave que une las dos fuentes: derivarlo seria derivar de
+ *   si mismo.
+ * - **Las entradas que no estan.** Un spec entra al registro con `publicar-spec.mjs
+ *   crear` y no de otra forma. Un PR cuya rama nombra un `NNN` ausente del mapa no
+ *   agrega nada: es una rama mal nombrada o un spec sin publicar, y las dos veces
+ *   inventarle una entrada seria peor que la falta.
+ *
+ * Y un issue que no esta en el `Map` **deja el titulo como estaba** en vez de vaciarlo:
+ * ahi la respuesta cierta es «no lo pude leer», y quien grita por un spec que apunta a
+ * un issue inexistente es el gate, que tiene el mensaje para decirlo.
+ */
+export const derivarMapa = (
+  mapa: Mapa,
+  issues: ReadonlyMap<number, IssueDeSpec>,
+  prsPorSpec: ReadonlyMap<string, PrDeSpec[]>,
+): Derivacion => {
+  const correcciones: Correccion[] = [];
+  const derivado: Mapa = {};
+
+  for (const id of Object.keys(mapa)) {
+    const entrada = mapa[id];
+
+    const estado = NO_LOS_MUEVE_UN_MERGE.has(entrada.estado)
+      ? entrada.estado
+      : (aterrizo(prsPorSpec.get(id)) ? 'Implementado' : 'Propuesto');
+    const titulo = issues.get(entrada.issue)?.title ?? entrada.titulo;
+
+    if (estado !== entrada.estado) correcciones.push({ id, campo: 'estado', de: entrada.estado, a: estado });
+    if (titulo !== entrada.titulo) correcciones.push({ id, campo: 'titulo', de: entrada.titulo, a: titulo });
+
+    // El spread y no un objeto literal nuevo: `JSON.stringify` serializa en el orden de
+    // insercion, y sobrescribir una clave que ya existe NO la mueve de lugar. Asi las
+    // cinco claves salen en el orden con el que el mapa se genero, y cambiar un estado
+    // da un diff de una linea en vez de una linea reordenada.
+    derivado[id] = { ...entrada, estado, titulo };
+  }
+
+  return { mapa: derivado, correcciones };
+};
+
+/**
+ * El texto de `specs/mapa.json`: **una entrada por linea**, ordenadas por `NNN`.
+ *
+ * Vive aca y no adentro de `publicar-spec.mjs`, que es donde estaba, porque desde el
+ * 043 escriben dos. Y devuelve el texto en vez de escribir el archivo para que se pueda
+ * testear sin tocar el disco: el `writeFileSync` queda del lado de cada script.
+ *
+ * **El formato no es estetica.** Con `JSON.stringify(m, null, 2)` cada entrada ocupa
+ * siete lineas, asi que agregar un spec da un diff de siete y cambiar un estado da uno
+ * que hay que leer con lupa. Asi cada cambio es exactamente la linea del spec que
+ * cambio — que es lo que hace revisable el commit que la Action del 043 hace sola.
+ */
+export const escribirMapa = (mapa: Mapa): string => {
+  const cuerpo = Object.keys(mapa).sort().map((id) => `  "${id}": ${JSON.stringify(mapa[id])}`).join(',\n');
+  return `{\n${cuerpo}\n}\n`;
+};
