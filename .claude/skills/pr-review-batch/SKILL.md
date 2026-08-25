@@ -1,6 +1,6 @@
 ---
 name: pr-review-batch
-description: Revisa los PR abiertos de GitHub en paralelo —un agente por PR, cada uno en su worktree—, arregla lo que encuentra, verifica con pnpm verify, commitea y pushea a la rama del PR. Usar al querer cerrar el review de uno o varios PR de este repo. Para revisar un spec que todavía es texto, spec-review-batch.
+description: Revisa los PR abiertos de GitHub en paralelo —un agente por PR, cada uno en su worktree—, arregla lo que encuentra, verifica con pnpm verify, commitea y pushea a la rama del PR, y si los PR están apilados cierra poniendo la pila al día: mergea cada cadena de abajo hacia arriba y resuelve los conflictos, para que el lote quede mergeable. Usar al querer cerrar el review de uno o varios PR de este repo. Para revisar un spec que todavía es texto, spec-review-batch.
 argument-hint: "<NN NN ...> | --abiertos [--cleanup] [--comentar] [--dry]"
 # Sin `allowed-tools`, o sea sin restricción, y por el mismo motivo que `spec-implement-batch`:
 # declarar una lista parcial le sacaría todo lo que no estuviera en ella —`Agent`, los `git
@@ -92,12 +92,15 @@ Cinco cláusulas, que van **literales** en el preámbulo del Paso 1:
 2. **Pero la propiedad es de quien lo falsifica, no de quien toca la línea** — y esta es la excepción
    que la cláusula 1 necesita, porque sola crea un punto ciego. Un diff puede volver falsa una
    afirmación que **no contiene**: típicamente un conteo. Ver abajo.
-3. **Un arreglo abajo cuesta un rebase en cada PR de arriba.** Eso no cambia dónde va el fix —va donde
-   se introdujo— pero obliga a que cada agente **liste los archivos que tocó**, que es lo único con lo
-   que el padre puede anunciar el costo.
-4. **Hunk chico y quieto** en todo archivo de la lista caliente. Un arreglo que además re-justifica un
-   párrafo, re-envuelve líneas o reordena una tabla convierte un conflicto de una línea en uno de
-   veinte.
+3. **Un arreglo abajo cuesta un rebase en cada PR de arriba, y ese rebase lo paga el Paso 6.** Eso
+   no cambia dónde va el fix —va donde se introdujo— ni lo achica. Lo que obliga es a que cada
+   agente **liste los archivos que tocó**: es con lo que el padre planifica la puesta al día.
+4. **Hunk chico y quieto** en todo archivo de la lista caliente: no re-justifiques un párrafo, no
+   re-envuelvas líneas, no reordenes una tabla. Es **higiene y no un límite** — un conflicto de
+   veinte líneas cuesta más de resolver que uno de una, pero los dos se resuelven, y desde que
+   existe el Paso 6 los resuelve el mismo pipeline que los creó. **No es motivo para achicar un
+   fix, para elegir uno peor ni para no aplicarlo.** Ése es el error que el Paso 6 vino a sacar de
+   la mesa: un review que negocia con el conflicto deja bugs adentro para no tocar una rama.
 5. **El `## Seguimiento` se escribe con `mcp__pentomino-domain__spec_write` (`op: "seguimiento"`) y
    siempre con el `spec` propio.** El viejo argumento —«libre de conflicto por construcción, un
    `tasks.md` por PR»— **dejó de hacer falta**: la escritura cae en el registro central y ya no hay
@@ -105,9 +108,11 @@ Cinco cláusulas, que van **literales** en el preámbulo del Paso 1:
    explícito, y uno equivocado escribe en el registro de otro **sin que ningún diff lo delate**. Un 🟡
    que pertenece a otro spec del lote **no** se escribe: se reporta como `PERTENECE-A-PR-<N>`.
    El precio de la escritura central se paga acá y hay que decirlo en el reporte: **el reviewer del PR
-   ya no ve el seguimiento en el diff**, así que el Paso 5 es el único canal por el que se entera.
+   ya no ve el seguimiento en el diff**, así que el Paso 8 es el único canal por el que se entera.
 
-Y nadie rebasea, mergea ni usa `--force`. El push es `git push origin HEAD:refs/heads/<head.ref>`.
+Nadie rebasea y nadie usa `--force`. Y **ningún agente de PR mergea**: poner la pila al día es del
+padre y es el Paso 6, después de que todos los fixes estén adentro. El push de cada agente es
+`git push origin HEAD:refs/heads/<head.ref>`.
 
 ### El punto ciego que la cláusula 2 existe para tapar
 
@@ -280,7 +285,7 @@ El protocolo, y no hay que improvisarlo:
 El motivo está escrito en `CLAUDE.md`: es la misma contención por la que las dos pasadas de `suite`
 corren en secuencia y no en paralelo. Un runner —o cinco agentes— no es una máquina medible.
 
-## Paso 5 — Converger y reportar
+## Paso 5 — Converger
 
 El padre no re-audita: cruza.
 
@@ -324,24 +329,84 @@ El padre no re-audita: cruza.
   calla. **No abras inline sobre tu propio PR ya arreglado** — es ruido con costo, y cada comentario
   se paga dos veces en eco.
 
-El reporte, en este orden y en ~40 líneas más la tabla:
+**El reporte no se escribe acá.** Es el Paso 8, y va último porque tiene que contar cómo quedó la
+pila después del Paso 6: un reporte escrito antes de mergear describe un estado que ya no existe.
 
-1. **Una tabla, una fila por PR:** número, rama, hallazgos por severidad, SHA, y si `verify` pasó a la
-   primera o a la segunda.
-2. **Lo que apareció en más de un PR** — el patrón transversal es el entregable propio del batch. En
-   la corrida medida fueron 17 de 21 hallazgos de la misma clase: prosa que dejó de ser cierta.
-3. **Lo no aplicado**, y en el `## Seguimiento` de qué spec quedó escrito, con el `T0NN` que devolvió
-   la tool. Desde que la escritura es central esto **no es redundante con el PR**: el seguimiento no
-   está en el diff, así que quien mergea sólo lo ve acá.
-4. **El orden de merge, de abajo hacia arriba**, y que un squash obliga a rebasear el PR de arriba de
-   la cadena.
-5. **Los archivos que el review dejó disputados, con el costo de cada rebase.** Es el punto que
-   distingue este reporte del de N reviews sueltos: el usuario mergea con la lista de dónde va a
-   frenar y con qué resolución. Un conteo monótono es el caso fácil y hay que decirlo — el conflicto
-   es de una línea y **se resuelve tomando el número de más arriba**, que es el de la cabeza más
-   nueva.
+## Paso 6 — Poner la pila al día, que es lo último y no es opcional
 
-## Paso 6 — Destruir los worktrees
+**Un review de una pila no termina cuando cada PR está verde: termina cuando la pila entera se
+puede mergear.** Los dos estados son distintos, y el segundo es el que el usuario necesita —
+aprobar cinco PR que no entran uno detrás del otro no le sirve de nada.
+
+Y va **al final, después de todos los fixes**, por un motivo que no es de orden sino de calidad:
+mientras el conflicto sea algo que hay que evitar, el review negocia con él. Medido el 2026-08-25
+sobre el lote 038-042: la cláusula 4 estaba escrita como un límite, y el review llegó a elegir el
+alcance de un arreglo mirando a qué rama iba a tocar. **Un review que le tiene miedo al conflicto
+deja bugs adentro.** Con el conflicto pagado acá, el Paso 3 puede arreglar lo que haga falta como
+si la pila no existiera, que es exactamente lo que tiene que hacer.
+
+Si el lote no está apilado —todos los `base.ref` son `main`— este paso no tiene nada que hacer y se
+saltea **declarándolo en el reporte**. Con `--dry` tampoco corre: las resoluciones se redactan en el
+reporte en vez de aplicarse.
+
+### Primero medir, sin checkout
+
+```bash
+git fetch origin
+git merge-tree --write-tree --name-only origin/<de-arriba> origin/<de-abajo>
+```
+
+Contesta qué archivos chocan **sin tocar el árbol y sin worktree**, así que el padre mide las N
+uniones de un saque y recién después decide cuántos carriles abre. Y es lo que le deja **escribirle
+a cada agente la resolución ya redactada** en vez de mandarlo a decidir: el mismo comando sin
+`--name-only` devuelve el árbol mergeado, y `git show <tree>:<archivo>` muestra el conflicto con sus
+marcadores.
+
+Medí también el resultado **semántico**, no sólo si hubo conflicto. Un automerge limpio puede quedar
+mal: dos cadenas que mueven el mismo conteo mergean sin chocar y dejan un número viejo. El árbol de
+`merge-tree` se lee con `git show` y ahí se cruzan las afirmaciones numéricas del Paso 5.
+
+### Un carril por cadena, no por unión
+
+Las uniones de una misma cadena son **secuenciales** —para mergear `039` en `042` primero tiene que
+estar `038` en `039`—, así que van todas en el mismo agente, en orden y de abajo hacia arriba.
+Cadenas independientes sí van en paralelo, un `Agent` con `isolation: "worktree"` cada una.
+
+Cada agente recibe: su cadena con los SHA, **cada conflicto medido con su resolución textual**, y el
+contrato de abajo. Medido el 2026-08-25 con dos carriles: 5 min y 9 min, ningún rojo por contención.
+
+### El contrato del carril
+
+1. **Rama de andamio propia por unión**, con el `NNN` del PR de destino adelante —el gate del 037 la
+   exige igual que en el Paso 3—, y `pnpm install --frozen-lockfile` antes que nada.
+2. **`git merge`, nunca `git rebase` y nunca `--force`.** Un rebase reescribe los commits del review
+   que el usuario acaba de leer, y encima los hace resolver de nuevo uno por uno.
+3. **Resolver con la resolución que bajó el padre**, y parar y reportar si el conflicto no es el que
+   el prompt describe: significa que algo se movió entre la medición y el merge.
+4. **Editar con una herramienta que respete el fin de línea.** Medido el 2026-08-25: `sed`, `awk` y
+   `cat -A` en este Git Bash leen en modo texto y se comen los `\r`, así que un `sed -i` sobre un
+   archivo CRLF lo convierte entero a LF y el diff pasa de tres líneas al archivo completo. `git diff
+   --stat` después de resolver lo atrapa, y `git checkout --merge <archivo>` devuelve el conflicto
+   sin perder nada.
+5. **`pnpm verify` después de cada unión**, con el veredicto del exit code y el Paso 4 adelante. Si
+   la pila toca `specs/`, además con `hidratar-specs.mjs --todos`: sin hidratar, los gates de
+   `specs/__tests__/` se saltean declarándolo y el merge se da por verde sin haberlos corrido.
+6. **Push sólo a la ref que ya existe**, confirmada antes con `git ls-remote --heads origin <rama>`.
+   La rama de andamio muere con el worktree y **no se pushea con su nombre**. Este paso no abre
+   ramas remotas ni PR: trabaja sobre los que ya están.
+
+### Lo que este paso NO puede resolver, y por eso va al reporte
+
+**Dos cadenas independientes que tocan el mismo archivo.** Ese conflicto no existe todavía: aparece
+recién cuando la segunda entra a `main`, y resolverlo desde acá pediría mergear a `main` —que no es
+de este skill— o enredar dos PR que no dependen entre sí. Va al reporte **con el texto final ya
+redactado**, no con una descripción de qué habría que elegir.
+
+Medido el 2026-08-25 sobre 038-042: tres conflictos, dos resueltos acá y **uno** que quedó así, de
+cinco líneas — y su resolución no era «tomar el de más arriba» sino una frase de cada lado, porque
+cada cadena tenía razón en una mitad distinta del párrafo.
+
+## Paso 7 — Destruir los worktrees
 
 ```bash
 sh .claude/skills/pr-review-batch/scripts/limpiar-worktrees.sh --todos
@@ -366,9 +431,35 @@ Después borrá las ramas `rev-pr-<N>`, **pero recién después de verificar que
 
 ---
 
+## Paso 8 — El reporte
+
+En este orden y en ~40 líneas más la tabla:
+
+1. **Una tabla, una fila por PR:** número, rama, hallazgos por severidad, el SHA del review, el SHA
+   del merge si el Paso 6 lo tocó, y si `verify` pasó a la primera o a la segunda.
+2. **Lo que apareció en más de un PR** — el patrón transversal es el entregable propio del batch. En
+   la corrida medida fueron 17 de 21 hallazgos de la misma clase: prosa que dejó de ser cierta.
+3. **Lo no aplicado**, con el número del issue que quedó abierto y el `Detectado en #N` que lleva.
+   Desde que el destino está fuera del repo esto **no es redundante con el PR**: el issue no está en
+   el diff, así que quien mergea sólo lo ve acá.
+4. **Cómo quedó la pila después del Paso 6**: qué cadena está al día contra qué, con qué SHA de
+   merge, y cada conflicto que se resolvió **con el criterio que lo resolvió**. La verificación va
+   escrita al lado: que cada cadena contenga entera a la de abajo —`git log <abajo>..<arriba>`
+   vacío— y que no haya aparecido ninguna ref remota nueva.
+5. **Lo que queda entre cadenas independientes, con la resolución textual.** Y el orden de merge, de
+   abajo hacia arriba, más el aviso de que un squash obliga a rebasear el PR de arriba.
+
+La pregunta que el reporte tiene que dejar contestada es **«¿puedo mergear esto ya?»**. Si la
+respuesta es «sí, salvo un conflicto», el conflicto va con su texto final resuelto adentro del
+reporte, no como una advertencia.
+
+---
+
 ## Lo que no hace
 
-- **No mergea, y no mueve estados en `specs/mapa.json`** — los mueve el merge.
+- **No mergea a `main`, y no mueve estados en `specs/mapa.json`** — los mueve ese merge, que es del
+  usuario. Sí mergea **hacia arriba dentro de la pila**, en el Paso 6: es lo que deja al lote en
+  condiciones de entrar.
 - **No revisa specs que todavía son texto.** Eso es `spec-review-batch`, corre antes, y sale mucho
   más barato: un cruce detectado como texto cuesta un párrafo y detectado en dos ramas cuesta un
   rebase.
