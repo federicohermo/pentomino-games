@@ -56,6 +56,10 @@ Trabajo planificado. Un spec por unidad de trabajo, en su propia carpeta numerad
 > nota a una celda de la pieza…»—, o sea que un árbol recién hidratado inventaría siete carpetas que
 > ninguna cita conoce.
 >
+> **`origen` es un sexto campo, opcional, y llegó con el spec 044**: los issues de deuda que el spec
+> **salda** —no los que menciona—. Cómo se declara y qué lo verifica, en «De un issue de deuda a un
+> spec», más abajo.
+>
 > **`estado` y `titulo` son copias del issue**, y las mira un gate (`__tests__/mapa-de-specs.test.ts`)
 > que se saltea declarándolo cuando no hay red. Se copian porque `spec_status` y `mcp:test` corren
 > **sin red**; lo que no se copia es la descripción larga que tenía cada fila del registro anterior,
@@ -236,6 +240,53 @@ diagnóstico, un año antes y sin depender de que alguien pase por ahí.
 La señal más barata de todas, mientras hubo seguimientos: **una tarea anotada en cuatro seguimientos
 distintos ya no es de nadie.** `PlacedPiece.notes` estaba en los del 001, el 007, el 009 y el 010, y
 cada spec la postergaba al siguiente; cerrarla no llevó más de un commit.
+
+## De un issue de deuda a un spec
+
+**Hay dos carriles y los decide una sola pregunta: ¿el arreglo toca `src/`, `mcp-server/src/` o
+`docs/`?** Ésas son las tres rutas que el hook del spec 037 protege, y lo que sigue es la regla que ese
+hook ya aplica de hecho —escrita, porque hasta el 044 no estaba en ningún lado y este archivo sólo
+declaraba `feature/<NNN>-<kebab>`.
+
+| El arreglo… | Carril | Qué cierra el issue |
+|---|---|---|
+| **no** toca ruta protegida | rama `fix/` o `chore/`, sin spec | `Closes #N` en el cuerpo del PR |
+| **sí** la toca | necesita spec, y el `spec.md` lleva `**Origen:** #N` | un `Closes` **por cada** issue saldado |
+
+El carril informal no es una tolerancia: es el único que se usó. Los tres issues de deuda que se
+cerraron alguna vez salieron de ramas `fix/` y `chore/`, y **0 de 25** fue promovido a spec. Los tres
+cerraron solos, por la palabra clave, **un segundo después del merge** de su PR.
+
+> **`Closes #N` en el cuerpo de un *issue* no cierra nada**: GitHub sólo autocierra desde un PR o un
+> commit. Por eso el vínculo no se puede resolver escribiéndolo en el `spec.md` y nada más — tiene que
+> llegar al PR.
+
+**Y por eso existe `origen`.** La línea `**Origen:** #127` del encabezado del `spec.md` la parsea
+`publicar-spec.mjs crear` —igual que ya parsea el título del H1— y la escribe en la fila del mapa. De
+ahí la lee el gate de [`__tests__/mapa-de-specs.test.ts`](./__tests__/mapa-de-specs.test.ts), que pone
+en rojo un spec que ya no está en vuelo y cuyo `origen` sigue abierto. **Sin ese dato nada podía exigir
+el `Closes`**, y se nota: 4 de los 43 specs nombran un issue de deuda **en prosa** y tres de esos cuatro
+siguen abiertos.
+
+**`origen` significa saldar, no citar**, y la diferencia es la que decide si el gate sirve o se apaga en
+una semana. El spec 035 cita al #97 como contexto de una medición que **no** arregla; con la lectura
+ancha, el gate daría rojo sobre un spec correcto. De ahí que se declare a mano en una línea y no se
+derive de un grep. Un `#127` suelto en el cuerpo no cuenta: el parser mira sólo el encabezado.
+
+Es opcional —un spec que no nace de un issue no lleva el campo—, **y ausente no es vacío**: `leerMapa`
+rechaza `origen: []`, porque «no tiene origen» ya se dice omitiéndolo. Los 43 specs anteriores al 044
+no lo llevan y no se reescriben, por la Desviación 2.
+
+**Qué hay para promover lo contesta un comando**, que es el censo que antes había que armar a mano:
+
+```bash
+node .claude/scripts/deuda.mjs   # los issues abiertos que ningún spec reclama, con label y antigüedad
+```
+
+Reclama un issue tanto el spec cuyo issue **es** ése como el que lo declara en su `origen`. El orden es
+por antigüedad y **no es una prioridad**: cuál se promueve y en qué orden es una decisión, y una máquina
+que la tome inventa prioridades. Es un script y no una tool del MCP a propósito — `spec_status` responde
+sin red, y una tool que a veces la necesita falla distinto según dónde corra.
 
 ## Flujo
 
