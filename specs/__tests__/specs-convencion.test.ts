@@ -231,7 +231,7 @@ describe.runIf(HIDRATADOS > 0)('los specs hidratados cumplen la convencion que s
  * `[M]` decia «pide una persona — navegador, oido, captura» y por eso no bloqueaba el
  * cierre del spec. La medicion lo desmintio: hay **137 casillas `[M]` repartidas en 35
  * specs** —contadas con el `TAREA` de arriba, que es el mismo que usa `parseTasks`— y
- * el research del 039 encontro que **7** se cerraron alguna vez. O sea que en la
+ * de todas ellas solo **6** se cerraron alguna vez. O sea que en la
  * practica `[M]` no significaba «espera a una persona» sino «no se va a hacer, pero
  * queda escrito», que es una forma cara de no anotar nada.
  *
@@ -267,6 +267,50 @@ it('el regex reconoce un `[M]`, que es lo que el gate de abajo mira', () => {
   expect(TAREA.exec('- [ ] T012 [P] lo que sea')?.[3]).not.toContain('[M]');
 });
 
+/**
+ * Los `[M]` de UN `tasks.md`, partidos por el corte: los de un spec anterior al 039 se
+ * cuentan como `historicos` y los del 039 en adelante salen en `nuevos`, que es lo que
+ * el gate rechaza.
+ *
+ * Vive afuera del `it` porque el gate sobre disco **solo puede verse en verde**: hoy no
+ * hay ni un `[M]` en un spec `>= 039`, asi que la rama que reporta no se ejecuta nunca
+ * y el corte por numero queda sin falsificar. El AC3 pide ver las dos direcciones —el
+ * mismo `[M]` rojo en un spec nuevo y verde en uno viejo— y eso se ve sobre dos strings
+ * literales; sobre el disco, no.
+ */
+function manualesDe(carpeta: string, md: string): { nuevos: string[]; historicos: number } {
+  const nuevos: string[] = [];
+  let historicos = 0;
+  const numero = Number(carpeta.slice(0, 3));
+
+  md.split(/\r?\n/).forEach((linea, i) => {
+    const marcadores = TAREA.exec(linea)?.[3];
+    if (marcadores === undefined || !marcadores.includes('[M]')) return;
+    // Los de los specs viejos se cuentan y no se reportan: son historia, y la
+    // Desviacion 2 los deja donde estan. Contarlos igual es lo que permite decir
+    // cuantos se miraron en vez de callarlo.
+    if (numero < SIN_MANUAL_DESDE) { historicos += 1; return; }
+    nuevos.push(`${carpeta}/tasks.md:${i + 1}  ${linea.trim().slice(0, 80)}`);
+  });
+
+  return { nuevos, historicos };
+}
+
+it('el corte es por numero: el mismo `[M]` es historia en el 038 y hallazgo en el 039', () => {
+  const md = '## Paso 1\n- [ ] T012 [P] [M] escuchar y confirmar que el timbre es aceptable\n';
+
+  const viejo = manualesDe('038-el-estado-del-mapa-tiene-que-ser-verdad', md);
+  expect(viejo.nuevos).toEqual([]);
+  expect(viejo.historicos).toBe(1);
+
+  const nuevo = manualesDe('039-una-tarea-la-cierra-un-agente', md);
+  expect(nuevo.historicos).toBe(0);
+  expect(nuevo.nuevos).toEqual([
+    '039-una-tarea-la-cierra-un-agente/tasks.md:2  '
+    + '- [ ] T012 [P] [M] escuchar y confirmar que el timbre es aceptable',
+  ]);
+});
+
 describe.runIf(HIDRATADOS > 0)('los specs nuevos no anotan trabajo que nadie va a hacer', () => {
   it(`ningun spec \`NNN >= ${SIN_MANUAL_DESDE}\` escribe una tarea \`[M]\``, () => {
     const nuevos: string[] = [];
@@ -277,17 +321,10 @@ describe.runIf(HIDRATADOS > 0)('los specs nuevos no anotan trabajo que nadie va 
       const ruta = join(SPECS, carpeta, 'tasks.md');
       if (!existsSync(ruta)) continue;
       leidos += 1;
-      const numero = Number(carpeta.slice(0, 3));
 
-      readFileSync(ruta, 'utf8').split(/\r?\n/).forEach((linea, i) => {
-        const marcadores = TAREA.exec(linea)?.[3];
-        if (marcadores === undefined || !marcadores.includes('[M]')) return;
-        // Los de los specs viejos se cuentan y no se reportan: son historia, y la
-        // Desviacion 2 los deja donde estan. Contarlos igual es lo que permite decir
-        // cuantos se miraron en vez de callarlo.
-        if (numero < SIN_MANUAL_DESDE) { historicos += 1; return; }
-        nuevos.push(`${carpeta}/tasks.md:${i + 1}  ${linea.trim().slice(0, 80)}`);
-      });
+      const r = manualesDe(carpeta, readFileSync(ruta, 'utf8'));
+      nuevos.push(...r.nuevos);
+      historicos += r.historicos;
     }
 
     // Que se leyeron los `tasks.md` que hay, igual que el gate del formato: sin esto,
@@ -301,7 +338,7 @@ describe.runIf(HIDRATADOS > 0)('los specs nuevos no anotan trabajo que nadie va 
       'y entonces bloquea como cualquier otra, o **no anotarla en ningun lado**, ni\n' +
       'siquiera en `## Seguimiento`. Lo que no es una opcion es dejarla escrita sin que\n' +
       'nadie la pueda cerrar: eso ya se midio y da 137 casillas en 35 specs, de las que\n' +
-      `se cerraron 7:\n${nuevos.join('\n')}`,
+      `se cerraron 6:\n${nuevos.join('\n')}`,
     ).toEqual([]);
 
     // El conteo historico va declarado y no aserto: cuantos specs viejos hay en disco

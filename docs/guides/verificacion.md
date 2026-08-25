@@ -107,8 +107,12 @@ Spec 029. El corte no es por capa sino por lo que el test necesita:
   `directory-structure.md` y el techo de 200 líneas de `CLAUDE.md`, issue #100—; `specs/__tests__/`
   los dos del **registro** —la convención y `mapa.json`, spec 035—; y `.claude/scripts/__tests__/` los
   dos de los **scripts** —el de publicar e hidratar, y el del gate de rama del spec 037—, que son del
-  script y no de `specs/`, que es lo que el script manipula. Ninguno entra al umbral de 100: el
-  `include` de coverage sigue siendo `src/**`.
+  script y no de `specs/`, que es lo que el script manipula. El `include` de coverage sigue siendo
+  `src/**`, y desde el 038 eso **no alcanza**: v8 reporta todo archivo que se **ejecutó**, y el
+  `include` sólo decide cuáles de los que nadie tocó se suman al denominador. `mapa-de-specs.test.ts`
+  importa `readSpecStatus` del otro paquete, así que `mcp-server/` entero entró a la tabla y puso el
+  umbral en rojo: está en el `exclude` del coverage de vitest, y su gate al 100 sigue siendo
+  `mcp:test`.
 - **`browser`** — Chromium de verdad, por Playwright, para los archivos `*.browser.test.tsx`. Entra
   porque jsdom no puede: `Spectrum.tsx` necesita canvas 2D, `createLinearGradient`, `ResizeObserver`,
   `matchMedia` y un `getBoundingClientRect` con números, y `audio/engine.ts` necesita

@@ -56,7 +56,7 @@ Al revisar, verificá:
   de la versión anterior del archivo. Renumerar rompe toda referencia que otra tarea le hiciera.
 - **Ninguna tarea se cierra mirando o escuchando.** El global pide que "un AC que solo un humano puede
   firmar esté marcado como tal: no es material de loop", y hasta el 039 acá eso se marcaba `[M]`. La
-  medición lo dio vuelta: de **137** casillas `[M]` en **35** specs, sólo **7** se cerraron alguna
+  medición lo dio vuelta: de **137** casillas `[M]` en **35** specs, sólo **6** se cerraron alguna
   vez, o sea que el marcador no significaba "espera a una persona" sino "no se va a hacer nunca, pero
   queda escrito". Así que **una tarea que dice *escuchar*, *a oído*, *a ojo*, *captura*, *GIF* o *en
   el navegador* es un hallazgo**, y el arreglo es **volverla verificable** —medirla en el DOM, un test

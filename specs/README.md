@@ -168,8 +168,8 @@ anteriores a esta convención no llevan ID y no se reescriben para agregárselo,
 
 **`[M]` dejó de ser parte del formato, desde el spec 039.** Marcaba una tarea que pide una persona
 —oído, ojo, navegador— y que por eso no bloqueaba el cierre del spec. Medido hoy sobre los 42 specs
-hidratados: **137 casillas `[M]` repartidas en 35 specs**, y de todas ellas el research del 039
-encontró **7** cerradas alguna vez. O sea que `[M]` no decía «espera a una persona» sino «no se va a
+hidratados: **137 casillas `[M]` repartidas en 35 specs**, y de todas ellas sólo **6** se
+cerraron alguna vez. O sea que `[M]` no decía «espera a una persona» sino «no se va a
 hacer, pero queda escrito», y las que siguen abiertas no son un registro de trabajo pendiente: son
 una lista de intenciones con formato de checklist, que `spec_status` reporta como `pendientes: 0`.
 
@@ -178,16 +178,17 @@ una lista de intenciones con formato de checklist, que `spec_status` reporta com
 normal que bloquea como cualquier otra, o no se escribe en el `tasks.md` —y desde el 042 tampoco hay
 un `## Seguimiento` donde escribirla—. El número va acá a propósito: una convención que se cambia sin
 dejar escrito qué la desmintió se vuelve a proponer igual dentro de un año, con los mismos argumentos,
-que siguen sonando razonables — **137 contra 7** es lo único que no se puede volver a sostener.
+que siguen sonando razonables — **137 contra 6** es lo único que no se puede volver a sostener.
 
 **Los specs anteriores conservan sus `[M]`, los 137.** Por la Desviación 2 un spec mergeado no se
 reescribe, y sacarlos a mano movería el `pendientes` de 35 specs ya cerrados para satisfacer una
 convención que llegó después. De ahí que la regla sea por número: **en specs `NNN >= 039` no se
 escriben `[M]` nuevos**, y los `NNN < 039` se leen con la convención con la que fueron escritos. Lo
-que sí se sigue pudiendo es **corregir la clasificación** de una tarea vieja: el spec 038 le puso
-`[M]` a la T019 del 015 —verificar de oído que una pieza muteada no suena— porque la única
-alternativa era marcarla `[x]`, o sea afirmar que alguien escuchó cuando nadie escuchó. Eso no es un
-`[M]` nuevo; es dejar de mentir sobre uno viejo.
+que sí se sigue pudiendo es **corregir la clasificación** de una tarea vieja que quedó mal marcada: el
+review del spec 038 le puso `[M]` a la T019 del 015 —verificar de oído que una pieza muteada no
+suena— porque la única alternativa era marcarla `[x]`, o sea afirmar que alguien escuchó cuando nadie
+escuchó. Eso no es un `[M]` nuevo; es dejar de mentir sobre uno viejo, y es el ítem **137** de la
+cuenta de arriba: corregir una clasificación mueve el número, así que se re-mide y no se copia.
 
 **`[P]` es lo que `spec-implement` hoy deriva solo.** Declararlo al escribir el spec, que es cuando se
 conocen las dependencias reales, sale más barato y más confiable que inferirlo en cada corrida.
