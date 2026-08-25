@@ -13,6 +13,14 @@ Es tooling: no entra al bundle ni al deploy.
   server es el render ASCII, el parseo de los specs, el índice de símbolos y el formato de las
   respuestas. Si al agregar o tocar una tool aparece la tentación de calcular una rotación, una validez
   o una escala acá, falta un export en `src/domain/` — y eso es un cambio de `src/`, en su propio commit.
+- **Una tool declara cuatro cosas, no dos.** Además de `description` e `inputSchema` van `title` —el
+  nombre legible— y `annotations`, con `readOnlyHint` y `openWorldHint` **siempre**, y
+  `destructiveHint` si escribe. Los dos campos son **opcionales** en `ToolDef` a propósito —así el
+  commit que amplía el contrato no espera a que las seis estén hechas— y por eso el compilador no
+  ataja al que se los olvide: lo ataja `tools.test.ts`, que recorre `tools` y los exige en todas.
+  `readOnlyHint` habla de si la tool **modifica** su entorno, no de si toca el filesystem: leer
+  `src/` o `specs/` del disco sigue siendo `true`. Y si un hint sería falso la mitad de las veces se
+  **omite**, no se elige un valor — `spec_write` no lleva `idempotentHint` por eso.
 - **`find_symbol` es la única que mira el código como texto, y su índice no se persiste.** Se construye
   en cada consulta desde disco (medido: 112 ms en frío, ~50 ms después, sobre 36 archivos indexados y
   16 que solo aportan aristas). Si alguna vez hace falta acelerarlo, cachear por `mtime` — **no**

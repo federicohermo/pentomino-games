@@ -51,6 +51,32 @@ describe('el registro', () => {
     }
   });
 
+  test('ninguna tool se olvida de declarar si escribe', () => {
+    // La forma es «ninguna se olvido» y no «esta tool dice esto»: lo segundo
+    // copia el codigo en el test y deja pasar a la tool numero siete, que es el
+    // modo de falla real de un dato que `tsc` no puede sincronizar —los dos
+    // campos son opcionales en `ToolDef` a proposito.
+    for (const t of tools) {
+      assert.ok(t.annotations, t.name);
+      assert.equal(typeof t.annotations.readOnlyHint, 'boolean', t.name);
+      assert.equal(typeof t.annotations.openWorldHint, 'boolean', t.name);
+      assert.ok(t.title && t.title.length > 0, t.name);
+    }
+  });
+
+  test('spec_write es la unica que escribe', () => {
+    // La afirmacion que `CLAUDE.md` hace en prosa, verificada. Se mide sobre el
+    // registro entero y no sobre `spec_write` sola: asi falla tanto si alguien la
+    // marca de solo lectura como si anota una segunda tool que escribe.
+    const escriben = tools.filter(t => t.annotations?.readOnlyHint === false);
+    assert.deepEqual(escriben.map(t => t.name), ['spec_write']);
+    // Marca casillas y agrega texto: no borra ni sobrescribe.
+    assert.equal(escriben[0].annotations?.destructiveHint, false);
+    // Y no afirma `idempotentHint`, que seria falso: `marcar` falla si la tarea
+    // ya estaba marcada, o sea que llamarla dos veces es un error y no un no-op.
+    assert.equal(escriben[0].annotations?.idempotentHint, undefined);
+  });
+
   test('un argumento invalido no llega al handler', () => {
     // El SDK valida antes de llamar, y `defineTool` vuelve a parsear en el borde
     // generico: por las dos vias, una pieza inexistente falla en vez de responder

@@ -55,6 +55,31 @@ de `seguimiento` nunca reusa uno libre, y `marcar` **falla** si la tarea no exis
 Y escribe en el registro **central** aunque quien la llame esté en un worktree — con el precio escrito
 en la D1 del spec: el hallazgo deja de viajar en el diff del PR.
 
+### Que cinco lean y una escriba es un campo, no sólo esta prosa
+
+Desde el [spec 040](https://github.com/federicohermo/pentomino-games/issues/110) las seis declaran
+`annotations` en su `tools/list`, así que el reparto de arriba lo puede leer **la máquina**:
+
+| Campo | Qué dice | Quién lo lleva |
+|---|---|---|
+| `readOnlyHint` | si la tool **modifica** su entorno | `true` en cinco, `false` sólo en `spec_write` |
+| `openWorldHint` | si el dominio de entidades es abierto | `false` en las seis: doce piezas, un `src/`, un `specs/` |
+| `destructiveHint` | si además de escribir, borra | `false`, y sólo en `spec_write` |
+
+Importa por algo concreto y no por prolijidad: **varios clientes MCP usan `readOnlyHint` para no pedir
+permiso**. Hasta el 040, las cinco que sólo leen pagaban la misma fricción que la que escribe.
+
+Dos cosas que el campo **no** dice, a propósito. `readOnlyHint: true` en `find_symbol` y `spec_status`
+no es un error: el hint habla de si la tool modifica su entorno, y las dos leen el disco sin tocarlo.
+Y `spec_write` **no** declara `idempotentHint`: `marcar` falla si la tarea ya estaba marcada, así que
+llamarla dos veces es un error y no un no-op. Omitir antes que afirmar algo falso, que es la misma
+política con la que `spec_status` omite las `citas` en vez de mandarlas vacías.
+
+Lo que sostiene todo esto es un test —`tools.test.ts`, `describe('el registro')`— con la forma
+«ninguna se olvidó»: recorre `tools` y exige los campos en **todas**, en vez de repetir tool por tool
+lo que el código ya dice. Los dos campos son opcionales en `ToolDef`, así que el compilador no puede
+atajar a la tool número siete y el test sí.
+
 ## Cuándo preferirlas a leer el código
 
 La regla corta: **simular el modelo es caro, y localizar dejó de ser gratis.** Lo caro sigue siendo
@@ -107,7 +132,7 @@ pongo en `x=1` y otra pieza en `x=5`?"*
 |---|---|---|
 | Leyendo el código: `domain/{transform,music,board,sequence}` + sus `constants/` y `types/` + `audio/scheduler` + sus constantes | 48.565 | ~12.141 |
 | Con las tools: `describe_piece` (621) + `simulate_board` (2.064) | **2.685** | **~671** |
-| Catálogo de las seis tools, una vez por sesión | 13.118 | ~3.280 |
+| Catálogo de las seis tools, una vez por sesión | 13.714 | ~3.430 |
 
 Las dos primeras filas se re-midieron con el spec 009 y **la brecha se ensanchó**: la respuesta de
 `simulate_board` creció de 1.189 a 2.064 bytes porque ahora lleva el camino de cada salto, pero el
@@ -116,7 +141,10 @@ el orden y los silencios salen de `sequence.ts`. La fila del catálogo se volvi�
 033 —eran 6.787 con cinco tools— y sigue con la misma salvedad que traía: se serializa a través del
 SDK, no con el mismo método que las otras dos. Que casi se haya duplicado no es sólo la tool nueva:
 las descripciones son donde vive el criterio de cuándo preferir la tool, y son lo que se paga una vez
-por sesión para ahorrar en cada pregunta.
+por sesión para ahorrar en cada pregunta. El spec 040 la volvió a tomar y aportó dos datos: los
+`title` y `annotations` de las seis pesan **556 bytes** en total, y el número que esta fila traía
+—13.118— ya estaba **40 bytes corrido** antes de tocar nada, porque una descripción creció y nadie
+re-midió. Es un número escrito a mano y le pasa lo que le pasa a todos.
 
 **94% menos por pregunta**, y el catálogo se paga con la primera. Lo que no aparece en la tabla es lo
 que más importa: leyendo el código, la respuesta todavía hay que **derivarla a mano** —tres rotaciones,
