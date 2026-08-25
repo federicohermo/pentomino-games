@@ -6,7 +6,7 @@ import { join, dirname, resolve } from 'node:path';
 import {
   archivoDeComentario, carpetaExistente, ESTADOS, estadoDe, enVuelo, leerMapa, traducir, urlDeIssue,
   agruparPrsPorSpec, aterrizo, derivarMapa, escribirMapa, ATERRIZARON_A_MANO,
-  origenDe,
+  origenDe, deudaDelCenso,
   type Mapa, type IssueDeSpec, type PrDeSpec,
 } from '../lib/specs.ts';
 import { derivarYGuardar, type EntornoDerivacion } from '../lib/derivacion.ts';
@@ -712,5 +712,48 @@ describe('`derivarYGuardar` decide si escribir, y con que codigo sale', () => {
 
     expect(derivarYGuardar(entorno)).toBe(1);
     expect(entorno.guardados).toEqual([]);
+  });
+});
+
+/* ── El censo de deuda (spec 044) ─────────────────────────────────────────── */
+
+/**
+ * `deudaDelCenso`: los issues que ningun spec reclama, o sea lo que hay para promover.
+ *
+ * Es una resta de conjuntos y por eso alcanza con dos arrays escritos a mano: lo que hay
+ * que ejercer no es el volumen sino las **dos** formas de reclamar un issue. La segunda
+ * —el `origen`— es la que existe desde este spec, y sin ella el censo seguiria mostrando
+ * exactamente lo que el spec acaba de tomar.
+ */
+describe('deudaDelCenso', () => {
+  const ISSUES = [
+    { number: 63, state: 'CLOSED', title: 'Spec 001' },
+    { number: 45, state: 'OPEN', title: 'Una deuda vieja' },
+    { number: 127, state: 'OPEN', title: 'La deuda que pario el 044' },
+  ];
+
+  it('saca los issues que SON de un spec', () => {
+    const deuda = deudaDelCenso(ISSUES, MAPA_DE(['001', 63]));
+
+    expect(deuda.map((i) => i.number)).toEqual([45, 127]);
+  });
+
+  it('y tambien los que un spec declaro SALDAR', () => {
+    // La entrada de mas que saca un issue del listado, que es el AC6 puesto en dos
+    // arrays: el 044 declara `origen: [127]`, asi que el #127 deja de ser deuda para
+    // promover — ya tiene duenio. Sin esta mitad, el censo listaria para siempre lo que
+    // este mismo spec vino a tomar.
+    const mapa = { ...MAPA_DE(['001', 63]), '044': { ...ENTRADA('044', 132), origen: [127] } };
+
+    const deuda = deudaDelCenso(ISSUES, mapa);
+
+    expect(deuda.map((i) => i.number)).toEqual([45]);
+  });
+
+  it('no habla con la red ni con el disco: dos arrays alcanzan', () => {
+    // La propiedad que hace que esto no sea una tool del MCP y si un script aparte:
+    // `spec_status` responde sin `gh` y eso el 034 lo defiende. Lo puro se prueba entero
+    // aca, y lo que habla con `gh` queda en `deuda.mjs`, que no tiene ninguna decision.
+    expect(deudaDelCenso([], MAPA_DE(['001', 63]))).toEqual([]);
   });
 });

@@ -539,3 +539,39 @@ export const escribirMapa = (mapa: Mapa): string => {
   const cuerpo = Object.keys(mapa).sort().map((id) => `  "${id}": ${JSON.stringify(mapa[id])}`).join(',\n');
   return `{\n${cuerpo}\n}\n`;
 };
+
+/* ── El censo de deuda (spec 044) ─────────────────────────────────────────── */
+
+/**
+ * Los issues que **ningun spec reclama**: ni son el issue de un spec ni figuran en el
+ * `origen` de ninguno. O sea, la deuda que hay para promover.
+ *
+ * Es una resta de conjuntos y nada mas, y esa pobreza es el punto: **puro, sin red**, asi
+ * que se prueba con dos arrays escritos a mano. Quien habla con `gh` es
+ * `.claude/scripts/deuda.mjs`.
+ *
+ * **Y por eso no es una tool del MCP.** `spec_status` no habla con la red y esa es una
+ * propiedad que el 034 defiende explicitamente: responde sin hidratar y sin `gh`. Una
+ * tool que a veces necesita red y a veces no es una tool que falla distinto segun donde
+ * corra.
+ *
+ * `origen` cuenta igual que `issue` porque las dos formas son «este issue ya tiene
+ * duenio»: un issue de deuda que un spec declaro saldar no es trabajo que haya que
+ * triar, es trabajo tomado. Sin esa mitad, el censo seguiria mostrando lo que este spec
+ * acaba de reclamar.
+ *
+ * Generico sobre `{ number }` a proposito: lo que `gh` devuelve para el censo trae
+ * `labels` y `createdAt`, que a la resta no le importan y que este archivo no tiene por
+ * que conocer — pero el llamador los necesita enteros del otro lado.
+ */
+export const deudaDelCenso = <T extends { number: number }>(
+  issues: readonly T[],
+  mapa: Mapa,
+): T[] => {
+  const reclamados = new Set<number>();
+  for (const entrada of Object.values(mapa)) {
+    reclamados.add(entrada.issue);
+    for (const n of entrada.origen ?? []) reclamados.add(n);
+  }
+  return issues.filter((i) => !reclamados.has(i.number));
+};
