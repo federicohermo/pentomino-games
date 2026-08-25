@@ -39,19 +39,13 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { derivarYGuardar } from './lib/derivacion.ts';
+import { LIMITE_DE_LISTA } from './lib/specs.ts';
 // El lanzador de `gh` que explica sus fallos en vez de tirar un `ENOENT` crudo (issue #125).
 import { gh as lanzarGh } from './lib/gh.ts';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const MAPA_JSON = join(RAIZ, 'specs', 'mapa.json');
 const REPO = 'federicohermo/pentomino-games';
-
-/**
- * El mismo techo que usa el gate del 038, y por el mismo motivo: `gh` pagina hasta el
- * limite y **no avisa que corto**, asi que pedir de menos convierte una lista incompleta
- * en un dato que parece completo. Hoy son ~67 issues y ~56 PR: una pagina.
- */
-const LIMITE = 1000;
 
 const VERIFICAR = process.argv.includes('--verificar');
 
@@ -60,16 +54,18 @@ const ghJson = (args) => JSON.parse(lanzarGh(args, { encoding: 'utf8', maxBuffer
 const codigo = derivarYGuardar({
   issues: () => ghJson([
     'issue', 'list', '--repo', REPO,
-    '--state', 'all', '--limit', String(LIMITE), '--json', 'number,state,title',
+    '--state', 'all', '--limit', String(LIMITE_DE_LISTA), '--json', 'number,state,title',
   ]),
   prs: () => ghJson([
     'pr', 'list', '--repo', REPO,
-    '--state', 'all', '--limit', String(LIMITE), '--json', 'number,headRefName,state',
+    '--state', 'all', '--limit', String(LIMITE_DE_LISTA), '--json', 'number,headRefName,state',
   ]),
   leerTexto: () => readFileSync(MAPA_JSON, 'utf8'),
   guardar: (texto) => { writeFileSync(MAPA_JSON, texto, 'utf8'); },
   informar: (linea) => { console.log(linea); },
-  limite: LIMITE,
+  // El techo lo comparte con el gate del 038, que es quien confirma lo que este script
+  // escribe. El porque de que sea uno solo esta en el docblock de `LIMITE_DE_LISTA`.
+  limite: LIMITE_DE_LISTA,
   verificar: VERIFICAR,
 });
 

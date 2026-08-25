@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { join, dirname, resolve } from 'node:path';
 import {
   ESTADOS, enVuelo, NO_LOS_MUEVE_UN_MERGE, agruparPrsPorSpec, aterrizo, RAMA_DE_SPEC,
+  LIMITE_DE_LISTA,
   type PrDeSpec, type IssueDeSpec,
 } from '../../.claude/scripts/lib/specs.ts';
 import { readSpecStatus } from '../../mcp-server/src/specs.ts';
@@ -120,19 +121,18 @@ describe('specs/mapa.json es el registro, y se verifica solo', () => {
 });
 
 /**
- * Cuántos issues se piden. **Una lista truncada es peor que ninguna**, y ese es el
- * motivo del número.
- *
- * `gh issue list` devuelve del más nuevo al más viejo, y los issues de spec son los
- * viejos: van del #63 al #99. Con `--limit 200`, el día que el repo pase los 200 issues
- * los 35 caen fuera de la página y el gate de abajo falla para **todos** con «issue que
- * no existe» — 35 rojos y ninguno cierto. `gh` pagina solo hasta el límite, así que
- * pedir de más no cuesta nada hoy: son ~100 issues, una página.
- */
-const LIMITE = 1000;
-
-/**
  * El estado del issue, leído con `gh`, o `null` si no se pudo.
+ *
+ * **Cuántos se piden lo dice `LIMITE_DE_LISTA`, y una lista truncada es peor que
+ * ninguna.** `gh issue list` devuelve del más nuevo al más viejo, y los issues de spec
+ * son los viejos: van del #63 al #99. Con `--limit 200`, el día que el repo pase los 200
+ * issues los 35 caen fuera de la página y el gate de abajo falla para **todos** con
+ * «issue que no existe» — 35 rojos y ninguno cierto. `gh` pagina sólo hasta el límite,
+ * así que pedir de más no cuesta nada hoy: son ~100 issues, una página.
+ *
+ * **El número sale de `lib/specs.ts` desde el 043**, que es de donde lo lee también el
+ * derivador que escribe el mapa: subirlo sólo allá dejaría a este gate salteándose
+ * mientras aquél escribe sin confirmación.
  *
  * **Todo fallo cae en `null` a propósito**: sin `gh` en el PATH, sin sesión, sin red o
  * con la API lenta, la respuesta correcta es «no pude verificar», nunca «está bien».
@@ -147,11 +147,11 @@ const estadosRemotos = (): Map<number, IssueDeSpec> | null => {
   try {
     const salida = execFileSync('gh', [
       'issue', 'list', '--repo', 'federicohermo/pentomino-games',
-      '--state', 'all', '--limit', String(LIMITE), '--json', 'number,state,title',
+      '--state', 'all', '--limit', String(LIMITE_DE_LISTA), '--json', 'number,state,title',
     ], { encoding: 'utf8', timeout: 20_000, stdio: ['ignore', 'pipe', 'pipe'] });
 
     const issues = JSON.parse(salida) as IssueDeSpec[];
-    if (issues.length >= LIMITE) return null;
+    if (issues.length >= LIMITE_DE_LISTA) return null;
     return new Map(issues.map((i) => [i.number, i]));
   } catch {
     return null;
@@ -256,30 +256,29 @@ describe.runIf(REMOTO !== null)('el mapa dice lo mismo que el issue', () => {
  * lo declara la Desviación 3 del README, lo exige el hook del 037, y es de donde
  * `/pr-review-batch` ya saca de qué spec se trata. Es la misma clave que el mapa usa.
  *
- * ## `CLOSED` cuenta como aterrizado, y eso está medido
+ * ## `MERGED`, más dos que aterrizaron a mano
  *
  * Los PR **#35** y **#36** —specs 020 y 021— figuran `CLOSED` y no `MERGED`: se
- * mergearon a mano, y sus commits de merge (`6fffa34` y `ea4db2f`) están en `main`.
- * Contar sólo `MERGED` los daría por no aterrizados y serían dos rojos falsos sobre
- * specs correctos. Lo que distingue de verdad es que el PR **no siga abierto**.
+ * mergearon fuera de GitHub, y sus commits de merge (`6fffa34` y `ea4db2f`) están en
+ * `main`. Contar sólo `MERGED` los daría por no aterrizados y serían dos rojos falsos
+ * sobre specs correctos, así que van nombrados en `ATERRIZARON_A_MANO`.
  *
- * El precio es un PR abandonado que igual cuente: para que eso produzca una mentira,
- * alguien tendría además que poner el spec en `Implementado` a mano, y esa mitad la
- * agarra el cruce contra el issue. El error cae en la dirección barata.
+ * Nombrados, y no «cualquier PR que no siga abierto», que fue el primer criterio: un
+ * `CLOSED` sin mergear es un PR **abandonado** —el #23 es una primera versión del 029 que
+ * se descartó— y desde el 043 esta regla la lee un escritor que commitea a `main`. El
+ * detalle, en el docblock de `aterrizo`.
  */
-const LIMITE_PR = 1000;
-
 const prsPorSpec = (): Map<string, PrDeSpec[]> | null => {
   try {
     const salida = execFileSync('gh', [
       'pr', 'list', '--repo', 'federicohermo/pentomino-games',
-      '--state', 'all', '--limit', String(LIMITE_PR), '--json', 'number,headRefName,state',
+      '--state', 'all', '--limit', String(LIMITE_DE_LISTA), '--json', 'number,headRefName,state',
     ], { encoding: 'utf8', timeout: 20_000, maxBuffer: 1 << 26, stdio: ['ignore', 'pipe', 'pipe'] });
 
     const prs = JSON.parse(salida) as PrDeSpec[];
     // Igual que con los issues: una lista truncada no distingue «este spec no tiene PR»
     // de «su PR no entró en la página», y las dos respuestas son opuestas.
-    if (prs.length >= LIMITE_PR) return null;
+    if (prs.length >= LIMITE_DE_LISTA) return null;
 
     return agruparPrsPorSpec(prs);
   } catch {
@@ -427,30 +426,79 @@ describe.runIf(HIDRATADOS.length > 0)('un spec cerrado no debe trabajo', () => {
  * líneas a `CLAUDE.md` — verificar sobre el fuente una propiedad que el compilador no
  * ve.
  *
- * Los dos literales prohibidos se **derivan de los valores importados** en vez de
- * escribirse. No es elegancia: escribirlos acá haría que el test se encontrara a sí
- * mismo y fallara siempre.
+ * Todo lo prohibido se **deriva de los valores importados** en vez de escribirse, y todo
+ * se mira sobre el archivo **sin su bloque de `import`**. Las dos cosas son la misma
+ * lección, y se aprendió con una mutación: la primera versión de este bloque cerraba con
+ * `expect(FUENTE).toContain('agruparPrsPorSpec')`, y ese literal estaba en esa misma
+ * línea. La aserción no podía fallar. Sacando el `import` y reimplementando el
+ * agrupamiento al lado —con `feature/` como único prefijo, o sea perdiendo el 038 y el
+ * 042— el gate entero quedaba **en verde**: era no-op contra la falla que existe para
+ * prevenir.
  */
 describe('la regla del cruce contra el PR vive una sola vez', () => {
   const FUENTE = readFileSync(fileURLToPath(import.meta.url), 'utf8');
 
-  it('el patrón rama→spec no está escrito acá: se importa', () => {
+  /** El `import` de `lib/specs.ts`, textual: es de donde salen los nombres a buscar. */
+  const IMPORTADO = /import \{[\s\S]*?\} from '[^']*lib\/specs\.ts';/.exec(FUENTE)?.[0] ?? '';
+
+  /**
+   * El archivo **menos ese `import`**, que es sobre lo que se mira.
+   *
+   * Sacarlo es lo que hace que «se usa acá» signifique algo: un símbolo importado
+   * aparece en el `import` sí o sí, así que buscarlo sobre el archivo entero da una
+   * aserción que no puede fallar.
+   */
+  const CUERPO = FUENTE.replace(IMPORTADO, '');
+
+  it('el patrón rama→spec no está escrito acá, y el de allá se invoca', () => {
     expect(
-      FUENTE.includes(RAMA_DE_SPEC.source),
+      CUERPO.includes(RAMA_DE_SPEC.source),
       'El patrón volvió a este archivo. Sale de `RAMA_DE_SPEC` en `lib/specs.ts`, que es\n' +
       'de donde también lo lee `derivar-mapa.mjs`.',
     ).toBe(false);
-    // La contraparte: que no esté copiado no sirve si además dejó de usarse el de allá.
-    expect(FUENTE).toContain('agruparPrsPorSpec');
+
+    // La contraparte, y busca la INVOCACIÓN y no el nombre: reimplementar el
+    // agrupamiento al lado deja el `import` intacto, así que «el nombre aparece» pasa
+    // igual. El nombre sale de la función y no de un literal, por lo mismo de siempre.
+    for (const usada of [agruparPrsPorSpec, aterrizo]) {
+      expect(
+        CUERPO,
+        `\`${usada.name}\` dejó de invocarse acá: la regla se volvió a escribir al lado.`,
+      ).toContain(`${usada.name}(`);
+    }
   });
 
-  it('ni se vuelve a construir el conjunto de estados que un merge no mueve', () => {
-    const construccion = `new Set([${[...NO_LOS_MUEVE_UN_MERGE].map((e) => `'${e}'`).join(', ')}])`;
+  it('ni se vuelven a escribir los estados que un merge no mueve', () => {
+    // Entrecomillados y no a secas: en prosa van entre backticks —«un `Superado` puede
+    // tener su PR mergeado»— y eso es documentación, no una copia de la regla. Y las dos
+    // comillas, en cualquier orden y fuera de cualquier `new Set`: la versión anterior
+    // armaba UN string exacto —el `new Set` con los dos estados, en ese orden y con
+    // comillas simples— así que darlo vuelta o usar comillas dobles pasaba en verde.
+    const copias = [...NO_LOS_MUEVE_UN_MERGE]
+      .flatMap((estado) => [`'${estado}'`, `"${estado}"`])
+      .filter((literal) => CUERPO.includes(literal));
 
     expect(
-      FUENTE.includes(construccion),
-      `Volvió a construirse \`${construccion}\` acá. Sale de \`NO_LOS_MUEVE_UN_MERGE\`.`,
-    ).toBe(false);
-    expect(FUENTE).toContain('NO_LOS_MUEVE_UN_MERGE');
+      copias,
+      'Los estados volvieron a escribirse acá. Salen de `NO_LOS_MUEVE_UN_MERGE`.',
+    ).toEqual([]);
+  });
+
+  it('y todo lo que se importa de `lib/specs.ts` se usa: importar no es usar', () => {
+    // Los nombres salen del propio `import` y no de una lista escrita acá —una lista
+    // escrita se encontraría a sí misma en `CUERPO`—, así que agregar un símbolo a
+    // `lib/specs.ts` no deja este gate mudo sobre él.
+    const nombres = [...IMPORTADO.matchAll(/(?:^|[{,])\s*(?:type\s+)?(\w+)/g)]
+      .map((m) => m[1])
+      .filter((n) => n !== 'import');
+    const sinUsar = nombres.filter((n) => !new RegExp(`\\b${n}\\b`).test(CUERPO));
+
+    // Sin esto, un `import` que el regex dejara de reconocer daría cero nombres y cero
+    // sin usar: el mismo verde vacío que este bloque acaba de dejar de tener.
+    expect(nombres.length, 'no se reconoció el `import` de `lib/specs.ts`').toBeGreaterThan(4);
+    expect(
+      sinUsar,
+      'se importa y no se usa: o sobra, o la regla se volvió a escribir al lado.',
+    ).toEqual([]);
   });
 });

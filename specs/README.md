@@ -271,10 +271,12 @@ cada spec la postergaba al siguiente; cerrarla no llevó más de un commit.
 > Se puede correr a mano —`node .claude/scripts/derivar-mapa.mjs`, o con `--verificar` para que no
 > escriba y salga 1 si escribiría—, pero no hace falta.
 
-**Los pasos 5 y 6 son uno solo para el gate.** Desde el 038 el mapa se cruza contra el PR —que está
-mergeado o no, y eso no lo escribe nadie a mano— y contra los `pendientes` del spec: un spec cerrado
-con trabajo abierto es rojo. Saltear el paso 5 hace que el 6 nazca en rojo la próxima vez que alguien
-hidrate, y no en la máquina de quien lo cerró.
+**El paso 5 es el que el gate mira, y desde el 043 es el único que queda.** El mapa se cruza contra
+el PR —que está mergeado o no, y eso no lo escribe nadie a mano— y contra los `pendientes` del spec:
+un spec cerrado con trabajo abierto es rojo. Saltear el paso 5 no se ve al cerrar sino la próxima vez
+que alguien hidrate, y no en la máquina de quien lo cerró: la Action pone el spec en `Implementado`
+—porque su PR aterrizó, que es todo lo que ella mira— y las casillas que quedaron abiertas salen en
+rojo recién ahí.
 
 `spec_status` (MCP) responde el estado de todos los specs en una llamada, en vez de abrir el mapa y
 treinta y cinco `tasks.md`. Y responde **sin hidratar**: lo que falta en ese caso es `tareas`, y lo

@@ -275,6 +275,21 @@ export const carpetaExistente = (carpetas: string[], id: string): string | null 
  */
 export const RAMA_DE_SPEC = /^[^/]+\/(\d{3})-/;
 
+/**
+ * Cuantos issues y cuantos PR se le piden a `gh`, **y es uno solo para los dos lectores**.
+ *
+ * `gh` pagina hasta el limite y **no avisa que corto**, asi que pedir de menos convierte
+ * una lista incompleta en un dato que parece completo. De ahi el numero: hoy son ~70
+ * issues y ~57 PR, o sea una pagina, y pedir de mas no cuesta nada.
+ *
+ * Vive aca desde el 043 por lo mismo que `RAMA_DE_SPEC`: lo leen el derivador que escribe
+ * el mapa y el gate que lo confirma. Con una copia en cada uno, subirlo solo en el
+ * escritor deja al gate devolviendo `null` —o sea salteandose— mientras el derivador
+ * escribe sin nadie que lo confirme. Se declara en el reporte, asi que no seria
+ * silencioso; pero seria justo la copia que este spec argumenta que no debe existir.
+ */
+export const LIMITE_DE_LISTA = 1000;
+
 /** Lo que hace falta de un PR: cual es, de que rama sale, y si sigue abierto. */
 export interface PrDeSpec {
   number: number;
@@ -321,20 +336,40 @@ export const agruparPrsPorSpec = (prs: readonly PrDeSpec[]): Map<string, PrDeSpe
 };
 
 /**
+ * Los PR que aterrizaron **a mano**: figuran `CLOSED` y no `MERGED`, y sus commits de
+ * merge estan igual en `main` (`6fffa34` y `ea4db2f`).
+ *
+ * Son los del 020 y el 021, y son una lista y no una regla porque no hay ninguna: la API
+ * no distingue un PR mergeado fuera de GitHub de uno abandonado —los dos dicen `CLOSED`
+ * con `mergedAt: null`—, asi que lo unico honesto es nombrar los dos casos medidos.
+ *
+ * Hoy hay cuatro PR `CLOSED` en el repo: estos dos, el #23 —una primera version del 029
+ * que se abandono, y cuyo spec aterrizo igual por el #24— y el #20, de una rama que no
+ * nombra ningun spec. La lista es exactamente la de los que aterrizaron.
+ *
+ * Si algun dia se vuelve a mergear a mano, el que grita es el gate: el mapa dira
+ * `Propuesto` y el issue estara cerrado, que es un rojo con una pregunta real detras
+ * —¿ese PR implemento el spec?— y se contesta agregando el numero aca.
+ */
+export const ATERRIZARON_A_MANO: ReadonlySet<number> = new Set([35, 36]);
+
+/**
  * Si el trabajo de un spec llego a `main`.
  *
- * **`CLOSED` cuenta como aterrizado, y esta medido**: los PR #35 y #36 —specs 020 y
- * 021— figuran `CLOSED` y no `MERGED` porque se mergearon a mano, y sus commits de
- * merge (`6fffa34` y `ea4db2f`) estan en `main`. Contar solo `MERGED` los daria por no
- * aterrizados: dos rojos falsos sobre specs correctos. Lo que distingue de verdad es
- * que el PR **no siga abierto**.
+ * **`MERGED`, o uno de los dos que aterrizaron a mano.** Un `CLOSED` a secas NO cuenta,
+ * y eso cambio en el 043 con el motivo entero: mientras esta regla la leia solo el gate,
+ * un PR cerrado sin mergear costaba una investigacion. Desde el 043 la lee un
+ * **escritor** que commitea a `main`, y ahi el mismo error sale carisimo: se abre y se
+ * cierra sin mergear un `feature/044-x`, el push siguiente deriva el 044 a
+ * `Implementado` y lo commitea, y a partir de ahi el cruce contra el issue —abierto—
+ * pone en rojo **todos** los PR siguientes, incluidos los que no tocan nada de esto.
+ * Arreglar el mapa a mano no sirve: el push siguiente lo vuelve a escribir.
  *
- * El precio es un PR abandonado que igual cuente. Para que eso produzca una mentira
- * alguien tendria ademas que poner el spec en `Implementado` a mano, y esa mitad la
- * agarra el cruce contra el issue: el error cae en la direccion barata.
+ * El error queda del lado barato: un PR abandonado deja el spec en `Propuesto`, que es
+ * lo que era.
  */
 export const aterrizo = (prs: readonly PrDeSpec[] | undefined): boolean =>
-  (prs ?? []).some((pr) => pr.state !== 'OPEN');
+  (prs ?? []).some((pr) => pr.state === 'MERGED' || ATERRIZARON_A_MANO.has(pr.number));
 
 /** Un campo del mapa que no decia lo que la fuente dice. */
 export interface Correccion {

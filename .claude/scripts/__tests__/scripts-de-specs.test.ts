@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { join, dirname, resolve } from 'node:path';
 import {
   archivoDeComentario, carpetaExistente, ESTADOS, estadoDe, enVuelo, leerMapa, traducir, urlDeIssue,
-  agruparPrsPorSpec, aterrizo, derivarMapa, escribirMapa,
+  agruparPrsPorSpec, aterrizo, derivarMapa, escribirMapa, ATERRIZARON_A_MANO,
   type Mapa, type IssueDeSpec, type PrDeSpec,
 } from '../lib/specs.ts';
 import { derivarYGuardar, type EntornoDerivacion } from '../lib/derivacion.ts';
@@ -474,14 +474,31 @@ describe('`derivarMapa` deduce el estado en vez de recordarlo', () => {
     expect([...agrupado.keys()].sort()).toEqual(['038', '041']);
   });
 
-  it('`CLOSED` cuenta como aterrizado y `OPEN` no', () => {
-    // Medido en el 038: los PR #35 y #36 figuran `CLOSED` y no `MERGED` porque se
-    // mergearon a mano, y sus commits estan en `main`. Contar solo `MERGED` daria dos
-    // rojos falsos sobre specs correctos.
-    expect(aterrizo([{ number: 35, headRefName: 'feature/020-x', state: 'CLOSED' }])).toBe(true);
+  it('aterriza un `MERGED`, y no un `OPEN`', () => {
+    expect(aterrizo([{ number: 1, headRefName: 'feature/020-x', state: 'MERGED' }])).toBe(true);
     expect(aterrizo([{ number: 1, headRefName: 'feature/020-x', state: 'OPEN' }])).toBe(false);
     expect(aterrizo([])).toBe(false);
     expect(aterrizo(undefined)).toBe(false);
+  });
+
+  it('un `CLOSED` sin mergear NO aterriza, aunque este cerrado', () => {
+    // El modo de falla que el escritor del 043 vuelve caro: un `feature/044-x` que se
+    // abre y se cierra sin mergear pondria el 044 en `Implementado` y lo commitearia a
+    // `main`; desde ahi el cruce contra el issue —abierto— deja en rojo TODOS los PR
+    // siguientes, y arreglar el mapa a mano no sirve porque el push que viene lo
+    // reescribe. Pasa de verdad: el #23 es una primera version del 029 que se abandono.
+    expect(aterrizo([{ number: 23, headRefName: 'feature/029-x', state: 'CLOSED' }])).toBe(false);
+  });
+
+  it('salvo los dos que aterrizaron a mano, que son una lista medida', () => {
+    // Los PR #35 y #36 —specs 020 y 021— figuran `CLOSED` y no `MERGED` porque se
+    // mergearon fuera de GitHub, y sus commits (`6fffa34` y `ea4db2f`) estan en `main`.
+    // La API no los distingue de un abandonado —los dos dicen `CLOSED`, `mergedAt: null`—
+    // asi que lo unico honesto es nombrarlos.
+    expect([...ATERRIZARON_A_MANO].sort()).toEqual([35, 36]);
+    for (const number of ATERRIZARON_A_MANO) {
+      expect(aterrizo([{ number, headRefName: 'feature/020-x', state: 'CLOSED' }])).toBe(true);
+    }
   });
 });
 

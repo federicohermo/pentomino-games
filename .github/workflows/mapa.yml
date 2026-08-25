@@ -35,9 +35,12 @@ permissions:
   issues: read
   pull-requests: read
 
-# Dos corridas escribiendo el mismo archivo se pisan, y la segunda fallaria al pushear sobre un
-# `main` que se movio. Se encolan en vez de cancelarse: la que ya arranco esta a punto de dejar el
-# registro al dia, y cancelarla no ahorra nada que importe.
+# Dos corridas escribiendo el mismo archivo se pisan. Se encolan en vez de cancelarse: la que ya
+# arranco esta a punto de dejar el registro al dia, y cancelarla no ahorra nada que importe.
+#
+# Encolar sin mas no alcanza —la corrida que espera arrancaria con un `main` viejo—, y eso lo cierra
+# el `ref: main` del checkout, abajo. Las dos cosas van juntas: sin la cola se pisan, sin el `ref` la
+# segunda deriva sobre un arbol que ya no es `main`.
 concurrency:
   group: mapa
   cancel-in-progress: false
@@ -46,7 +49,20 @@ jobs:
   derivar:
     runs-on: ubuntu-latest
     steps:
+      # `ref: main` y no el `github.sha` del evento, que es el default. La diferencia importa cuando
+      # llegan dos pushes seguidos, que en este repo pasa: se mergea en lote. La corrida B queda
+      # encolada por el `concurrency` de arriba, y con el default arrancaria con el arbol del commit
+      # que la disparo — mientras que `main` ya avanzo, porque la corrida A le pusheo el commit
+      # derivado. El push de B saldria non-fast-forward y el job quedaria ROJO, y sin arreglarse
+      # solo: los pushes con `GITHUB_TOKEN` no disparan workflows, asi que no hay corrida siguiente.
+      #
+      # Con `ref: main` cada corrida deriva sobre el `main` que hay cuando le toca, que es lo unico
+      # que tiene sentido para algo que se calcula entero cada vez. Queda una ventana chica —una
+      # persona pusheando entre el checkout y el push, ~20 s— y esa SI se arregla sola: un push
+      # humano dispara este mismo workflow otra vez.
       - uses: actions/checkout@v5
+        with:
+          ref: main
 
       # La misma version EXACTA que `verify.yml`, por el mismo motivo que alla: `22` a secas resuelve
       # a la ultima 22.x del dia. Y no hace falta `pnpm install`: `lib/specs.ts` no importa nada
@@ -67,9 +83,10 @@ jobs:
       # `if` y no `&&`: los pasos corren con `bash -e`, y `git diff --quiet ... && exit 0` devuelve 1
       # cuando SI hay cambios, o sea que el paso fallaria justo en el caso que tiene trabajo.
       #
-      # Se pushea `HEAD:main` porque el checkout de un evento `push` deja el HEAD desprendido. Si
-      # `main` se movio mientras tanto el push falla, y falla fuerte: la corrida siguiente vuelve a
-      # derivar sobre el `main` nuevo, asi que el registro se pone al dia igual.
+      # Se pushea `HEAD:main` y no `main` a secas: es explicito sobre que rama recibe, que es lo que
+      # se quiere en un paso que escribe en la rama principal. Si `main` se movio entre el checkout y
+      # esta linea el push falla, y falla fuerte — que es correcto: fue una persona quien pusheo, y
+      # ese push dispara este workflow de nuevo.
       - name: Commitear si el mapa cambio
         run: |
           if git diff --quiet specs/mapa.json; then
