@@ -36,10 +36,11 @@
  *   node .claude/scripts/publicar-spec.mjs publicar  [--dry]
  */
 import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { leerMapa, estadoDe, enVuelo, traducir, NOMBRE_PUBLICABLE } from './lib/specs.ts';
+// El lanzador de `gh` que explica sus fallos en vez de tirar un `ENOENT` crudo (issue #125).
+import { gh as lanzarGh } from './lib/gh.ts';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const RAIZ = resolve(AQUI, '../..');
@@ -110,7 +111,7 @@ const tituloDe = (carpeta) => {
 
 const gh = (args, stdin) => {
   if (DRY) { console.log('   [dry] gh', args.slice(0, 6).join(' '), stdin ? `(+${stdin.length}B)` : ''); return 'DRY'; }
-  return execFileSync('gh', args, { input: stdin, encoding: 'utf8', maxBuffer: 1 << 28 }).trim();
+  return lanzarGh(args, { input: stdin, encoding: 'utf8', maxBuffer: 1 << 28 }).trim();
 };
 
 /** El mapa, de su unico archivo. */

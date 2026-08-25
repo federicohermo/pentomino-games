@@ -47,10 +47,11 @@
  *   node .claude/scripts/hidratar-specs.mjs --forzar   # rehace los que ya estan
  */
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, renameSync, existsSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { leerMapa, archivoDeComentario, carpetaExistente, enVuelo } from './lib/specs.ts';
+// El lanzador de `gh` que explica sus fallos en vez de tirar un `ENOENT` crudo (issue #125).
+import { gh as lanzarGh } from './lib/gh.ts';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const SPECS = join(RAIZ, 'specs');
@@ -72,7 +73,7 @@ const MAPA = leerMapa(readFileSync(join(SPECS, 'mapa.json'), 'utf8'));
 const REPO = 'federicohermo/pentomino-games';
 const ids = Object.keys(MAPA).sort();
 
-const gh = (args_) => execFileSync('gh', args_, { encoding: 'utf8', maxBuffer: 1 << 28 });
+const gh = (args_) => lanzarGh(args_, { encoding: 'utf8', maxBuffer: 1 << 28 });
 
 /** Las carpetas de spec que ya estan, para no crear una segunda por cambiar un titulo. */
 const yaEnDisco = () => readdirSync(SPECS, { withFileTypes: true })
