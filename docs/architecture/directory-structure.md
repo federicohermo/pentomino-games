@@ -211,8 +211,8 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 `pnpm test` corre Vitest en **dos proyectos y un solo comando** (spec 029). El corte no es por capa sino
 por lo que el test necesita:
 
-- **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre **cinco** raíces. Son 29
-  archivos: 20 en `src/`, 3 en la raíz, 3 en `docs/`, 2 en `specs/` y 1 en `.claude/scripts/`. El
+- **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre **cinco** raíces. Son 30
+  archivos: 20 en `src/`, 3 en la raíz, 3 en `docs/`, 2 en `specs/` y 2 en `.claude/scripts/`. El
   dominio es puro y el audio tiene una implementación nativa de Web Audio, así que corren ahí sin
   adaptación. Los que **no** son el test de un módulo leen un archivo **del disco**, porque el proyecto
   de navegador sirve su propio documento y nunca carga esos archivos, y **cada uno vive al lado del
@@ -233,9 +233,10 @@ por lo que el test necesita:
   - `specs/__tests__/` — los dos del **registro** (spec 035): `mapa-de-specs.test.ts` verifica
     `mapa.json` contra sí mismo y —cuando hay `gh`— contra los issues, y `specs-convencion.test.ts`
     que las carpetas y el registro digan lo mismo.
-  - `.claude/scripts/__tests__/` — uno solo, `scripts-de-specs.test.ts`, sobre lo puro de
-    `publicar-spec.mjs` e `hidratar-specs.mjs`. Está acá y no en `specs/` porque **el test es del
-    script**, y `specs/` es lo que el script manipula.
+  - `.claude/scripts/__tests__/` — los dos de los **scripts**: `scripts-de-specs.test.ts` sobre lo puro
+    de `publicar-spec.mjs` e `hidratar-specs.mjs`, y `gate-de-spec.test.ts` sobre el gate de rama del
+    spec 037. Están acá y no en `specs/` porque **el test es del script**, y `specs/` es lo que el
+    script manipula.
 - **`browser`** — Chromium de verdad, por Playwright, sobre `src/**/__tests__/*.browser.test.tsx`. Son
   11: los seis componentes, `App.tsx`, los tres hooks —el tercero es `use-grid.ts`, de los specs
   021 y 031— y `audio/engine.ts`. Renderizan con

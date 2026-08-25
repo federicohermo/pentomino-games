@@ -79,8 +79,18 @@ specs/<NNN>-<descripcion-kebab>/
 > que se regenera con el código; acá son ADR: registro de qué se decidió y con qué evidencia, con
 > fecha. Lo que sí se mantiene al día es `docs/`, `.claude/rules/` y `CLAUDE.md`.
 
-> **Desviación 3.** Este repo no tiene tablero de Jira, así que el segmento de ticket de la convención
-> original (`specs/<NNN>-<TICKET>-<descripcion>/`) se omite siempre.
+> **Desviación 3.** El segmento de ticket de la convención original
+> (`specs/<NNN>-<TICKET>-<descripcion>/`) no va en el nombre de la carpeta. **No es que no haya
+> ticket**: desde el spec 034 cada spec *es* un issue, y ése es su ticket. Lo que pasa es que su
+> número no se conoce cuando se crea la carpeta —lo asigna `publicar-spec.mjs`— y no es derivable,
+> porque issues y PRs comparten contador: el spec 001 es el issue **#63**.
+>
+> Por eso existe [`mapa.json`](./mapa.json): **es el segmento de ticket, sacado del nombre de la
+> carpeta**. Y por eso la rama sí lleva el número del spec y no el del issue — `feature/<NNN>-<kebab>`
+> es de donde el gate de `spec-create` y `/pr-review-batch` sacan de qué spec se trata.
+>
+> Los encabezados de los specs anteriores al 037 dicen «este repo no tiene tablero de Jira». Quedó
+> escrito antes del 034 y **no se reescribe**, por la Desviación 2.
 
 > **Desviación 4.** Desde el spec 032 los `.md` entran a `pnpm lint`, y los specs lo hacen **en su
 > propio carril**: se apaga el preset entero y se reenciende, por nombre, sólo lo que caza un error de

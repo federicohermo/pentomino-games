@@ -105,9 +105,10 @@ Spec 029. El corte no es por capa sino por lo que el test necesita:
   los tres que miran archivos de la raíz —`index.html`, `public/manifest.json`, `README.md`—;
   `docs/__tests__/` los tres de la **documentación** —enlaces y anclas de todo `.md`, el mapa de
   `directory-structure.md` y el techo de 200 líneas de `CLAUDE.md`, issue #100—; `specs/__tests__/`
-  los dos del **registro** —la convención y `mapa.json`, spec 035—; y `.claude/scripts/__tests__/` el
-  de los **scripts** que publican e hidratan, que es del script y no de `specs/`, que es lo que el
-  script manipula. Ninguno entra al umbral de 100: el `include` de coverage sigue siendo `src/**`.
+  los dos del **registro** —la convención y `mapa.json`, spec 035—; y `.claude/scripts/__tests__/` los
+  dos de los **scripts** —el de publicar e hidratar, y el del gate de rama del spec 037—, que son del
+  script y no de `specs/`, que es lo que el script manipula. Ninguno entra al umbral de 100: el
+  `include` de coverage sigue siendo `src/**`.
 - **`browser`** — Chromium de verdad, por Playwright, para los archivos `*.browser.test.tsx`. Entra
   porque jsdom no puede: `Spectrum.tsx` necesita canvas 2D, `createLinearGradient`, `ResizeObserver`,
   `matchMedia` y un `getBoundingClientRect` con números, y `audio/engine.ts` necesita

@@ -87,10 +87,10 @@ Las de cada capa se cargan solas al tocar sus archivos (`.claude/rules/`). Estas
 está la regla y quién la verifica, que es lo que hace falta antes de escribir una línea.
 
 En `.claude/skills/` viven las especializaciones de `/spec-review` y `/spec-implement` —los globales
-son el piso genérico; las locales cablean las rutas de `specs/` y el formato de tarea— y los tres
-`-batch`, que son de acá: `/spec-review-batch` y `/spec-implement-batch` revisan e implementan un
-lote en paralelo, y `/pr-review-batch` cierra la vuelta sobre los PR abiertos. En ese orden: un
-cruce detectado como texto cuesta un párrafo, y detectado en dos carriles cuesta un rebase.
+son el piso genérico; las locales cablean las rutas de `specs/` y el formato de tarea—, los tres
+`-batch` y **`/spec-create`**. `/spec-review-batch` y `/spec-implement-batch` revisan e implementan un
+lote en paralelo y `/pr-review-batch` cierra la vuelta, en ese orden: un cruce visto como texto cuesta
+un párrafo y en dos carriles cuesta un rebase. `/spec-create` es el tramo anterior a todos ellos.
 
 Estas son las reglas. Casi todas las verifica `pnpm lint` desde el spec 030 — antes eran prosa, y la
 mitad estaba desincronizada:
@@ -188,7 +188,7 @@ propio, se cierra desde un commit con `Closes #N` y no hereda el estado del spec
 
 Escribir los cuatro archivos (`spec` · `research` · `plan` · `tasks`), **publicarlo como issue** con
 `node .claude/scripts/publicar-spec.mjs`, que le escribe su entrada en `specs/mapa.json` — lo único del spec
-que se commitea. Recién ahí, la rama de feature. Convención en [specs/README.md](./specs/README.md).
+que se commitea. Recién ahí la rama, y **desde el 037 lo bloquea un hook** y no la buena voluntad: sin un spec detrás de la rama no se edita `src/`, `mcp-server/src/` ni `docs/`. La convención, en [specs/README.md](./specs/README.md); el flujo entero y qué NO necesita spec, en el skill [spec-create](./.claude/skills/spec-create/SKILL.md).
 
 Desde el spec 034 `specs/[0-9]*/` está en el `.gitignore`: el directorio es una **caché** que se trae
 con `node .claude/scripts/hidratar-specs.mjs <NNN>`, y hace falta **en cada worktree**. Leerlos anda
