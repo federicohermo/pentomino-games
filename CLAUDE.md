@@ -179,8 +179,8 @@ tocarlo dentro del PR que lo justifica. Las dependencias tampoco: las calcula `s
 **La deuda sin spec vive en [GitHub Issues](https://github.com/federicohermo/pentomino-games/issues)**,
 no en un archivo —ni, desde el 042, en el `## Seguimiento` del spec que la parió—. `deuda.md` era un
 tracker escrito a mano y perdía ítems: al mudarlo aparecieron **seis** enterrados en el `tasks.md` de
-specs ya cerrados, dos de ellos bugs medidos que llevaban veinte días invisibles. Un issue tiene estado
-propio, se cierra desde un commit con `Closes #N` y no hereda el estado del spec que lo parió.
+specs ya cerrados, dos de ellos bugs medidos que llevaban veinte días invisibles. Un issue tiene estado propio, se cierra desde un commit con `Closes #N` y no hereda el estado del spec que lo parió.
+**Y desde el 044 el spec que nace de un issue lo salda**: lo declara en el `origen` de su fila —la línea `**Origen:** #N` del `spec.md`, y saldar no es citar— y su PR lleva un `Closes` por cada uno, o el gate del mapa se pone en rojo — no en ese PR ni al mergear, sino en el siguiente, que es de otro. Qué hay para promover: `node .claude/scripts/deuda.mjs`.
 
 ---
 

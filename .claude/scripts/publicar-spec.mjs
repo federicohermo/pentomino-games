@@ -38,7 +38,7 @@
 import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { leerMapa, estadoDe, enVuelo, traducir, escribirMapa, NOMBRE_PUBLICABLE } from './lib/specs.ts';
+import { leerMapa, estadoDe, enVuelo, traducir, escribirMapa, origenDe, NOMBRE_PUBLICABLE } from './lib/specs.ts';
 // El lanzador de `gh` que explica sus fallos en vez de tirar un `ENOENT` crudo (issue #125).
 import { gh as lanzarGh } from './lib/gh.ts';
 
@@ -109,6 +109,17 @@ const tituloDe = (carpeta) => {
   return t;
 };
 
+/**
+ * Los issues que el spec declara saldar, o `null` si no declara ninguno (spec 044).
+ *
+ * El parseo vive en `lib/specs.ts` para que tenga tests; lo que queda aca es el disco.
+ * `tituloDe` lee la primera linea y este lee el encabezado entero, asi que el archivo se
+ * abre dos veces — son 3 KB y una vez por spec, y compartir el texto ataria las dos
+ * lecturas por un ahorro que nadie mide.
+ */
+const origenDeCarpeta = (carpeta) =>
+  origenDe(readFileSync(join(SPECS, carpeta, CUERPO), 'utf8'));
+
 const gh = (args, stdin) => {
   if (DRY) { console.log('   [dry] gh', args.slice(0, 6).join(' '), stdin ? `(+${stdin.length}B)` : ''); return 'DRY'; }
   return lanzarGh(args, { input: stdin, encoding: 'utf8', maxBuffer: 1 << 28 }).trim();
@@ -139,9 +150,18 @@ if (fase === 'crear') {
     const id = carpeta.slice(0, 3);
     if (mapa[id]) { console.log(`${id}  ya existe → #${mapa[id].issue}`); continue; }
 
+    // **Todo lo que lee el disco va ANTES del `issue create`**, y no es orden estetico:
+    // crear el issue es lo unico irreversible del bucle. Un `**Origen:**` que no nombra
+    // ningun `#N` hace gritar a `origenDe` — a proposito—, y si ese grito saliera despues
+    // del `create` el issue ya existiria con el mapa sin su fila: la corrida siguiente no
+    // reconoceria el spec y abriria un issue DUPLICADO, que es el modo de falla que el
+    // comentario de `MAPA_JSON` mide en 34 copias. `tituloDe` ya estaba de este lado.
+    const titulo = tituloDe(carpeta);
+    const origen = origenDeCarpeta(carpeta);
+
     const url = gh([
       'issue', 'create', '--repo', REPO,
-      '--title', tituloDe(carpeta),
+      '--title', titulo,
       // Cuerpo minimo a proposito: el de verdad lo sube la fase 2, ya traducido. Si
       // esto quedara publicado por un fallo a mitad, dice que le falta.
       '--body', `Spec \`${carpeta}\`. El contenido lo sube la fase 2 de \`publicar-spec.mjs\`.`,
@@ -156,12 +176,48 @@ if (fase === 'crear') {
       carpeta,
       fecha: new Date().toISOString().slice(0, 10),
       estado: 'Propuesto',
-      titulo: tituloDe(carpeta),
+      titulo,
+      // El sexto, y **solo si el spec lo declara** (044): sin la linea `**Origen:**` la
+      // fila no trae el campo, no lo trae vacio. `origen: []` lo rechaza `leerMapa`,
+      // porque «no nace de un issue» ya se dice omitiendolo.
+      ...(origen === null ? {} : { origen }),
     };
     guardarMapa(mapa);
     console.log(`${id}  creado → #${numero}`);
   }
+
+  // **`origen` se reconcilia en cada corrida, y es el unico campo de la fila que lo hace.**
+  // Los otros cinco describen la publicacion —`issue`, `fecha`— o son cosas que el spec no
+  // vuelve a decir. `origen` si: es una linea del `spec.md`, y `specs/README.md` la declara
+  // la fuente unica. Sin esto la declaracion era falsa apenas el spec quedaba publicado: el
+  // bucle de arriba cortocircuita en `if (mapa[id]) … continue`, asi que agregar o corregir el
+  // `**Origen:**` despues no llegaba NUNCA al mapa, y nada comparaba los dos. El `origen` del
+  // 044 hubo que escribirlo a mano en `mapa.json`, y esa es la prueba de que faltaba.
+  //
+  // Va DESPUES del bucle que crea y no adentro, por el mismo motivo que alla arriba las dos
+  // lecturas de disco van antes del `create`: `origenDe` grita ante un `**Origen:**` mal
+  // escrito, y un spec viejo roto en la cache no tiene por que impedir que se publique uno
+  // nuevo. Lo que se creo ya esta guardado en disco cuando esto corre.
+  //
+  // Y mira solo las carpetas que estan en disco: `specs/` es cache desde el 034, asi que un
+  // spec no hidratado no dice nada sobre su `origen` — y «no dice» no es «no tiene».
+  const muestra = (o) => (o === null ? '(sin origen)' : o.map((n) => `#${n}`).join(', '));
+  let reconciliados = 0;
+  for (const carpeta of carpetas) {
+    const id = carpeta.slice(0, 3);
+    const declarado = origenDeCarpeta(carpeta);
+    const enElMapa = mapa[id].origen ?? null;
+    if (JSON.stringify(declarado) === JSON.stringify(enElMapa)) continue;
+    if (declarado === null) delete mapa[id].origen;
+    else mapa[id].origen = declarado;
+    guardarMapa(mapa);
+    reconciliados += 1;
+    console.log(`${id}  origen: ${muestra(enElMapa)} → ${muestra(declarado)}`);
+  }
+
   console.log(`\nmapa: ${Object.keys(mapa).length} specs en ${MAPA_JSON}`);
+  console.log(`${carpetas.length} carpetas hidratadas, ${reconciliados} con el `
+    + '`origen` puesto al dia contra su `spec.md`');
 }
 
 /* ── Fase 2: publicar el contenido, ya traducido ──────────────────────────── */

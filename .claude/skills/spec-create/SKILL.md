@@ -55,6 +55,40 @@ tenerlo — es la misma lógica que `invariants.ts` aplica a un invariante que f
 **En la duda, spec.** Escribirlo cuesta una hora; descubrir tres semanas después por qué se hizo algo
 cuesta más.
 
+## Paso 0 — ¿de dónde viene esto?
+
+**Antes de escribir una línea: ¿el pedido ya es un issue?** Desde el 042 la deuda vive en GitHub Issues
+y los skills la abren solos, así que la respuesta es «sí» más seguido de lo que parece. Mirá:
+
+```bash
+node .claude/scripts/deuda.mjs   # los issues abiertos que ningún spec reclama
+```
+
+Si el pedido **es** uno de ésos, la pregunta siguiente decide el carril, y es una sola: **¿el arreglo
+toca `src/`, `mcp-server/src/` o `docs/`?**
+
+| El arreglo… | Qué hacer | Qué cierra el issue |
+|---|---|---|
+| **no** las toca | rama `fix/` o `chore/` y seguí derecho: **no necesita spec** | `Closes #N` en el cuerpo del PR |
+| **sí** las toca | necesita spec, y su `spec.md` lleva `**Origen:** #N` en el encabezado | un `Closes` por **cada** issue saldado |
+
+**Esa línea no es decorativa**: `publicar-spec.mjs crear` la parsea y escribe `origen` en la fila de
+`specs/mapa.json`, y de ahí la lee el gate que pone en rojo un spec cerrado cuyo issue de deuda siguió
+abierto. Sin el dato, nada puede exigir el `Closes` — medido: 4 de los 43 specs nombran un issue de
+deuda en prosa y **tres de esos cuatro siguen abiertos**.
+
+**`origen` es lo que el spec SALDA, no lo que menciona.** El 035 cita al #97 como contexto de una
+medición que no arregla: eso no va. Con la lectura ancha el gate daría rojo sobre specs correctos y se
+apagaría en una semana. Y va en el **encabezado**, antes del primer `##`: un `#127` suelto en la prosa
+no cuenta.
+
+La línea se puede agregar o corregir **después** de publicar el spec: `crear` reconcilia el `origen`
+de cada fila en cada corrida, así que volver a correrlo alcanza. Y si te olvidás, un gate de
+`specs/__tests__/mapa-de-specs.test.ts` compara la fila contra el `spec.md` hidratado y da rojo.
+
+Si el pedido no viene de ningún issue, no hay línea que escribir y el campo no se pone —vacío no, que
+`leerMapa` lo rechaza—. Seguí al paso 1.
+
 ## Los cinco pasos
 
 ### 1. Medir, y recién después escribir
@@ -148,10 +182,20 @@ No es parte de abrir un spec, pero es la otra mitad y se saltea igual de fácil:
    escriben más (ver arriba), y desde el spec 042 tampoco hay un `## Seguimiento` donde anotar lo
    que quedó. Así que acá `pendientes: 0` quiere decir que se cerró **todo**, sin excepciones que
    valga la pena explicar.
-2. `Closes #N` en el PR, que es lo único que hace falta escribir: cierra el issue solo —medido, un
-   segundo después del merge— y el `estado` de `specs/mapa.json` lo deriva `mapa.yml` en el push a
-   `main` (spec 043). **No lo edites a mano en el PR**: mientras ese PR está abierto el mapa tiene
-   que decir `Propuesto`, y el gate del 038 da rojo si dice otra cosa.
+2. **Un `Closes` por cada issue saldado**, y son el del spec **más los del `origen`**. El del spec se
+   cierra solo —medido, un segundo después del merge— y el `estado` de `specs/mapa.json` lo deriva
+   `mapa.yml` en el push a `main` (spec 043). **No lo edites a mano en el PR**: mientras ese PR está
+   abierto el mapa tiene que decir `Propuesto`, y el gate del 038 da rojo si dice otra cosa.
+
+   El plural llegó con el 044 y es la mitad que faltaba. Decía `Closes #N` en singular, y ese `N` era
+   justo el único que ya se cerraba solo: el issue del propio spec. El de deuda que lo parió no lo
+   cerraba nadie, así que quedaban **dos issues por el mismo trabajo** y uno abierto para siempre. El
+   `origen` de la fila es lo que ahora lo pone en rojo — pero **ese rojo no llega en tu PR, y tampoco
+   al mergear**: mientras el PR está abierto el mapa dice `Propuesto` y el gate no mira los que siguen
+   en vuelo, y el push a `main` corre `verify` con el token vacío, así que el bloque de red se saltea
+   entero. El primero que lo ve es **el PR siguiente, que es de otra persona** — y esa persona no
+   puede arreglarlo, porque el `Closes` que falta va en un PR que ya está mergeado. Por eso la línea
+   se escribe antes, y no después.
 3. Lo que salió distinto de lo previsto, **como comentario en el issue**.
 
 El paso 1 se saltea solo: el spec 035 se mergeó y su registro siguió diciendo `Propuesto` veinte horas,

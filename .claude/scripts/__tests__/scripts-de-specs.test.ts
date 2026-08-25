@@ -6,6 +6,7 @@ import { join, dirname, resolve } from 'node:path';
 import {
   archivoDeComentario, carpetaExistente, ESTADOS, estadoDe, enVuelo, leerMapa, traducir, urlDeIssue,
   agruparPrsPorSpec, aterrizo, derivarMapa, escribirMapa, ATERRIZARON_A_MANO,
+  origenDe, deudaDelCenso,
   type Mapa, type IssueDeSpec, type PrDeSpec,
 } from '../lib/specs.ts';
 import { derivarYGuardar, type EntornoDerivacion } from '../lib/derivacion.ts';
@@ -87,6 +88,89 @@ describe('leerMapa', () => {
 
   it('una entrada completa pasa', () => {
     expect(() => leerMapa(JSON.stringify(MAPA_DE(['001', 63])))).not.toThrow();
+  });
+
+  /*
+   * Y grita ante un `origen` mal formado, que es el campo que el 044 agrega.
+   *
+   * Los tres casos se midieron ANTES de escribir la validacion, sobre el mapa real: los
+   * tres **pasaban en silencio**. `CAMPOS` es una lista de requeridos con un tipo escalar
+   * esperado, asi que un campo opcional que es un array queda afuera por construccion — o
+   * se valida aparte o no se valida nunca. Es el mismo modo de falla que el 034 midio: el
+   * registro acepta algo que nadie puede usar y el error sale tres pasos mas alla.
+   *
+   * El vacio esta en la lista a proposito. No es un dato roto: es una SEGUNDA forma de
+   * decir «no tiene origen», y la primera es omitir el campo. Dos formas de decir lo
+   * mismo es la puerta de la desincronizacion.
+   */
+  const CON_ORIGEN = (origen: unknown) =>
+    JSON.stringify({ '044': { ...ENTRADA('044', 132), origen } });
+
+  it.each<[string, unknown, string]>([
+    ['un numero suelto', 127, 'no es una lista'],
+    ['una lista de strings', ['127'], 'no es un numero'],
+    ['una lista vacia', [], 'vacio'],
+    // Los tres de abajo son numeros y ninguno es un numero de ISSUE. Van aparte de los
+    // strings porque fallan mas tarde y peor: un `"127"` se ve raro leyendo el mapa,
+    // pero un `0` se lee como un numero legitimo y sale por la puerta de «el issue no
+    // existe» — culpando a GitHub de algo que se tipeo aca.
+    ['una lista con un cero', [0], 'no es un numero de issue'],
+    ['una lista con un negativo', [-3], 'no es un numero de issue'],
+    ['una lista con un decimal', [1.5], 'no es un numero de issue'],
+  ])('grita ante un `origen` que es %s', (_caso, origen, esperado) => {
+    expect(() => leerMapa(CON_ORIGEN(origen))).toThrow(esperado);
+  });
+
+  it('y un `origen` bien formado pasa, con el campo entero', () => {
+    const mapa = leerMapa(CON_ORIGEN([127, 124]));
+
+    expect(mapa['044'].origen).toEqual([127, 124]);
+  });
+
+  it('la entrada SIN `origen` sigue pasando: el campo es opcional', () => {
+    // Los 43 specs de hoy no lo llevan y no se reescriben (Desviacion 2). Si esto
+    // fallara, agregar el campo seria una migracion en vez de un campo nuevo.
+    expect(leerMapa(JSON.stringify(MAPA_DE(['001', 63])))['001'].origen).toBeUndefined();
+  });
+});
+
+/**
+ * `origenDe`: la linea `**Origen:** #127` del `spec.md` se vuelve el campo del mapa.
+ *
+ * Es el hermano de `tituloDe` y los cuatro casos de abajo son las tres decisiones que el
+ * parser toma, mas la feliz. Las tres son sobre que **no** cuenta, porque el riesgo del
+ * campo no es que se lea de menos sino de mas: `origen` significa «lo salda», y con la
+ * lectura ancha —«lo menciona»— el gate del mapa daria rojo sobre specs correctos y se
+ * apagaria en una semana. Medido: el 035 cita al #97 como contexto de una medicion que no
+ * arregla, y con un grep suelto quedaria declarando un origen que no salda.
+ */
+describe('origenDe', () => {
+  const ENCABEZADO = (extra: string) =>
+    `# Spec 044 — Un titulo\n\n**Fecha:** 2026-08-25\n**Estado:** Propuesto\n${extra}\n\n## Problema\n\nSale del #999.\n`;
+
+  it('lee la linea del encabezado, con uno o con varios', () => {
+    expect(origenDe(ENCABEZADO('**Origen:** #127'))).toEqual([127]);
+    expect(origenDe(ENCABEZADO('**Origen:** #127, #124'))).toEqual([127, 124]);
+  });
+
+  it('sin la linea devuelve `null`, que es lo que no escribe el campo', () => {
+    // `null` y no `[]`: el llamador traduce `null` a «no escribas `origen`», y `[]` lo
+    // rechaza `leerMapa`. Que las dos cosas no se confundan es el punto.
+    expect(origenDe(ENCABEZADO('**Autor:** nadie'))).toBeNull();
+  });
+
+  it('un `#N` despues del primer `##` no es un origen', () => {
+    // El `Sale del #999` del cuerpo, que los dos casos de arriba ya traen. Si contara, el
+    // 035 —que cita al #97 en una medicion que no arregla— declararia un origen que no
+    // salda, y el gate daria rojo sobre un spec correcto.
+    expect(origenDe(ENCABEZADO('**Origen:** #127'))).toEqual([127]);
+  });
+
+  it('una linea `**Origen:**` que no nombra ningun issue GRITA', () => {
+    // El `[]`-no-es-un-error del 034, otra vez: devolverlo convertiria un error de quien
+    // escribe el spec en un spec sin vinculo, en silencio.
+    expect(() => origenDe(ENCABEZADO('**Origen:** el issue de la cache')))
+      .toThrow('no nombra ningun issue');
   });
 });
 
@@ -414,6 +498,26 @@ describe('`derivarMapa` deduce el estado en vez de recordarlo', () => {
     expect(derivado['043'].titulo).toBe('Spec 043');
   });
 
+  it('conserva el `origen`, que es lo que hace que el 044 no le cueste una lista', () => {
+    // El cruce que los dos specs dejaron escrito en prosa: el AC5 del 043 enumera lo que
+    // sale identico —`issue`, `carpeta`, `fecha`— y `origen` no esta en esa lista, asi
+    // que al que aterrizara segundo le tocaba agregarlo. Aterrizo segundo el 044, y no
+    // hubo nada que agregar: quien lo conserva es el `{ ...entrada }` de `derivarMapa`,
+    // que copia todo lo que la derivacion no nombra.
+    //
+    // El test existe porque esa propiedad es un efecto del spread y no una decision
+    // escrita: cambiar el spread por un literal de cinco campos —una simplificacion que
+    // se ve razonable— borraria el vinculo spec↔issue de deuda en el push siguiente a
+    // `main`, en verde y sin diff que lo delate mas que la linea que desaparece.
+    const mapa = MAPA_DE_PRUEBA();
+    mapa['043'].origen = [125];
+
+    const { mapa: derivado } = derivarMapa(mapa, ISSUES_DE_PRUEBA, PRS_DE_PRUEBA());
+
+    expect(derivado['043'].origen).toEqual([125]);
+    expect(derivado['038'].origen).toBeUndefined();
+  });
+
   it('a `Descartado` y `Superado` no los mueve un PR mergeado', () => {
     // El 004 es `Superado` y su PR #3 esta mergeado: lo supero otro spec despues, y eso
     // no lo dice el merge. El 001 es `Descartado` y no tiene PR ninguno.
@@ -615,5 +719,48 @@ describe('`derivarYGuardar` decide si escribir, y con que codigo sale', () => {
 
     expect(derivarYGuardar(entorno)).toBe(1);
     expect(entorno.guardados).toEqual([]);
+  });
+});
+
+/* ── El censo de deuda (spec 044) ─────────────────────────────────────────── */
+
+/**
+ * `deudaDelCenso`: los issues que ningun spec reclama, o sea lo que hay para promover.
+ *
+ * Es una resta de conjuntos y por eso alcanza con dos arrays escritos a mano: lo que hay
+ * que ejercer no es el volumen sino las **dos** formas de reclamar un issue. La segunda
+ * —el `origen`— es la que existe desde este spec, y sin ella el censo seguiria mostrando
+ * exactamente lo que el spec acaba de tomar.
+ */
+describe('deudaDelCenso', () => {
+  const ISSUES = [
+    { number: 63, state: 'CLOSED', title: 'Spec 001' },
+    { number: 45, state: 'OPEN', title: 'Una deuda vieja' },
+    { number: 127, state: 'OPEN', title: 'La deuda que pario el 044' },
+  ];
+
+  it('saca los issues que SON de un spec', () => {
+    const deuda = deudaDelCenso(ISSUES, MAPA_DE(['001', 63]));
+
+    expect(deuda.map((i) => i.number)).toEqual([45, 127]);
+  });
+
+  it('y tambien los que un spec declaro SALDAR', () => {
+    // La entrada de mas que saca un issue del listado, que es el AC6 puesto en dos
+    // arrays: el 044 declara `origen: [127]`, asi que el #127 deja de ser deuda para
+    // promover — ya tiene duenio. Sin esta mitad, el censo listaria para siempre lo que
+    // este mismo spec vino a tomar.
+    const mapa = { ...MAPA_DE(['001', 63]), '044': { ...ENTRADA('044', 132), origen: [127] } };
+
+    const deuda = deudaDelCenso(ISSUES, mapa);
+
+    expect(deuda.map((i) => i.number)).toEqual([45]);
+  });
+
+  it('no habla con la red ni con el disco: dos arrays alcanzan', () => {
+    // La propiedad que hace que esto no sea una tool del MCP y si un script aparte:
+    // `spec_status` responde sin `gh` y eso el 034 lo defiende. Lo puro se prueba entero
+    // aca, y lo que habla con `gh` queda en `deuda.mjs`, que no tiene ninguna decision.
+    expect(deudaDelCenso([], MAPA_DE(['001', 63]))).toEqual([]);
   });
 });
