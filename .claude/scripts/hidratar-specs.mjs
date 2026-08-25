@@ -28,22 +28,36 @@
  * nombres historicos y fallaba en 7, o sea que un arbol recien hidratado inventaba
  * siete carpetas que ninguna cita del repo conoce.
  *
+ * ## El default trae los que estan EN VUELO, no todos (spec 038)
+ *
+ * Hasta el 038 «los que falten» eran los 42, y el caso normal es querer **uno**: el que
+ * se esta implementando. En un worktree nuevo eso son 42 llamadas a `gh` y ~170
+ * archivos para leer uno — y `/spec-implement-batch` corre N worktrees, asi que se
+ * multiplica por N y falla entero sin red.
+ *
+ * Asi que el default pasa a ser los **no cerrados** que falten, o sea los `Propuesto`
+ * (ver `enVuelo`). Las otras dos formas siguen ahi porque leer un spec viejo es normal,
+ * y **las tres declaran cuantos saltearon y por que**: un default que trae menos y no
+ * lo dice se lee como «ese spec no existe», que es peor que traer de mas.
+ *
  * Uso:
- *   node .claude/scripts/hidratar-specs.mjs            # los que falten
- *   node .claude/scripts/hidratar-specs.mjs 021 032    # solo esos
+ *   node .claude/scripts/hidratar-specs.mjs            # los que esten en vuelo y falten
+ *   node .claude/scripts/hidratar-specs.mjs 021 032    # solo esos, esten como esten
+ *   node .claude/scripts/hidratar-specs.mjs --todos    # todos los que falten
  *   node .claude/scripts/hidratar-specs.mjs --forzar   # rehace los que ya estan
  */
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, renameSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { leerMapa, archivoDeComentario, carpetaExistente } from './lib/specs.ts';
+import { leerMapa, archivoDeComentario, carpetaExistente, enVuelo } from './lib/specs.ts';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const SPECS = join(RAIZ, 'specs');
 
 const args = process.argv.slice(2);
 const FORZAR = args.includes('--forzar');
+const TODOS = args.includes('--todos');
 const PEDIDOS = args.filter((a) => /^\d{3}$/.test(a));
 
 /**
@@ -65,8 +79,34 @@ const yaEnDisco = () => readdirSync(SPECS, { withFileTypes: true })
   .filter((e) => e.isDirectory() && /^\d{3}-/.test(e.name))
   .map((e) => e.name);
 
-const aHidratar = PEDIDOS.length ? ids.filter((id) => PEDIDOS.includes(id)) : ids;
+/**
+ * A quienes se les va a preguntar, y por que a los otros no.
+ *
+ * Las tres formas devuelven ademas el MOTIVO del recorte, que es lo que despues se
+ * imprime: el spec 038 lo pide explicito porque un default que trae menos en silencio
+ * se lee como «ese spec no existe».
+ *
+ * Un `NNN` que no esta en el mapa **no se ignora**: se dice. Pedir un spec que el
+ * registro no conoce es un numero mal escrito o un spec sin publicar, y las dos veces
+ * la respuesta util es el error y no una corrida vacia.
+ */
+const desconocidos = PEDIDOS.filter((id) => !ids.includes(id));
+if (desconocidos.length) {
+  console.log(`OJO: ${desconocidos.join(', ')} no tiene entrada en specs/mapa.json — ¿el numero esta bien?`);
+}
+
+const aHidratar = PEDIDOS.length
+  ? ids.filter((id) => PEDIDOS.includes(id))
+  : ids.filter((id) => TODOS || enVuelo(MAPA[id].estado));
+
+/** Los que el recorte dejo afuera, para poder decir cuantos y por que. */
+const salteados = ids.length - aHidratar.length;
+const motivoDelRecorte = PEDIDOS.length
+  ? 'no los pediste'
+  : 'ya estan cerrados — `--todos` los trae';
+
 let hechos = 0;
+let yaEstaban = 0;
 
 for (const id of aHidratar) {
   const entrada = MAPA[id];
@@ -99,7 +139,7 @@ for (const id of aHidratar) {
   // El nombre sale del MAPA y no del titulo ni del disco: ver el encabezado de este
   // archivo, y el renombrado de arriba es lo que hace que eso sea cierto.
   const destino = entrada.carpeta;
-  if (nombre !== null && !FORZAR) { console.log(`${id}  ya esta (${destino}/)`); continue; }
+  if (nombre !== null && !FORZAR) { yaEstaban += 1; console.log(`${id}  ya esta (${destino}/)`); continue; }
 
   const datos = JSON.parse(gh([
     'issue', 'view', String(entrada.issue), '--repo', REPO,
@@ -125,4 +165,9 @@ for (const id of aHidratar) {
   console.log(`${id}  #${entrada.issue} → ${destino}/  (${n} archivos)`);
 }
 
-console.log(`\nhidratados: ${hechos} de ${aHidratar.length}`);
+// El resumen dice las TRES cantidades y no sola la primera. La que importa es la
+// tercera: sin ella, un default que mira 5 de 42 se ve igual que un registro de 5.
+const partes = [`hidratados: ${hechos} de ${aHidratar.length}`];
+if (yaEstaban) partes.push(`${yaEstaban} ya estaban`);
+if (salteados) partes.push(`${salteados} salteados (${motivoDelRecorte})`);
+console.log(`\n${partes.join('; ')}`);
