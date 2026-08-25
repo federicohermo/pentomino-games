@@ -301,6 +301,36 @@ export const traducir = (texto: string, mapa: Mapa, repo: string): string => tex
  */
 export const carpetaExistente = (carpetas: string[], id: string): string | null =>
   carpetas.find((c) => c.startsWith(`${id}-`)) ?? null;
+
+/**
+ * Los issues que un `spec.md` declara **saldar**, de su linea `**Origen:** #127, #124`.
+ *
+ * Es el hermano de `tituloDe` —que saca el titulo del H1— y vive aca por el mismo motivo
+ * que todo lo demas: adentro de un `.mjs` ejecutable no se puede testear.
+ *
+ * Tres decisiones, y las tres son sobre que NO cuenta:
+ *
+ * - **Solo el encabezado**, o sea antes del primer `##`, como el `**Estado:**` que ya vive
+ *   ahi. Un `#127` suelto en la prosa no es un origen: si lo fuera, el 035 —que cita al
+ *   #97 como contexto de una medicion que **no** arregla— quedaria declarando un origen
+ *   que no salda, y el gate daria rojo sobre un spec correcto.
+ * - **Sin la linea, `null`**, que el llamador traduce a no escribir el campo. No a
+ *   `origen: []`, que `leerMapa` rechaza.
+ * - **Con la linea y sin ningun `#N`, GRITA.** Un `**Origen:** el issue de la cache` es un
+ *   error de quien escribe el spec, y devolver `[]` lo convierte en un spec sin vinculo,
+ *   en silencio: es el mismo `[]`-no-es-un-error que el 034 midio en `filasDeLog`.
+ */
+export const origenDe = (spec: string): number[] | null => {
+  const encabezado = spec.split(/^##\s/m)[0];
+  const linea = /^\*\*Origen:\*\*(.*)$/m.exec(encabezado);
+  if (linea === null) return null;
+  const numeros = [...linea[1].matchAll(/#(\d+)/g)].map((m) => Number(m[1]));
+  if (numeros.length === 0) {
+    throw new Error(`el \`**Origen:**\` del spec no nombra ningun issue: "${linea[0].trim()}"`);
+  }
+  return numeros;
+};
+
 /* ── Derivar el mapa desde los PR (spec 043) ──────────────────────────────── */
 
 /**

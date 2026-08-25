@@ -6,6 +6,7 @@ import { join, dirname, resolve } from 'node:path';
 import {
   archivoDeComentario, carpetaExistente, ESTADOS, estadoDe, enVuelo, leerMapa, traducir, urlDeIssue,
   agruparPrsPorSpec, aterrizo, derivarMapa, escribirMapa, ATERRIZARON_A_MANO,
+  origenDe,
   type Mapa, type IssueDeSpec, type PrDeSpec,
 } from '../lib/specs.ts';
 import { derivarYGuardar, type EntornoDerivacion } from '../lib/derivacion.ts';
@@ -125,6 +126,47 @@ describe('leerMapa', () => {
     expect(leerMapa(JSON.stringify(MAPA_DE(['001', 63])))['001'].origen).toBeUndefined();
   });
 });
+
+/**
+ * `origenDe`: la linea `**Origen:** #127` del `spec.md` se vuelve el campo del mapa.
+ *
+ * Es el hermano de `tituloDe` y los cuatro casos de abajo son las tres decisiones que el
+ * parser toma, mas la feliz. Las tres son sobre que **no** cuenta, porque el riesgo del
+ * campo no es que se lea de menos sino de mas: `origen` significa «lo salda», y con la
+ * lectura ancha —«lo menciona»— el gate del mapa daria rojo sobre specs correctos y se
+ * apagaria en una semana. Medido: el 035 cita al #97 como contexto de una medicion que no
+ * arregla, y con un grep suelto quedaria declarando un origen que no salda.
+ */
+describe('origenDe', () => {
+  const ENCABEZADO = (extra: string) =>
+    `# Spec 044 — Un titulo\n\n**Fecha:** 2026-08-25\n**Estado:** Propuesto\n${extra}\n\n## Problema\n\nSale del #999.\n`;
+
+  it('lee la linea del encabezado, con uno o con varios', () => {
+    expect(origenDe(ENCABEZADO('**Origen:** #127'))).toEqual([127]);
+    expect(origenDe(ENCABEZADO('**Origen:** #127, #124'))).toEqual([127, 124]);
+  });
+
+  it('sin la linea devuelve `null`, que es lo que no escribe el campo', () => {
+    // `null` y no `[]`: el llamador traduce `null` a «no escribas `origen`», y `[]` lo
+    // rechaza `leerMapa`. Que las dos cosas no se confundan es el punto.
+    expect(origenDe(ENCABEZADO('**Autor:** nadie'))).toBeNull();
+  });
+
+  it('un `#N` despues del primer `##` no es un origen', () => {
+    // El `Sale del #999` del cuerpo, que los dos casos de arriba ya traen. Si contara, el
+    // 035 —que cita al #97 en una medicion que no arregla— declararia un origen que no
+    // salda, y el gate daria rojo sobre un spec correcto.
+    expect(origenDe(ENCABEZADO('**Origen:** #127'))).toEqual([127]);
+  });
+
+  it('una linea `**Origen:**` que no nombra ningun issue GRITA', () => {
+    // El `[]`-no-es-un-error del 034, otra vez: devolverlo convertiria un error de quien
+    // escribe el spec en un spec sin vinculo, en silencio.
+    expect(() => origenDe(ENCABEZADO('**Origen:** el issue de la cache')))
+      .toThrow('no nombra ningun issue');
+  });
+});
+
 /**
  * El `specs-por-estado.mjs` de cada skill: **una copia por skill, y las dos iguales**.
  *

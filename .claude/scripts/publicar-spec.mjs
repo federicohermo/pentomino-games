@@ -38,7 +38,7 @@
 import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { leerMapa, estadoDe, enVuelo, traducir, escribirMapa, NOMBRE_PUBLICABLE } from './lib/specs.ts';
+import { leerMapa, estadoDe, enVuelo, traducir, escribirMapa, origenDe, NOMBRE_PUBLICABLE } from './lib/specs.ts';
 // El lanzador de `gh` que explica sus fallos en vez de tirar un `ENOENT` crudo (issue #125).
 import { gh as lanzarGh } from './lib/gh.ts';
 
@@ -109,6 +109,17 @@ const tituloDe = (carpeta) => {
   return t;
 };
 
+/**
+ * Los issues que el spec declara saldar, o `null` si no declara ninguno (spec 044).
+ *
+ * El parseo vive en `lib/specs.ts` para que tenga tests; lo que queda aca es el disco.
+ * `tituloDe` lee la primera linea y este lee el encabezado entero, asi que el archivo se
+ * abre dos veces — son 3 KB y una vez por spec, y compartir el texto ataria las dos
+ * lecturas por un ahorro que nadie mide.
+ */
+const origenDeCarpeta = (carpeta) =>
+  origenDe(readFileSync(join(SPECS, carpeta, CUERPO), 'utf8'));
+
 const gh = (args, stdin) => {
   if (DRY) { console.log('   [dry] gh', args.slice(0, 6).join(' '), stdin ? `(+${stdin.length}B)` : ''); return 'DRY'; }
   return lanzarGh(args, { input: stdin, encoding: 'utf8', maxBuffer: 1 << 28 }).trim();
@@ -151,12 +162,17 @@ if (fase === 'crear') {
     // arranca en `Propuesto` porque un spec recien publicado no puede estar en otro, y
     // `fecha` es la de hoy: es la que `log.md` ponia en su columna Fecha, que era el dia
     // en que el spec se escribio — y publicarlo es el mismo dia.
+    const origen = origenDeCarpeta(carpeta);
     mapa[id] = {
       issue: numero,
       carpeta,
       fecha: new Date().toISOString().slice(0, 10),
       estado: 'Propuesto',
       titulo: tituloDe(carpeta),
+      // El sexto, y **solo si el spec lo declara** (044): sin la linea `**Origen:**` la
+      // fila no trae el campo, no lo trae vacio. `origen: []` lo rechaza `leerMapa`,
+      // porque «no nace de un issue» ya se dice omitiendolo.
+      ...(origen === null ? {} : { origen }),
     };
     guardarMapa(mapa);
     console.log(`${id}  creado → #${numero}`);
