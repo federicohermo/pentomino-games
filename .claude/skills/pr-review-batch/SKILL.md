@@ -439,9 +439,9 @@ En este orden y en ~40 líneas más la tabla:
    del merge si el Paso 6 lo tocó, y si `verify` pasó a la primera o a la segunda.
 2. **Lo que apareció en más de un PR** — el patrón transversal es el entregable propio del batch. En
    la corrida medida fueron 17 de 21 hallazgos de la misma clase: prosa que dejó de ser cierta.
-3. **Lo no aplicado**, con el número del issue que quedó abierto y el `Detectado en #N` que lleva.
-   Desde que el destino está fuera del repo esto **no es redundante con el PR**: el issue no está en
-   el diff, así que quien mergea sólo lo ve acá.
+3. **Lo no aplicado**, y en el `## Seguimiento` de qué spec quedó escrito, con el `T0NN` que devolvió
+   la tool. Desde que la escritura es central esto **no es redundante con el PR**: el seguimiento no
+   está en el diff, así que quien mergea sólo lo ve acá.
 4. **Cómo quedó la pila después del Paso 6**: qué cadena está al día contra qué, con qué SHA de
    merge, y cada conflicto que se resolvió **con el criterio que lo resolvió**. La verificación va
    escrita al lado: que cada cadena contenga entera a la de abajo —`git log <abajo>..<arriba>`
