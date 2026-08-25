@@ -577,9 +577,6 @@ export type Escritura =
  */
 const partir = (md: string): string[] => md.split(/(\r?\n)/);
 
-/** El terminador que ya usa el archivo, para las lineas que se agregan. */
-const finDeLinea = (partes: string[]): string => partes.length > 1 ? partes[1] : '\n';
-
 /**
  * Una tarea pasa de `- [ ]` a `- [x]`.
  *
@@ -604,63 +601,3 @@ export function marcarTarea(md: string, id: string): Escritura {
   return { ok: false, motivo: `No hay ninguna tarea ${id} en este spec.` };
 }
 
-/**
- * Agrega una tarea al `## Seguimiento` de un spec, con el `T0NN` que sigue.
- *
- * El ID **sigue contando desde el mayor del archivo entero** y nunca reusa uno
- * libre (`specs/README.md`: «un ID libre no molesta a nadie; uno reusado rompe la
- * referencia que otra tarea le hacia»). Por eso el maximo se busca sobre todo el
- * archivo y no sobre la seccion.
- *
- * Si el spec no tiene la seccion, se crea: medido, uno de los 33 —el 018— no la
- * tiene, asi que fallar ahi seria negarse a anotar deuda justo donde no hay
- * ninguna anotada.
- */
-export function agregarSeguimiento(md: string, texto: string): Escritura {
-  const partes = partir(md);
-  const eol = finDeLinea(partes);
-
-  let mayor = 0;
-  for (const m of md.matchAll(/^\s*-\s\[[ xX]\]\s*T(\d{3})\b/gm)) {
-    mayor = Math.max(mayor, Number(m[1]));
-  }
-  // `T\d{3}` es el formato que parsea `parseTasks`. Pasado el 999 la tarea nueva
-  // seria invisible para la propia tool que la escribio, asi que se dice.
-  if (mayor >= 999) return { ok: false, motivo: 'El spec ya llego a T999: no hay ID siguiente de tres digitos.' };
-  const id = `T${String(mayor + 1).padStart(3, '0')}`;
-  const linea = `- [ ] ${id} ${texto}`;
-
-  // Dos indices y no uno: el encabezado dice si la seccion existe, la ultima
-  // linea con contenido dice donde termina. Una seccion que existe pero esta
-  // vacia tiene el primero y no el segundo, y colapsarlos escribia un SEGUNDO
-  // encabezado debajo del que ya estaba.
-  let dentro = false;
-  let inicio = -1;
-  let ultima = -1;
-  for (let i = 0; i < partes.length; i += 2) {
-    const h = /^#{2,}\s+(.*)$/.exec(partes[i]);
-    if (h !== null) {
-      if (dentro) break;
-      dentro = /^seguimiento/i.test(h[1].trim());
-      if (dentro) inicio = i;
-      continue;
-    }
-    if (dentro && partes[i].trim() !== '') ultima = i;
-  }
-
-  if (inicio === -1) {
-    // Sin seccion, la tarea nueva se lleva su encabezado. El texto exacto es el
-    // que documenta `specs/README.md`.
-    const cola = md.endsWith(eol) ? '' : eol;
-    const nuevo = `${md}${cola}${eol}## Seguimiento (no bloquea)${eol}${eol}${linea}${eol}`;
-    // La linea nueva es la anteultima de `partir`: atras quedan su terminador y
-    // el tramo vacio que todo archivo terminado en salto deja al final.
-    return { ok: true, md: nuevo, tarea: id, linea: (partir(nuevo).length - 3) / 2 + 1, texto };
-  }
-
-  // Al final de la seccion y no debajo del encabezado: el orden de lectura
-  // termina siendo el de escritura, que es lo que hace legible el seguimiento.
-  const anclaje = ultima === -1 ? inicio : ultima;
-  partes.splice(anclaje + 1, 0, eol, linea);
-  return { ok: true, md: partes.join(''), tarea: id, linea: (anclaje + 2) / 2 + 1, texto };
-}

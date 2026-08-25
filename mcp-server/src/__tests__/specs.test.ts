@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  agregarSeguimiento, buscarSpec, marcarTarea, parseMapa, parseTasks, readSpecStatus,
+  buscarSpec, marcarTarea, parseMapa, parseTasks, readSpecStatus,
   type SpecStatus,
 } from '../specs.ts';
 
@@ -684,80 +684,3 @@ describe('marcarTarea', () => {
   });
 });
 
-describe('agregarSeguimiento', () => {
-  test('el ID sigue contando desde el mayor del archivo entero', () => {
-    // No desde el mayor de la sección ni desde el primer hueco: un ID reusado
-    // rompe la referencia que otra tarea le hacía (`specs/README.md`).
-    const r = agregarSeguimiento(PARA_ESCRIBIR, 'Un hallazgo');
-    assert.ok(r.ok);
-    assert.equal(r.tarea, 'T011');
-    assert.ok(r.md.includes('- [ ] T011 Un hallazgo'));
-  });
-
-  test('nunca reusa un ID libre', () => {
-    // Con T001 y T010 puestos, los ocho del medio están libres y ninguno se usa.
-    const r = agregarSeguimiento('## Paso\n- [x] T001 Una\n\n## Seguimiento\n- [ ] T010 Deuda\n', 'x');
-    assert.ok(r.ok);
-    assert.equal(r.tarea, 'T011');
-  });
-
-  test('cae al final de la sección, no debajo del encabezado', () => {
-    const r = agregarSeguimiento(PARA_ESCRIBIR, 'Un hallazgo');
-    assert.ok(r.ok);
-    assert.equal(r.linea, 10);
-    const lineas = r.md.split('\r\n');
-    assert.deepEqual(lineas.slice(7, 11), [
-      '## Seguimiento (no bloquea)',
-      '- [ ] T010 Deuda anotada',
-      '- [ ] T011 Un hallazgo',
-      '',
-    ]);
-    // Y el `## Notas` de abajo sigue intacto: el recorrido corta en el
-    // encabezado siguiente.
-    assert.ok(r.md.includes('## Notas\r\nProsa que no es una tarea.'));
-  });
-
-  test('conserva el CRLF del archivo', () => {
-    const r = agregarSeguimiento(PARA_ESCRIBIR, 'Un hallazgo');
-    assert.ok(r.ok);
-    assert.ok(!/[^\r]\n/.test(r.md), 'no quedó ningún LF suelto');
-  });
-
-  test('una sección vacía recibe la tarea, no un segundo encabezado', () => {
-    const r = agregarSeguimiento('## Paso\n- [x] T001 Una\n\n## Seguimiento (no bloquea)\n', 'Un hallazgo');
-    assert.ok(r.ok);
-    assert.equal(r.md.match(/## Seguimiento/g)?.length, 1);
-    assert.equal(r.md, '## Paso\n- [x] T001 Una\n\n## Seguimiento (no bloquea)\n- [ ] T002 Un hallazgo\n');
-  });
-
-  test('un spec sin la sección la estrena', () => {
-    // Medido: uno de los 33 —el 018— no la tiene, así que fallar ahí sería
-    // negarse a anotar deuda justo donde no hay ninguna anotada.
-    const r = agregarSeguimiento('## Paso\n- [x] T001 Una\n', 'Un hallazgo');
-    assert.ok(r.ok);
-    assert.equal(r.tarea, 'T002');
-    assert.equal(r.linea, 6);
-    assert.equal(r.md, '## Paso\n- [x] T001 Una\n\n## Seguimiento (no bloquea)\n\n- [ ] T002 Un hallazgo\n');
-  });
-
-  test('un archivo de una sola línea y sin salto final también', () => {
-    // `partir` no encuentra ningún terminador del que copiar el estilo.
-    const r = agregarSeguimiento('- [ ] T001 Sola', 'Un hallazgo');
-    assert.ok(r.ok);
-    assert.equal(r.md, '- [ ] T001 Sola\n\n## Seguimiento (no bloquea)\n\n- [ ] T002 Un hallazgo\n');
-  });
-
-  test('sin ninguna tarea numerada arranca en T001', () => {
-    const r = agregarSeguimiento('## Paso\n- [x] Sin ID\n', 'El primero');
-    assert.ok(r.ok);
-    assert.equal(r.tarea, 'T001');
-  });
-
-  test('pasado T999 FALLA en vez de escribir un ID que el parser no lee', () => {
-    // `parseTasks` casa `T\d{3}`: un T1000 sería invisible para la tool que lo
-    // acaba de escribir, que es la peor forma de perderlo.
-    const r = agregarSeguimiento('## Seguimiento\n- [ ] T999 La última\n', 'Un hallazgo');
-    assert.equal(r.ok, false);
-    assert.ok(!r.ok && r.motivo.includes('T999'));
-  });
-});
