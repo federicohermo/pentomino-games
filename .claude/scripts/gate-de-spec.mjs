@@ -191,14 +191,31 @@ try {
 const COMO_SALIR =
   'Si el spec no existe, la salida es el skill `spec-create`: medir, escribir los cuatro archivos en ' +
   '`specs/<NNN>-<kebab>/`, publicarlos con `node .claude/scripts/publicar-spec.mjs crear` y ' +
-  '`publicar`, y commitear SOLO `specs/mapa.json` a `main`. Si el spec YA esta publicado, lo que ' +
+  '`publicar`, y commitear SOLO `specs/mapa.json` a `staging`. Si el spec YA esta publicado, lo que ' +
   'falta es la rama, que la abre el implementador: `git checkout -b feature/<NNN>-<kebab>` con el ' +
   '`NNN` que el mapa ya tiene. Si el cambio de verdad no necesita spec —un typo, ' +
   'un bump de version, revertir el commit anterior— el skill lo dice por escrito, pero la rama ' +
-  'igual no puede ser `main`.';
+  'igual no puede ser `main` ni `staging`.';
 
-if (rama === 'main') {
-  bloquear(`No se edita \`${ruta}\` desde \`main\`. ${COMO_SALIR}`);
+/**
+ * Las ramas COMPARTIDAS: las que reciben trabajo de otros y donde por lo tanto no se edita
+ * una ruta protegida.
+ *
+ * `staging` entra el 2026-08-26, cuando pasa a ser la rama de integracion y la **default del
+ * repositorio**. Ese segundo dato es el que la hace peligrosa y no el primero: es adonde
+ * apunta cada `gh pr create` y cada `clone` fresco, o sea el lugar mas facil de todo el repo
+ * donde quedarse parado sin haberlo decidido.
+ *
+ * **Nombrarla no cambia el veredicto, cambia el diagnostico.** Sin esta linea `staging` caia
+ * igual —ninguna rama que no matchee `feature/<NNN>-` pasa— pero por el mensaje equivocado:
+ * «la rama `staging` no nombra un spec» se lee como una invitacion a renombrarla, que es lo
+ * peor que se puede hacer con la rama de integracion. El mensaje correcto dice que el problema
+ * es DONDE estas parado, no como se llama la rama.
+ */
+const RAMAS_COMPARTIDAS = ['main', 'staging'];
+
+if (RAMAS_COMPARTIDAS.includes(rama)) {
+  bloquear(`No se edita \`${ruta}\` desde \`${rama}\`. ${COMO_SALIR}`);
 }
 
 const match = RAMA_DE_SPEC.exec(rama);

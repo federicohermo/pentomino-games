@@ -153,10 +153,10 @@ ese issue ya exista. Las dos son idempotentes: se pueden correr de nuevo.
 
 ```bash
 git add specs/mapa.json                                  # lo ÚNICO del spec que se trackea
-git commit && git push origin main
+git commit && git push origin staging
 ```
 
-El spec entra a `main` y ahí termina: un spec abandonado no se va con ninguna rama, y por eso el 001
+El spec entra a `staging` y ahí termina: un spec abandonado no se va con ninguna rama, y por eso el 001
 (`Descartado`) y el 004 (`Superado`) siguen en el registro.
 
 ### 5. Entregarle el control a `/spec-implement`
@@ -184,7 +184,7 @@ No es parte de abrir un spec, pero es la otra mitad y se saltea igual de fácil:
    valga la pena explicar.
 2. **Un `Closes` por cada issue saldado**, y son el del spec **más los del `origen`**. El del spec se
    cierra solo —medido, un segundo después del merge— y el `estado` de `specs/mapa.json` lo deriva
-   `mapa.yml` en el push a `main` (spec 043). **No lo edites a mano en el PR**: mientras ese PR está
+   `mapa.yml` en el push a `staging` (spec 043). **No lo edites a mano en el PR**: mientras ese PR está
    abierto el mapa tiene que decir `Propuesto`, y el gate del 038 da rojo si dice otra cosa.
 
    El plural llegó con el 044 y es la mitad que faltaba. Decía `Closes #N` en singular, y ese `N` era
@@ -192,7 +192,7 @@ No es parte de abrir un spec, pero es la otra mitad y se saltea igual de fácil:
    cerraba nadie, así que quedaban **dos issues por el mismo trabajo** y uno abierto para siempre. El
    `origen` de la fila es lo que ahora lo pone en rojo — pero **ese rojo no llega en tu PR, y tampoco
    al mergear**: mientras el PR está abierto el mapa dice `Propuesto` y el gate no mira los que siguen
-   en vuelo, y el push a `main` corre `verify` con el token vacío, así que el bloque de red se saltea
+   en vuelo, y el push a `staging` corre `verify` con el token vacío, así que el bloque de red se saltea
    entero. El primero que lo ve es **el PR siguiente, que es de otra persona** — y esa persona no
    puede arreglarlo, porque el `Closes` que falta va en un PR que ya está mergeado. Por eso la línea
    se escribe antes, y no después.

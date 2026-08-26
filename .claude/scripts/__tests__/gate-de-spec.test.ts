@@ -85,6 +85,18 @@ describe('bloquea lo que tiene que bloquear', () => {
     expect(r.permissionDecisionReason).toContain('desde `main`');
   });
 
+  it('`src/` desde `staging`, y el mensaje la nombra en vez de hablar de specs', () => {
+    // `staging` es la rama DEFAULT del repositorio desde el 2026-08-26, o sea adonde
+    // apunta cada `gh pr create` y cada `clone` fresco. Ya caia por «no nombra un spec»,
+    // que es el veredicto correcto con el diagnostico equivocado: invita a renombrar la
+    // rama de integracion. La asercion que importa es la segunda.
+    git('checkout', '-B', 'staging', 'main');
+    const r = correr(payload('src/domain/board.ts'));
+    expect(r.permissionDecision).toBe('deny');
+    expect(r.permissionDecisionReason).toContain('desde `staging`');
+    expect(r.permissionDecisionReason).not.toContain('no nombra un spec');
+  });
+
   it('`src/` desde una rama que no nombra un spec', () => {
     git('checkout', '-B', 'fix/algo-urgente', 'main');
     const r = correr(payload('src/domain/board.ts'));

@@ -172,7 +172,7 @@ así — eso vive en los comentarios, no en la salida de una tool.
 **Trabajo planificado:** desde el spec 034 cada spec **es un issue**, y
 [specs/mapa.json](./specs/mapa.json) —lo que se commitea de `specs/` son él, el `README.md` y los
 dos gates de `specs/__tests__/`, y ninguno es un spec— es el **mapa spec↔issue** y el estado de cada
-uno. **Su `estado` lo deriva `mapa.yml`** en el push a `main` desde el 043: el gate del 038 prohíbe
+uno. **Su `estado` lo deriva `mapa.yml`** en el push a `staging` desde el 043: el gate del 038 prohíbe
 tocarlo dentro del PR que lo justifica. Las dependencias tampoco: las calcula `spec_status` en
 `cruces`, leyendo los `X → Y` de cada `tasks.md`. El porqué de cada decisión, en el issue de su spec.
 

@@ -84,7 +84,7 @@ specs/<NNN>-<descripcion-kebab>/
   tiene un `baseline.md` con la medición previa— y Spec Kit prevé lo mismo (`data-model.md`,
   `contracts/`, `quickstart.md`). Los tres de Spec Kit que este repo no genera son de API y de schema,
   y acá no hay ni una ni la otra.
-- El spec se commitea a `main` **antes** de que exista ninguna rama de feature. La rama la abre el
+- El spec se commitea a `staging` **antes** de que exista ninguna rama de feature. La rama la abre el
   implementador, no quien escribe el spec: son dos decisiones distintas, y entre una y otra el spec
   puede revisarse, descartarse o esperar al que lo bloquea.
 
@@ -138,7 +138,7 @@ ciclo de vida, no alfabético.
 | Estado | Qué dice | ¿En vuelo? | Su issue |
 |---|---|---|---|
 | `Propuesto` | escrito y publicado; de él todavía puede salir trabajo | **Sí** | abierto |
-| `Implementado` | su PR aterrizó en `main` | No | cerrado |
+| `Implementado` | su PR aterrizó en `staging` | No | cerrado |
 | `Descartado` | se abandonó sin implementar (el 001) | No | cerrado |
 | `Superado` | otro spec lo reemplazó (el 004) | No | cerrado |
 
@@ -318,7 +318,7 @@ sin red, y una tool que a veces la necesita falla distinto según dónde corra.
 > **El estado del mapa y el cierre del issue ya no son tareas, desde el 043.** El issue lo cierra el
 > `Closes #N` del PR —medido: los cinco issues de los specs 038 a 042 se cerraron **un segundo
 > después** del merge—, y el `estado` de [mapa.json](./mapa.json) lo deriva
-> [`.github/workflows/mapa.yml`](../.github/workflows/mapa.yml) en el push a `main`, con
+> [`.github/workflows/mapa.yml`](../.github/workflows/mapa.yml) en el push a `staging`, con
 > `.claude/scripts/derivar-mapa.mjs`.
 >
 > No era disciplina floja: el gate del 038 tiene dos tests en espejo —un PR aterrizado con el mapa en
