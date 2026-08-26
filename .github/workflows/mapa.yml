@@ -23,9 +23,20 @@
 #     sigue declarandolo.
 name: mapa
 
+# Corre sobre `staging` y no sobre `main`, y no es una preferencia: es la unica forma que queda.
+# `main` tiene un ruleset que exige PR y `verify` en verde, y el bypass por integracion —que seria el
+# lugar natural para la app de Actions— **no existe en un repo personal**: la API lo rechaza con
+# «Actor GitHub Actions integration must be part of the ruleset source or owner organization».
+#
+# Sin bypass, un `git push origin HEAD:main` desde acá queda rechazado. Y abrir un PR en vez de
+# pushear tampoco sirve: un PR creado con `GITHUB_TOKEN` no dispara workflows, asi que `verify` nunca
+# correria sobre el y el check requerido nunca se satisfaria — el PR quedaria abierto para siempre.
+#
+# `staging` no tiene ruleset, asi que el push directo sigue siendo posible y este workflow sigue
+# siendo lo que era. El mapa derivado llega a `main` con el PR de promocion, como todo lo demas.
 on:
   push:
-    branches: [main]
+    branches: [staging]
 
 # `contents: write` porque commitea. Los otros dos son de lectura y son lo que le faltaba a la CI
 # para poder preguntar: el default del repo es `read` a secas —`default_workflow_permissions`— asi
@@ -38,9 +49,9 @@ permissions:
 # Dos corridas escribiendo el mismo archivo se pisan. Se encolan en vez de cancelarse: la que ya
 # arranco esta a punto de dejar el registro al dia, y cancelarla no ahorra nada que importe.
 #
-# Encolar sin mas no alcanza —la corrida que espera arrancaria con un `main` viejo—, y eso lo cierra
-# el `ref: main` del checkout, abajo. Las dos cosas van juntas: sin la cola se pisan, sin el `ref` la
-# segunda deriva sobre un arbol que ya no es `main`.
+# Encolar sin mas no alcanza —la corrida que espera arrancaria con un `staging` viejo—, y eso lo
+# cierra el `ref: staging` del checkout, abajo. Las dos cosas van juntas: sin la cola se pisan, sin el
+# `ref` la segunda deriva sobre un arbol que ya no es `staging`.
 concurrency:
   group: mapa
   cancel-in-progress: false
@@ -49,20 +60,21 @@ jobs:
   derivar:
     runs-on: ubuntu-latest
     steps:
-      # `ref: main` y no el `github.sha` del evento, que es el default. La diferencia importa cuando
-      # llegan dos pushes seguidos, que en este repo pasa: se mergea en lote. La corrida B queda
-      # encolada por el `concurrency` de arriba, y con el default arrancaria con el arbol del commit
-      # que la disparo — mientras que `main` ya avanzo, porque la corrida A le pusheo el commit
-      # derivado. El push de B saldria non-fast-forward y el job quedaria ROJO, y sin arreglarse
-      # solo: los pushes con `GITHUB_TOKEN` no disparan workflows, asi que no hay corrida siguiente.
+      # `ref: staging` y no el `github.sha` del evento, que es el default. La diferencia importa
+      # cuando llegan dos pushes seguidos, que en este repo pasa: se mergea en lote. La corrida B
+      # queda encolada por el `concurrency` de arriba, y con el default arrancaria con el arbol del
+      # commit que la disparo — mientras que `staging` ya avanzo, porque la corrida A le pusheo el
+      # commit derivado. El push de B saldria non-fast-forward y el job quedaria ROJO, y sin
+      # arreglarse solo: los pushes con `GITHUB_TOKEN` no disparan workflows, asi que no hay corrida
+      # siguiente.
       #
-      # Con `ref: main` cada corrida deriva sobre el `main` que hay cuando le toca, que es lo unico
-      # que tiene sentido para algo que se calcula entero cada vez. Queda una ventana chica —una
+      # Con `ref: staging` cada corrida deriva sobre el `staging` que hay cuando le toca, que es lo
+      # unico que tiene sentido para algo que se calcula entero cada vez. Queda una ventana chica —una
       # persona pusheando entre el checkout y el push, ~20 s— y esa SI se arregla sola: un push
       # humano dispara este mismo workflow otra vez.
       - uses: actions/checkout@v5
         with:
-          ref: main
+          ref: staging
 
       # La misma version EXACTA que `verify.yml`, por el mismo motivo que alla: `22` a secas resuelve
       # a la ultima 22.x del dia.
@@ -98,10 +110,10 @@ jobs:
       # `if` y no `&&`: los pasos corren con `bash -e`, y `git diff --quiet ... && exit 0` devuelve 1
       # cuando SI hay cambios, o sea que el paso fallaria justo en el caso que tiene trabajo.
       #
-      # Se pushea `HEAD:main` y no `main` a secas: es explicito sobre que rama recibe, que es lo que
-      # se quiere en un paso que escribe en la rama principal. Si `main` se movio entre el checkout y
-      # esta linea el push falla, y falla fuerte — que es correcto: fue una persona quien pusheo, y
-      # ese push dispara este workflow de nuevo.
+      # Se pushea `HEAD:staging` y no `staging` a secas: es explicito sobre que rama recibe, que es
+      # lo que se quiere en un paso que escribe en una rama compartida. Si `staging` se movio entre el
+      # checkout y esta linea el push falla, y falla fuerte — que es correcto: fue una persona quien
+      # pusheo, y ese push dispara este workflow de nuevo.
       - name: Commitear si el mapa cambio
         run: |
           if git diff --quiet specs/mapa.json; then
@@ -115,4 +127,4 @@ jobs:
 
           Derivado por .github/workflows/mapa.yml (spec 043). El estado de un spec es
           una consecuencia de si su PR aterrizo, no un dato que alguien escribe."
-          git push origin HEAD:main
+          git push origin HEAD:staging

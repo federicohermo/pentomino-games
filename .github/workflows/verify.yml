@@ -23,8 +23,12 @@ name: verify
 
 on:
   pull_request:
+  # Las DOS ramas, desde que `main` es la rama de release y `staging` la de integracion. `staging`
+  # esta primero porque es donde aterriza el trabajo: es el push que de verdad hay que verificar. El
+  # de `main` se queda porque un PR de promocion mergeado es un push mas, y la rama que se deploya no
+  # puede ser la unica sin corrida propia.
   push:
-    branches: [main]
+    branches: [staging, main]
 
 # Los dos de lectura son del spec 043, y son lo que le faltaba al gate del mapa para poder correr
 # aca. `gh` NO falta —el runner declara `Image: ubuntu-24.04` y esa imagen trae GitHub CLI 2.97.0—:
@@ -83,19 +87,23 @@ jobs:
       # El token va SOLO en el PR, y esto no es una excepcion escondida: es donde vive la autoridad
       # sobre el mapa (spec 043).
       #
-      # Cuando el PR de un spec aterriza, ese push a `main` dispara los DOS workflows a la vez. En
+      # Cuando el PR de un spec aterriza, ese push a `staging` dispara los DOS workflows a la vez. En
       # ese commit el mapa todavia dice `Propuesto` —no puede decir otra cosa: el gate del 038
       # prohibe cambiarlo adentro del PR— y el PR ya figura `MERGED`, o sea exactamente la condicion
       # que el gate declara mentira. `mapa.yml` la corrige en ~20 s, pero `verify` no la espera:
       # arranca con el mismo commit, tarda 87 s, y lee el mapa de ANTES. Y como el push de la Action
       # va con el `GITHUB_TOKEN`, no dispara una segunda corrida que salga verde.
       #
-      # Sin esto, cada merge de spec dejaria `main` en rojo con un rojo que ya esta arreglado y que
-      # nadie va a volver a correr — la forma mas rapida conocida de que alguien apague el gate.
+      # La carrera es la misma de siempre y solo cambio de rama: hasta que `main` paso a ser la rama
+      # de release, los dos workflows se disparaban sobre `main` y el conflicto pasaba ahi.
+      #
+      # Sin esto, cada merge de spec dejaria la rama de integracion en rojo con un rojo que ya esta
+      # arreglado y que nadie va a volver a correr — la forma mas rapida conocida de que alguien
+      # apague el gate.
       #
       # En un PR el mapa SI tiene que estar consistente y el gate es lo unico que lo mira: ahi sigue
       # cazando todo lo demas —la mentira al reves, el cruce contra el issue, los titulos, y la
-      # deriva de cualquier otro spec—. En `main` el mapa no es la afirmacion de nadie: es una
+      # deriva de cualquier otro spec—. Fuera de un PR el mapa no es la afirmacion de nadie: es una
       # derivada, y el que la calcula es el otro workflow.
       #
       # Las dos alternativas se descartaron y estan escritas en el `plan.md` del 043: encadenar los
