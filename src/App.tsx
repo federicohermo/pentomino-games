@@ -52,7 +52,7 @@ import type { MemoriaDeOrientacion, Orientacion } from "./components/types/orien
  * Ver docs/architecture/modelo-musical.md y docs/architecture/audio.md.
  */
 
-export default function App(){
+export default function App() {
   const [selected, setSelected] = useState<PieceKey>('F');
 
   // La orientacion es de la PIEZA y no del instrumento. Hasta el 019 habia un
@@ -157,7 +157,7 @@ export default function App(){
   const selectedRef = useRef<PieceKey>(selected);
 
   /** El unico escritor de la pieza en la mano: el estado que se pinta y el ref que lee la rueda. */
-  const elegirPieza = useCallback((pieza: PieceKey)=>{
+  const elegirPieza = useCallback((pieza: PieceKey) => {
     selectedRef.current = pieza;
     setSelected(pieza);
   }, []);
@@ -210,7 +210,7 @@ export default function App(){
   // que se ve vacia. Las que miran la LEGALIDAD van con `placed`: una pieza guardada puede
   // tener celdas adentro de la grilla nueva —«no entra entera» no es «esta toda afuera»— y
   // colocar encima dejaria dos solapadas en cuanto la ventana crezca.
-  const visibles = useMemo(()=> placed.filter(p => cabeEn(p, dims)), [placed, dims]);
+  const visibles = useMemo(() => placed.filter(p => cabeEn(p, dims)), [placed, dims]);
 
   // Y el mismo corte para el CURSOR, que es el otro estado que la grilla nueva puede dejar
   // apuntando a una celda que ya no existe. `hover` lo escriben el mouse y el foco (spec
@@ -249,7 +249,7 @@ export default function App(){
   // estado re-renderizaria el arbol entero por una tecla apretada.
   const tapLimpio = useRef<boolean>(false);
 
-  const transformedShape = useMemo(()=>{
+  const transformedShape = useMemo(() => {
     let c = SHAPES[selected];
     c = rotateN(c, rotation);
     if (mirror) c = reflect(c);
@@ -266,13 +266,13 @@ export default function App(){
   // cachas de derivacion que AC15 obliga a llevarlo. Sin el, cambiar el regimen no
   // re-derivaria el tablero y AC7 quedaria falso — que es justo la consecuencia
   // buscada de que las notas no se guarden en `PlacedPiece`.
-  const secuencia = useMemo(()=> buildSequence(visibles, regimen, dims), [visibles, regimen, dims]);
+  const secuencia = useMemo(() => buildSequence(visibles, regimen, dims), [visibles, regimen, dims]);
 
   // El arpegio de la pieza SELECCIONADA, para el panel y para el click de colocacion.
   // La derivacion vive en `domain/music.ts` y no aca: las piezas ya colocadas la piden
   // por su cuenta —`buildSequence`, para el motor— y tener dos copias de la regla era
   // justo lo que hacia falta cuando `PlacedPiece` guardaba sus notas.
-  const noteSet = useMemo(()=> arpeggioFor(selected, rotation, mirror, regimen), [selected, rotation, mirror, regimen]);
+  const noteSet = useMemo(() => arpeggioFor(selected, rotation, mirror, regimen), [selected, rotation, mirror, regimen]);
 
   // Los cuatro efectos de reconciliación que mantienen al motor mirando este mismo
   // tablero viven en `components/use-engine.ts`, y la llamada va ACÁ y no
@@ -292,7 +292,7 @@ export default function App(){
   // esa misma pieza en la mano, el click la quita y `Alt`+click alterna su muteo. Qué
   // gesto es lo decide `accionDeClick`, que es una pura y se testea; acá queda el
   // cableado y las dos consultas al dominio que la pura no puede hacer.
-  function handleCellClick(x: number, y: number, altKey: boolean){
+  function handleCellClick(x: number, y: number, altKey: boolean) {
     // `visibles` y no `placed`: la pieza que no entra en la grilla de ahora no se dibuja,
     // asi que la celda que se ve vacia tiene que COMPORTARSE como vacia. Con el tablero
     // entero, arrastrar el borde de la ventana dejaba piezas invisibles interceptando
@@ -388,7 +388,7 @@ export default function App(){
   // y a cambio este botón conserva un alcance único y nombrable, las piezas COLOCADAS, en
   // vez de hacer dos cosas de dominios distintos. El estado de orientación tiene su propio
   // botón, el `0°` de la paleta, y ése resetea una sola pieza.
-  function resetBoard(){
+  function resetBoard() {
     frenarTransporte();
     reiniciarRecorrido();
     setPlaying(false);
@@ -400,7 +400,7 @@ export default function App(){
   // sin memo cambiaría de identidad en cada render y re-suscribiría los dos listeners
   // por cada tecla. Con `[playing]`, la identidad cambia exactamente cuando cambia el
   // transporte, que es la dependencia real que el efecto declara.
-  const togglePlay = useCallback(()=>{
+  const togglePlay = useCallback(() => {
     // La decisión —pedir lo contrario de lo que pasa y creerle al motor y no a lo que se
     // pidió— vive en `alternarTransporte`, donde tiene test. Acá queda el cableado: el
     // motor real y el `setState` con lo que el motor contestó.
@@ -421,17 +421,17 @@ export default function App(){
   // callback no necesita leer la orientación actual. Con arrows inline el hook se
   // re-suscribiría por render — peor, y en silencio.
   const rotarConTecla = useCallback(
-    ()=> orientar(selected, o => ({ ...o, rotation: siguienteRotacion(o.rotation) })),
+    () => orientar(selected, o => ({ ...o, rotation: siguienteRotacion(o.rotation) })),
     [orientar, selected],
   );
   const reflejarConTecla = useCallback(
-    ()=> orientar(selected, o => ({ ...o, mirror: !o.mirror })),
+    () => orientar(selected, o => ({ ...o, mirror: !o.mirror })),
     [orientar, selected],
   );
 
   // El botón `0°` de la paleta: devuelve la pieza en la mano —y sólo esa— al arranque.
   const resetearOrientacion = useCallback(
-    ()=> orientar(selected, ()=> ORIENTACION_INICIAL),
+    () => orientar(selected, () => ORIENTACION_INICIAL),
     [orientar, selected],
   );
 
@@ -455,7 +455,7 @@ export default function App(){
   // —cuál es la pieza en la mano— y el setter funcional no se lo puede dar: recibe el
   // `Record` anterior y nada más. La salida es `selectedRef`, que está argumentado arriba;
   // agregar `selected` a las dependencias era la otra, y rompe la suscripción única.
-  const alRotar = useCallback((deltaY: number)=> {
+  const alRotar = useCallback((deltaY: number) => {
     const pieza = selectedRef.current;
     orientar(pieza, o => ({ ...o, rotation: rotacionPorRueda(o.rotation, deltaY) }));
   }, [orientar]);
@@ -475,7 +475,7 @@ export default function App(){
   // pero alternar es otra cosa: en macOS `Ctrl`+click llega como `contextmenu` con
   // `ctrlKey: true` y ahí el que alterna es el `keyup` de `Ctrl`. Contar los dos daría
   // neto cero y la reflexión no respondería nunca en una laptop de Apple sin mouse.
-  function handleContextMenu(e: { preventDefault: () => void; ctrlKey: boolean }){
+  function handleContextMenu(e: { preventDefault: () => void; ctrlKey: boolean }) {
     e.preventDefault();
     // Una sola ranura, como los otros tres gestos de orientación: el botón derecho es el
     // octavo consumidor de la orientación y el único que no pasa por un efecto ni por un
@@ -488,7 +488,7 @@ export default function App(){
   // función porque son el mismo hecho, y las dos líneas dicen exactamente eso: la celda
   // enfocada ES el cursor —al entrar lo escribe, al salir lo apaga (lo mismo que hace hoy
   // `onMouseLeave` con el mouse)— y `focoEnTablero` es «¿llegó una celda?».
-  function alMoverElFoco(celda: Cell | null){
+  function alMoverElFoco(celda: Cell | null) {
     setFocoEnTablero(celda !== null);
     setHover(celda);
   }
@@ -502,7 +502,7 @@ export default function App(){
   // La otra dirección la resuelve el propio evento y no una segunda regla: el `blur` sabe a
   // quién le pasa el foco, así que `Board` ya distingue «salió del tablero» de «saltó a
   // otra celda» antes de llamar a `alMoverElFoco(null)`.
-  function alSalirElMouse(){
+  function alSalirElMouse() {
     if (!focoEnCelda) setHover(null);
   }
 
@@ -527,7 +527,7 @@ export default function App(){
 
   // El porque de este `useMemo` —y el numero que lo justifica— esta abajo, al lado del
   // `<PiecePalette>` que lo consume: es donde estaba escrita la decision contraria.
-  const orientacion = useMemo(()=> ({
+  const orientacion = useMemo(() => ({
     selected, orientaciones, regimen, noteSet,
     onSelect: elegirPieza,
     onRegimen: setRegimen,
@@ -550,8 +550,8 @@ export default function App(){
   // lugares donde vive el color de fondo, y `__tests__/fondo-sincronizado.test.ts`
   // existe para que los cuatro no se desincronicen.
   return (
-    <div ref={raizRef} className="h-[100dvh] w-full overflow-hidden bg-fondo text-slate-900">
-        {/* Aca llego a decir que los dos objetos se armaban INLINE porque
+    <div ref={raizRef} className="h-dvh w-full overflow-hidden bg-fondo text-slate-900">
+      {/* Aca llego a decir que los dos objetos se armaban INLINE porque
             memoizarlos "no compra nada": `PiecePalette` no esta memoizado, asi que
             re-renderiza igual. Era cierto y CIRCULAR —no memoizamos las props porque el
             componente no esta memoizado— y encima nunca se habia medido: era el unico caso
@@ -599,40 +599,40 @@ export default function App(){
             `transporte` se sigue armando inline, y ahora por el numero y no por el
             argumento circular: nadie lo consume detras de una barrera, asi que memoizarlo no
             cambiaria un solo render. */}
-        <PiecePalette
-          orientacion={orientacion}
-          transporte={{
-            tempo, playing, clicks,
-            onTempo: setTempo,
-            onTogglePlay: togglePlay,
-            onToggleClicks: ()=> setClicks(c=>!c),
-            onReset: resetBoard,
-          }}
-          abierto={piezasAbierto}
-          onToggle={()=> setPiezasAbierto(v=>!v)}
-        />
+      <PiecePalette
+        orientacion={orientacion}
+        transporte={{
+          tempo, playing, clicks,
+          onTempo: setTempo,
+          onTogglePlay: togglePlay,
+          onToggleClicks: () => setClicks(c => !c),
+          onReset: resetBoard,
+        }}
+        abierto={piezasAbierto}
+        onToggle={() => setPiezasAbierto(v => !v)}
+      />
 
-        <Board
-          placed={visibles}
-          dims={dims}
-          previewCells={previewCells}
-          previewValid={previewValid}
-          hover={cursor}
-          selected={selected}
-          rotation={rotation}
-          mirror={mirror}
-          regimen={regimen}
-          onCellClick={handleCellClick}
-          onCellEnter={setHover}
-          onMouseLeave={alSalirElMouse}
-          focoEnTablero={focoEnCelda}
-          onFoco={alMoverElFoco}
-          hoverEdita={hoverEdita}
-          onContextMenu={handleContextMenu}
-          boardRef={boardRef}
-        />
+      <Board
+        placed={visibles}
+        dims={dims}
+        previewCells={previewCells}
+        previewValid={previewValid}
+        hover={cursor}
+        selected={selected}
+        rotation={rotation}
+        mirror={mirror}
+        regimen={regimen}
+        onCellClick={handleCellClick}
+        onCellEnter={setHover}
+        onMouseLeave={alSalirElMouse}
+        focoEnTablero={focoEnCelda}
+        onFoco={alMoverElFoco}
+        hoverEdita={hoverEdita}
+        onContextMenu={handleContextMenu}
+        boardRef={boardRef}
+      />
 
-        {/* La señal que sale por el master, como franja flotante abajo a la izquierda.
+      {/* La señal que sale por el master, como franja flotante abajo a la izquierda.
             No recibe props: lee del motor por su cuenta, para que dibujar a 60
             fps no re-renderice nada de acá.
 
@@ -645,25 +645,25 @@ export default function App(){
             toma lo que queda después del encabezado. Con el `h-24` de 96 px que `Spectrum`
             tenía, al piso el contenido pedía 132 px contra los 73 de la caja y la franja se
             comía una segunda fila del tablero. */}
-        <aside
-          className="fixed left-0 bottom-0 z-20 flex flex-col rounded-tr-2xl shadow-lg bg-white/85 backdrop-blur p-2"
-          style={{ width: `calc(var(--cell) * 3)`, height: senalAbierta ? `calc(var(--cell) * 1)` : undefined }}
-        >
-          <button
-            type="button"
-            onClick={()=> setSenalAbierta(v=>!v)}
-            aria-expanded={senalAbierta}
-            aria-controls="franja-senal"
-            className="shrink-0 text-left text-sm font-semibold mb-1"
-          >Señal</button>
-          {/* `hidden` y no desmontar: el `ResizeObserver` de `spectrum-loop.ts` redibuja
+      <aside
+        className="fixed left-0 bottom-0 z-20 flex flex-col rounded-tr-2xl shadow-lg bg-white/85 backdrop-blur p-2"
+        style={{ width: `calc(var(--cell) * 3)`, height: senalAbierta ? `calc(var(--cell) * 1)` : undefined }}
+      >
+        <button
+          type="button"
+          onClick={() => setSenalAbierta(v => !v)}
+          aria-expanded={senalAbierta}
+          aria-controls="franja-senal"
+          className="shrink-0 text-left text-sm font-semibold mb-1"
+        >Señal</button>
+        {/* `hidden` y no desmontar: el `ResizeObserver` de `spectrum-loop.ts` redibuja
               porque su contenedor cambia de TAMAÑO, y si plegar desmontara el `<canvas>` no
               habría observador que se dispare — se ejecutaría la limpieza de
               `iniciarEspectro` y al desplegar se montaría un loop nuevo. */}
-          <div id="franja-senal" hidden={!senalAbierta} className="min-h-0 flex-1">
-            <Spectrum />
-          </div>
-        </aside>
+        <div id="franja-senal" hidden={!senalAbierta} className="min-h-0 flex-1">
+          <Spectrum />
+        </div>
+      </aside>
 
       {/* La única región `aria-live` de `src/`.
           Anuncia el resultado de las TRES ediciones —colocar, quitar y mutear— porque son
