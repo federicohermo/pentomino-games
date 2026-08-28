@@ -13,6 +13,32 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [".claude/scripts/lint-al-cerrar.mjs"],
+            "timeout": 30,
+            "statusMessage": "Linteando lo que cambió…"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [".claude/scripts/lint-al-cerrar.mjs"],
+            "timeout": 30,
+            "statusMessage": "Linteando lo que cambió…"
+          }
+        ]
+      }
     ]
   }
 }

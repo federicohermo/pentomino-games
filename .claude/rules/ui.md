@@ -151,10 +151,37 @@ que no hay bug; pero el default de un `<button>` dentro de un formulario es `sub
 es recargar la página perdiendo el tablero entero, **sin deshacer**
 ([#47](https://github.com/federicohermo/pentomino-games/issues/47)).
 
-Lo que verifica todo esto es un test de navegador que consulta por **rol y nombre**, nunca por
-`className`: preguntarle al árbol de accesibilidad es la diferencia entre verificar accesibilidad y
-verificar que se escribió un atributo. Ojo con `getByRole`, que empareja el nombre por **subcadena** —
-los nombres van anclados con regex—.
+### Quién verifica cada una, desde el spec 050
+
+Hasta el 050 esta sección entera dependía de que se leyera y se recordara, que es lo que el spec 030
+midió y descartó: **una regla en prosa está desincronizada la mitad de las veces.** Hoy cada cláusula
+tiene dueño, y el alcance de cada uno importa tanto como su existencia:
+
+| Cláusula | Quién | Alcance |
+|---|---|---|
+| Solo-icono lleva `aria-label` | `src/__tests__/arbol-accesible.browser.test.tsx` | Recorre todo control **nativo** y los `role` de una lista cerrada (`ROLES`): exige nombre accesible y que no sea sólo un glifo |
+| `aria-labelledby` sobre duplicar la etiqueta | el mismo | Indirecto: pregunta por el nombre **calculado**, así que las dos formas pasan y ninguna se privilegia |
+| El nombre de un toggle no es el valor | el mismo | Sólo la **segunda mitad**. Que un toggle *lleve* `aria-pressed` no se verifica: se lo busca por el atributo que se quiere exigir, así que es circular |
+| `type="button"` en todo `<button>` | `src/__tests__/App.browser.test.tsx`, `describe` «lo que llega al arbol de accesibilidad» | Recorre los `<button>` de la app entera |
+
+**Y el piso genérico lo cubre `eslint-plugin-jsx-a11y`** (`strict`) sobre `src/**/*.tsx`, que es la
+mitad que esta sección nunca escribió porque se daba por sabida: un `role` que exige atributos que no
+están, un handler sobre un elemento no interactivo, un `tabIndex` sobre algo que no lo admite. Tiene
+**dos** exenciones, las dos en `Board.tsx` y las dos nombradas con su motivo en `eslint.config.js` —el
+`role="grid"` que no es focusable porque implementa roving tabindex, y el envoltorio cuyo
+`onContextMenu` tiene su contraparte de teclado en `use-input.ts`—. Lo que el plugin **no** puede
+hacer es ninguna de las cuatro cláusulas de arriba: no distingue un glifo de un texto ni sabe cuál
+botón es un toggle.
+
+**Un *disclosure* va con `aria-expanded`, no con `aria-pressed`.** La cláusula de arriba dice «todo
+control que alterna lleva `aria-pressed`» y leída al pie dejaría como deuda a los dos encabezados
+plegables (`App.tsx:652`, `PiecePalette.tsx:80`), que están bien: `aria-pressed` dice que un control
+está **hundido**, y `aria-expanded` que la región que controla está **abierta**. Un botón que muestra y
+esconde otra cosa es lo segundo.
+
+Todos consultan por **rol y nombre**, nunca por `className`: preguntarle al árbol de accesibilidad es
+la diferencia entre verificar accesibilidad y verificar que se escribió un atributo. Ojo con
+`getByRole`, que empareja el nombre por **subcadena** — los nombres van anclados con regex—.
 
 ## El foco se mueve por regiones, no por controles
 

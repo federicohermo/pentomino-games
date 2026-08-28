@@ -129,12 +129,22 @@ tenga un módulo del que sea el cableado.
 
 - **Ningún `index.ts` de re-exportación.** `export * from './x'` hace cargar archivos de más y vuelve al
   módulo responsable de propagar esas re-exportaciones por HMR. Cada import apunta al módulo concreto.
+  **Desde el spec 049 el linter verifica el `export *`** —un selector de `ExportAllDeclaration` a secas,
+  que es lo que la regla de la extensión de acá abajo **no** veía: `export * from './x.ts'` la cumple—.
+  Lo que el linter **no** verifica es el nombre del archivo, y es una decisión con número: los tres
+  `index.ts` del repo —`mcp-server/src/index.ts`, `resources/index.ts` y `tools/index.ts`— son un
+  entrypoint y dos registros que arman un `readonly [...]`, no barrels. «De re-exportación» un selector
+  no lo evalúa, así que prohibir el nombre daría tres falsos positivos. Queda afuera el barrel que
+  re-exporta a mano (`export { a } from './a.ts'`), y se declara: media red escrita como media red es
+  honesta.
 - **Extensión explícita en todo import local**: `./domain/transform.ts`, no `./domain/transform`.
   Reduce operaciones de resolución, y sobre todo **node crudo la exige** (`ERR_MODULE_NOT_FOUND`), que
   es lo que permite cargar `domain/` sin compilar. Ojo: omitirla **no rompe la app** —Vite resuelve
   igual—, así que el error sería invisible del lado del navegador. **Desde el spec 030 la verifica el
   linter** (`no-restricted-syntax`), sobre todo `src/` y `mcp-server/` y en las cuatro formas de
-  nombrar un módulo: `import`, `import()`, `export … from` y `export * from`. Antes del 030 el único
+  nombrar un módulo: `import`, `import()`, `export … from` y `export * from`. Ojo con lo que esa
+  enumeración dice y lo que no: son las cuatro formas en las que se verifica **la extensión**, no el
+  barrel — el `export * from` está ahí porque también lleva una ruta. Antes del 030 el único
   que la ejercía era el MCP server del 006, que carga `src/` con node crudo — `pnpm mcp:test` sigue
   fallando al primer import sin extensión, pero ahora es la segunda red y no la única, y solo ve lo
   que el server importa.
@@ -304,11 +314,30 @@ mal, pero es la clase de cosa que alguien "arregla" por error.
 Los efectos **reconcilian**, no ejecutan comandos. El efecto de audio observa `[secuencia, placed]` y le
 entrega al motor la secuencia entera con `setSequence`. Los handlers solo cambian estado.
 
-**Y no viven en el `.tsx`.** Desde el spec 022 los seis del repo están en dos hooks de `components/`
-—`use-engine.ts` y `use-input.ts`—, y el motivo es el mismo por el que salieron el audio y el dominio:
-`react-refresh/only-export-components` prohíbe que un `.tsx` exporte algo además del componente, así que
-un efecto escrito ahí no se puede montar ni verificar. Lo que se queda en el shell es la **derivación**
-—los `useMemo`— y los callbacks: el hook recibe el resultado, no la regla.
+**Y un `.tsx` no declara la lógica de un efecto: a lo sumo monta un módulo en una línea.** El motivo es
+el mismo por el que salieron el audio y el dominio: `react-refresh/only-export-components` prohíbe que
+un `.tsx` exporte algo además del componente, así que la lógica de un efecto escrita ahí no se puede
+exportar y por lo tanto no se puede verificar. Lo que se queda en el shell es la **derivación** —los
+`useMemo`— y los callbacks: el hook recibe el resultado, no la regla.
+
+**Desde el spec 049 lo verifica el linter** (`no-restricted-syntax` sobre `src/**/*.tsx`), y hasta
+entonces esta sección decía dos cosas falsas —«los seis del repo» y «no viven en el `.tsx`»—, que es
+justo lo que pasa con una regla que nadie verifica. Los números de hoy, contados:
+
+- **Nueve efectos de producción.** Siete en tres hooks de `components/` —cuatro de reconciliación en
+  `use-engine.ts` y dos de entrada en `use-input.ts` desde el spec 022, y el que mide el viewport en
+  `use-grid.ts` desde el 021, que es un `useLayoutEffect`— y **dos en un `.tsx`**, `Playhead.tsx` y
+  `Spectrum.tsx`. `App.tsx` no declara ninguno, que es lo que `CLAUDE.md` afirma.
+- **Esos dos son las únicas exenciones, y están nombradas archivo por archivo** en `eslint.config.js`,
+  no por glob — el precedente son las tres aserciones no nulas. Cumplen el motivo y violan la letra:
+  son de **una línea** y delegan en `iniciarCabeza` e `iniciarEspectro`, que viven fuera del `.tsx` y sí
+  están testeados. Si alguno crece, la exención deja de aplicar por su propio argumento, y el linter no
+  mide líneas: por eso el motivo está escrito arriba del override.
+- **La regla nombra los dos hooks**, `useEffect` y `useLayoutEffect`. `use-grid.ts` usa el segundo a
+  propósito (spec 021), así que anclarla sólo en el primero dejaba pasar la misma lógica con el otro
+  nombre.
+- **`src/**/__tests__/` queda afuera**, y por decisión escrita: la prohibición es sobre la capa de
+  componentes, no sobre lo que la monta. Un harness que monte un componente con efecto es legítimo.
 
 `playing` **no** está en las dependencias: la secuencia es función del tablero y no del transporte, y
 quien corta o arranca el sonido es `togglePlay` con `alternarTransporte`.

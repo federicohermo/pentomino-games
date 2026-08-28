@@ -3,6 +3,7 @@ import markdown from '@eslint/markdown'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
+import jsxA11y from 'eslint-plugin-jsx-a11y'
 import tseslint from 'typescript-eslint'
 import vitest from '@vitest/eslint-plugin'
 import importX from 'eslint-plugin-import-x'
@@ -93,12 +94,18 @@ const ZONAS = [
 ]
 
 /**
- * Las reglas que `CLAUDE.md` declara y que hasta el spec 030 no verificaba nadie. Las cuatro
- * entran con selectores de esquery y sin agregar un plugin.
+ * Las reglas que la documentacion declara y que hasta el spec 030 no verificaba nadie. Las
+ * SEIS entran con selectores de esquery y sin agregar un plugin: las CUATRO que valen en
+ * todo el repo viven en este array, y las dos que valen en una capa sola —`REGLA_CONSTANTES`
+ * y `REGLA_EFECTOS`— viven abajo, cada una en su bloque.
+ *
+ * Los dos numeros se cuentan, no se recuerdan: son las entradas de este array y las de los
+ * dos `const` de abajo. El spec 049 los movio de cuatro y tres al sumar el barrel y los
+ * efectos, y el docblock se desincroniza igual que la prosa que estas reglas verifican.
  *
  * Van juntas en un array compartido porque `no-restricted-syntax` tambien se REEMPLAZA entre
- * overrides: el bloque de abajo que agrega la quinta regla tiene que repetir estas tres o
- * las apaga para los archivos que matchea.
+ * overrides: cada bloque de abajo que agrega la suya tiene que repetir estas cuatro o las
+ * apaga para los archivos que matchea.
  */
 /**
  * Los cuatro nodos que nombran un modulo por su ruta. Se listan los cuatro y no solo
@@ -175,6 +182,26 @@ const REGLAS_DEL_REPO = [
     message: 'Todo import local lleva extension explicita: ./music.ts, no ./music.',
   },
   {
+    // La otra mitad de "sin barrels", que hasta el spec 049 no la miraba nadie. El nodo YA
+    // esta en `NODOS_CON_RUTA`, pero ahi entra combinado con `SIN_EXTENSION`, o sea que el
+    // selector de arriba verifica la extension y no el barrel: un `export * from './x.ts'`
+    // lo CUMPLE. Lo que se prohibe aca es el mismo nodo sin ese filtro.
+    //
+    // El motivo esta en `docs/guides/conventions.md`: re-exportar hace cargar archivos de
+    // mas y vuelve al modulo responsable de propagar esas re-exportaciones por HMR.
+    //
+    // **El nombre `index.ts` NO se prohibe, y no es un olvido.** Los tres que hay
+    // —`mcp-server/src/index.ts`, `resources/index.ts` y `tools/index.ts`— son un
+    // entrypoint y dos registros que arman un `readonly [...]`, no barrels; la convencion
+    // escrita dice «ningun `index.ts` **de re-exportacion**» y ese calificativo un selector
+    // no lo evalua. Un bloque `files: ['**/index.ts']` daria tres falsos positivos y ademas
+    // les apagaria `REGLAS_DEL_REPO`, que es el trap de flat config que este archivo
+    // persigue. Queda afuera el barrel que re-exporta a mano (`export { a } from './a.ts'`),
+    // y se declara: media red escrita como media red es honesta.
+    selector: 'ExportAllDeclaration',
+    message: 'Sin barrels: nada de export *. Importar del archivo que define el simbolo.',
+  },
+  {
     // Hoy lo caza `erasableSyntaxOnly` en el typecheck, pero con el mensaje de TypeScript.
     // Aca falla con el motivo del repo y en el editor, mientras se escribe.
     selector: 'TSEnumDeclaration',
@@ -247,6 +274,33 @@ const REGLA_CONSTANTES = {
     `Program > ExportNamedDeclaration > VariableDeclaration[kind='const'] > ${declarador}`,
   ]).join(', '),
   message: 'Los modulos no declaran constantes: el valor fijo va a <capa>/constants/.',
+}
+
+/**
+ * "Un `.tsx` no declara la logica de un efecto." Hasta el spec 049 esta regla vivio solo en
+ * `docs/guides/conventions.md` y estaba escrita mal en las dos mitades: decia que
+ * los efectos eran seis —son nueve, contando el `useLayoutEffect` de `use-grid.ts` que
+ * aparecio al implementar esta regla— y que ninguno vivia en un `.tsx` —viven dos—.
+ *
+ * El motivo no es estetico: `react-refresh/only-export-components` prohibe que un `.tsx`
+ * exporte algo ademas del componente, asi que la logica de un efecto declarada ahi adentro
+ * **no se puede exportar y por lo tanto no se puede testear**. Es el mismo argumento con el
+ * que el spec 005 saco el dominio de `App.tsx`.
+ *
+ * Se ancla en el nombre y no en el import porque el import de `react` es legitimo en
+ * `components/`: lo que hay que prohibir es la llamada, igual que con `createContext`.
+ *
+ * **Y nombra los DOS hooks, no solo `useEffect`.** El spec 049 lo escribio con uno; al
+ * implementarlo aparecio que `use-grid.ts` monta su efecto con `useLayoutEffect` —el 021 lo
+ * eligio a proposito, para que medir el viewport no se vea durante un cuadro—, asi que un
+ * selector anclado solo en `useEffect` dejaba abierta la mitad de la puerta: la misma logica,
+ * en el mismo `.tsx`, con el otro nombre. Es exactamente la red con un agujero que se lee
+ * como completa, que es lo que el spec 030 vino a borrar. Cero hallazgos con las dos: hoy
+ * ningun `.tsx` declara un `useLayoutEffect`.
+ */
+const REGLA_EFECTOS = {
+  selector: "CallExpression[callee.name=/^use(Layout)?Effect$/]",
+  message: 'Un .tsx no declara la logica de un efecto: va a un modulo de components/ y el .tsx lo monta.',
 }
 
 export default tseslint.config([
@@ -339,13 +393,33 @@ export default tseslint.config([
       'import-x/no-restricted-paths': ['error', { basePath: import.meta.dirname, zones: ZONAS }],
 
       // `import-x/no-cycle` NO esta, y la ausencia es la decision. Se probó y se midió:
-      // encuentra CERO ciclos y cuesta 15 de los 25 segundos del lint —el 60 %— porque
-      // recorre el grafo entero por archivo, y `mcp-server/` importa 31 simbolos de `src/`.
+      // encuentra CERO ciclos y cuesta ~15 s sobre un `pnpm lint` que hoy tarda **21,78 s**
+      // —o sea que lo pasaria de 21,78 a ~37, mas de vez y media— porque recorre el grafo
+      // entero por archivo, y `mcp-server/` importa 31 simbolos de `src/`. El comentario
+      // decia «25 segundos» y ese era el lint de otro momento del repo: el numero viejo es
+      // lo que hacia que la decision se leyera como opinable.
+      //
       // Lo que compraria ya lo compran las zonas de arriba: adentro de `domain/` la
       // direccion es un DAG de tres niveles y cada arista que podria cerrar un ciclo esta
       // prohibida por nombre, asi que un ciclo ahi no es improbable sino imposible. Fuera de
-      // `domain/` las capas tampoco se pueden ver entre si. Si algun dia aparece un
-      // subdirectorio con varios modulos hermanos sin zona propia, esta a una linea.
+      // `domain/` las capas tampoco se pueden ver entre si.
+      //
+      // **Lo unico que seguiria comprando es un ciclo entre hermanos sin zona**, y eso es lo
+      // que hay que mirar el dia que se revise: `src/components/` tiene trece `.ts` y seis
+      // `.tsx` sin zona declarada entre ellos, o sea que la condicion que el issue #58 fijo
+      // para revertir —«un subdirectorio con varios modulos hermanos sin zona propia»— ya se
+      // cumplia cuando se escribio. No cambio el repo; lo que se revisa cada vez es el
+      // precio.
+      //
+      // **Y hay una arista nueva que el spec 048 agrega, en contra:** su hook corre el lint
+      // UNA VEZ POR TURNO sobre la lista de lo que cambio —4,42 s medidos para un archivo,
+      // con presupuesto de menos de 6 s—, y ahi `no-cycle` construye el grafo entero en ese
+      // arranque sin una corrida completa sobre la que amortizarlo. O sea que el sobrecosto
+      // se paga por turno, no una vez por PR.
+      //
+      // Si algun dia se enciende igual, el cambio NO es una linea: `CLAUDE.md` y
+      // `docs/guides/verificacion.md` dicen «23,7 s en paralelo contra 41,2 s en serie» y
+      // `lint` es el nodo largo de ese paralelo, asi que las dos frases dejan de ser ciertas.
 
       // Los tres tsconfig tienen `verbatimModuleSyntax: true`, o sea que importar un tipo
       // sin `type` ROMPE EL BUILD en vez de avisar. La regla es autofixable: el error deja
@@ -494,9 +568,68 @@ export default tseslint.config([
     extends: [reactHooks.configs.flat['recommended-latest']],
   },
   {
-    // `only-export-components` solo tiene sentido donde puede haber un componente.
+    // `only-export-components` solo tiene sentido donde puede haber un componente. Y lo
+    // mismo `jsx-a11y`, que lee JSX: `domain/` y `audio/` tienen prohibido importar React.
+    //
+    // **`strict` y no `recommended`**, con los dos numeros medidos a la vista: sobre este
+    // codigo `recommended` da UN hallazgo y `strict` da DOS, y el segundo es en el mismo
+    // archivo y sobre una construccion que ya queda exenta abajo. O sea que `strict` no
+    // cuesta nada mas hoy y cubre mas de aca en adelante. La diferencia real entre las dos
+    // configs no es una lista de reglas distinta —son practicamente las mismas— sino que
+    // `recommended` viene con excepciones cableadas: le acota los handlers a
+    // `no-static-element-interactions` (por eso `onContextMenu` se le escapa), le pasa un
+    // mapa de `tag: [roles]` tolerado a las dos de `element-to-role`, y deja
+    // `no-noninteractive-tabindex` con `allowExpressionValues`.
+    //
+    // Este plugin **no necesita informacion de tipos**: lee el JSX y nada mas, asi que no
+    // arrastra el costo del type-aware linting.
+    //
+    // Lo que NO cubre, y por eso este spec trae ademas un gate de navegador: ninguna de sus
+    // configs exige `aria-label` en un control solo-icono ni `aria-pressed` en uno que
+    // alterna. No puede distinguir un glifo de un texto ni saber cual boton es un toggle —
+    // eso solo lo contesta el arbol de accesibilidad renderizado
+    // (`src/__tests__/arbol-accesible.browser.test.tsx`).
     files: ['src/**/*.tsx'],
-    extends: [reactRefresh.configs.vite],
+    extends: [reactRefresh.configs.vite, jsxA11y.flatConfigs.strict],
+  },
+  {
+    // Los DOS hallazgos de `jsx-a11y` sobre el repo, con **un motivo por regla** porque son
+    // dos construcciones distintas del mismo archivo y no una. Van como override por archivo
+    // y con las reglas nombradas —no por glob ni apagando la categoria— por el mismo
+    // mecanismo con el que se declaran las tres aserciones no nulas de arriba: `noInlineConfig`
+    // no admite `eslint-disable`, asi que la excepcion se ve en el diff y se explica.
+    //
+    // Bloque propio y no una linea mas en el de `src/main.tsx` / `invariants.ts` /
+    // `Board.tsx`: aquel nombra el mismo archivo pero explica otra cosa, y juntarlos haria
+    // que un `Board.tsx` que dejara de necesitar una de las dos exenciones se lleve puesta
+    // la otra.
+    //
+    // **(a) `interactive-supports-focus`** — `Board.tsx:331`, el `<div role="grid">`. La
+    // regla pide que un elemento con rol interactivo sea focusable, y esta grilla **no lo es
+    // a proposito**: implementa *roving tabindex*, o sea que la celda del cursor lleva
+    // `tabIndex={0}` y las otras `-1` (`Board.tsx:184`), y el foco se mueve con las flechas.
+    // Un contenedor focusable MAS celdas focusables daria 61 paradas de tabulacion donde el
+    // patron correcto pide una, y es literalmente lo que `.claude/rules/ui.md` documenta:
+    // «una region compuesta es UNA parada de tabulacion, y adentro se mueve con las flechas».
+    //
+    // **(b) `no-static-element-interactions`** — `Board.tsx:311`, el envoltorio posicionado
+    // (`<div ref={boardRef} className="relative" onContextMenu={...}>`), que NO es la
+    // grilla. La regla pide un handler de teclado hermano en el mismo nodo; aca la
+    // contraparte de teclado existe pero vive en el listener global de `use-input.ts`, y esa
+    // asimetria esta medida y escrita en `Board.tsx:300`–`:310`: react-dom registra
+    // `touchstart`, `touchmove` y `wheel` como PASIVOS, asi que la rueda tiene que ir por
+    // `addEventListener(..., { passive: false })` desde el hook. `contextmenu` no esta entre
+    // esos tres y por eso si puede ir por prop — pero su hermano de teclado quedo del otro
+    // lado igual.
+    //
+    // Las dos son la regla generica chocando contra una decision que el repo tomo, midio y
+    // escribio. Si alguna de las dos construcciones cambia, la exencion deja de aplicar por
+    // su propio argumento.
+    files: ['src/components/Board.tsx'],
+    rules: {
+      'jsx-a11y/interactive-supports-focus': 'off',
+      'jsx-a11y/no-static-element-interactions': 'off',
+    },
   },
 
   {
@@ -528,6 +661,54 @@ export default tseslint.config([
     files: ['src/domain/*.ts', 'src/audio/*.ts'],
     rules: {
       'no-restricted-syntax': ['error', ...REGLAS_DEL_REPO, REGLA_CONSTANTES],
+    },
+  },
+
+  {
+    // La regla de los efectos, solo para la capa que puede tener un componente. Repite
+    // `REGLAS_DEL_REPO` porque el override REEMPLAZA `no-restricted-syntax`: sin eso, este
+    // bloque le apagaria a todo `.tsx` las otras cuatro.
+    //
+    // **`__tests__/` queda afuera por decision escrita, no por omision** (issue #147). El
+    // glob `src/**/*.tsx` tambien matchea los **once** `.tsx` de test que hay hoy —doce
+    // cuando aterrice el spec 050, que agrega `src/__tests__/arbol-accesible.browser.test.tsx`—
+    // y ahi entrarian en verde: ninguno declara un efecto, sus tres apariciones de los dos
+    // nombres (`Playhead.browser.test.tsx:17`, `use-grid.browser.test.tsx:18`,
+    // `App.browser.test.tsx:19`) son comentarios. O sea que
+    // el rojo no llegaria nunca y la decision se tomaria sola: un harness futuro que monte un
+    // componente con efecto quedaria bloqueado por una regla que nunca decidio aplicarle. La
+    // prohibicion es sobre la capa de componentes, no sobre lo que la monta, asi que los
+    // directorios de test se nombran — igual que hacen los dos bloques vecinos que ya los
+    // distinguen. Los tests siguen bajo `REGLAS_DEL_REPO` por el bloque general.
+    files: ['src/**/*.tsx'],
+    ignores: ['src/**/__tests__/**/*.tsx'],
+    rules: {
+      'no-restricted-syntax': ['error', ...REGLAS_DEL_REPO, REGLA_EFECTOS],
+    },
+  },
+  {
+    // Los DOS `.tsx` que montan un efecto, nombrados uno por uno y no por glob. El
+    // precedente es el de las tres aserciones no nulas de arriba, y el motivo de que sea por
+    // archivo es que un glob crece solo: `src/components/*.tsx` eximiria a todo componente
+    // futuro sin que nadie lo decida.
+    //
+    // Los dos cumplen el motivo de la regla y violan su letra, que es lo que los hace
+    // excepcion y no tolerancia. Son de UNA LINEA y no declaran logica propia:
+    //
+    //     useEffect(() => iniciarCabeza(capaRef.current, ref.current, resalteRef.current), [])
+    //     useEffect(() => iniciarEspectro(ref.current), [])
+    //
+    // `iniciarCabeza` e `iniciarEspectro` viven en `playhead-loop.ts` y `spectrum-loop.ts`,
+    // fuera del `.tsx`, y si estan testeados —`Playhead.browser.test.tsx` lo dice en su
+    // docblock: «mientras estuvo adentro del `useEffect` de un `.tsx` no se podia exportar»—.
+    // **Si manana uno de ellos crece, la exencion deja de aplicar por su propio argumento**, y
+    // el linter no mide lineas: por eso el motivo esta escrito aca y no solo en el spec.
+    //
+    // Repite `REGLAS_DEL_REPO` por el mismo trap de flat config, y omite `REGLA_EFECTOS`:
+    // eso es exactamente lo que exime.
+    files: ['src/components/Playhead.tsx', 'src/components/Spectrum.tsx'],
+    rules: {
+      'no-restricted-syntax': ['error', ...REGLAS_DEL_REPO],
     },
   },
 

@@ -4,6 +4,18 @@
  * Corre como hook `PreToolUse` sobre `Edit|Write|MultiEdit|Bash`. Recibe el payload
  * del hook por stdin y contesta por stdout con `permissionDecision`.
  *
+ * ## De que protege: de la SESION, no del repositorio
+ *
+ * Esto va primero porque el archivo se lee como si protegiera el repo, y no lo hace. Un
+ * `PreToolUse` se dispara **cuando el que va a escribir es la herramienta del agente**. Una
+ * persona editando `docs/architecture/overview.md` en su editor, parada en `main`, no lo
+ * ejecuta nunca; un `git commit` desde una terminal fuera de la sesion, tampoco.
+ *
+ * **No es un defecto a arreglar.** Cubrir a una persona seria un hook de git, que es otra
+ * decision con otro costo —empieza por instalar algo que este repo no tiene— y este es un
+ * harness de agentes: hace exactamente lo que un harness de agentes hace. Lo que faltaba era
+ * que estuviera escrito (spec 048). La version larga, en `docs/guides/verificacion.md`.
+ *
  * ## Por que existe
  *
  * `CLAUDE.md` y `specs/README.md` documentan el flujo —cuatro archivos,
