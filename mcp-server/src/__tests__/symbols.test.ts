@@ -146,9 +146,11 @@ describe('parseModule', () => {
   });
 
   /**
-   * `{ CHROMATIC as NOTAS }` importa a `CHROMATIC`: el segundo nombre es solo
-   * como se llama del lado de acá. Guardando el local, `find_symbol("CHROMATIC")`
-   * no listaba al archivo que lo usa, y el fallo era mudo.
+   * `{ CHROMATIC as NOTAS }` importa a `CHROMATIC`: el segundo nombre es solo como
+   * se llama del lado de acá.
+   *
+   * Guardando el local, `find_symbol("CHROMATIC")` no lista al archivo que lo usa, y
+   * el fallo es mudo.
    */
   test('un import con alias registra el nombre exportado, no el local', () => {
     const { imports } = parseModule(MUSIC, 'src/domain/music.ts');
@@ -178,9 +180,11 @@ describe('parseModule', () => {
   });
 
   /**
-   * La convención de los `.tsx`: el bloque va antes de `interface Props`, que no
-   * se exporta, así que TypeScript se lo adjudica a ella y el componente quedaba
-   * con `doc: null` — los cinco, o sea toda la capa de UI.
+   * La convención de los `.tsx`: el bloque va antes de `interface Props`, que no se
+   * exporta.
+   *
+   * Así que TypeScript se lo adjudica a ella y el componente queda con `doc: null` —
+   * los cinco, o sea toda la capa de UI.
    */
   test('el default hereda el doc del archivo cuando no tiene uno pegado', () => {
     const { exports } = parseModule(BOARD, 'src/components/Board.tsx');
@@ -190,10 +194,11 @@ describe('parseModule', () => {
   });
 
   /**
-   * En `.ts` `<T>` abre un genérico; en TSX abre una etiqueta JSX que nunca cierra
-   * y **se come el resto del archivo**. Medido: con `ScriptKind.TSX` fijo este
-   * módulo aporta `id` y pierde `OTRO`, sin ningún error. Por eso el kind sale de
-   * la extensión y no es una constante.
+   * En `.ts` `<T>` abre un genérico; en TSX abre una etiqueta JSX que nunca cierra y
+   * **se come el resto del archivo**.
+   *
+   * Medido: con `ScriptKind.TSX` fijo este módulo aporta `id` y pierde `OTRO`, sin
+   * ningún error. Por eso el kind sale de la extensión y no es una constante.
    */
   test('un .ts con arrow genérica no se parsea como TSX', () => {
     const { exports } = parseModule(
@@ -248,9 +253,10 @@ describe('findSymbol', () => {
   });
 
   /**
-   * La arista que faltaba. Tocar una firma de `domain/` puede romper una tool, y
-   * `pnpm verify` lo atrapa —el tsconfig del server cruza el borde de paquete—
-   * pero recién al final: si `usedBy` la esconde, la estimación ya se hizo mal.
+   * La arista que faltaba: tocar una firma de `domain/` puede romper una tool.
+   *
+   * `pnpm verify` lo atrapa —el tsconfig del server cruza el borde de paquete— pero
+   * recién al final: si `usedBy` la esconde, la estimación ya se hizo mal.
    */
   test('cuenta a mcp-server entre los usuarios del dominio', () => {
     const [hit] = findSymbol(INDEX, 'notesForRotation', false);
@@ -269,9 +275,13 @@ describe('findSymbol', () => {
   });
 
   /**
-   * Lo que un grep no puede hacer. Hay DOS símbolos llamados `notesForRotation`:
-   * el de `domain/music.ts` y el de `audio/fake.ts`. `src/audio/otro.ts` importa
-   * el segundo, así que no es usuario del primero — y un grep lo contaría igual.
+   * Lo que un grep no puede hacer: en el índice hay DOS símbolos llamados
+   * `notesForRotation`.
+   *
+   * Uno es el de `domain/music.ts` y el otro lo exporta el módulo de audio homónimo
+   * que arma este fixture —una ruta que no existe en el repo, y es a propósito: así el
+   * homónimo no se confunde con ningún archivo real—. Quien importa el segundo no es
+   * usuario del primero, y un grep lo contaría igual.
    */
   test('no confunde homónimos de módulos distintos', () => {
     const [hit] = findSymbol(INDEX, 'notesForRotation', false);
@@ -287,10 +297,11 @@ describe('findSymbol', () => {
   });
 
   /**
-   * `Board` no se importa por nombre en ningún lado: `App.tsx` lo trae por
-   * defecto y encima renombrado. Sin esta arista los seis `export default` de
-   * `src/` —`App` y los cinco componentes— contestaban `usedBy: []`, que un
-   * agente lee como código muerto.
+   * `Board` no se importa por nombre en ningún lado: `App.tsx` lo trae por defecto y
+   * encima renombrado.
+   *
+   * Sin esta arista los seis `export default` de `src/` —`App` y los cinco
+   * componentes— contestan `usedBy: []`, que un agente lee como código muerto.
    */
   test('cuenta a quien importa por defecto, aunque lo renombre', () => {
     const [hit] = findSymbol(INDEX, 'Board', false);
@@ -380,9 +391,10 @@ describe('parseModule — los bordes que el repo no tiene', () => {
   });
 
   /**
-   * El doc de nivel de archivo solo se busca para un `export default` SIN doc propio
-   * —es la unica forma de export que suele documentarse arriba de todo y no encima—,
-   * asi que sus dos guardas viven detras de esa puerta.
+   * El doc de nivel de archivo solo se busca para un `export default` SIN doc propio.
+   *
+   * Es la unica forma de export que suele documentarse arriba de todo y no encima, asi
+   * que sus dos guardas viven detras de esa puerta.
    */
   test('un default sin doc propio ni doc de archivo no inventa documentacion', () => {
     const [e] = parseModule('export default function A() {}\n', 'x.tsx').exports;

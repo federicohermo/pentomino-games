@@ -27,10 +27,12 @@ const lines = (md: string): string[] => md.split(/\r?\n/);
 /**
  * Una entrada de `specs/mapa.json`: un spec, su issue, y lo que de el se sabe sin red.
  *
- * Reemplaza a `LogRow` y con ella a `parseLog` (spec 035). La fila de `log.md` traia
- * los mismos cuatro datos ahogados en una descripcion larga que **nadie verificaba**:
- * el PR #44 encontro que mentia sobre 12 de 31 filas. Aca lo que se duplica del issue
- * son dos campos —`estado` y `titulo`— y los dos los vigila un gate.
+ * El spec entero vive en su issue (spec 035, issue #99) y esta entrada es el puntero:
+ * del issue aca se duplican DOS campos —`estado` y `titulo`— y los dos los vigila un
+ * gate. Ese es el limite y no una prolijidad: un dato duplicado del issue que ningun
+ * gate mira miente sin que nadie se entere. El registro que el mapa reemplaza repetia
+ * estos mismos cuatro datos dentro de una descripcion en prosa que nadie verificaba, y
+ * el PR #44 midio que mentia sobre 12 de sus 31 filas.
  */
 export interface EntradaDeMapa {
   /** El issue donde vive el spec. Es lo que hace que el mapa sea un mapa. */
@@ -73,13 +75,14 @@ const CAMPOS_DE_ENTRADA = ['issue', 'carpeta', 'fecha', 'estado', 'titulo'] as c
  * `specs/mapa.json` parseado, y **falla fuerte** ante cualquier cosa que no sea el
  * mapa entero.
  *
- * El grito es el punto. Su antecesora `parseLog` devolvia `[]` cuando el regex dejaba
- * de matchear, y `[]` no es un error: es una tabla vacia. Cuando el 034 migro el
- * formato de la columna, los 34 specs pasaron a responder `estado: null` con la nota
- * «sin fila en log.md» —o sea `spec_status` contestando que no sabe nada, en verde—, y
- * lo encontro una consulta a mano y no `mcp:test`.
+ * El grito es el punto: un parseo que devuelve `[]` ante un registro que no entiende no
+ * emite un error sino una tabla vacia, y con eso `spec_status` contesta que el repo no
+ * tiene specs, en verde. El registro que el mapa reemplaza fallaba exactamente asi —los
+ * 34 specs respondiendo `estado: null` sobre un registro que si estaba, porque el 034
+ * habia migrado el formato de una columna— y lo encontro una consulta a mano, no
+ * `mcp:test`.
  *
- * Un JSON roto rompe la tool entera donde un `.md` roto perdia una fila sola. Es el
+ * Un JSON roto rompe la tool entera donde un `.md` roto perderia una fila sola. Es el
  * precio del formato y se paga a proposito: perder una fila sola es lo que no se ve.
  */
 export function parseMapa(json: string): Record<string, EntradaDeMapa> {
@@ -117,7 +120,7 @@ export function parseMapa(json: string): Record<string, EntradaDeMapa> {
 }
 
 /**
- * Estados de los que ya no sale trabajo.
+ * Estados de los que no sale trabajo.
  *
  * Un spec `Descartado` no se implemento y no se va a implementar; uno `Superado`
  * se implemento y otro spec posterior lo reemplazo. En los dos casos las casillas
@@ -237,11 +240,10 @@ export interface TasksInfo {
    * «no se va a hacer, pero queda escrito». La regla desde el 039 es volver la tarea
    * verificable o no anotarla — el ultimo spec que trae una `[M]` es el **037**.
    *
-   * Se sigue contando porque un spec mergeado no se reescribe. El contador hermano
-   * —`seguimiento`, el otro eje: `Seguimiento` era *donde* estaba anotada la tarea y
-   * `[M]` *quien* la podia hacer— se fue con el 042, que hizo que `parseTasks` CORTE
-   * en esa seccion en vez de contarla aparte. O sea que una tarea vieja que era las
-   * dos cosas hoy no llega hasta aca: la de `Seguimiento` ya no se ve.
+   * Se sigue contando porque un spec mergeado no se reescribe. Y una `[M]` escrita bajo
+   * `## Seguimiento` no llega hasta aca: desde el 042 `parseTasks` CORTA al entrar a esa
+   * seccion en vez de contarla aparte, asi que de una tarea vieja que era las dos cosas
+   * no queda rastro en este contador.
    */
   manual: number;
   /**
@@ -262,10 +264,12 @@ export interface TasksInfo {
   proximaId: string | null;
   /**
    * Los archivos que cada tarea nombra. Opcional porque `spec_status` las omite
-   * cuando responde por todos: medido sobre los 33 specs del 2026-08-23 pesaban
-   * 84.097 bytes sobre los 29.742 que la respuesta ya pesaba, y son una lectura
-   * que siempre se hace sobre UN spec. La fecha va escrita porque los dos numeros
-   * se movieron; el de cada consulta lo mide la nota de la tool (spec 041).
+   * cuando responde por todos.
+   *
+   * Medido sobre los 33 specs del 2026-08-23 pesaban 84.097 bytes sobre los 29.742
+   * que la respuesta ya pesaba, y son una lectura que siempre se hace sobre UN spec.
+   * La fecha va escrita porque los dos numeros se movieron; el de cada consulta lo
+   * mide la nota de la tool (spec 041).
    */
   citas?: Cita[];
   /**
@@ -382,11 +386,12 @@ export function parseTasks(md: string): TasksInfo {
 export interface SpecStatus {
   id: string;
   /**
-   * Su carpeta. Sale del mapa, asi que **existe aunque el spec no este hidratado**:
-   * es el nombre historico, el que citan los specs viejos, y no uno derivado del
-   * titulo — ver `EntradaDeMapa.carpeta`.
+   * Su carpeta, que es la IDENTIDAD del spec y no una ruta: para abrir un archivo
+   * esta `enDisco`.
    *
-   * Es la IDENTIDAD del spec y no una ruta: para abrir un archivo esta `enDisco`.
+   * Sale del mapa, asi que **existe aunque el spec no este hidratado**: es el nombre
+   * historico, el que citan los specs viejos, y no uno derivado del titulo — ver
+   * `EntradaDeMapa.carpeta`.
    */
   dir: string;
   /**
@@ -409,9 +414,11 @@ export interface SpecStatus {
   estado: string | null;
   titulo: string | null;
   /**
-   * El conteo de su `tasks.md`, o `null` si no se pudo leer. Desde el 034 eso pasa
-   * tambien cuando el spec **no esta hidratado**, que no es un error: el spec vive en
-   * el issue y la carpeta es una cache. La nota dice cual de los dos casos es.
+   * El conteo de su `tasks.md`, o `null` si no se pudo leer.
+   *
+   * Desde el 034 eso pasa tambien cuando el spec **no esta hidratado**, que no es un
+   * error: el spec vive en el issue y la carpeta es una cache. La nota dice cual de
+   * los dos casos es.
    */
   tareas: TasksInfo | null;
   /** Que falto para responder del todo. Vacio cuando no falto nada. */
@@ -484,9 +491,10 @@ export function readSpecStatus(specsDir: string): { specs: SpecStatus[]; totales
   };
 
   /**
-   * De un spec terminal no sale trabajo, asi que sus casillas abiertas no son "lo
-   * proximo". Se anota por que en vez de silenciarlas: el conteo sigue mostrando el
-   * resto historico y la nota dice que nadie lo debe.
+   * De un spec terminal no sale trabajo: sus casillas abiertas no son "lo proximo".
+   *
+   * Se anota por que en vez de silenciarlas: el conteo sigue mostrando el resto
+   * historico y la nota dice que nadie lo debe.
    */
   const sinTrabajo = (tareas: TasksInfo | null, estado: string | null, notas: string[]): TasksInfo | null => {
     if (!tareas || estado === null || !ESTADOS_TERMINALES.has(estado)) return tareas;
@@ -583,9 +591,9 @@ const partir = (md: string): string[] => md.split(/(\r?\n)/);
  * Una tarea pasa de `- [ ]` a `- [x]`.
  *
  * No inventa: si la tarea no existe o ya estaba marcada, lo dice. Marcar lo que
- * no se hizo es exactamente el descuido que este repo acaba de arreglar en
- * `log.md`, y una escritura que devuelve exito sin haber cambiado nada es la
- * familia «fallar en verde» que ya costo el `--filter "{.}"` de `verify`.
+ * no se hizo deja el registro afirmando un trabajo que nadie hizo, y una escritura
+ * que devuelve exito sin haber cambiado nada es la familia «fallar en verde» que ya
+ * costo el `--filter "{.}"` de `verify`.
  */
 export function marcarTarea(md: string, id: string): Escritura {
   const partes = partir(md);

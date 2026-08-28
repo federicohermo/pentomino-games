@@ -9,9 +9,11 @@ import { BASE_MAP, CHROMATIC, DEFAULT_OCTAVE, REGIMEN, DEFAULT_REGIMEN } from '.
 import type { RegimenDeRotacion } from '../../../src/domain/types/music.types.ts';
 
 /**
- * Forma + sonido de una pieza en una orientacion. Es la tool de mayor ahorro:
- * responder esto leyendo el codigo obliga a componer cuatro puras a mano sobre
- * cinco pares de coordenadas, y nadie avisa si la simulacion mental salio mal.
+ * Forma + sonido de una pieza en una orientacion.
+ *
+ * Es la tool de mayor ahorro: responder esto leyendo el codigo obliga a componer
+ * cuatro puras a mano sobre cinco pares de coordenadas, y nadie avisa si la
+ * simulacion mental salio mal.
  *
  * Todo lo que se calcula viene de `src/domain/`. Lo unico propio es el ASCII.
  */

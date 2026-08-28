@@ -147,8 +147,8 @@ describe('parseTasks', () => {
     );
     assert.deepEqual([t.total, t.hechas, t.pendientes], [2, 1, 1]);
     assert.equal(t.proximaId, 'T002');
-    // Y el campo ya no existe: una llamada vieja que lo leyera recibe `undefined` en
-    // vez de un número que dejó de significar lo mismo.
+    // Y el campo NO existe: quien lo lea recibe `undefined` en vez de un número que
+    // cuenta otra cosa.
     assert.equal('seguimiento' in t, false);
   });
 
@@ -182,8 +182,8 @@ describe('parseTasks', () => {
   });
 
   test('solo las de seguimiento sin marcar tampoco dan próxima', () => {
-    // Sigue sin haber próxima, pero por otro motivo que antes: la deuda ya no se
-    // cuenta y se descuenta, directamente no se ve. `total` lo delata.
+    // No hay próxima, y el motivo importa: la deuda de `## Seguimiento` no se cuenta
+    // para después descontarla, directamente no se ve. `total` es lo que lo delata.
     const t = parseTasks('## Hecho\n- [x] una\n\n## Seguimiento (no bloquea)\n- [ ] deuda\n');
     assert.equal(t.proxima, null);
     assert.deepEqual([t.total, t.hechas], [1, 1]);
@@ -229,8 +229,8 @@ describe('parseTasks — ID y marcadores', () => {
     // El caso real: nueve specs `Implementado` con una verificación a oído
     // abierta. Sin esto, `spec_status` los reporta como si algo faltara.
     //
-    // `manual` es 1 y no 2 desde el 042: `MARCADAS` tiene dos `[M]`, pero una está
-    // bajo `## Seguimiento` y esa ya no se lee. La que importa acá es la otra —la que
+    // `manual` es 1 y no 2: `MARCADAS` tiene dos `[M]`, pero una está bajo
+    // `## Seguimiento`, que `parseTasks` no lee. La que importa acá es la otra —la que
     // está en un paso normal— porque es la que podría bloquear y no bloquea.
     const t = parseTasks(MARCADAS);
     assert.equal(t.manual, 1);
@@ -244,9 +244,9 @@ describe('parseTasks — ID y marcadores', () => {
     // queda al sacar las hechas. Con una `[M]` en el medio esa igualdad no se cumple
     // —ver `MARCADAS`, donde `total - hechas` da 2 y `pendientes` es 1—.
     //
-    // El total es 4 y no 5 desde el 042: la tarea de `## Seguimiento` del fixture ya
-    // no entra. Por eso la resta quedó sin el tercer término, y no porque se haya
-    // simplificado la aserción.
+    // El total es 4 y no 5: la tarea de `## Seguimiento` del fixture no entra en el
+    // conteo. Por eso la resta va sin el tercer término, y no porque la aserción esté
+    // simplificada.
     const t = parseTasks(SIN_MANUAL);
     assert.equal(t.manual, 0);
     assert.deepEqual([t.total, t.hechas], [4, 1]);
@@ -486,11 +486,10 @@ describe('readSpecStatus', () => {
   });
 
   test('sin `mapa.json` NO contesta: grita', () => {
-    // La diferencia con el `log.md` que reemplaza, y es la unica razon de que el
-    // formato sea JSON y la lectura sin `existsSync`. `readSpecStatus` contestaba
-    // «sin fila en log.md» y seguia, o sea que un registro que no estaba y un registro
-    // que no decia nada se leian igual. Uno es un repo sin specs; el otro es la tool
-    // rota.
+    // Es la unica razon de que el formato sea JSON y de que la lectura vaya sin
+    // `existsSync`: si el mapa no esta, la tool tiene que gritar. Una lectura silenciosa
+    // lee igual un registro que no esta y un registro que no dice nada, y son dos cosas
+    // distintas: uno es un repo sin specs, el otro es la tool rota.
     const raiz = fixture(null, { '001-huerfano': UNA_ABIERTA });
     try {
       assert.throws(() => readSpecStatus(raiz), { code: 'ENOENT' });
@@ -669,8 +668,8 @@ describe('marcarTarea', () => {
   });
 
   test('una tarea ya marcada FALLA en vez de decir que escribió', () => {
-    // Es el modo de falla que la tool entera viene a cerrar: marcar lo que no se
-    // hizo es lo que este repo acaba de arreglar en `log.md`.
+    // Es el modo de falla que la tool entera viene a cerrar: marcar lo que no se hizo
+    // deja el registro afirmando un trabajo que nadie hizo, y en verde.
     const r = marcarTarea(PARA_ESCRIBIR, 'T002');
     assert.equal(r.ok, false);
     assert.ok(!r.ok && r.motivo.includes('ya estaba marcada'));
