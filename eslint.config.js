@@ -93,11 +93,11 @@ const ZONAS = [
 ]
 
 /**
- * Las reglas que `CLAUDE.md` declara y que hasta el spec 030 no verificaba nadie. Las cuatro
+ * Las reglas que `CLAUDE.md` declara y que hasta el spec 030 no verificaba nadie. Las cinco
  * entran con selectores de esquery y sin agregar un plugin.
  *
  * Van juntas en un array compartido porque `no-restricted-syntax` tambien se REEMPLAZA entre
- * overrides: el bloque de abajo que agrega la quinta regla tiene que repetir estas tres o
+ * overrides: el bloque de abajo que agrega la quinta regla tiene que repetir estas cuatro o
  * las apaga para los archivos que matchea.
  */
 /**
@@ -173,6 +173,26 @@ const REGLAS_DEL_REPO = [
     // node crudo, que es justo lo que hace el MCP server del 006.
     selector: NODOS_CON_RUTA.map((nodo) => nodo + SIN_EXTENSION).join(', '),
     message: 'Todo import local lleva extension explicita: ./music.ts, no ./music.',
+  },
+  {
+    // La otra mitad de "sin barrels", que hasta el spec 049 no la miraba nadie. El nodo YA
+    // esta en `NODOS_CON_RUTA`, pero ahi entra combinado con `SIN_EXTENSION`, o sea que el
+    // selector de arriba verifica la extension y no el barrel: un `export * from './x.ts'`
+    // lo CUMPLE. Lo que se prohibe aca es el mismo nodo sin ese filtro.
+    //
+    // El motivo esta en `docs/guides/conventions.md`: re-exportar hace cargar archivos de
+    // mas y vuelve al modulo responsable de propagar esas re-exportaciones por HMR.
+    //
+    // **El nombre `index.ts` NO se prohibe, y no es un olvido.** Los tres que hay
+    // —`mcp-server/src/index.ts`, `resources/index.ts` y `tools/index.ts`— son un
+    // entrypoint y dos registros que arman un `readonly [...]`, no barrels; la convencion
+    // escrita dice «ningun `index.ts` **de re-exportacion**» y ese calificativo un selector
+    // no lo evalua. Un bloque `files: ['**/index.ts']` daria tres falsos positivos y ademas
+    // les apagaria `REGLAS_DEL_REPO`, que es el trap de flat config que este archivo
+    // persigue. Queda afuera el barrel que re-exporta a mano (`export { a } from './a.ts'`),
+    // y se declara: media red escrita como media red es honesta.
+    selector: 'ExportAllDeclaration',
+    message: 'Sin barrels: nada de export *. Importar del archivo que define el simbolo.',
   },
   {
     // Hoy lo caza `erasableSyntaxOnly` en el typecheck, pero con el mensaje de TypeScript.
