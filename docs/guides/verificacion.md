@@ -130,9 +130,9 @@ cambió en el árbol y, si hay rojo, lo devuelve como texto para que el agente l
 el turno por terminado. **No reemplaza a `pnpm verify` ni a la CI**, y no hay que leerlo así:
 adelanta el momento en que el agente se entera, de «cuando abre el PR» a «cuando cree que terminó».
 
-**Por turno y no por edición**, que es la decisión, y la toman cuatro números medidos: `pnpm lint`
-entero 21,78 s, un archivo con información de tipos 4,42 s, sin tipos 2,44 s, y los 38 de `src/` sin
-tipos 3,47 s. O sea que **~2,4 s son arranque fijo** —un `PostToolUse` le sumaría eso a *cada*
+**Por turno y no por edición**, que es la decisión, y la toman cuatro números medidos sobre
+`63e569a`: `pnpm lint` entero 21,78 s, un archivo con información de tipos 4,42 s, sin tipos 2,44 s,
+y los 38 de `src/` sin tipos 3,47 s. O sea que **~2,4 s son arranque fijo** —un `PostToolUse` le sumaría eso a *cada*
 `Edit`, y veinte ediciones son un minuto y medio repartido en veinte pausas— y que **ir de 1 archivo
 a 38 cuesta 1 segundo**, así que la granularidad fina no compra nada.
 
@@ -150,6 +150,11 @@ Lo medido en la máquina de desarrollo, con el `eslint.config.js` de los specs 0
 | Árbol sin un archivo linteable | < 200 ms | **135 ms** |
 | Un archivo cambiado | < 6 s | **4,57 s** |
 
+Los dos valen **con la máquina descargada**, y sólo eso: bajo cinco `verify` concurrentes la fila
+de un archivo se remidió en 5,5–16,2 s y la del árbol limpio en 201–237 ms. Un `.md` más en el repo
+—el que agrega el 047— no los mueve, porque el hook lintea **sólo lo que cambió**; lo que mueve es
+el `pnpm lint` entero de arriba ([#145](https://github.com/federicohermo/pentomino-games/issues/145)).
+
 El `timeout` declarado es **30 s**, y no es el `10` del gate del 037 copiado: aquél corresponde a un
 hook de 64,6 ms y éste cuesta segundos. Son cinco veces el techo —margen para el turno que cambió
 treinta archivos y para una máquina cargada— y muy por debajo del default de 600 s, que sería una
@@ -157,9 +162,12 @@ sesión trabada durante diez minutos.
 
 **Qué corre y qué no.** Lint sobre lo cambiado —`git diff`, el `--cached` y
 `git ls-files --others`, que es el único que ve los archivos nuevos— filtrado a `.ts`, `.tsx`, `.js`
-y `.md`, que son las extensiones que la config cubre. `.mjs` **queda afuera a propósito**: el bloque
+y `.md`, que son las extensiones que la config cubre, **y a los que todavía existen**: un borrado
+también sale en `git diff`, y ESLint sobre una ruta que no está sale con status 2, que el hook lee
+como «no pude decidir» — o sea que sin ese filtro un turno que borra un `.md` dejaba de verificar
+todo lo demás, callado y en verde. `.mjs` **queda afuera a propósito**: el bloque
 que extiende `js.configs.recommended` está atado a `**/*.js`, glob que en flat config no matchea
-`.mjs`, así que los ocho `.mjs` de `.claude/scripts/` —el hook mismo incluido— hoy se lintean con
+`.mjs`, así que los siete `.mjs` de `.claude/scripts/` —el hook mismo incluido— hoy se lintean con
 cero reglas ([#143](https://github.com/federicohermo/pentomino-games/issues/143)). **No corre la
 suite**: es el reloj de `verify`, y además el [#97](https://github.com/federicohermo/pentomino-games/issues/97)
 documenta un test intermitente — dentro de un nodo que alguien tipea es una molestia, dentro de un

@@ -88,12 +88,28 @@ const ESLINT = path.join(RAIZ, 'node_modules/eslint/bin/eslint.js');
  *
  * **`.mjs` NO esta, y es un agujero conocido y no un olvido.** `eslint.config.js:291` ata
  * `js.configs.recommended` a `**\/*.js`, glob que en flat config **no** matchea `.mjs`, asi que
- * los ocho `.mjs` de `.claude/scripts/` —este archivo incluido, y el `gate-de-spec.mjs` que
+ * los siete `.mjs` de `.claude/scripts/` —este archivo incluido, y el `gate-de-spec.mjs` que
  * custodia `src/`— se lintean hoy con CERO reglas. Agregarlos a esta lista no compraria nada
  * mientras eso siga asi, y cerrarlo es tocar `eslint.config.js`, que no es de este spec: esta
  * abierto como issue #143.
  */
 const EXTENSIONES = ['.ts', '.tsx', '.js', '.md'];
+
+/**
+ * Los dos topes de la salida de ESLint, y los dos existen por un fallo en verde medido.
+ *
+ * El `maxBuffer` por default de `execFileSync` es **1 MiB**, y pasarse NO se parece a un
+ * hallazgo: la llamada tira con `code: 'ENOBUFS'` y **`status: null`**, que el discriminante de
+ * abajo lee como «no pude decidir» y manda a `pasar`. O sea que sin este numero el hook falla
+ * abierto **justo cuando mas hallazgos hay**. Verificado: 2 MiB por stdout dan
+ * `status=null, code=ENOBUFS`.
+ *
+ * Y una vez que esa salida entra, devolverla entera seria volcar megabytes en el contexto del
+ * agente, que es lo contrario de «el mensaje dice como salir». Se recorta y se dice que se
+ * recorto: para empezar a arreglar alcanzan los primeros, y el resto lo muestra `pnpm lint`.
+ */
+const TOPE_DEL_BUFFER = 32 * 1024 * 1024;
+const TOPE_DEL_MENSAJE = 16 * 1024;
 
 /**
  * El lock, y por que NO espera.
@@ -175,10 +191,18 @@ const soltarLock = () => {
   }
 };
 
-/** La salida de un comando de git, o `''` si git no contesta. */
+/**
+ * La salida de un comando de git, o `''` si git no contesta.
+ *
+ * **`core.quotePath=false` no es cosmetica.** Con el default, git devuelve toda ruta con un
+ * caracter no ASCII escapada y **entre comillas** —`"docs/sesión.md"` sale como
+ * `"docs/sesi\303\263n.md"`—, asi que la extension deja de ser `.md`, el archivo se cae del
+ * filtro y no se lintea nunca. En un repo cuya documentacion se escribe en espanol eso es una
+ * ruta con acento a un archivo que el hook no mira, callado. Verificado con `ls-files`.
+ */
 function git(...args) {
   try {
-    return execFileSync('git', args, {
+    return execFileSync('git', ['-c', 'core.quotePath=false', ...args], {
       cwd: RAIZ, encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'pipe'],
     });
   } catch {
@@ -199,8 +223,23 @@ function cambiados() {
     git('ls-files', '--others', '--exclude-standard'),
   ].join('\n');
   const lista = crudo.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
-  return [...new Set(lista)].filter((f) => EXTENSIONES.includes(path.extname(f)));
+  return [...new Set(lista)]
+    .filter((f) => EXTENSIONES.includes(path.extname(f)))
+    // **El archivo BORRADO se descarta, y esto no es prolijidad.** `git diff --name-only`
+    // lista los borrados igual que los modificados, y ESLint sobre una ruta que no existe
+    // sale con **status 2** —«No files matching the pattern»— que el discriminante de abajo
+    // lee como «no pude decidir» y deja pasar. O sea que un turno que borra un solo `.md`
+    // dejaba de verificar TODO lo demas, callado y en verde. Medido sobre este repo: con
+    // `docs/guides/troubleshooting.md` borrado, un `enum` recien escrito en
+    // `src/domain/transform.ts` salio con exit 0. Y borrar no es raro aca: la convencion es
+    // que los borrados van en su propio commit, o sea en su propio turno.
+    .filter((f) => existsSync(path.join(RAIZ, f)));
 }
+
+/** Recorta la salida al tope y **dice que la recorto**: un corte mudo se lee como el final. */
+const recortar = (texto) => (texto.length <= TOPE_DEL_MENSAJE ? texto
+  : `${texto.slice(0, TOPE_DEL_MENSAJE)}\n\n[...recortado: ${texto.length} caracteres de hallazgos ` +
+    'en total. Arregla estos y corre `pnpm lint` para ver el resto.]');
 
 const COMO_SALIR =
   'Arreglalo antes de cerrar el turno, o corre `pnpm lint` para ver el detalle. Si el hallazgo ' +
@@ -245,7 +284,7 @@ process.on('exit', soltarLock);
     salida = execFileSync(
       process.execPath,
       [ESLINT, '--max-warnings', '0', '--no-warn-ignored', ...archivos],
-      { cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+      { cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: TOPE_DEL_BUFFER },
     );
   } catch (error) {
     // **El discriminante es exit 1 CON hallazgos por STDOUT**, y las dos mitades hacen falta.
@@ -259,7 +298,7 @@ process.on('exit', soltarLock);
     // seria un exit 1 y un bloqueo por un archivo que el repo decidio no lintear.
     const hallazgos = `${error.stdout ?? ''}`.trim();
     if (error.status === 1 && hallazgos.length > 0) {
-      bloquear(`El lint encontro esto en lo que cambiaste:\n\n${hallazgos}\n\n${COMO_SALIR}`);
+      bloquear(`El lint encontro esto en lo que cambiaste:\n\n${recortar(hallazgos)}\n\n${COMO_SALIR}`);
     }
     pasar(`no se pudo correr eslint (status ${String(error.status)}), no se verifico`);
   }

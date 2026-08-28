@@ -147,6 +147,48 @@ describe('bloquea el cierre cuando hay un hallazgo', () => {
     expect(r.stderr).toContain('nuevo.ts');
   });
 
+  it('un archivo BORRADO en el mismo turno no apaga la verificacion del resto', () => {
+    // **Fallo en verde medido.** `git diff --name-only` lista los borrados igual que los
+    // modificados, y ESLint sobre una ruta que no existe sale con status 2 —«No files
+    // matching the pattern»—, que el hook lee como «no pude decidir» y deja pasar. Antes del
+    // filtro por `existsSync`, borrar `docs/guides/troubleshooting.md` en el repo real hacia
+    // que un `enum` recien escrito en `src/domain/transform.ts` saliera con exit 0. Y borrar
+    // no es raro aca: la convencion es que los borrados van en su propio commit.
+    rmSync(join(repo, 'src/limpio.ts'));
+    writeFileSync(join(repo, 'src/nuevo.ts'), 'export enum Malo { a }\n');
+    const r = correr(repo);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain('nuevo.ts');
+  });
+
+  it('un archivo con acento en el nombre: git lo cita, y el hook igual lo ve', () => {
+    // Con el `core.quotePath` por default, `git ls-files` devuelve `"src/sesión.ts"` como
+    // `"src/sesi\303\263n.ts"` —comillas incluidas—, asi que la extension deja de ser `.ts` y
+    // el archivo se cae del filtro. En un repo que se escribe en espanol, eso es un archivo
+    // que el hook no mira nunca y sin decirlo.
+    writeFileSync(join(repo, 'src/sesión.ts'), 'export enum Malo { a }\n');
+    const r = correr(repo);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain('Cero enum');
+  });
+
+  it('una salida enorme se recorta, en vez de volcarse entera o perderse', () => {
+    // Las dos mitades del mismo bug. El `maxBuffer` por default de `execFileSync` es 1 MiB y
+    // pasarse NO se parece a un hallazgo: es `ENOBUFS` con `status: null`, o sea que el hook
+    // fallaba abierto justo cuando mas hallazgos hay. Y devolverlos enteros seria volcar el
+    // contexto del agente, que es lo contrario de «el mensaje dice como salir».
+    //
+    // **El numero de errores esta elegido para pasar 1 MiB de salida, no de mas**: con menos
+    // el caso corre por el camino feliz y el test queda verde con el `maxBuffer` sacado, o sea
+    // verificando solo la mitad. Medido con un pase de mutacion sobre las dos guardas.
+    const muchos = Array.from({ length: 15_000 }, (_, i) => `export enum M${i} { a }`).join('\n');
+    writeFileSync(join(repo, 'src/limpio.ts'), `${muchos}\n`);
+    const r = correr(repo);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain('recortado');
+    expect(r.stderr.length).toBeLessThan(20_000);
+  });
+
   it('el mensaje SIEMPRE dice como salir: sin eso, el reflejo es apagar el hook', () => {
     writeFileSync(join(repo, 'src/limpio.ts'), 'export enum Malo { a }\n');
     const r = correr(repo);
@@ -165,6 +207,15 @@ describe('sale callado cuando no hay nada que decir', () => {
 
   it('un archivo cambiado y limpio', () => {
     writeFileSync(join(repo, 'src/limpio.ts'), 'export const tres = 3;\n');
+    const r = correr(repo);
+    expect(r.code).toBe(0);
+    expect(r.stdout.trim()).toBe('');
+  });
+
+  it('un turno que SOLO borra: callado, y no «no se pudo correr eslint»', () => {
+    // La otra mitad del caso de arriba, y la que distingue «lo filtre» de «lo intente y
+    // fallo»: si el borrado llegara a ESLint, la salida diria que no se pudo correr.
+    rmSync(join(repo, 'src/limpio.ts'));
     const r = correr(repo);
     expect(r.code).toBe(0);
     expect(r.stdout.trim()).toBe('');
