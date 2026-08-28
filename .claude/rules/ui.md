@@ -159,7 +159,7 @@ tiene dueño, y el alcance de cada uno importa tanto como su existencia:
 
 | Cláusula | Quién | Alcance |
 |---|---|---|
-| Solo-icono lleva `aria-label` | `src/__tests__/arbol-accesible.browser.test.tsx` | Recorre **todo** el árbol: exige nombre accesible y que no sea sólo un glifo |
+| Solo-icono lleva `aria-label` | `src/__tests__/arbol-accesible.browser.test.tsx` | Recorre todo control **nativo** y los `role` de una lista cerrada (`ROLES`): exige nombre accesible y que no sea sólo un glifo |
 | `aria-labelledby` sobre duplicar la etiqueta | el mismo | Indirecto: pregunta por el nombre **calculado**, así que las dos formas pasan y ninguna se privilegia |
 | El nombre de un toggle no es el valor | el mismo | Sólo la **segunda mitad**. Que un toggle *lleve* `aria-pressed` no se verifica: se lo busca por el atributo que se quiere exigir, así que es circular |
 | `type="button"` en todo `<button>` | `src/__tests__/App.browser.test.tsx`, `describe` «lo que llega al arbol de accesibilidad» | Recorre los `<button>` de la app entera |

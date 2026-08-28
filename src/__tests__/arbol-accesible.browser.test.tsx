@@ -41,8 +41,9 @@ import { page } from 'vitest/browser';
  *
  * Los cuatro archivos que hoy consultan roles —`OrientationPanel`, `PiecePalette`,
  * `TransportPanel` y `App`— verifican **los controles que cada uno conoce**. Un control
- * nuevo sin etiqueta no rompe ninguna aserción de nombre. Este recorre **todo lo que hay**,
- * así que falla ante un control que nadie escribió en ningún test.
+ * nuevo sin etiqueta no rompe ninguna aserción de nombre. Este recorre **todo lo que
+ * encuentra** —los controles nativos y los `role` de la lista cerrada de `ROLES`—, así que
+ * falla ante un control que nadie escribió en ningún test.
  *
  * ## Qué NO cubre, que es la mitad que hay que leer antes de confiar
  *
@@ -54,6 +55,9 @@ import { page } from 'vitest/browser';
  *   se quiere exigir**, así que un toggle al que se lo olvidaron no aparece en la lista y
  *   el gate lo saluda al pasar. Esa mitad sigue siendo revisión humana, y está declarada
  *   acá para que nadie lea este archivo como si la cubriera.
+ * - **Un `role` que no esté en `ROLES`.** La lista es cerrada a propósito —ver su docblock—,
+ *   así que un rol nuevo entra al árbol sin que este gate lo mire hasta que alguien lo
+ *   agregue. Los controles NATIVOS sí entran todos, que es el caso frecuente.
  * - **El orden de tabulación**, que es la sección siguiente de `ui.md` y otro mecanismo.
  * - **El contraste**, que `DESIGN.md` trata como un test aparte (issue #50).
  * - **El comportamiento con un lector de pantalla de verdad.** Esto mira el árbol que el

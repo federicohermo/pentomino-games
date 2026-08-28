@@ -607,9 +607,9 @@ export default tseslint.config([
     // regla pide que un elemento con rol interactivo sea focusable, y esta grilla **no lo es
     // a proposito**: implementa *roving tabindex*, o sea que la celda del cursor lleva
     // `tabIndex={0}` y las otras `-1` (`Board.tsx:184`), y el foco se mueve con las flechas.
-    // Hacer focusable al contenedor daria 61 paradas de tabulacion donde el patron correcto
-    // pide una, y es literalmente lo que `.claude/rules/ui.md` documenta: «una region
-    // compuesta es UNA parada de tabulacion, y adentro se mueve con las flechas».
+    // Un contenedor focusable MAS celdas focusables daria 61 paradas de tabulacion donde el
+    // patron correcto pide una, y es literalmente lo que `.claude/rules/ui.md` documenta:
+    // «una region compuesta es UNA parada de tabulacion, y adentro se mueve con las flechas».
     //
     // **(b) `no-static-element-interactions`** — `Board.tsx:311`, el envoltorio posicionado
     // (`<div ref={boardRef} className="relative" onContextMenu={...}>`), que NO es la
