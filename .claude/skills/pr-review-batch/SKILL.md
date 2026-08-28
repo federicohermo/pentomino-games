@@ -30,7 +30,7 @@ Cuatro sustituciones. Las cuatro se descubrieron corriendo, no leyendo:
 |---|---|
 | Localiza el PR con las tools de Bitbucket | **`mcp__github__list_pull_requests`** y `pull_request_read`. **`gh` no está en el PATH** de esta máquina: no hay fallback por CLI |
 | Saca los criterios de aceptación de un ticket de Jira | **`specs/NNN-*/spec.md`**, sección de AC, más lo que `mcp__pentomino-domain__spec_status` contesta del estado de sus tareas. El número del spec sale del nombre de la rama: `feature/NNN-...` |
-| Cierra con un `land.sh` que corre `npm run verify` | **`pnpm verify`, a mano.** `npm` acá deja un `package-lock.json` que Netlify puede llegar a preferir, y un `node_modules` plano |
+| Cierra con un `land.sh` que corre `npm run verify` | **`pnpm verify`, a mano.** `npm` acá deja un `package-lock.json` que el deploy puede llegar a preferir, y un `node_modules` plano |
 | Eleva todo a comentarios del PR | **El chat y un issue, que se abre con `mcp__github__issue_write`.** El issue vive fuera del repo, así que el hallazgo **no viaja en el diff del PR**, y a cambio no hereda el estado de nada. `--comentar` publica además un general por PR, para cuando lo mergea otra persona |
 
 ---
