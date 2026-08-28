@@ -66,7 +66,7 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
        Medido: a 1366 x 768 el breakpoint pedia SEIS columnas adentro de una caja de 256 px,
        y con la celda al piso pedia tres adentro de 146. La celda ronda
        siempre los 73 px, asi que la caja ronda siempre los 146 y el desacople es total —el
-       dock ya no cambia de ancho con el viewport, y el breakpoint sigue haciendolo.
+       ancho del dock no depende del viewport y el del breakpoint si—.
        A 146 entra una sola columna de miniaturas, y eso sigue sin resolverse.
 
        `repeat(auto-fill, minmax(MINI_PISTA_PX, 1fr))` hace la cuenta contra la caja real.

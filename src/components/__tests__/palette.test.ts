@@ -95,7 +95,7 @@ describe('PIECE_COLOR', () => {
   it('las exceptuadas siguen sin llegar al piso con NINGUN fg', () => {
     // La excepcion se justifica sola o no se justifica. Si alguien aclara el `bg` de
     // `L` o `Y` lo suficiente, este test falla y obliga a sacarla de la lista en vez
-    // de dejar una excepcion que ya no corresponde — que es como las excepciones se
+    // de dejar una excepcion sin motivo — que es como las excepciones se
     // vuelven permanentes.
     for (const p of LC_EXCEPCIONES) {
       const { bg } = PIECE_COLOR[p];
@@ -188,7 +188,7 @@ describe('el borde de la miniatura de la paleta', () => {
 
   it('los dos conjuntos son DISJUNTOS, que es lo que obliga a invertir el borde', () => {
     // Esta es la afirmacion que sostiene la decision entera. Si alguna vez dejaran
-    // de serlo —una pieza que falle en los dos estados— la salida ya no seria
+    // de serlo —una pieza que falle en los dos estados— la salida no seria
     // invertir el borde sino mover el color de esa pieza.
     const enReposo = new Set(bajoElPiso(BOTON_REPOSO));
     const enActivo = bajoElPiso(BOTON_ACTIVO);

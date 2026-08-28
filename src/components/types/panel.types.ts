@@ -39,9 +39,11 @@ export interface PropsDeOrientacion {
    */
   orientaciones: MemoriaDeOrientacion;
   /**
-   * Que hace la rotacion. Hasta el 019 completaba la frase de su propia fila
-   * —«Rotacion … cambia escala / orden»—; al borrarse los cuatro botones de grados la
-   * frase se quedo sin sujeto y el regimen paso a ser la fila.
+   * Que hace la rotacion.
+   *
+   * Hasta el 019 completaba la frase de su propia fila —«Rotacion … cambia escala /
+   * orden»—; al borrarse los cuatro botones de grados la frase se quedo sin sujeto y el
+   * regimen paso a ser la fila.
    */
   regimen: RegimenDeRotacion;
   noteSet: readonly number[];

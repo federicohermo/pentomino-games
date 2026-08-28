@@ -20,8 +20,8 @@ export default function TransportPanel({ transporte }: { transporte: PropsDeTran
   const { tempo, playing, clicks, onTempo, onTogglePlay, onToggleClicks, onReset } = transporte;
   return (
     <div className="mt-4 border-t pt-3 space-y-2">
-      {/* La fila de Tempo se APILA, y no es estetica: estaba dimensionada
-          para una tarjeta de ~349 px que ya no existe, y el dock mide 146 al piso. Tres
+      {/* La fila de Tempo se APILA, y no es estetica: el dock mide 146 px al piso, contra
+          los ~349 de la tarjeta que reemplaza (spec 021, issue #83). Tres
           cosas en una fila —la etiqueta, el slider y un lector de ancho fijo— no entran, y
           el desborde seria HORIZONTAL: ni el `overflow-y` del dock lo corta ni un
           `overflow-x` lo arregla, porque ese scroll es justamente lo que no puede haber.

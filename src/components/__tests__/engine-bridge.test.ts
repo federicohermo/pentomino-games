@@ -11,8 +11,9 @@ import type { MotorDeTransporte } from '../types/engine.types.ts';
 import { GRID_DEFAULT } from '../../domain/constants/board.constants.ts';
 
 /**
- * `engine-bridge.ts` es el único puente entre el `Sequence` del dominio y el del motor, y hasta
- * ese cruce llego a estar escrito dos veces adentro de `App.tsx` —o sea en un
+ * `engine-bridge.ts` es el único puente entre el `Sequence` del dominio y el del motor.
+ *
+ * Hasta ese cruce llego a estar escrito dos veces adentro de `App.tsx` —o sea en un
  * `.tsx`, donde no se puede exportar y por lo tanto no se puede testear—. Los tres
  * casos de la proyección son los que ningún test cubría, y el tercero es el que el tipo
  * existe para distinguir.
@@ -42,7 +43,9 @@ const colocar = (piece: PieceKey, rot: number, mirror: boolean, x: number, y: nu
 
 /**
  * El mismo tablero con cruces que usa `route-source.test.ts`: el recorrido no puede
- * esquivar a la `X` y tres de sus clicks salen CON `note`, mientras el
+ * esquivar a la `X`.
+ *
+ * Tres de sus clicks salen CON `note`, mientras el
  * resto cae en celdas vacías y sale sin ella. Es el único tablero que ejercita los dos
  * estados del click en una sola secuencia.
  */

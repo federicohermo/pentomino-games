@@ -12,8 +12,10 @@ const memo = new Map<string, readonly CellText[]>();
 
 /**
  * Que dice cada celda de una orientacion: su nota y su paso, POR INDICE sobre la forma
- * canonica — el elemento `k` corresponde a `SHAPES[piece][k]`, y por lo tanto a la
- * celda `k` de una pieza ya rotada, reflejada y trasladada.
+ * canonica.
+ *
+ * El elemento `k` corresponde a `SHAPES[piece][k]`, y por lo tanto a la celda `k` de una
+ * pieza ya rotada, reflejada y trasladada.
  *
  * ## Por que es un modulo y no una funcion adentro de `Board.tsx`
  *

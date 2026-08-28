@@ -10,8 +10,10 @@ import type { PlacedPiece } from '../../domain/types/board.types.ts';
 import { GRID_DEFAULT } from '../../domain/constants/board.constants.ts';
 
 /**
- * `route-source.ts` es donde vive AC9 —que la cabeza dibuje el circuito
- * que SUENA y no el que esta encolado— y es una maquina de estados con dos colas, un
+ * `route-source.ts` es donde vive AC9 —que la cabeza dibuje el circuito que SUENA y no
+ * el que esta encolado—.
+ *
+ * Es una maquina de estados con dos colas, un
  * contador ajeno y un velo que se recalcula en los dos bordes. Nada de eso lo mira
  * `pnpm verify` si no se lo testea: el modulo no tiene tipos que lo aten y su unico
  * consumidor es un loop de `requestAnimationFrame`, que no corre en los tests.
@@ -63,7 +65,9 @@ const DOS = [colocar('F', 0, false, 2, 2), colocar('L', 0, true, 7, 1)];
 
 /**
  * Un tablero cuyo recorrido cruza celdas OCUPADAS fuera del turno de su pieza —[2,1],
- * [1,2] y [1,1] de la `X`, siendo [1,1] su centro— y esos cruces suenan una floritura
+ * [1,2] y [1,1] de la `X`, siendo [1,1] su centro—.
+ *
+ * Esos cruces suenan una floritura
  * (`Click.note`, 69 = A4, 71 = B4 y 76 = E5). Verificado corriendo `buildSequence`
  * sobre este mismo tablero: son tres de sus cuatro clicks, y el cuarto cae en una celda
  * vacia.
@@ -291,8 +295,8 @@ describe('la cabeza recorre la pieza muteada, con el borde del click', () => {
  *
  * Este modulo avanza solo cuando `cycleGeneration()` sube, y ese contador lo mueve el
  * reloj. Con el transporte parado nada avanza, pero `encolar` igual recomputa el velo
- * leyendo `activa` y `estrenando` congelados: sin el reinicio, el Reset dejaba las cinco
- * celdas de una pieza que ya no esta dibujadas sobre un tablero vacio.
+ * leyendo `activa` y `estrenando` congelados: sin el reinicio, el Reset dejaria las cinco
+ * celdas de una pieza borrada dibujadas sobre un tablero vacio.
  *
  * El transporte no llega hasta aca —este modulo no sabe si el reloj corre—, asi que lo
  * unico que separa los dos tests de abajo es si hubo ORDEN explicita de volver a cero.

@@ -12,8 +12,10 @@ import type { PieceKey } from '../../domain/types/pieces.types.ts';
 import type { PlacedPiece } from '../../domain/types/board.types.ts';
 
 /**
- * Las decisiones de los cinco gestos y del sexto que agregó el 018 —la letra
- * que elige la pieza—. Lo que NO está acá es el cableado
+ * Las decisiones de los cinco gestos y del sexto que agregó el 018 —la letra que elige
+ * la pieza—.
+ *
+ * Lo que NO está acá es el cableado
  * —que `components/use-input.ts` mire bien el `e.target`, que el `preventDefault` frene el scroll de
  * verdad—: eso queda en las tareas `[M]` del navegador, porque el repo no monta
  * componentes y no tiene jsdom.
@@ -294,7 +296,9 @@ describe('`Ctrl`+click en macOS es el click derecho', () => {
 });
 
 /**
- * El click sobre una celda. La llave de toda la edición es que la pieza que
+ * El click sobre una celda.
+ *
+ * La llave de toda la edición es que la pieza que
  * está en la mano sea la misma que la del tablero: sin esa condición, cualquier click mal
  * apuntado borraría.
  */

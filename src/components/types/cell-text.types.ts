@@ -1,7 +1,8 @@
 /**
- * Lo que una celda MUESTRA: su nota y su paso. Cruza el limite entre `cell-text.ts`,
- * que lo deriva, y `Board.tsx`, que lo pinta — por eso vive aca y no adentro del
- * modulo, igual que `Marca` para la cabeza lectora.
+ * Lo que una celda MUESTRA: su nota y su paso.
+ *
+ * Cruza el limite entre `cell-text.ts`, que lo deriva, y `Board.tsx`, que lo pinta — por
+ * eso vive aca y no adentro del modulo, igual que `Marca` para la cabeza lectora.
  */
 export interface CellText {
   /**

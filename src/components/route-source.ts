@@ -57,25 +57,30 @@ let activa: Ruta = RUTA_VACIA;
 let pendiente: Ruta | null = null;
 
 /**
- * La ultima generacion de ciclo observada. Se compara contra `cycleGeneration()` porque
- * el motor es el unico que sabe el instante exacto del swap: lo decide `collectWindow`
- * medio intervalo antes del borde, y ninguna cuenta sobre `placed` lo ve venir.
+ * La ultima generacion de ciclo observada.
+ *
+ * Se compara contra `cycleGeneration()` porque el motor es el unico que sabe el instante
+ * exacto del swap: lo decide `collectWindow` medio intervalo antes del borde, y ninguna
+ * cuenta sobre `placed` lo ve venir.
  */
 let generacion = 0;
 
 /**
- * Las piezas que entraron al ciclo en el ultimo swap y todavia no se estrenaron celda
- * por celda. Se reemplaza entero en cada swap; recordar cuales YA se estrenaron es del
- * loop de dibujo, que es quien lo observa cuadro a cuadro.
+ * Las piezas que entraron al ciclo en el ultimo swap y todavia no se estrenaron celda por
+ * celda.
+ *
+ * Se reemplaza entero en cada swap; recordar cuales YA se estrenaron es del loop de
+ * dibujo, que es quien lo observa cuadro a cuadro.
  */
 let estrenando: string[] = [];
 
 let veloActual: CeldaPorEstrenar[] = [];
 
 /**
- * Encola el recorrido nuevo. La llama el mismo efecto de `use-engine.ts` que ya hace
- * `setSequence`: las dos colas se encolan juntas, o la cabeza y el sonido quedarian
- * mirando ciclos distintos.
+ * Encola el recorrido nuevo.
+ *
+ * La llama el mismo efecto de `use-engine.ts` que ya hace `setSequence`: las dos colas se
+ * encolan juntas, o la cabeza y el sonido quedarian mirando ciclos distintos.
  *
  * Solo se guarda el ultimo, igual que en el motor: lo que se encola es el recorrido
  * COMPLETO, asi que dos cambios antes del cierre valen por uno.
@@ -92,8 +97,8 @@ export function encolar(s: Sequence, placed: readonly PlacedPiece[]): void {
  * Existe porque este modulo avanza solo cuando `cycleGeneration()` sube, y ese contador
  * lo mueve `tick()`, o sea el reloj. Con el transporte parado `activa` y `estrenando`
  * quedan congelados, pero `encolar` igual recomputa el velo leyendolos: el resultado era
- * el velo de piezas que ya no estan dibujado sobre un tablero vacio, y se autocuraba
- * recien al volver a apretar Play.
+ * el velo de piezas que se fueron, dibujado sobre un tablero vacio, y se autocuraba recien
+ * al volver a apretar Play.
  *
  * La asimetria que arregla estaba escrita de un solo lado. `App.tsx` ya declara que
  * «Reset frena el transporte ADEMAS de vaciar el tablero […] Reset es una orden
@@ -125,8 +130,9 @@ export function reiniciar(): void {
 }
 
 /**
- * El recorrido que esta sonando ahora mismo, como tabla indexada por offset. La llama
- * el loop de dibujo, y el swap ocurre ACA: en el mismo cuadro en que el motor lo
+ * El recorrido que esta sonando ahora mismo, como tabla indexada por offset.
+ *
+ * La llama el loop de dibujo, y el swap ocurre ACA: en el mismo cuadro en que el motor lo
  * reporta, no cuando React se entere.
  *
  * Que el loop corra tambien en pausa —igual que el de `Spectrum`— no es un problema

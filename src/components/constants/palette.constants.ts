@@ -60,9 +60,11 @@ export const PIECE_COLOR: Record<PieceKey, { bg: string; fg: string }> = {
 };
 
 /**
- * Piso de contraste del repo para texto sobre el color de pieza: APCA Lc 60, que
- * es el minimo para texto de cuerpo. Reemplaza al 4.5 de WCAG 2.1 AA por el motivo
- * medido arriba. `L` e `Y` no lo alcanzan y estan exceptuadas en el test.
+ * Piso de contraste del repo para texto sobre el color de pieza: APCA Lc 60, que es el
+ * minimo para texto de cuerpo.
+ *
+ * Reemplaza al 4.5 de WCAG 2.1 AA por el motivo medido arriba. `L` e `Y` no lo alcanzan y
+ * estan exceptuadas en el test.
  */
 export const CONTRAST_LC = 60;
 

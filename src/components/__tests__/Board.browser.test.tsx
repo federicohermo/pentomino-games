@@ -17,9 +17,8 @@ import type { Cell } from '../../domain/types/transform.types.ts';
  *
  * Lo que se verifica es la jerarquia de canales que el archivo argumenta —**el color de
  * pieza es IDENTIDAD y pierde contra cualquier ESTADO**— y las dos mediciones de layout
- * que sostiene un comentario: que la grilla mida `GRID_W × --cell` y que el
- * `overflow-x-auto` impida que eso empuje scroll horizontal a la PAGINA cuando gana el
- * piso.
+ * que sostiene un comentario: que la grilla mida `GRID_W × --cell` y que eso no empuje
+ * scroll horizontal ni al tablero ni a la PAGINA cuando gana el piso.
  *
  * Las dos ultimas necesitan un navegador con viewport: en jsdom no hay ni layout ni
  * scroll, asi que la afirmacion «no empuja scroll a la pagina» seria trivialmente cierta
@@ -28,7 +27,7 @@ import type { Cell } from '../../domain/types/transform.types.ts';
  * ## `--cell` la escribe el test, y eso es parte de lo que verifica
  *
  * El tamano de celda no es una constante: viaja por una custom property
- * que `use-cell-px.ts` cuelga del contenedor RAIZ de la app. `Board` se monta solo aca, sin
+ * que `use-grid.ts` cuelga del contenedor RAIZ de la app. `Board` se monta solo aca, sin
  * ese contenedor, asi que sin un `--cell` puesto `repeat(10, var(--cell))` es invalido y la
  * grilla colapsa a una columna. Escribirla sobre el nodo que monta el test es lo que ademas
  * verifica la HERENCIA: si alguna medida de la baldosa dejara de leer `--cell`, dejaria de
@@ -176,7 +175,7 @@ describe('Board', () => {
           .toBe(Math.round(dims.w * cell));
         expect(container.querySelectorAll('[role="gridcell"]').length).toBe(dims.w * dims.h);
 
-        // Ni el tablero scrollea —ya no hay contenedor que pueda—…
+        // Ni el tablero scrollea —no hay contenedor que pueda—…
         const caja = container.querySelector('div.relative')!;
         expect(caja.scrollWidth, `${dims.w}x${dims.h}`).toBeLessThanOrEqual(caja.clientWidth + 1);
         // …ni la pagina.
@@ -521,7 +520,7 @@ describe('Board — el teclado y el foco', () => {
     // overflow scrolleable y hace aparecer las dos barras. `outline` y `box-shadow` son
     // ink overflow, y dibujados hacia adentro ni siquiera asoman de la caja.
     // Se corre a celda 180 —mucho mas grande que la real— porque es donde el anillo es mas
-    // grande: las dos bandas miden 4,93 px cada una en vez de 2. Que la app ya no dibuje
+    // grande: las dos bandas miden 4,93 px cada una en vez de 2. Que la app no dibuje
     // celdas de 180 px no le saca sentido: lo que se verifica es que el anillo no asome de
     // la caja a NINGUN tamano.
     const esquina = [GRID_W - 1, GRID_H - 1] as Cell;

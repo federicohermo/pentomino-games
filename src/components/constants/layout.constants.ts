@@ -89,9 +89,9 @@ export const RESERVA_RAZON = 8 / CELL_PX_OBJETIVO;
 export const PASO_ABAJO_RAZON = 2 / CELL_PX_OBJETIVO;
 export const PASO_DERECHA_RAZON = 6 / CELL_PX_OBJETIVO;
 
-/* `PREVIEW_CELL_PX` (20) se fue con `PiecePreview.tsx`: la previsualizacion aparte
-   dejo de existir cuando el fantasma del tablero paso a mostrar la nota de cada
-   celda.
+/* `PREVIEW_CELL_PX` (20) se fue con el panel de previsualizacion aparte (`PiecePreview`),
+   que dejo de existir cuando el fantasma del tablero paso a mostrar la nota de cada
+   celda (spec 007, issue #69).
 
    La miniatura de la paleta **no deshace ese retiro**, y conviene que quede escrito
    porque se le parece. Aquel panel se fue por repetir las NOTAS —el fantasma las dice mejor,
@@ -125,12 +125,12 @@ export const MINI_BOX = 5;
 /**
  * El lado de una celda de la miniatura, en px.
  *
- * **El argumento con el que este numero se eligio ya no existe**, y conviene decirlo antes
- * que nada porque era el argumento entero. La paleta era una tarjeta en una fila de dos, asi
- * que su alto fijaba el alto de la fila y el tamano de celda salia de ahi: seis columnas de
- * 8 px eran las que dejaban la paleta lo bastante compacta como para no robarle alto al
- * tablero. Hoy no hay fila, no hay tarjeta y el tamano de celda sale del viewport; la paleta
- * es un dock `fixed` que flota encima y no le quita un pixel a nadie.
+ * **El argumento con el que este numero se eligio esta muerto**, y conviene decirlo antes
+ * que nada porque era el argumento entero: salia del alto de la fila de tarjetas que la
+ * paleta compartia con el tablero, y esa fila no existe. La cadena completa —seis columnas
+ * de 8 px para no robarle alto al tablero— esta en el spec 021 (issue #83). Hoy no hay
+ * fila, no hay tarjeta y el tamano de celda sale del viewport; la paleta es un dock `fixed`
+ * que flota encima y no le quita un pixel a nadie.
  *
  * Lo que decide el numero ahora es la CAJA DEL DOCK, que mide `calc(var(--cell) * 2)` de
  * ancho — 146 px en el peor caso, que es el piso. Ahi adentro tienen que entrar las doce

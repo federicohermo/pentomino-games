@@ -24,9 +24,11 @@ const ULTIMO_PASO = 4;
 const coordenada = (x: number, y: number) => `fila ${y + 1}, columna ${x + 1}`;
 
 /**
- * Lo que una celda OCUPADA le aporta a su nombre accesible: la pieza, si esta
- * muteada, y el `CellText` -paso y nota- que `Board.tsx` ya calculo para esa celda
- * puntual encadenando `occupantAt` + `occupantCellIndex` + `cellTextFor`.
+ * Lo que una celda OCUPADA le aporta a su nombre accesible: la pieza, si esta muteada, y
+ * su `CellText` -paso y nota-.
+ *
+ * Ese `CellText` lo calculo `Board.tsx` para esa celda puntual, encadenando `occupantAt` +
+ * `occupantCellIndex` + `cellTextFor`.
  *
  * Los tres campos viajan juntos, en un solo objeto, y no como dos parametros
  * sueltos (`occupant: PlacedPiece | null` + `cell: CellText | null`) por lo que
@@ -126,9 +128,10 @@ export function cellNameFor(x: number, y: number, occupied: CeldaOcupada | null)
 }
 
 /**
- * Lo que anuncia la region `aria-live` del shell despues de una edicion del tablero
- *: colocar, quitar y mutear, las tres unicas cosas que cambian el
- * tablero.
+ * Lo que anuncia la region `aria-live` del shell despues de una edicion del tablero:
+ * colocar, quitar o mutear.
+ *
+ * Son las tres unicas cosas que cambian el tablero.
  *
  * ## Por que sale de aca y no de una cadena escrita en `App.tsx`
  *
@@ -152,8 +155,8 @@ export function cellNameFor(x: number, y: number, occupied: CeldaOcupada | null)
  *
  * No el que tenia. Del lado del shell sale de la misma variable que se guarda en
  * `PlacedPiece.muted`, asi que el anuncio no puede prometer un muteo distinto del que el
- * tablero acaba de aplicar. `quitar` no lo dice —la pieza ya no esta, y lo que hace falta
- * saber es cual se fue y de donde—, pero igual lo recibe: pedirle al llamador que decida
+ * tablero acaba de aplicar. `quitar` no lo dice —la pieza se fue, y lo que hace falta
+ * saber es cual y de donde—, pero igual lo recibe: pedirle al llamador que decida
  * cuando el campo importa seria mover esta misma decision al shell, que es de donde este
  * archivo la vino a sacar.
  *

@@ -54,8 +54,10 @@ const transporte = (over: Partial<PropsDeTransporte> = {}): PropsDeTransporte =>
 });
 
 /**
- * El dock con el plegado ya resuelto, para que los casos de abajo sigan hablando de lo que
- * les importa. El plegado le suma dos props —`abierto` y `onToggle`, que son estado del
+ * El dock con el plegado ya resuelto, para que los casos de abajo sigan hablando de lo
+ * que les importa.
+ *
+ * El plegado le suma dos props —`abierto` y `onToggle`, que son estado del
  * shell— y ninguno de estos tests es sobre eso: el que lo verifica esta al final y usa
  * `Dock` directo.
  */
@@ -122,13 +124,13 @@ describe('PiecePalette', () => {
     }
     expect(page.getByRole('button', { name: /^Reflexión$/ }).elements()).toHaveLength(0);
     // El del recorrido NO se borro: se MUDO, y sigue estando dentro de esta tarjeta porque
-    // `TransportPanel` es hijo suyo. Lo que se verifica es que ya no sea una fila con
+    // `TransportPanel` es hijo suyo. Lo que se verifica es que no sea una fila con
     // etiqueta visible sino un boton de la fila de transporte, abajo del `border-t`.
     const recorrido = page.getByRole('button', { name: /^Recorrido en el vacío$/ }).element();
     expect(recorrido.textContent).toBe('');
     expect(recorrido.closest('div.border-t')).not.toBeNull();
-    // Y las dos etiquetas se fueron con sus controles: un `<span>` que nombra un grupo que
-    // ya no existe deja un `aria-labelledby` colgando o, peor, un texto en pantalla que no
+    // Y las dos etiquetas se fueron con sus controles: un `<span>` que nombra un grupo
+    // inexistente deja un `aria-labelledby` colgando o, peor, un texto en pantalla que no
     // corresponde a nada.
     expect(container.querySelector('#reflexion-etiqueta')).toBeNull();
     expect(container.querySelector('#recorrido-etiqueta')).toBeNull();
