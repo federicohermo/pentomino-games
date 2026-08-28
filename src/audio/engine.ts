@@ -33,9 +33,11 @@ let analyser: AnalyserNode | null = null;
 let fallado = false;
 
 /**
- * El AudioContext vive a nivel de modulo: hay uno por pestana, no uno por
- * instancia del componente. Se crea perezosamente porque los navegadores exigen
- * un gesto del usuario para arrancar el audio.
+ * El AudioContext del modulo: hay uno por pestana y no uno por instancia del
+ * componente.
+ *
+ * Se crea perezosamente porque los navegadores exigen un gesto del usuario para
+ * arrancar el audio.
  *
  * Devuelve null si el navegador no soporta Web Audio: la app queda usable pero
  * muda, y cada llamador tiene que chequearlo.
@@ -162,8 +164,8 @@ export function playNotes(notes: number[]): void {
   const c = audio();
   // ## Por que la guarda se queda con las dos mitades
   //
-  // La segunda ya no es alcanzable desde afuera: desde este spec el `catch` de
-  // `audio()` baja `ctx` y `master` juntos, asi que un contexto vivo implica un master
+  // La segunda no es alcanzable desde afuera: el `catch` de `audio()` baja `ctx` y
+  // `master` juntos, asi que un contexto vivo implica un master
   // vivo. Se queda igual porque es lo que impide que un fallo FUTURO —una linea nueva
   // entre la asignacion de `ctx` y la del master, o un camino que todavia no existe—
   // llegue a `scheduleVoice` con destino nulo, y porque el estrechamiento del `const`
@@ -243,8 +245,10 @@ export const setClicksAudible = (v: boolean): void => { clicksAudible = v; };
 
 /**
  * Encola el recorrido nuevo. NO toca lo que esta sonando: entra en vigencia recien
- * al cerrar el ciclo activo, que es lo que permite que el circuito se reordene
- * entero sin que el patron salte a mitad de frase (D5).
+ * al cerrar el ciclo activo.
+ *
+ * Esperar al cierre es lo que permite que el circuito se reordene entero sin que el
+ * patron salte a mitad de frase (D5).
  *
  * El precio esta medido y es la decision mas cara del modelo de recorrido: con 8 piezas a 110
  * bpm el ciclo dura 7,5 s, asi que una pieza recien colocada puede tardar eso en
@@ -257,11 +261,13 @@ export const setClicksAudible = (v: boolean): void => { clicksAudible = v; };
 export function setSequence(next: Sequence): void { pending = next; }
 
 /**
- * Expuesto para verificacion manual desde la consola: reemplaza a `jobCount()`, que
- * era la forma de mirar el motor sin oirlo y que este spec borro junto con los jobs.
- * Informa la secuencia ACTIVA —la que esta sonando—, no la pendiente: preguntarle al
- * motor que agendo y que le contesten lo que todavia no agendo seria peor que no
- * tener la funcion.
+ * La secuencia ACTIVA —la que esta sonando— en numeros, expuesta para verificacion
+ * manual desde la consola.
+ *
+ * Informa la activa y no la pendiente: preguntarle al motor que agendo y que le
+ * contesten lo que todavia no agendo seria peor que no tener la funcion. Reemplaza a
+ * `jobCount()`, que era la forma de mirar el motor sin oirlo y que este spec borro
+ * junto con los jobs.
  */
 // `clicks` y `crosses` por separado: el campo `clicks` de la
 // `Sequence` mezcla las dos cosas, pero el motor las distingue —una se apaga con
@@ -320,7 +326,7 @@ export const cycleGeneration = (): number => cycleGen;
  * test «el swap deja `origin` en el FUTURO» de `scheduler.test.ts` deja clavado.
  *
  * El precio es que la cabeza se apaga esa ventana en cada swap. Es lo correcto: la ruta
- * vieja ya no esta y la nueva todavia no empezo, asi que cualquier celda que se dibujara
+ * vieja termino y la nueva todavia no empezo, asi que cualquier celda que se dibujara
  * ahi seria mentira.
  */
 export function playheadOffset(): number | null {
@@ -434,7 +440,7 @@ export function startClock(): void {
   // Las dos mitades, y la segunda es la que este spec trajo hasta aca: es la casa nueva
   // de la guarda que `tick()` tenia adentro. Arrancar el reloj es lo que hace que
   // `clockRunning()` conteste `true` y que el boton diga «Pausa», asi que es EL lugar
-  // donde no se puede mentir sobre si el motor esta entero. Hoy `audio()` ya no devuelve
+  // donde no se puede mentir sobre si el motor esta entero. `audio()` no devuelve
   // un contexto sin master —el `catch` los baja juntos—, pero el que arranca el reloj
   // tiene que verificarlo igual: es la unica funcion cuya respuesta la UI muestra.
   if (!c || !bus) return;

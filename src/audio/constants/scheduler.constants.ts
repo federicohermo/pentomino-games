@@ -25,9 +25,12 @@ export const BEATS_PER_BAR = 4;
 export const SUBDIVISIONS_PER_BEAT = 4;
 
 /**
- * Las TRES clases de evento sonoro del recorrido: la nota que dispara una pieza, el
- * click de una celda vacia que el circuito cruza al ir de una pieza a la siguiente, y
- * el cruce por una celda OCUPADA, que suena la nota de esa celda como floritura.
+ * Las TRES clases de evento sonoro del recorrido: nota de pieza, click de celda vacia
+ * y cruce por celda ocupada.
+ *
+ * La nota la dispara una pieza; el click lo produce una celda vacia que el circuito
+ * cruza al ir de una pieza a la siguiente; y el cruce por una celda OCUPADA suena la
+ * nota de esa celda como floritura.
  *
  * Tres claves y no dos con un campo opcional: el argumento largo
  * esta en el docblock de `Hit`, y ademas `cross` y `click` se despachan distinto en

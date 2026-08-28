@@ -13,10 +13,11 @@ const A4 = 69;
 const VEL = 0.8;
 
 /**
- * El release al tempo por defecto (0,12 s). Estos tests miden onsets y picos, no la
- * cola de la envolvente, asi que les alcanza con un valor fijo — el mismo que el
- * instrumento usa a 110 bpm. Quien verifica que el release siga al tempo es
- * `voice.test.ts`.
+ * El release al tempo por defecto (0,12 s).
+ *
+ * Estos tests miden onsets y picos, no la cola de la envolvente, asi que les alcanza
+ * con un valor fijo — el mismo que el instrumento usa a 110 bpm. Quien verifica que el
+ * release siga al tempo es `voice.test.ts`.
  */
 const REL = RELEASE_INTERVALS * intervalDuration(110);
 

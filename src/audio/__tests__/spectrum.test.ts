@@ -3,8 +3,10 @@ import { binsToBars } from '../spectrum.ts';
 
 /**
  * Ningun test de este archivo toca AudioContext, y no es una comodidad: es el
- * objetivo del diseno. AnalyserNode no rinde nada util en un OfflineAudioContext,
- * asi que la unica forma de verificar el mapeo es tenerlo separado del nodo.
+ * objetivo del diseno.
+ *
+ * AnalyserNode no rinde nada util en un OfflineAudioContext, asi que la unica forma
+ * de verificar el mapeo es tenerlo separado del nodo.
  */
 
 /** Un espectro con un solo bin encendido. Sonda para ver a que barra cae. */
