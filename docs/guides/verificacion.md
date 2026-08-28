@@ -117,6 +117,73 @@ con 33,8 s, más del doble. La regla que deja eso escrito vale para todos los n�
 **un número de performance de un spec viejo no sirve como línea de base**, y los pares de arriba lo
 son sólo dentro de su propia medición.
 
+## Desde el 048 el lint no espera a que alguien lo corra
+
+Todo lo de arriba tiene una propiedad en común y es un problema: **se dispara cuando alguien
+tipea el comando.** Un agente que edita veinte archivos y nunca corre `pnpm verify` no ve una sola
+regla del repo hasta que abre el PR — y desde el 047 ese PR en rojo no se puede mergear, así que el
+error no llega a `main`, pero se descubre **al final**, con veinte archivos escritos sobre una
+premisa equivocada en vez de al segundo.
+
+`.claude/scripts/lint-al-cerrar.mjs` corre como hook **`Stop` y `SubagentStop`**, lintea lo que
+cambió en el árbol y, si hay rojo, lo devuelve como texto para que el agente lo arregle antes de dar
+el turno por terminado. **No reemplaza a `pnpm verify` ni a la CI**, y no hay que leerlo así:
+adelanta el momento en que el agente se entera, de «cuando abre el PR» a «cuando cree que terminó».
+
+**Por turno y no por edición**, que es la decisión, y la toman cuatro números medidos: `pnpm lint`
+entero 21,78 s, un archivo con información de tipos 4,42 s, sin tipos 2,44 s, y los 38 de `src/` sin
+tipos 3,47 s. O sea que **~2,4 s son arranque fijo** —un `PostToolUse` le sumaría eso a *cada*
+`Edit`, y veinte ediciones son un minuto y medio repartido en veinte pausas— y que **ir de 1 archivo
+a 38 cuesta 1 segundo**, así que la granularidad fina no compra nada.
+
+**Los dos eventos, y lo que cuesta.** `Stop` y `SubagentStop` son eventos distintos y `Stop` no
+cubre subagentes; este repo hace la mayor parte de su trabajo adentro de subagentes, así que un hook
+declarado sólo en `Stop` no vería el turno donde se escribieron los archivos. El precio es que N
+carriles en paralelo pagan N veces el presupuesto sobre la misma caché de ESLint, y por eso el hook
+se serializa con un **lock que no espera**: el que no lo toma deja pasar diciéndolo.
+
+Lo medido en la máquina de desarrollo, con el `eslint.config.js` de los specs 049 y 050 ya puestos
+—**nunca en la CI**, que varía hasta 1,86× entre corridas—:
+
+| | Techo | Medido (mediana) |
+|---|---|---|
+| Árbol sin un archivo linteable | < 200 ms | **135 ms** |
+| Un archivo cambiado | < 6 s | **4,57 s** |
+
+El `timeout` declarado es **30 s**, y no es el `10` del gate del 037 copiado: aquél corresponde a un
+hook de 64,6 ms y éste cuesta segundos. Son cinco veces el techo —margen para el turno que cambió
+treinta archivos y para una máquina cargada— y muy por debajo del default de 600 s, que sería una
+sesión trabada durante diez minutos.
+
+**Qué corre y qué no.** Lint sobre lo cambiado —`git diff`, el `--cached` y
+`git ls-files --others`, que es el único que ve los archivos nuevos— filtrado a `.ts`, `.tsx`, `.js`
+y `.md`, que son las extensiones que la config cubre. `.mjs` **queda afuera a propósito**: el bloque
+que extiende `js.configs.recommended` está atado a `**/*.js`, glob que en flat config no matchea
+`.mjs`, así que los ocho `.mjs` de `.claude/scripts/` —el hook mismo incluido— hoy se lintean con
+cero reglas ([#143](https://github.com/federicohermo/pentomino-games/issues/143)). **No corre la
+suite**: es el reloj de `verify`, y además el [#97](https://github.com/federicohermo/pentomino-games/issues/97)
+documenta un test intermitente — dentro de un nodo que alguien tipea es una molestia, dentro de un
+hook por turno es un bloqueo intermitente del cierre, que es la forma más rápida de que el hook se
+apague. **No corre el typecheck aparte**: el lint ya corre con información de tipos, que es de dónde
+salen esos 4,42 s.
+
+**Y falla abierto, como su hermano.** Si ESLint no está, si la config está rota, o si el bloqueo
+anterior fue del propio hook (`stop_hook_active`), deja pasar y lo dice. Un hook que bloquea cuando
+no pudo decidir se desactiva el primer día.
+
+### Los dos hooks protegen la SESIÓN, no el repositorio
+
+Vale para éste y para el gate del spec 037 (`.claude/scripts/gate-de-spec.mjs`), y conviene leerlo
+antes de confiar en ninguno de los dos: **un hook de Claude Code se dispara cuando el que trabaja es
+la sesión**. Una persona editando `docs/architecture/overview.md` en su editor, parada en `main`, no
+ejecuta el gate del 037 nunca; un `git commit` desde una terminal fuera de la sesión, tampoco.
+
+**No es un defecto a arreglar.** Cubrir a una persona sería un hook de git, que es otra decisión con
+otro costo —empieza por instalar algo que este repo no tiene, y este repo mide antes de agregar
+dependencias— y esto es un harness de agentes: hace lo que un harness de agentes hace. Lo que
+protege el repositorio es la otra mitad, la que no depende de dónde se escribió: `pnpm verify` en la
+CI sobre cada PR, y el ruleset del 047 que no deja mergear en rojo.
+
 ## Los tests de `src/` son dos proyectos de Vitest y un solo comando
 
 Spec 029. El corte no es por capa sino por lo que el test necesita:
