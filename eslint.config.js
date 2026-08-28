@@ -162,8 +162,16 @@ const PRESET_MARKDOWN_APAGADO = Object.fromEntries(
 
 const NODOS_CON_RUTA = ['ImportDeclaration', 'ImportExpression', 'ExportNamedDeclaration', 'ExportAllDeclaration']
 
-/** El specifier local al que le falta la extension. */
-const SIN_EXTENSION = '[source.value=/^[.].*(?<![.]ts|[.]tsx|[.]css|[.]json)$/]'
+/**
+ * El specifier local al que le falta la extension.
+ *
+ * `.mjs` entro con el spec 051: los tests de las dos reglas locales importan la regla, que
+ * es un `.mjs`, y hasta ese spec ningun `.ts` de este repo podia importar uno —`allowJs`
+ * estaba apagado en los dos tsconfig, que es por lo que los scripts de `.claude/scripts/`
+ * se ejercen por subproceso—. Sin esta alternativa la regla lee `../comment-shape.mjs`
+ * como un import SIN extension, que es justo lo contrario de lo que pasa.
+ */
+const SIN_EXTENSION = '[source.value=/^[.].*(?<![.]ts|[.]tsx|[.]mjs|[.]css|[.]json)$/]'
 
 const REGLAS_DEL_REPO = [
   {
@@ -542,6 +550,7 @@ export default tseslint.config([
     files: [
       'src/**/__tests__/**/*.{ts,tsx}', '__tests__/*.ts', 'docs/__tests__/*.ts',
       'specs/__tests__/*.ts', '.claude/scripts/__tests__/*.ts',
+      'eslint-rules/__tests__/*.ts',
     ],
     plugins: { vitest },
     rules: {

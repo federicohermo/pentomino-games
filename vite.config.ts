@@ -57,7 +57,7 @@ export default defineConfig({
           name: 'node',
           environment: 'node',
           /**
-           * Cinco raices, y cuatro no son `src/`: **cada gate vive al lado de lo que
+           * Seis raices, y cinco no son `src/`: **cada gate vive al lado de lo que
            * verifica**, y eso quiere decir al lado del SUJETO, no de lo que el sujeto
            * toca. `__tests__/` en la raiz mira los archivos de la raiz —`index.html`,
            * `public/manifest.json`, `README.md`—; `docs/__tests__/` la DOCUMENTACION
@@ -76,7 +76,14 @@ export default defineConfig({
            * ademas la cache hidratada de los issues, y un `.test.ts` entre 35 carpetas
            * `NNN-…` se lee como si fuera parte de un spec.
            *
-           * Sin cualquiera de estas cinco entradas, esos gates dejan de correr EN
+           * `eslint-rules/__tests__/` es la sexta y la unica que verifica algo que este
+           * repo EJECUTA de afuera: las dos reglas locales del spec 051 las corre ESLint,
+           * no la app, asi que sin esta entrada su `RuleTester` no corre y las reglas
+           * quedan sin verificar. Es ademas la unica que SI entra al coverage —ver
+           * `coverage.include` abajo—, porque a diferencia de las otras cuatro lo que
+           * verifica es codigo de este repo y no un archivo de texto.
+           *
+           * Sin cualquiera de estas seis entradas, esos gates dejan de correr EN
            * SILENCIO — la forma de fallar en verde que este repo ya se comio dos veces.
            * Ninguno entra al coverage: su `include` es `src/**` y punto.
            */
@@ -86,6 +93,7 @@ export default defineConfig({
             'docs/__tests__/*.test.ts',
             'specs/__tests__/*.test.ts',
             '.claude/scripts/__tests__/*.test.ts',
+            'eslint-rules/__tests__/*.test.ts',
           ],
         },
       },
@@ -151,11 +159,18 @@ export default defineConfig({
       // importan— no aparecerian en la tabla y el numero saldria mas lindo sin
       // significar nada. En vitest 4 alcanza con declarar `include`; el flag
       // `all` que hacia esto en la 3 ya no existe y el typecheck lo rechaza.
-      include: ['src/**/*.{ts,tsx}'],
+      // Y `eslint-rules/**/*.mjs`, que es la excepcion a la linea de arriba: v8 reporta
+      // todo archivo que se EJECUTO, asi que el `.mjs` que importa el `RuleTester` entra
+      // a la tabla lo declaremos o no —es el mismo mecanismo que obliga a excluir
+      // `mcp-server/**` mas abajo—. La salida elegida es la contraria a la de alla:
+      // incluir y cubrir. `mcp-server/**` se excluye porque tiene su propio gate al 100
+      // con otro runner; estas dos reglas no tienen otro runner, las cubre vitest.
+      include: ['src/**/*.{ts,tsx}', 'eslint-rules/**/*.mjs'],
 
       exclude: [
         // Son los tests.
         'src/**/__tests__/**',
+        'eslint-rules/**/__tests__/**',
         // Declaraciones de tipo: no llegan al runtime.
         'src/vite-env.d.ts',
         // Bootstrap: `createRoot(...).render(<App />)`. Cubrirlo verifica que
