@@ -167,7 +167,7 @@ así — eso vive en los comentarios, no en la salida de una tool.
 | Convenciones | [docs/guides/conventions.md](./docs/guides/conventions.md) | Organización de `src/`, TypeScript, geometría, estado, comentarios |
 | Troubleshooting | [docs/guides/troubleshooting.md](./docs/guides/troubleshooting.md) | Errores reales ya pisados en este repo |
 | MCP server de dominio | [docs/guides/mcp-domain.md](./docs/guides/mcp-domain.md) | Las seis tools —cinco que ejecutan el dominio o lo leen, y la que escribe— y el resource `pentomino://constantes`, que no se llama como una tool |
-| Deploy | [docs/infra/deploy.md](./docs/infra/deploy.md) | Dónde vive la config, qué corre y qué no en el build, y cuál de las dos ramas se publica |
+| Deploy y ramas | [docs/infra/deploy.md](./docs/infra/deploy.md) · [docs/infra/ramas.md](./docs/infra/ramas.md) | Dónde vive la config del deploy y qué corre y qué no en el build; y el modelo de dos ramas: `staging` integra y es la default, `main` es release y es la que se publica, con el ruleset que lo sostiene |
 
 **Trabajo planificado:** desde el spec 034 cada spec **es un issue**, y
 [specs/mapa.json](./specs/mapa.json) —lo que se commitea de `specs/` son él, el `README.md` y los

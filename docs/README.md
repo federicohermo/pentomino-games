@@ -20,6 +20,7 @@ secuencia de cinco notas derivada de su identidad y su orientación.
 
 ### Infraestructura
 - [Deploy](./infra/deploy.md) — Dónde vive la config, qué corre en el build y cuál de las dos ramas se publica
+- [Ramas](./infra/ramas.md) — `staging` integra y es la default, `main` es release; el ruleset, y qué no verifica nadie
 
 ### Specs
 - [specs/mapa.json](../specs/mapa.json) — El mapa spec↔issue y el estado de cada uno

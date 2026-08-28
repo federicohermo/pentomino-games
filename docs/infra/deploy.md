@@ -89,22 +89,13 @@ Si algún día hace falta una, en Vite tiene que llevar el prefijo `VITE_` para 
 cliente (`import.meta.env.VITE_FOO`). El prefijo `REACT_APP_` de Create React App **no** funciona y
 falla en silencio.
 
-## Las dos ramas y cuál se publica
+## Qué rama se publica
 
-El repo tiene dos ramas con roles distintos:
-
-| Rama | Rol | Qué produce en Vercel |
-|---|---|---|
-| `main` | release: es lo que se deploya | el deploy de **producción** |
-| `staging` | integración: es donde aterrizan los PR | un deploy de **preview** |
-
-**La rama de producción está fijada explícitamente en `main`, y eso no es higiene: es una
-precondición.** Vercel toma como rama de producción la rama **default del repositorio** cuando nadie
-la fija, y la default de este repo es `staging`. Un proyecto creado sin tocar esa configuración
-publicaría la rama de integración — o sea que casi todos los PR irían a producción al mergear.
-
-Se verifica sin entrar al dashboard: un push a `staging` produce una URL de preview y la URL de
-producción no se mueve.
+**`main`**, fijada explícitamente en el proyecto de Vercel y no heredada de la default. El modelo de
+dos ramas —los roles, el ruleset, y por qué la default es `staging`— vive entero en
+[`ramas.md`](./ramas.md), que es la única copia que un gate cruza
+([`__tests__/ramas-sincronizadas.test.ts`](../../__tests__/ramas-sincronizadas.test.ts)): repetirlo
+acá dejaría una segunda copia que puede divergir sin que nada se ponga en rojo.
 
 ## Repositorio conectado
 
