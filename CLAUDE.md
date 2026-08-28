@@ -118,7 +118,7 @@ mitad estaba desincronizada:
 - **Sin estado global.** Ni Context, ni Redux, ni Zustand.
 - **Nada de `.only` ni `.skip` en un test**, ni un test sin una sola aserción. Es la misma familia
   de bug que el `--filter "{.}"`: fallar en verde.
-- **Los comentarios explican el porqué**, no el qué: una decisión, una restricción, un bug evitado.
+- **El comentario va en otro nivel que el código, y su cita resuelve**: `local/comment-*`.
 - **Los borrados van en su propio commit**, para que revertirlos sea trivial.
 
 ---
