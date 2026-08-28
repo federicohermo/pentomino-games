@@ -1,6 +1,6 @@
 ---
 name: spec-review
-description: Especialización de /spec-review para pentomino-games: rutas de specs/, formato de tarea y tools MCP de dominio. Se lee junto con el skill global.
+description: 'Especialización de /spec-review para pentomino-games: rutas de specs/, formato de tarea y tools MCP de dominio. Se lee junto con el skill global.'
 ---
 
 # spec-review — pentomino-games

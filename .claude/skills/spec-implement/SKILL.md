@@ -1,6 +1,6 @@
 ---
 name: spec-implement
-description: Especialización de /spec-implement para pentomino-games: el paralelismo viene declarado por tarea con [P], y toda tarea de un spec nuevo la cierra un agente. Se lee junto con el skill global.
+description: 'Especialización de /spec-implement para pentomino-games: el paralelismo viene declarado por tarea con [P], y toda tarea de un spec nuevo la cierra un agente. Se lee junto con el skill global.'
 ---
 
 # spec-implement — pentomino-games
