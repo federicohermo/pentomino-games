@@ -1,6 +1,6 @@
 ---
 name: pr-review-batch
-description: Revisa los PR abiertos de GitHub en paralelo —un agente por PR, cada uno en su worktree—, arregla lo que encuentra, verifica con pnpm verify, commitea y pushea a la rama del PR, y si los PR están apilados cierra poniendo la pila al día: mergea cada cadena de abajo hacia arriba y resuelve los conflictos, para que el lote quede mergeable. Usar al querer cerrar el review de uno o varios PR de este repo. Para revisar un spec que todavía es texto, spec-review-batch.
+description: 'Revisa los PR abiertos de GitHub en paralelo —un agente por PR, cada uno en su worktree—, arregla lo que encuentra, verifica con pnpm verify, commitea y pushea a la rama del PR, y si los PR están apilados cierra poniendo la pila al día: mergea cada cadena de abajo hacia arriba y resuelve los conflictos, para que el lote quede mergeable. Usar al querer cerrar el review de uno o varios PR de este repo. Para revisar un spec que todavía es texto, spec-review-batch.'
 argument-hint: "<NN NN ...> | --abiertos [--cleanup] [--comentar] [--dry]"
 # Sin `allowed-tools`, o sea sin restricción, y por el mismo motivo que `spec-implement-batch`:
 # declarar una lista parcial le sacaría todo lo que no estuviera en ella —`Agent`, los `git

@@ -1,6 +1,6 @@
 ---
 name: spec-create
-description: Abre un spec nuevo: convierte un pedido en prosa —«tenemos un bug», «hay que arreglar X», «habría que agregar», «se puede hacer que», «estaría bueno que»— en un spec publicado como issue y una rama, ANTES de tocar una línea de código. Usar apenas llega el pedido, no después de investigarlo. Trae escrito qué NO necesita spec.
+description: 'Abre un spec nuevo: convierte un pedido en prosa —«tenemos un bug», «hay que arreglar X», «habría que agregar», «se puede hacer que», «estaría bueno que»— en un spec publicado como issue y una rama, ANTES de tocar una línea de código. Usar apenas llega el pedido, no después de investigarlo. Trae escrito qué NO necesita spec.'
 allowed-tools:
   - Bash
   - Read
