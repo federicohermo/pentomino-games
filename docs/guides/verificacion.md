@@ -155,8 +155,9 @@ Los del MCP server son de `node --test`, en su propio paquete, y desde el 029 co
 ## El gestor es pnpm
 
 Fijado en `packageManager` y versionado en `pnpm-lock.yaml`. **No usar npm**: instalaría un
-`node_modules` plano y dejaría un `package-lock.json` que Netlify puede llegar a preferir. La config
-de pnpm vive en `pnpm-workspace.yaml`, no en el `package.json`.
+`node_modules` plano y dejaría un `package-lock.json` al lado del `pnpm-lock.yaml`, o sea dos
+lockfiles que resuelven distinto y un deploy que elige uno de los dos. La config de pnpm vive en
+`pnpm-workspace.yaml`, no en el `package.json`.
 
 `node_modules` es **estricto**: solo se puede importar lo declarado en `package.json`. Un import de
 una dependencia transitiva que con npm andaba, acá falla — es a propósito, y es la red que atrapa los

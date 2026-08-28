@@ -15,7 +15,7 @@ pentomino-games/           # raíz del repo: la app vive acá, sin subdirectorio
 ├── index.html             # Entry point de Vite (en la raíz, no en public/)
 ├── vite.config.ts         # Plugins: react() + tailwindcss()
 ├── eslint.config.js       # Flat config v9: zonas de dirección + las reglas de CLAUDE.md
-├── netlify.toml           # Config de deploy (ver infra/deploy.md)
+├── vercel.json            # Config de deploy (ver infra/deploy.md)
 ├── pnpm-workspace.yaml    # Workspace de dos paquetes: `.` y `mcp-server`
 ├── pnpm-lock.yaml         # Lockfile único, cubre los dos paquetes
 ├── LICENSE
@@ -294,9 +294,14 @@ eso, el orden de los tests sería parte del oráculo.
 
 Se copia tal cual a `dist/`. Las rutas se referencian desde la raíz del sitio (`/favicon.ico`).
 
+**Acá no va ninguna regla de ruteo.** Hasta el spec 045 hubo un `_redirects` con el fallback de SPA
+`/* /index.html 200`, y estaba documentado como «vivo y necesario» siendo las dos mitades falsas: la
+app no tiene routing —ni `react-router`, ni `pushState`, ni lectura de `window.location`—, así que no
+había ninguna ruta de cliente a la que hacer fallback. El día que la haya, la regla va como `rewrites`
+en `vercel.json` y no como un archivo suelto acá.
+
 | Archivo | Estado |
 |---|---|
-| `_redirects` | **Vivo y necesario.** Regla SPA para Netlify: `/* /index.html 200` |
 | `favicon.ico`, `icon-192.png`, `icon-512.png` | Vivos, referenciados desde `index.html` y `manifest.json`. Reemplazan a los tres íconos de la plantilla de CRA —el logo de React— desde el spec 028: la pieza `X` en `#00A99D`, dibujada con el lenguaje de `DESIGN.md`. Los `.png` se renombran a propósito —`logoNNN.png` era el nombre de CRA—; `favicon.ico` conserva el nombre |
 | `manifest.json` | Vivo, con `name`/`short_name` propios y `theme_color`/`background_color` = `#f8fafc` (spec 028; antes tenía los valores por defecto de CRA, `"name": "Create React App Sample"`) |
 | `robots.txt` | Vivo |

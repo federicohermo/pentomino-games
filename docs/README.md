@@ -19,7 +19,7 @@ secuencia de cinco notas derivada de su identidad y su orientación.
 - [MCP server de dominio](./guides/mcp-domain.md) — Las seis tools —cinco que ejecutan el dominio o lo leen, y la que escribe— y el resource `pentomino://constantes`
 
 ### Infraestructura
-- [Deploy](./infra/deploy.md) — Netlify, rutas relativas a `base` y versión de Node
+- [Deploy](./infra/deploy.md) — Dónde vive la config, qué corre en el build y cuál de las dos ramas se publica
 
 ### Specs
 - [specs/mapa.json](../specs/mapa.json) — El mapa spec↔issue y el estado de cada uno
@@ -65,9 +65,8 @@ que se quiere cubrir. Los seis componentes, `App.tsx` y los dos hooks tienen tes
 
 ## Variables de Entorno
 
-**Ninguna.** La app es enteramente cliente: sin backend, sin API keys, sin endpoints. La única variable
-del proyecto es `NODE_VERSION` en `netlify.toml`, que configura la imagen de build de Netlify y no
-llega al bundle.
+**Ninguna.** La app es enteramente cliente: sin backend, sin API keys, sin endpoints. Y no hay
+excepción escondida en la config del deploy: `vercel.json` no declara ninguna variable de entorno.
 
 Si algún día hace falta una, en Vite debe llevar el prefijo `VITE_` para ser visible desde el cliente
 (`import.meta.env.VITE_FOO`). El prefijo `REACT_APP_` de Create React App **no** funciona y falla en
@@ -78,4 +77,4 @@ silencio.
 ## Enlaces Rápidos
 
 - [CLAUDE.md](../CLAUDE.md) — Guía para Claude Code
-- [netlify.toml](../netlify.toml) — Config de deploy (vive en la raíz del repo, no acá)
+- [vercel.json](../vercel.json) — Config de deploy (vive en la raíz del repo, no acá)

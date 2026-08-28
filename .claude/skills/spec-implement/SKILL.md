@@ -83,7 +83,7 @@ escuchando, eso es un hallazgo sobre el spec —decilo— y no una casilla nueva
   mcp:test en paralelo y es lo único que typechequea cruzando el borde de paquete hacia
   `mcp-server/`, que importa 31 símbolos del dominio. `suite` son las dos pasadas de vitest —la
   limpia y la de coverage, con umbral 100— encadenadas a propósito (spec 029).
-- **El gestor es pnpm.** Nunca `npm install`: deja un `package-lock.json` que Netlify puede preferir.
+- **El gestor es pnpm.** Nunca `npm install`: deja un `package-lock.json` que el deploy puede preferir.
 
 ## Al cerrar
 

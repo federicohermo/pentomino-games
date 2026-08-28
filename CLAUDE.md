@@ -41,8 +41,8 @@ abrirlo:
   `*.browser.test.tsx` y no una carpeta; el `node` mira cinco raíces —`src/`, `__tests__/` en la raíz,
   `docs/`, `specs/` y `.claude/scripts/`—: cada gate vive con **el sujeto** que verifica. **Chromium
   no está en el lockfile**: un clone nuevo necesita `pnpm exec playwright install chromium`.
-- **El gestor es pnpm y no npm** — npm dejaría un `package-lock.json` que Netlify puede preferir. Y
-  `node_modules` es **estricto**: importar una dependencia transitiva falla, a propósito.
+- **El gestor es pnpm y no npm** — el deploy elige el gestor por el lockfile, y un `package-lock.json`
+  al lado le daría a elegir. Y `node_modules` es **estricto**: importar una transitiva falla, a propósito.
 - **Node ≥ 20.19 o ≥ 22.12**, declarado en nuestro propio `engines`. El MCP server pide **≥ 22.18**
   porque corre TypeScript sin compilar, y ese piso vive en el `engines` del server.
 
@@ -167,7 +167,7 @@ así — eso vive en los comentarios, no en la salida de una tool.
 | Convenciones | [docs/guides/conventions.md](./docs/guides/conventions.md) | Organización de `src/`, TypeScript, geometría, estado, comentarios |
 | Troubleshooting | [docs/guides/troubleshooting.md](./docs/guides/troubleshooting.md) | Errores reales ya pisados en este repo |
 | MCP server de dominio | [docs/guides/mcp-domain.md](./docs/guides/mcp-domain.md) | Las seis tools —cinco que ejecutan el dominio o lo leen, y la que escribe— y el resource `pentomino://constantes`, que no se llama como una tool |
-| Deploy | [docs/infra/deploy.md](./docs/infra/deploy.md) | Netlify, `publish = "dist"`, versión de Node |
+| Deploy | [docs/infra/deploy.md](./docs/infra/deploy.md) | Dónde vive la config, qué corre y qué no en el build, y cuál de las dos ramas se publica |
 
 **Trabajo planificado:** desde el spec 034 cada spec **es un issue**, y
 [specs/mapa.json](./specs/mapa.json) —lo que se commitea de `specs/` son él, el `README.md` y los
