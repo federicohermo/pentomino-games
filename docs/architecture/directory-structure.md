@@ -225,8 +225,9 @@ por lo que el test necesita:
     escritos —`index.html`, `public/manifest.json`, `README.md`—. Eran lo único del repo que ningún
     test podía falsear. Vivieron en `src/__tests__/` hasta que se notó lo obvio: lo que miran está en
     la raíz, no en `src/`.
-  - `src/__tests__/` — lo que queda ahí es de la **app**: hoy solo `App.browser.test.tsx`, que corre
-    en el otro proyecto.
+  - `src/__tests__/` — lo que queda ahí es de la **app**: `App.browser.test.tsx` y —desde el spec
+    050— `arbol-accesible.browser.test.tsx`, el gate que recorre el árbol de accesibilidad de la app
+    entera. Los dos corren en el otro proyecto.
   - `docs/__tests__/` — los tres gates de la **documentación**, mudados ahí por el issue #100 porque no
     importan una sola línea de `src/`: `enlaces-resueltos.test.ts` (enlaces y anclas de todo `.md` del
     repo), `mapa-de-directorios.test.ts` (que este archivo nombre cada archivo de producción) y
@@ -244,8 +245,8 @@ por lo que el test necesita:
     (spec 048). Están acá y no en `specs/` porque **el test es del script**, y `specs/` es lo que el
     script manipula.
 - **`browser`** — Chromium de verdad, por Playwright, sobre `src/**/__tests__/*.browser.test.tsx`. Son
-  11: los seis componentes, `App.tsx`, los tres hooks —el tercero es `use-grid.ts`, de los specs
-  021 y 031— y `audio/engine.ts`. Renderizan con
+  12: los seis componentes, `App.tsx`, el gate del árbol de accesibilidad (spec 050), los tres hooks
+  —el tercero es `use-grid.ts`, de los specs 021 y 031— y `audio/engine.ts`. Renderizan con
   `vitest-browser-react`, y el `setupFiles` (`browser-setup.ts`) importa la hoja de estilos **una** vez:
   sin ella `z-10` está en el `className` y `getComputedStyle` devuelve `auto`, o sea que un test de
   layout pasa o falla por el motivo equivocado y en silencio.
