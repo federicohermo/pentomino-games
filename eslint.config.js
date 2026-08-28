@@ -93,12 +93,18 @@ const ZONAS = [
 ]
 
 /**
- * Las reglas que `CLAUDE.md` declara y que hasta el spec 030 no verificaba nadie. Las cinco
- * entran con selectores de esquery y sin agregar un plugin.
+ * Las reglas que la documentacion declara y que hasta el spec 030 no verificaba nadie. Las
+ * SEIS entran con selectores de esquery y sin agregar un plugin: las CUATRO que valen en
+ * todo el repo viven en este array, y las dos que valen en una capa sola —`REGLA_CONSTANTES`
+ * y `REGLA_EFECTOS`— viven abajo, cada una en su bloque.
+ *
+ * Los dos numeros se cuentan, no se recuerdan: son las entradas de este array y las de los
+ * dos `const` de abajo. El spec 049 los movio de cuatro y tres al sumar el barrel y los
+ * efectos, y el docblock se desincroniza igual que la prosa que estas reglas verifican.
  *
  * Van juntas en un array compartido porque `no-restricted-syntax` tambien se REEMPLAZA entre
- * overrides: el bloque de abajo que agrega la quinta regla tiene que repetir estas cuatro o
- * las apaga para los archivos que matchea.
+ * overrides: cada bloque de abajo que agrega la suya tiene que repetir estas cuatro o las
+ * apaga para los archivos que matchea.
  */
 /**
  * Los cuatro nodos que nombran un modulo por su ruta. Se listan los cuatro y no solo
@@ -267,6 +273,24 @@ const REGLA_CONSTANTES = {
     `Program > ExportNamedDeclaration > VariableDeclaration[kind='const'] > ${declarador}`,
   ]).join(', '),
   message: 'Los modulos no declaran constantes: el valor fijo va a <capa>/constants/.',
+}
+
+/**
+ * "Un `.tsx` no declara la logica de un efecto." Hasta el spec 049 esta regla vivio solo en
+ * `docs/guides/conventions.md` y estaba escrita mal en las dos mitades: decia que
+ * los efectos eran seis —son ocho— y que ninguno vivia en un `.tsx` —viven dos—.
+ *
+ * El motivo no es estetico: `react-refresh/only-export-components` prohibe que un `.tsx`
+ * exporte algo ademas del componente, asi que la logica de un efecto declarada ahi adentro
+ * **no se puede exportar y por lo tanto no se puede testear**. Es el mismo argumento con el
+ * que el spec 005 saco el dominio de `App.tsx`.
+ *
+ * Se ancla en el nombre y no en el import porque el import de `react` es legitimo en
+ * `components/`: lo que hay que prohibir es la llamada, igual que con `createContext`.
+ */
+const REGLA_EFECTOS = {
+  selector: "CallExpression[callee.name='useEffect']",
+  message: 'Un .tsx no declara la logica de un efecto: va a un modulo de components/ y el .tsx lo monta.',
 }
 
 export default tseslint.config([
@@ -548,6 +572,53 @@ export default tseslint.config([
     files: ['src/domain/*.ts', 'src/audio/*.ts'],
     rules: {
       'no-restricted-syntax': ['error', ...REGLAS_DEL_REPO, REGLA_CONSTANTES],
+    },
+  },
+
+  {
+    // La regla de los efectos, solo para la capa que puede tener un componente. Repite
+    // `REGLAS_DEL_REPO` porque el override REEMPLAZA `no-restricted-syntax`: sin eso, este
+    // bloque le apagaria a todo `.tsx` las otras cuatro.
+    //
+    // **`__tests__/` queda afuera por decision escrita, no por omision** (issue #147). El
+    // glob `src/**/*.tsx` tambien matchea los **once** `.tsx` de test que hay hoy —doce
+    // cuando aterrice el spec 050, que agrega `src/__tests__/arbol-accesible.browser.test.tsx`—
+    // y ahi entrarian en verde: ninguno declara un efecto, sus dos apariciones de la palabra
+    // (`Playhead.browser.test.tsx:17`, `App.browser.test.tsx:19`) son comentarios. O sea que
+    // el rojo no llegaria nunca y la decision se tomaria sola: un harness futuro que monte un
+    // componente con efecto quedaria bloqueado por una regla que nunca decidio aplicarle. La
+    // prohibicion es sobre la capa de componentes, no sobre lo que la monta, asi que los
+    // directorios de test se nombran — igual que hacen los dos bloques vecinos que ya los
+    // distinguen. Los tests siguen bajo `REGLAS_DEL_REPO` por el bloque general.
+    files: ['src/**/*.tsx'],
+    ignores: ['src/**/__tests__/**/*.tsx'],
+    rules: {
+      'no-restricted-syntax': ['error', ...REGLAS_DEL_REPO, REGLA_EFECTOS],
+    },
+  },
+  {
+    // Los DOS `.tsx` que montan un efecto, nombrados uno por uno y no por glob. El
+    // precedente es el de las tres aserciones no nulas de arriba, y el motivo de que sea por
+    // archivo es que un glob crece solo: `src/components/*.tsx` eximiria a todo componente
+    // futuro sin que nadie lo decida.
+    //
+    // Los dos cumplen el motivo de la regla y violan su letra, que es lo que los hace
+    // excepcion y no tolerancia. Son de UNA LINEA y no declaran logica propia:
+    //
+    //     useEffect(() => iniciarCabeza(capaRef.current, ref.current, resalteRef.current), [])
+    //     useEffect(() => iniciarEspectro(ref.current), [])
+    //
+    // `iniciarCabeza` e `iniciarEspectro` viven en `playhead-loop.ts` y `spectrum-loop.ts`,
+    // fuera del `.tsx`, y si estan testeados —`Playhead.browser.test.tsx` lo dice en su
+    // docblock: «mientras estuvo adentro del `useEffect` de un `.tsx` no se podia exportar»—.
+    // **Si manana uno de ellos crece, la exencion deja de aplicar por su propio argumento**, y
+    // el linter no mide lineas: por eso el motivo esta escrito aca y no solo en el spec.
+    //
+    // Repite `REGLAS_DEL_REPO` por el mismo trap de flat config, y omite `REGLA_EFECTOS`:
+    // eso es exactamente lo que exime.
+    files: ['src/components/Playhead.tsx', 'src/components/Spectrum.tsx'],
+    rules: {
+      'no-restricted-syntax': ['error', ...REGLAS_DEL_REPO],
     },
   },
 
