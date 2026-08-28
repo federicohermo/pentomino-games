@@ -303,9 +303,10 @@ const menorLex = (p: readonly Cell[], q: readonly Cell[]): boolean => {
 };
 
 /**
- * La implementacion de REFERENCIA, escrita distinto a proposito: relaja hasta que nada
- * cambie guardando el CAMINO ENTERO en cada nodo, y desempata comparando esos caminos
- * posicion por posicion.
+ * La implementacion de REFERENCIA, escrita distinto a proposito.
+ *
+ * Relaja hasta que nada cambie guardando el CAMINO ENTERO en cada nodo, y desempata
+ * comparando esos caminos posicion por posicion.
  *
  * `routeBetween` hace lo contrario —Dijkstra por costo desde el destino y reconstruccion
  * hacia adelante leyendo `dist[]`—, asi que si las dos coinciden sobre miles de pares no

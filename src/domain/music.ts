@@ -115,15 +115,15 @@ export function notesForRotation(basePc: number, octave: number, rot: number, re
  * El arpegio de una pieza colocada, EN ORDEN DE REPRODUCCION: las cinco notas MIDI
  * que dispara, con el retrogrado ya aplicado si esta reflejada.
  *
- * Es la derivacion completa `(pieza, rotacion, reflexion) -> notas`, y existe porque
- * llego a estar escrita CUATRO veces —en `App.tsx`, en un panel de piezas colocadas que
- * ya no existe, en `resolve()` del `simulate_board` y en los helpers de dos tests—,
- * cada una componiendo a mano
- * `BASE_MAP` + `notesForRotation` + el
- * `reverse`. `PlacedPiece.notes` existia para no repetirla, pero guardarla en el estado
- * la volvia un dato que podia contradecir a la pieza: nada impedia construir una
- * `PlacedPiece` con `rotation: 1` y las notas de la rotacion 0, y el tablero —que ya
- * derivaba— y el motor —que leia el campo— habrian dicho cosas distintas.
+ * Es la derivacion completa `(pieza, rotacion, reflexion) -> notas`, y es el UNICO lugar
+ * donde se compone `BASE_MAP` + `notesForRotation` + el `reverse`: componerla a mano es
+ * facil, y llego a estar escrita cuatro veces —`App.tsx`, un panel de piezas colocadas,
+ * `resolve()` del `simulate_board` y los helpers de dos tests—.
+ *
+ * **`PlacedPiece` no lleva las notas, y no puede llevarlas**: un campo guardado es un dato
+ * que puede contradecir a la pieza —nada impide construir una `PlacedPiece` con
+ * `rotation: 1` y las notas de la rotacion 0—, y el tablero, que deriva, y el motor, que
+ * leeria el campo, dirian cosas distintas. La derivacion es barata; la contradiccion no.
  *
  * La reflexion invierte el ORDEN EN EL TIEMPO y no que nota le toca a que celda: por eso
  * el `reverse` va sobre el resultado y `notesForRotation` no recibe `mirror`. Quien
@@ -155,10 +155,10 @@ export function arpeggioFor(piece: PieceKey, rotation: number, mirror: boolean, 
  * nodo de 3 o 4 vecinos— se tolera uno en diagonal, que al menos llega a una celda que
  * se toca con la anterior.
  *
- * El orden lo daba antes el anillo angular alrededor del centroide, que no sabe nada de
- * adyacencia: de los 48 pasos de las 12 piezas, **cuatro pasaban por encima** de una
- * celda que todavia no habia sonado —en `I`, `T`, `U` e `Y`— y nueve iban en diagonal.
- * Hoy son 0 y 5.
+ * El anillo angular alrededor del centroide no sabe nada de adyacencia, y por eso entra
+ * como DESEMPATE y no como orden: tomado como orden deja, sobre los 48 pasos de las 12
+ * piezas, **cuatro que pasan por encima** de una celda que todavia no sono —en `I`, `T`,
+ * `U` e `Y`— y nueve en diagonal. El recorrido de `pathThroughCells` da 0 y 5.
  *
  * La diagonal se tolera SOLO adentro de la pieza: el recorrido entre piezas
  * (`routeBetween`) se sigue moviendo en cruz. Es asimetrico a proposito y esta
@@ -172,8 +172,8 @@ export function arpeggioFor(piece: PieceKey, rotation: number, mirror: boolean, 
  * Se le pasa la forma CANONICA, no la transformada. El mapeo se arrastra por
  * indice —rotar es un `map`, asi que la celda `k` sigue siendo la celda `k`—, y
  * es la trampa mas cara de esta capa: correrla sobre `p.cells`, que ya esta rotada
- * y trasladada, compila igual y devuelve otro mapeo. Con el camino esto ya no es una
- * necesidad geometrica —rotar y reflejar preservan la adyacencia, asi que un camino
+ * y trasladada, compila igual y devuelve otro mapeo. Con el camino no es una
+ * necesidad GEOMETRICA —rotar y reflejar preservan la adyacencia, asi que un camino
  * sigue siendo un camino en las 8 orientaciones— pero sigue siendo la regla: el
  * desempate angular SI depende de la orientacion, y el arrastre por indice es lo que
  * sostiene a `ANCHOR_INDEX` y a las puertas del circuito.
@@ -217,9 +217,10 @@ export function degreeByCellIndex(cells: readonly Cell[]): number[] {
 }
 
 /**
- * En que PASO DEL ORDEN DE REPRODUCCION suena cada celda de una forma. DEVUELVE POR
- * INDICE, igual que `degreeByCellIndex`: el elemento `k` es el paso (`0..n-1`) de
- * `cells[k]`.
+ * En que PASO DEL ORDEN DE REPRODUCCION suena cada celda de una forma.
+ *
+ * DEVUELVE POR INDICE, igual que `degreeByCellIndex`: el elemento `k` es el paso
+ * (`0..n-1`) de `cells[k]`.
  *
  * Es el grado con el retrogrado ya aplicado, y por lo tanto **lo unico del mapeo
  * celda-a-nota que la reflexion mueve**: sin `mirror` el paso ES el grado; con

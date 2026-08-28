@@ -119,10 +119,9 @@ beforeEach(async () => {
 /**
  * Las celdas del tablero, en orden de indice.
  *
- * Por ROL y no por estructura: la grilla dejo de ser hijos planos y paso
- * a ser `role="row"` con celdas adentro, asi que `div.grid > div` devuelve las filas. Y
- * cuantas son ya no se puede escribir: desde el 031 el tablero mide lo que entra en la
- * ventana del navegador de test.
+ * Por ROL y no por estructura: la grilla es `role="row"` con celdas adentro, asi que
+ * `div.grid > div` devuelve las filas y no las celdas. Y cuantas son no se puede
+ * escribir: desde el 031 el tablero mide lo que entra en la ventana del navegador de test.
  */
 const celdas = (c: HTMLElement) => [...c.querySelectorAll('[role="gridcell"]')] as HTMLElement[];
 /**
@@ -149,9 +148,11 @@ const conNota = (c: HTMLElement) => celdas(c).filter(e => baldosa(e).textContent
 
 /**
  * Lo que dice el fantasma, celda por celda: cambia con la rotacion (otra nota) y con la
- * reflexion (otro `#N`). Vive a nivel de modulo y no adentro de un `describe` porque lo
- * leen los dos escritores del cursor —el mouse y el foco del teclado—, que estan en
- * bloques distintos; dos copias serian dos formas de medir el mismo fantasma distinto.
+ * reflexion (otro `#N`).
+ *
+ * Vive a nivel de modulo y no adentro de un `describe` porque lo leen los dos escritores
+ * del cursor —el mouse y el foco del teclado—, que estan en bloques distintos; dos copias
+ * serian dos formas de medir el mismo fantasma distinto.
  */
 const notaDelFantasma = (c: HTMLElement) => {
   const conTexto = celdas(c).filter(e => baldosa(e).textContent !== '');
@@ -176,8 +177,7 @@ const click = (el: HTMLElement, init: MouseEventInit = {}) =>
 
 describe('App — la composicion', () => {
   it('021 — el tablero y los dos flotantes, sin una sola tarjeta', async () => {
-    // Hasta el 021 este caso se llamaba «monta las tres tarjetas y el pie con los gestos».
-    // Ya no hay tarjetas: el tablero ES la pantalla y los dos paneles flotan encima. Se
+    // No hay tarjetas: el tablero ES la pantalla y los dos paneles flotan encima. Se
     // afirma por ROL Y NOMBRE y no por `className`, que es lo que deja que el test
     // sobreviva al proximo cambio de layout.
     const { container } = await render(<App />);
@@ -540,9 +540,9 @@ describe('App — la orientacion, por panel y por gesto', () => {
     // AC7 del 017: sin llevar el regimen a las tres derivaciones, cambiarlo no
     // re-derivaria el tablero.
     const { container } = await render(<App />);
-    // Se rota con `Shift` y no con el boton `90°`, que ya no existe. Lo que este test
-    // mide no cambio — que el regimen llegue a las tres derivaciones — pero el gesto que
-    // lo pone en una rotacion distinta de cero, si.
+    // Se rota con `Shift`: no hay boton `90°`, la rotacion es un modificador del gesto
+    // directo. Lo que el test mide —que el regimen llegue a las tres derivaciones— es
+    // independiente del gesto con el que se llegue a una rotacion distinta de cero.
     tapDeModificador(window, 'Shift');
     hover(celda(container, 4, 3));
     await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length));
@@ -718,8 +718,8 @@ describe('App — lo que cuesta mover el cursor', () => {
     expect(panel.ejecuciones).toBe(0);
 
     // La memo no lo congelo: cuando la orientacion cambia DE VERDAD, se ejecuta. Sin esta
-    // mitad, el cero de arriba lo cumpliria igual un panel roto. Se rota con `Shift`
-    // porque el boton `90°` que estaba escrito aca ya no existe.
+    // mitad, el cero de arriba lo cumpliria igual un panel roto. Se rota con `Shift`, que
+    // es el gesto que hay: no existe un boton `90°`.
     tapDeModificador(window, 'Shift');
     await vi.waitFor(() => expect(panel.ejecuciones).toBe(1));
   });

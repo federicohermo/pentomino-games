@@ -47,18 +47,16 @@ export const DEFAULT_REGIMEN = REGIMEN.escala;
 /**
  * Notas que dispara una pieza: las cuatro formulas son pentatonicas.
  *
- * Coincide con `CELLS_PER_PIECE` y **ya no es una coincidencia**: son 5 notas
- * porque la escala es pentatonica y 5 celdas porque la pieza es un pentomino,
- * pero `degreeByCellIndex` empareja las dos listas y cada
- * celda tiene su nota.
+ * Coincide con `CELLS_PER_PIECE` y **tiene que coincidir**, no es una coincidencia: son 5
+ * notas porque la escala es pentatonica y 5 celdas porque la pieza es un pentomino, y
+ * `degreeByCellIndex` empareja las dos listas para que cada celda tenga su nota.
  *
- * O sea que los dos numeros pasaron de coincidir a tener que coincidir: una
- * formula de 4 notas dejaria una celda sin nota —`ascendente[4]` seria
+ * Una formula de 4 notas dejaria una celda sin nota —`ascendente[4]` seria
  * `undefined`, y `midiName` de eso no explota: devuelve `undefinedNaN` y lo
  * pinta en la celda— y una de 6 dejaria una nota que ninguna celda dispara.
  *
  * Lo verifica `checkNotes()` de `invariants.ts`, que es donde tiene que estar:
- * escrito solo aca era una afirmacion, no una red.
+ * escrito solo aca es una afirmacion, no una red.
  */
 export const NOTES_PER_PIECE = 5;
 
@@ -79,10 +77,11 @@ export const BASE_MAP: Record<PieceKey, number> = {
 export const DEFAULT_OCTAVE = 4;
 
 /**
- * Tolerancia de las dos comparaciones de `degreeByCellIndex`: "esta celda cae
- * sobre el centroide" —una distancia contra el epsilon— y "estas dos celdas
- * tienen el mismo angulo" —el tamano de la cubeta a la que se redondea el
- * angulo antes de ordenar—.
+ * Tolerancia de las dos comparaciones de `degreeByCellIndex`.
+ *
+ * Son estas dos: "esta celda cae sobre el centroide" —una distancia contra el
+ * epsilon— y "estas dos celdas tienen el mismo angulo" —el tamano de la cubeta
+ * a la que se redondea el angulo antes de ordenar—.
  *
  * Va contra un epsilon y no contra `0` porque el centroide es un promedio de
  * quintos: `2/5 + 2/5 + 1/5` no siempre da exactamente `1`, y una celda que

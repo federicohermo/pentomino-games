@@ -13,10 +13,12 @@ import type { PlacedPiece } from '../types/board.types.ts';
 const PIECES = Object.keys(SHAPES) as PieceKey[];
 
 /**
- * La cadena de colocacion COMPLETA, igual a la de la app: rotar, reflejar si toca,
- * y bajar la celda de agarre a `(x, y)`. Se replica en vez de simplificarse porque
- * las puertas se leen por indice sobre `p.cells`, y una forma armada de otra manera
- * verificaria un mapeo que la app nunca produce.
+ * La cadena de colocacion COMPLETA, igual a la de la app: rotar, reflejar si toca, y
+ * bajar la celda de agarre a `(x, y)`.
+ *
+ * Se replica en vez de simplificarse porque las puertas se leen por indice sobre
+ * `p.cells`, y una forma armada de otra manera verificaria un mapeo que la app nunca
+ * produce.
  *
  * La pieza NO lleva sus notas: las deriva `buildSequence` con `arpeggioFor`. El oraculo
  * de este archivo las compone a mano (`notaEsperada`) para no verificar una funcion
@@ -37,8 +39,10 @@ const colocar = (piece: PieceKey, rot: number, mirror: boolean, x: number, y: nu
 
 /**
  * El arpegio que le corresponde a una pieza colocada, compuesto a mano: `BASE_MAP` +
- * `notesForRotation` + el retrogrado. Es el oraculo de `arpeggioFor`, y por eso no la
- * llama — si la llamara, los tests de las notas de cada paso serian tautologias.
+ * `notesForRotation` + el retrogrado.
+ *
+ * Es el oraculo de `arpeggioFor`, y por eso no la llama — si la llamara, los tests de
+ * las notas de cada paso serian tautologias.
  */
 const notasDe = (p: PlacedPiece): number[] => {
   const asc = notesForRotation(BASE_MAP[p.piece], DEFAULT_OCTAVE, p.rotation, REGIMEN.escala);
@@ -56,9 +60,10 @@ const celdasEnOrden = (p: PlacedPiece): Cell[] => {
 };
 
 /**
- * Las dos puertas, derivadas afuera de `sequence.ts`. Se leen del orden de
- * reproduccion y NO de los grados 0 y 4: esa era la derivacion del 009, y con
- * reflexion daba las dos invertidas.
+ * Las dos puertas, derivadas afuera de `sequence.ts`.
+ *
+ * Se leen del orden de reproduccion y NO de los grados 0 y 4: esa era la derivacion del
+ * 009, y con reflexion daba las dos invertidas.
  */
 const puertas = (p: PlacedPiece): { entrada: Cell; salida: Cell } => {
   const orden = celdasEnOrden(p);
@@ -800,9 +805,10 @@ describe('determinismo', () => {
     // intervalos mas largo o mas corto segun como se armo. Sobre 120 tableros de 5 piezas
     // al azar pasaba en el 8,3 %; con los pasos como segundo criterio pasa en el 0 %.
     //
-    // El tablero es otro, por el mismo motivo que el del test de
-    // arriba: el que estaba (N, V, Z, U, F) dejo de tener dos circuitos optimos cuando
-    // las puertas se movieron, asi que ya no ejercia el desempate.
+    // El tablero es otro que el del test de arriba, y por el mismo motivo: hace falta uno
+    // con dos circuitos optimos que difieran en PASOS, o el desempate no se ejerce y el
+    // test pasa sin medir nada. Con las puertas donde estan, el (N, V, Z, U, F) no lo
+    // cumple.
     const spec: [PieceKey, number, number, number][] = [
       ['N', 3, 6, 1], ['X', 0, 4, 1], ['U', 3, 2, 3], ['I', 3, 0, 2], ['P', 1, 8, 2],
     ];
@@ -1151,8 +1157,8 @@ describe('un cruce sobre una pieza muteada no suena', () => {
 
 describe('D4 — dos eventos no caen nunca en el mismo instante, tampoco con muteo', () => {
   it('ningun offset se repite entre clicks ni choca con una nota', () => {
-    // La garantia es del 009 y este spec mete una clase nueva de click adentro del
-    // intervalo que antes ocupaba un arpegio. Si dos coincidieran, el motor agendaria
+    // La garantia es del 009 y este spec mete una clase nueva de click adentro del mismo
+    // intervalo que ocupa un arpegio. Si dos coincidieran, el motor agendaria
     // los dos y las amplitudes se sumarian.
     for (const board of [CUATRO, CON_X]) {
       for (let i = 0; i < board.length; i++) {

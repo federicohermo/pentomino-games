@@ -249,7 +249,7 @@ function shortestCircuit(cost: readonly (readonly number[])[]): number[] {
   const g = new Int32Array(n * size).fill(INF);
 
   // `mask` recorre subconjuntos de {1..n-1}: el 0 nunca esta pendiente porque es el
-  // arranque. Con `mask` vacio ya no queda nada por visitar y solo falta volver.
+  // arranque. Con `mask` vacio no queda nada por visitar y solo falta volver.
   for (let j = 0; j < n; j++) g[j * size] = cost[j][0];
 
   for (let mask = 2; mask < size; mask++) {
@@ -400,8 +400,9 @@ export function buildSequence(placed: readonly PlacedPiece[], regimen: RegimenDe
     // cambia que se oye, no cuando.
     if (p.muted) clicks.push(...clicksDeMuteada(p, offset));
     // `arpeggioFor` devuelve un array nuevo en cada llamada, asi que no hay copia
-    // defensiva que hacer: `Step.notes` es mutable por contrato y no aliasa nada. La
-    // copia que habia aca protegia de mutar `PlacedPiece.notes`, que ya no existe.
+    // defensiva que hacer: `Step.notes` es mutable por contrato y no aliasa nada. Una
+    // copia aca solo haria falta si las notas vinieran guardadas en `PlacedPiece`, y el
+    // docblock de `arpeggioFor` explica por que no vienen ni pueden venir.
     else steps.push({ pieceId: p.id, offset, notes: arpeggioFor(p.piece, p.rotation, p.mirror, regimen) });
 
     const ultima = offset + (CELLS_PER_PIECE - 1);

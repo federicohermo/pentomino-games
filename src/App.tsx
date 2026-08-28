@@ -107,7 +107,7 @@ export default function App() {
   // desincronizarse del primero.
   //
   // Lo que se DIBUJA con esto es `cursor`, más abajo: la grilla cambia de tamaño sola y
-  // el par guardado acá puede quedar apuntando a una celda que ya no existe.
+  // el par guardado acá puede quedar apuntando a una celda que la grilla nueva no tiene.
   const [hover, setHover] = useState<Cell | null>(null);
 
   // Si el foco del DOM está adentro del tablero. Es lo único que `hover` no puede contestar
@@ -213,7 +213,7 @@ export default function App() {
   const visibles = useMemo(() => placed.filter(p => cabeEn(p, dims)), [placed, dims]);
 
   // Y el mismo corte para el CURSOR, que es el otro estado que la grilla nueva puede dejar
-  // apuntando a una celda que ya no existe. `hover` lo escriben el mouse y el foco (spec
+  // apuntando a una celda que no tiene. `hover` lo escriben el mouse y el foco (spec
   // 026) y ninguno de los dos se entera de un `resize`: quien mueve el borde de la ventana
   // —o aprieta `Ctrl`+`=`, que es zoom y por lo tanto viewport— no toca ni el mouse ni el
   // teclado, asi que el par que quedo guardado puede caer afuera de `dims`.
@@ -376,10 +376,10 @@ export default function App() {
   // lo correcto. Lo que queda es la latencia de pausar, que el motor ya documenta: los
   // 100 ms del lookahead más la cola del arpegio ya agendado.
   //
-  // Y ese párrafo valía para UNA de las dos colas. La otra —la de dibujo, en
+  // Y ese párrafo vale para UNA de las dos colas. La otra —la de dibujo, en
   // `components/route-source.ts`— avanza sólo cuando el motor cierra un ciclo, o sea
-  // nunca con el reloj parado: sin reiniciarla, el velo de las piezas que ya no están
-  // se seguía dibujando sobre un tablero vacío hasta el próximo Play. Las
+  // nunca con el reloj parado: sin reiniciarla, el velo de las piezas borradas
+  // se sigue dibujando sobre un tablero vacío hasta el próximo Play. Las
   // dos se reinician juntas o vuelve el bug, y las dos entran por `use-engine.ts`, que
   // es el único módulo por el que este shell le habla al motor.
   // Y lo que NO toca, que hay que decirlo porque la constante está justo

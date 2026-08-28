@@ -34,11 +34,11 @@ export const GRID_DEFAULT: Dims = { w: 10, h: 6 };
 /**
  * Cuantas piezas acepta el tablero, sea del tamano que sea.
  *
- * **Es el numero que antes garantizaba el AREA y no una regla.** El tablero
- * medía 60 celdas y un pentomino ocupa 5, asi que nunca entraban mas de 12 y nadie tenia
- * que escribirlo — `shortestCircuit` lo da por sentado en su docblock. Con el tablero
- * saliendo del viewport el area deja de garantizarlo: 1920 x 1080 dan 390 celdas, o sea 78
- * piezas.
+ * **Es una regla y no una consecuencia del AREA.** En el tablero de referencia el area
+ * alcanza para deducirlo —60 celdas y 5 por pentomino son 12— pero con el tablero saliendo
+ * del viewport no alcanza: 1920 x 1080 dan 390 celdas, o sea 78 piezas. `shortestCircuit`
+ * da 12 por sentadas en su docblock, asi que el limite tiene que estar escrito, y esta
+ * escrito aca.
  *
  * Y 78 no es un tablero mas grande: es otro problema. El circuito se resuelve con
  * Held-Karp **exacto**, `O(n^2 * 2^n)`, y eso esta elegido a proposito —el greedy da

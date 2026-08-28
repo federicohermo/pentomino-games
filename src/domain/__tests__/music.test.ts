@@ -116,8 +116,9 @@ describe('notesForRotation', () => {
 });
 
 /**
- * La derivacion celda→nota completa, tal como la arma quien dibuja el tablero: el
- * grado sale de la forma CANONICA indexado por `k`, y la nota sale del arpegio
+ * La derivacion celda→nota completa, tal como la arma quien dibuja el tablero.
+ *
+ * El grado sale de la forma CANONICA indexado por `k`, y la nota sale del arpegio
  * ASCENDENTE indexada por ese grado.
  *
  * El regimen es parametro y no `escala` fijo: es lo unico que separa la cuenta de las
@@ -140,8 +141,10 @@ const distanciaAlCentro = (p: PieceKey, k: number) => {
 
 /**
  * Tests de CARACTERIZACION del regimen `escala`, escritos ANTES de que existiera la
- * segunda rama. No describen una regla nueva: congelan la que ya
- * habia, para que romperla falle aca y no en una escucha tres pasos despues.
+ * segunda rama.
+ *
+ * No describen una regla nueva: congelan la que ya habia, para que romperla falle aca y
+ * no en una escucha tres pasos despues.
  *
  * Lo que congelan no son las notas —eso ya lo hace la referencia congelada del 012—
  * sino la propiedad de que rotar CONSERVA parte del material. Es justo lo que el
@@ -337,7 +340,7 @@ describe('degreeByCellIndex', () => {
     for (const p of PIECES) {
       const d = distanciasDelArpegio(p);
       // Manhattan 2 con celdas que se tocan es exactamente un paso en diagonal; 3 o mas
-      // seria pasar por encima de algo, que es lo que ya no puede pasar.
+      // seria pasar por encima de algo, que es justo lo que el recorrido no hace nunca.
       expect(d.filter(x => x > 1), p).toHaveLength(diagonales[p]);
       expect(d.filter(x => x > 2), p).toHaveLength(0);
     }
@@ -573,8 +576,9 @@ describe('la reflexion no cambia la nota de una celda', () => {
  * **La fila de la `Z` SI se re-derivo, en el spec 036, y esa es la unica excepcion.**
  * No contradice la regla de arriba: lo que la regla prohibe es regenerar la tabla para
  * que un test rojo se ponga verde, porque ahi la referencia deja de referir a nada. Acá
- * cambio el INSUMO —la `Z` era la `N` reflejada y paso a ser el pentomino Z—, asi que
- * la fila vieja describia una pieza que ya no existe. Las otras once no se tocaron, y
+ * cambio el INSUMO —la `Z` estaba escrita como la `N` reflejada, y el pentomino Z es otra
+ * forma—, asi que la fila vieja describia una pieza distinta de la que la tabla nombra.
+ * Las otras once no se tocaron, y
  * que el diff no las mueva es parte de la verificacion.
  *
  * La fila nueva se lee al reves que la vieja, y no es un error de transcripcion: la `Z`
