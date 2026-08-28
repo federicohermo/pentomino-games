@@ -41,8 +41,12 @@ eso `pnpm-lock.yaml` **tiene que estar versionado** y no puede haber un `package
 si los dos están, el deploy y la máquina de quien desarrolla resuelven versiones distintas, en
 silencio.
 
-La versión de pnpm sale del campo `packageManager` del `package.json`, vía Corepack. Corepack no
-acepta rangos semver ahí: va la versión exacta (`pnpm@10.33.0`).
+**La versión de pnpm no sale de `packageManager`.** Vercel la deduce del `lockfileVersion` del
+`pnpm-lock.yaml` —hoy `9.0`, que su tabla de gestores sirve con «pnpm 9 o 10»— y sólo mira
+`packageManager` si el proyecto tiene la variable de entorno `ENABLE_EXPERIMENTAL_COREPACK=1`, que no
+tiene a propósito (ver «Variables de entorno»). O sea que el deploy **no está pinneado** a la versión
+exacta que declara el repo (`pnpm@10.33.0`), y ese campo lo leen Corepack en local y el
+`pnpm/action-setup` del workflow, que sí lo honran.
 
 ## Qué corre en el build y qué no
 
@@ -83,7 +87,9 @@ no un pin. Dónde vive el pin del deploy y quién lo cruza contra los dos pisos 
 ## Variables de entorno
 
 **Ninguna.** La app es enteramente cliente: sin backend, sin API keys, sin endpoints. La sección
-*Environment Variables* del proyecto debe quedar vacía.
+*Environment Variables* del proyecto debe quedar vacía. La única que Vercel documenta y que acá
+cambiaría algo es `ENABLE_EXPERIMENTAL_COREPACK=1`, que haría que el deploy honre `packageManager`;
+poner una variable de entorno para pinnear el gestor es una decisión propia, y está abierta en **#155**.
 
 Si algún día hace falta una, en Vite tiene que llevar el prefijo `VITE_` para ser visible desde el
 cliente (`import.meta.env.VITE_FOO`). El prefijo `REACT_APP_` de Create React App **no** funciona y
