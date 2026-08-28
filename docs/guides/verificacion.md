@@ -130,7 +130,8 @@ Spec 029. El corte no es por capa sino por lo que el test necesita:
   `docs/__tests__/` los tres de la **documentación** —enlaces y anclas de todo `.md`, el mapa de
   `directory-structure.md` y el techo de 200 líneas de `CLAUDE.md`, issue #100—; `specs/__tests__/`
   los dos del **registro** —la convención y `mapa.json`, spec 035—; y `.claude/scripts/__tests__/` los
-  dos de los **scripts** —el de publicar e hidratar, y el del gate de rama del spec 037—, que son del
+  tres de los **scripts** —el de publicar e hidratar, el del gate de rama del spec 037, y `gh.test.ts`
+  sobre los tres caminos del lanzador de `gh` (issue #125)—, que son del
   script y no de `specs/`, que es lo que el script manipula. El `include` de coverage sigue siendo
   `src/**`, y desde el 038 eso **no alcanza**: v8 reporta todo archivo que se **ejecutó**, y el
   `include` sólo decide cuáles de los que nadie tocó se suman al denominador. `mapa-de-specs.test.ts`
