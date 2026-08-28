@@ -383,13 +383,33 @@ export default tseslint.config([
       'import-x/no-restricted-paths': ['error', { basePath: import.meta.dirname, zones: ZONAS }],
 
       // `import-x/no-cycle` NO esta, y la ausencia es la decision. Se probó y se midió:
-      // encuentra CERO ciclos y cuesta 15 de los 25 segundos del lint —el 60 %— porque
-      // recorre el grafo entero por archivo, y `mcp-server/` importa 31 simbolos de `src/`.
+      // encuentra CERO ciclos y cuesta ~15 s sobre un `pnpm lint` que hoy tarda **21,78 s**
+      // —o sea que lo pasaria de 21,78 a ~37, mas de vez y media— porque recorre el grafo
+      // entero por archivo, y `mcp-server/` importa 31 simbolos de `src/`. El comentario
+      // decia «25 segundos» y ese era el lint de otro momento del repo: el numero viejo es
+      // lo que hacia que la decision se leyera como opinable.
+      //
       // Lo que compraria ya lo compran las zonas de arriba: adentro de `domain/` la
       // direccion es un DAG de tres niveles y cada arista que podria cerrar un ciclo esta
       // prohibida por nombre, asi que un ciclo ahi no es improbable sino imposible. Fuera de
-      // `domain/` las capas tampoco se pueden ver entre si. Si algun dia aparece un
-      // subdirectorio con varios modulos hermanos sin zona propia, esta a una linea.
+      // `domain/` las capas tampoco se pueden ver entre si.
+      //
+      // **Lo unico que seguiria comprando es un ciclo entre hermanos sin zona**, y eso es lo
+      // que hay que mirar el dia que se revise: `src/components/` tiene trece `.ts` y seis
+      // `.tsx` sin zona declarada entre ellos, o sea que la condicion que el issue #58 fijo
+      // para revertir —«un subdirectorio con varios modulos hermanos sin zona propia»— ya se
+      // cumplia cuando se escribio. No cambio el repo; lo que se revisa cada vez es el
+      // precio.
+      //
+      // **Y hay una arista nueva que el spec 048 agrega, en contra:** su hook corre el lint
+      // UNA VEZ POR TURNO sobre la lista de lo que cambio —4,42 s medidos para un archivo,
+      // con presupuesto de menos de 6 s—, y ahi `no-cycle` construye el grafo entero en ese
+      // arranque sin una corrida completa sobre la que amortizarlo. O sea que el sobrecosto
+      // se paga por turno, no una vez por PR.
+      //
+      // Si algun dia se enciende igual, el cambio NO es una linea: `CLAUDE.md` y
+      // `docs/guides/verificacion.md` dicen «23,7 s en paralelo contra 41,2 s en serie» y
+      // `lint` es el nodo largo de ese paralelo, asi que las dos frases dejan de ser ciertas.
 
       // Los tres tsconfig tienen `verbatimModuleSyntax: true`, o sea que importar un tipo
       // sin `type` ROMPE EL BUILD en vez de avisar. La regla es autofixable: el error deja
