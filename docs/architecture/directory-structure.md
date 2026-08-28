@@ -10,12 +10,12 @@ pentomino-games/           # raíz del repo: la app vive acá, sin subdirectorio
 ├── public/                # Assets servidos tal cual, copiados a dist/
 ├── src/                   # Todo el código de la app
 ├── mcp-server/            # MCP server de dominio: tooling, NO entra al bundle
-├── __tests__/             # Los gates de la raíz: index.html, public/manifest.json, README.md
+├── __tests__/             # Gates de lo que no vive en src/: los archivos de la raíz y el modelo de ramas
 ├── .mcp.json              # Registra el server; commiteado, sin nada que configurar
 ├── index.html             # Entry point de Vite (en la raíz, no en public/)
 ├── vite.config.ts         # Plugins: react() + tailwindcss()
 ├── eslint.config.js       # Flat config v9: zonas de dirección + las reglas de CLAUDE.md
-├── netlify.toml           # Config de deploy (ver infra/deploy.md)
+├── vercel.json            # Config de deploy (ver infra/deploy.md)
 ├── pnpm-workspace.yaml    # Workspace de dos paquetes: `.` y `mcp-server`
 ├── pnpm-lock.yaml         # Lockfile único, cubre los dos paquetes
 ├── LICENSE
@@ -212,19 +212,21 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 `pnpm test` corre Vitest en **dos proyectos y un solo comando** (spec 029). El corte no es por capa sino
 por lo que el test necesita:
 
-- **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre **cinco** raíces. Son 30
-  archivos: 20 en `src/`, 3 en la raíz, 3 en `docs/`, 2 en `specs/` y 2 en `.claude/scripts/`. El
+- **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre **cinco** raíces. Son 32
+  archivos: 20 en `src/`, 4 en la raíz, 3 en `docs/`, 2 en `specs/` y 3 en `.claude/scripts/`. El
   dominio es puro y el audio tiene una implementación nativa de Web Audio, así que corren ahí sin
   adaptación. Los que **no** son el test de un módulo leen un archivo **del disco**, porque el proyecto
   de navegador sirve su propio documento y nunca carga esos archivos, y **cada uno vive al lado del
   sujeto que verifica** — no de lo que el sujeto toca:
-  - `__tests__/` en la **raíz del repo** — los tres que cruzan una constante de la app contra un
-    archivo de la raíz que la envuelve: `documento.test.ts` (spec 025) verifica el `lang` de
+  - `__tests__/` en la **raíz del repo** — los cuatro que cruzan una afirmación contra los archivos
+    de fuera de `src/` que la sostienen: `documento.test.ts` (spec 025) verifica el `lang` de
     `index.html`, y `fondo-sincronizado.test.ts` y `nombre-sincronizado.test.ts` (spec 028) verifican
     que el color de fondo y el nombre de la app digan lo mismo en los tres lugares donde están
     escritos —`index.html`, `public/manifest.json`, `README.md`—. Eran lo único del repo que ningún
     test podía falsear. Vivieron en `src/__tests__/` hasta que se notó lo obvio: lo que miran está en
-    la raíz, no en `src/`.
+    la raíz, no en `src/`. El cuarto es `ramas-sincronizadas.test.ts` (spec 047), que cruza el modelo
+    de dos ramas entre los dos workflows, el `RAMAS_COMPARTIDAS` de `gate-de-spec.mjs` y
+    `docs/infra/ramas.md`.
   - `src/__tests__/` — lo que queda ahí es de la **app**: `App.browser.test.tsx` y —desde el spec
     050— `arbol-accesible.browser.test.tsx`, el gate que recorre el árbol de accesibilidad de la app
     entera. Los dos corren en el otro proyecto.
@@ -237,10 +239,11 @@ por lo que el test necesita:
     y —cuando hay carpetas hidratadas— contra los `pendientes` que calcula `readSpecStatus`, para que
     un spec cerrado con trabajo abierto dé rojo (spec 038); y `specs-convencion.test.ts` que las
     carpetas y el registro digan lo mismo.
-  - `.claude/scripts/__tests__/` — los dos de los **scripts**: `scripts-de-specs.test.ts` sobre lo puro
-    de `publicar-spec.mjs` e `hidratar-specs.mjs`, y `gate-de-spec.test.ts` sobre el gate de rama del
-    spec 037. Están acá y no en `specs/` porque **el test es del script**, y `specs/` es lo que el
-    script manipula.
+  - `.claude/scripts/__tests__/` — los tres de los **scripts**: `scripts-de-specs.test.ts` sobre lo puro
+    de `publicar-spec.mjs` e `hidratar-specs.mjs`, `gate-de-spec.test.ts` sobre el gate de rama del
+    spec 037, y `gh.test.ts` sobre los tres caminos del lanzador de `gh` (issue #125), que son el único
+    lugar donde «no hay `gh` en esta máquina» se puede fabricar. Están acá y no en `specs/` porque **el
+    test es del script**, y `specs/` es lo que el script manipula.
 - **`browser`** — Chromium de verdad, por Playwright, sobre `src/**/__tests__/*.browser.test.tsx`. Son
   12: los seis componentes, `App.tsx`, el gate del árbol de accesibilidad (spec 050), los tres hooks
   —el tercero es `use-grid.ts`, de los specs 021 y 031— y `audio/engine.ts`. Renderizan con
@@ -295,9 +298,14 @@ eso, el orden de los tests sería parte del oráculo.
 
 Se copia tal cual a `dist/`. Las rutas se referencian desde la raíz del sitio (`/favicon.ico`).
 
+**Acá no va ninguna regla de ruteo.** Hasta el spec 045 hubo un `_redirects` con el fallback de SPA
+`/* /index.html 200`, y estaba documentado como «vivo y necesario» siendo las dos mitades falsas: la
+app no tiene routing —ni `react-router`, ni `pushState`, ni lectura de `window.location`—, así que no
+había ninguna ruta de cliente a la que hacer fallback. El día que la haya, la regla va como `rewrites`
+en `vercel.json` y no como un archivo suelto acá.
+
 | Archivo | Estado |
 |---|---|
-| `_redirects` | **Vivo y necesario.** Regla SPA para Netlify: `/* /index.html 200` |
 | `favicon.ico`, `icon-192.png`, `icon-512.png` | Vivos, referenciados desde `index.html` y `manifest.json`. Reemplazan a los tres íconos de la plantilla de CRA —el logo de React— desde el spec 028: la pieza `X` en `#00A99D`, dibujada con el lenguaje de `DESIGN.md`. Los `.png` se renombran a propósito —`logoNNN.png` era el nombre de CRA—; `favicon.ico` conserva el nombre |
 | `manifest.json` | Vivo, con `name`/`short_name` propios y `theme_color`/`background_color` = `#f8fafc` (spec 028; antes tenía los valores por defecto de CRA, `"name": "Create React App Sample"`) |
 | `robots.txt` | Vivo |

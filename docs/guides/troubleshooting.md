@@ -198,5 +198,7 @@ Revisar la versión de node: el server pide **≥ 22.18** y con Node 20 no levan
 
 ## Deploy
 
-Ver [infra/deploy.md](../infra/deploy.md) para los dos errores clásicos de Netlify en este repo: la
-ruta de `publish` duplicada y la versión de Node.
+Ver [infra/deploy.md](../infra/deploy.md) para dónde vive la config y qué corre en el build. **Acá no
+hay ningún error de deploy anotado**, y es a propósito: la plataforma cambió con el spec 045 y los dos
+que estaban registrados eran de la anterior. Cuando se cometa uno en Vercel, va acá con lo que se midió
+—no antes, que sería inventarlo.
