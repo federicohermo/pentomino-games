@@ -287,9 +287,17 @@ const REGLA_CONSTANTES = {
  *
  * Se ancla en el nombre y no en el import porque el import de `react` es legitimo en
  * `components/`: lo que hay que prohibir es la llamada, igual que con `createContext`.
+ *
+ * **Y nombra los DOS hooks, no solo `useEffect`.** El spec 049 lo escribio con uno; al
+ * implementarlo aparecio que `use-grid.ts` monta su efecto con `useLayoutEffect` —el 021 lo
+ * eligio a proposito, para que medir el viewport no se vea durante un cuadro—, asi que un
+ * selector anclado solo en `useEffect` dejaba abierta la mitad de la puerta: la misma logica,
+ * en el mismo `.tsx`, con el otro nombre. Es exactamente la red con un agujero que se lee
+ * como completa, que es lo que el spec 030 vino a borrar. Cero hallazgos con las dos: hoy
+ * ningun `.tsx` declara un `useLayoutEffect`.
  */
 const REGLA_EFECTOS = {
-  selector: "CallExpression[callee.name='useEffect']",
+  selector: "CallExpression[callee.name=/^use(Layout)?Effect$/]",
   message: 'Un .tsx no declara la logica de un efecto: va a un modulo de components/ y el .tsx lo monta.',
 }
 
