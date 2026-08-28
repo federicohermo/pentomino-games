@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +35,18 @@ import { join, dirname, resolve } from 'node:path';
  * Este archivo esta fuera del `include` de coverage (`src/**`), asi que no entra al umbral de
  * 100: el criterio de suficiencia es que cada caso sea un modo de falla real.
  */
+
+/**
+ * **El timeout se afloja acá, y no es pereza.** Cada caso que llega a ESLint arranca un
+ * proceso de verdad: medido con la maquina descargada, 1,4 s por caso; con los cuatro nodos de
+ * `verify` compitiendo por CPU —y este repo corre lotes de N carriles a la vez— el mismo caso
+ * se midio en 6,1 s y volteo la suite contra el `testTimeout: 5_000` del default. Es el modo
+ * de falla del spec 029: un rojo espurio en el nodo de convergencia entrena a leer el rojo
+ * como ruido. Acá no se mide tiempo —lo que se verifica es el veredicto del hook, que sale de
+ * un exit code— asi que el techo solo tiene que ser holgado. 30 s es el mismo numero que el
+ * `timeout` del hook en `.claude/settings.json` y que el de `vite.config.ts` bajo coverage.
+ */
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const HOOK_REAL = resolve(AQUI, '../lint-al-cerrar.mjs');
