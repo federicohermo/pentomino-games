@@ -16,7 +16,7 @@
  * commit posterior, a mano, en `main` — que es exactamente el que se olvida. Los cinco no
  * se desincronizaron por descuido: se desincronizaron **por diseno**.
  *
- * De ahi que esto exista y que lo corra una Action en el push a `main`
+ * De ahi que esto exista y que lo corra una Action en el push a `staging`
  * (`.github/workflows/mapa.yml`). El gate del 038 queda como confirmacion de un calculo,
  * no como recordatorio de una tarea.
  *

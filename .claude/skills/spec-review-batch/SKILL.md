@@ -133,7 +133,7 @@ los cuatro se pasan **destilados**, no como rutas a leer:
 El eje A del review suelto pregunta *¿el spec describe el repo que existe?*. En un lote encadenado esa
 pregunta está mal formulada para todos menos el primero: el 020 cita cosas que el 019 crea.
 
-**La base de cada spec es `main` + los specs del lote que lo preceden.** Derivá el orden y pasáselo a
+**La base de cada spec es `staging` + los specs del lote que lo preceden.** Derivá el orden y pasáselo a
 cada agente, o el lote devuelve una avalancha de citas rotas falsas.
 
 1. **La matriz ya está arriba**, inyectada por [`scripts/lote.sh`](./scripts/lote.sh) al cargar este
