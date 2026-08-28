@@ -49,5 +49,5 @@
   "048": {"issue":140,"carpeta":"048-la-verificacion-no-espera-a-que-alguien-la-corra","fecha":"2026-08-26","estado":"Implementado","titulo":"Spec 048 — La verificación no espera a que alguien la corra"},
   "049": {"issue":141,"carpeta":"049-tres-convenciones-mas-dejan-de-ser-prosa","fecha":"2026-08-26","estado":"Implementado","titulo":"Spec 049 — Tres convenciones más dejan de ser prosa","origen":[58]},
   "050": {"issue":142,"carpeta":"050-la-accesibilidad-se-verifica-en-vez-de-revisarse","fecha":"2026-08-26","estado":"Implementado","titulo":"Spec 050 — La accesibilidad se verifica en vez de revisarse"},
-  "051": {"issue":162,"carpeta":"051-los-comentarios-dejan-de-ser-prosa","fecha":"2026-08-28","estado":"Propuesto","titulo":"Spec 051 — Los comentarios dejan de ser prosa"}
+  "051": {"issue":162,"carpeta":"051-los-comentarios-dejan-de-ser-prosa","fecha":"2026-08-28","estado":"Implementado","titulo":"Spec 051 — Los comentarios dejan de ser prosa"}
 }
