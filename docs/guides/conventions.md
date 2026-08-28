@@ -324,9 +324,10 @@ exportar y por lo tanto no se puede verificar. Lo que se queda en el shell es la
 entonces esta sección decía dos cosas falsas —«los seis del repo» y «no viven en el `.tsx`»—, que es
 justo lo que pasa con una regla que nadie verifica. Los números de hoy, contados:
 
-- **Ocho efectos de producción.** Seis en dos hooks de `components/` desde el spec 022 —cuatro de
-  reconciliación en `use-engine.ts` y dos de entrada en `use-input.ts`— y **dos en un `.tsx`**,
-  `Playhead.tsx` y `Spectrum.tsx`. `App.tsx` no declara ninguno, que es lo que `CLAUDE.md` afirma.
+- **Nueve efectos de producción.** Siete en tres hooks de `components/` —cuatro de reconciliación en
+  `use-engine.ts` y dos de entrada en `use-input.ts` desde el spec 022, y el que mide el viewport en
+  `use-grid.ts` desde el 021, que es un `useLayoutEffect`— y **dos en un `.tsx`**, `Playhead.tsx` y
+  `Spectrum.tsx`. `App.tsx` no declara ninguno, que es lo que `CLAUDE.md` afirma.
 - **Esos dos son las únicas exenciones, y están nombradas archivo por archivo** en `eslint.config.js`,
   no por glob — el precedente son las tres aserciones no nulas. Cumplen el motivo y violan la letra:
   son de **una línea** y delegan en `iniciarCabeza` e `iniciarEspectro`, que viven fuera del `.tsx` y sí
