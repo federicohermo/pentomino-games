@@ -3,6 +3,7 @@ import markdown from '@eslint/markdown'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
+import jsxA11y from 'eslint-plugin-jsx-a11y'
 import tseslint from 'typescript-eslint'
 import vitest from '@vitest/eslint-plugin'
 import importX from 'eslint-plugin-import-x'
@@ -566,9 +567,68 @@ export default tseslint.config([
     extends: [reactHooks.configs.flat['recommended-latest']],
   },
   {
-    // `only-export-components` solo tiene sentido donde puede haber un componente.
+    // `only-export-components` solo tiene sentido donde puede haber un componente. Y lo
+    // mismo `jsx-a11y`, que lee JSX: `domain/` y `audio/` tienen prohibido importar React.
+    //
+    // **`strict` y no `recommended`**, con los dos numeros medidos a la vista: sobre este
+    // codigo `recommended` da UN hallazgo y `strict` da DOS, y el segundo es en el mismo
+    // archivo y sobre una construccion que ya queda exenta abajo. O sea que `strict` no
+    // cuesta nada mas hoy y cubre mas de aca en adelante. La diferencia real entre las dos
+    // configs no es una lista de reglas distinta —son practicamente las mismas— sino que
+    // `recommended` viene con excepciones cableadas: le acota los handlers a
+    // `no-static-element-interactions` (por eso `onContextMenu` se le escapa), le pasa un
+    // mapa de `tag: [roles]` tolerado a las dos de `element-to-role`, y deja
+    // `no-noninteractive-tabindex` con `allowExpressionValues`.
+    //
+    // Este plugin **no necesita informacion de tipos**: lee el JSX y nada mas, asi que no
+    // arrastra el costo del type-aware linting.
+    //
+    // Lo que NO cubre, y por eso este spec trae ademas un gate de navegador: ninguna de sus
+    // configs exige `aria-label` en un control solo-icono ni `aria-pressed` en uno que
+    // alterna. No puede distinguir un glifo de un texto ni saber cual boton es un toggle —
+    // eso solo lo contesta el arbol de accesibilidad renderizado
+    // (`src/__tests__/arbol-accesible.browser.test.tsx`).
     files: ['src/**/*.tsx'],
-    extends: [reactRefresh.configs.vite],
+    extends: [reactRefresh.configs.vite, jsxA11y.flatConfigs.strict],
+  },
+  {
+    // Los DOS hallazgos de `jsx-a11y` sobre el repo, con **un motivo por regla** porque son
+    // dos construcciones distintas del mismo archivo y no una. Van como override por archivo
+    // y con las reglas nombradas —no por glob ni apagando la categoria— por el mismo
+    // mecanismo con el que se declaran las tres aserciones no nulas de arriba: `noInlineConfig`
+    // no admite `eslint-disable`, asi que la excepcion se ve en el diff y se explica.
+    //
+    // Bloque propio y no una linea mas en el de `src/main.tsx` / `invariants.ts` /
+    // `Board.tsx`: aquel nombra el mismo archivo pero explica otra cosa, y juntarlos haria
+    // que un `Board.tsx` que dejara de necesitar una de las dos exenciones se lleve puesta
+    // la otra.
+    //
+    // **(a) `interactive-supports-focus`** — `Board.tsx:331`, el `<div role="grid">`. La
+    // regla pide que un elemento con rol interactivo sea focusable, y esta grilla **no lo es
+    // a proposito**: implementa *roving tabindex*, o sea que la celda del cursor lleva
+    // `tabIndex={0}` y las otras `-1` (`Board.tsx:184`), y el foco se mueve con las flechas.
+    // Hacer focusable al contenedor daria 61 paradas de tabulacion donde el patron correcto
+    // pide una, y es literalmente lo que `.claude/rules/ui.md` documenta: «una region
+    // compuesta es UNA parada de tabulacion, y adentro se mueve con las flechas».
+    //
+    // **(b) `no-static-element-interactions`** — `Board.tsx:311`, el envoltorio posicionado
+    // (`<div ref={boardRef} className="relative" onContextMenu={...}>`), que NO es la
+    // grilla. La regla pide un handler de teclado hermano en el mismo nodo; aca la
+    // contraparte de teclado existe pero vive en el listener global de `use-input.ts`, y esa
+    // asimetria esta medida y escrita en `Board.tsx:300`–`:310`: react-dom registra
+    // `touchstart`, `touchmove` y `wheel` como PASIVOS, asi que la rueda tiene que ir por
+    // `addEventListener(..., { passive: false })` desde el hook. `contextmenu` no esta entre
+    // esos tres y por eso si puede ir por prop — pero su hermano de teclado quedo del otro
+    // lado igual.
+    //
+    // Las dos son la regla generica chocando contra una decision que el repo tomo, midio y
+    // escribio. Si alguna de las dos construcciones cambia, la exencion deja de aplicar por
+    // su propio argumento.
+    files: ['src/components/Board.tsx'],
+    rules: {
+      'jsx-a11y/interactive-supports-focus': 'off',
+      'jsx-a11y/no-static-element-interactions': 'off',
+    },
   },
 
   {
