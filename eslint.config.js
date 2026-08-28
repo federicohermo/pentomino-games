@@ -278,7 +278,8 @@ const REGLA_CONSTANTES = {
 /**
  * "Un `.tsx` no declara la logica de un efecto." Hasta el spec 049 esta regla vivio solo en
  * `docs/guides/conventions.md` y estaba escrita mal en las dos mitades: decia que
- * los efectos eran seis —son ocho— y que ninguno vivia en un `.tsx` —viven dos—.
+ * los efectos eran seis —son nueve, contando el `useLayoutEffect` de `use-grid.ts` que
+ * aparecio al implementar esta regla— y que ninguno vivia en un `.tsx` —viven dos—.
  *
  * El motivo no es estetico: `react-refresh/only-export-components` prohibe que un `.tsx`
  * exporte algo ademas del componente, asi que la logica de un efecto declarada ahi adentro
@@ -611,8 +612,9 @@ export default tseslint.config([
     // **`__tests__/` queda afuera por decision escrita, no por omision** (issue #147). El
     // glob `src/**/*.tsx` tambien matchea los **once** `.tsx` de test que hay hoy —doce
     // cuando aterrice el spec 050, que agrega `src/__tests__/arbol-accesible.browser.test.tsx`—
-    // y ahi entrarian en verde: ninguno declara un efecto, sus dos apariciones de la palabra
-    // (`Playhead.browser.test.tsx:17`, `App.browser.test.tsx:19`) son comentarios. O sea que
+    // y ahi entrarian en verde: ninguno declara un efecto, sus tres apariciones de los dos
+    // nombres (`Playhead.browser.test.tsx:17`, `use-grid.browser.test.tsx:18`,
+    // `App.browser.test.tsx:19`) son comentarios. O sea que
     // el rojo no llegaria nunca y la decision se tomaria sola: un harness futuro que monte un
     // componente con efecto quedaria bloqueado por una regla que nunca decidio aplicarle. La
     // prohibicion es sobre la capa de componentes, no sobre lo que la monta, asi que los
