@@ -47,7 +47,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # La version de pnpm sale de `packageManager`, que es de donde ya la toma Vercel via Corepack.
+      # La version de pnpm sale de `packageManager`. Vercel NO la lee de ahi —deduce pnpm del
+      # `lockfileVersion` salvo con ENABLE_EXPERIMENTAL_COREPACK=1, ver docs/infra/deploy.md—, asi
+      # que este pin vale para la CI y para local, no para el deploy.
       # Sin `version:` la action la lee de ahi sola, y ese numero sigue viviendo en un solo lugar.
       # Va ANTES de setup-node porque `cache: pnpm` necesita el binario ya instalado.
       - uses: pnpm/action-setup@v4
