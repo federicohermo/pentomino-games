@@ -200,7 +200,8 @@ Spec 029. El corte no es por capa sino por lo que el test necesita:
   una implementación nativa de Web Audio, así que corre ahí sin adaptación. Su `include` tiene
   **cinco** raíces, y las cuatro de afuera son gates que **no importan una línea de `src/`**: cada uno
   vive al lado del **sujeto** que verifica, no de lo que el sujeto toca. `__tests__/` en la raíz son
-  los tres que miran archivos de la raíz —`index.html`, `public/manifest.json`, `README.md`—;
+  los cuatro que miran lo que no vive en `src/` —`index.html`, `public/manifest.json`, `README.md`, y
+  el modelo de dos ramas del spec 047—;
   `docs/__tests__/` los tres de la **documentación** —enlaces y anclas de todo `.md`, el mapa de
   `directory-structure.md` y el techo de 200 líneas de `CLAUDE.md`, issue #100—; `specs/__tests__/`
   los dos del **registro** —la convención y `mapa.json`, spec 035—; y `.claude/scripts/__tests__/` los
@@ -231,8 +232,9 @@ Los del MCP server son de `node --test`, en su propio paquete, y desde el 029 co
 ## El gestor es pnpm
 
 Fijado en `packageManager` y versionado en `pnpm-lock.yaml`. **No usar npm**: instalaría un
-`node_modules` plano y dejaría un `package-lock.json` que Netlify puede llegar a preferir. La config
-de pnpm vive en `pnpm-workspace.yaml`, no en el `package.json`.
+`node_modules` plano y dejaría un `package-lock.json` al lado del `pnpm-lock.yaml`, o sea dos
+lockfiles que resuelven distinto y un deploy que elige uno de los dos. La config de pnpm vive en
+`pnpm-workspace.yaml`, no en el `package.json`.
 
 `node_modules` es **estricto**: solo se puede importar lo declarado en `package.json`. Un import de
 una dependencia transitiva que con npm andaba, acá falla — es a propósito, y es la red que atrapa los

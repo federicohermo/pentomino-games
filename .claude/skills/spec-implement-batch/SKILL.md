@@ -104,7 +104,7 @@ Lo que ningún `/spec-implement` suelto puede ver, porque mira un spec. Corré l
    apaga exactamente la rama muda. Con los dos puestos la pieza muteada es silencio total, y el AC11
    del 015 pide verificar lo contrario.
 3. **Un número que dos specs mueven.** Confirmá que el segundo parte del valor que deja el primero y no
-   del de `main`.
+   del de `staging`.
 4. **Un spec que cierra una tarea de otro.** Es la única escritura que sale de su propio spec: anotalo
    para que dos carriles no lo pisen. Pisarlo dejó de ser silencioso —`spec_write` con `op: "marcar"`
    falla si la tarea ya estaba marcada, en vez de dejar creer que escribió— pero un carril que se
@@ -153,7 +153,7 @@ deje el lote inservible si el supuesto está mal. Eso casi nunca es una decisió
 gimnasia de ramas; lo que se aísla es el carril, que es lo que corre concurrente.
 
 Lanzá los carriles en **un solo mensaje** con un `Agent` por carril e `isolation: "worktree"`. El
-worktree arranca en `origin/main` y se limpia solo si el agente no cambió nada.
+worktree arranca en `origin/staging` —la rama de integración— y se limpia solo si el agente no cambió nada.
 
 Cada agente de carril recibe:
 
@@ -173,7 +173,7 @@ Cada agente de carril recibe:
 - **que cierre cada spec antes de arrancar el siguiente**: `pnpm verify` en verde, la app corrida y
   **medida en el DOM** (`getComputedStyle`, un `Range` sobre el nodo de texto) si el spec cambia algo
   que se ve, commit por nodo del grafo, push a `origin`, y PR;
-- **la base de cada PR**: el primer spec del carril apunta a `main`; los que le siguen, a la rama del
+- **la base de cada PR**: el primer spec del carril apunta a `staging`; los que le siguen, a la rama del
   spec anterior del mismo carril;
 - **que marque `[x]` solo lo que hizo**, con `spec_write` (`op: "marcar"`). Si el spec es anterior al
   039 puede traer tareas `[M]`, que quedan abiertas —piden una persona— y `spec_status` ya las
