@@ -161,7 +161,7 @@ El spec entra a `staging` y ahí termina: un spec abandonado no se va con ningun
 
 ### 5. Entregarle el control a `/spec-implement`
 
-Con el issue publicado y el mapa en `main`, el trabajo de este skill terminó.
+Con el issue publicado y el mapa en `staging`, el trabajo de este skill terminó.
 
 **La rama NO se crea acá.** Escribir un spec y decidir implementarlo son dos decisiones distintas, y
 entre una y otra puede pasar cualquier cosa: que se revise y cambie, que se descarte, que lo tome otra
@@ -204,9 +204,10 @@ pone el gate.
 
 ## Si el gate te frenó
 
-El hook de `PreToolUse` bloquea editar `src/`, `mcp-server/src/` y `docs/` desde `main` o desde una rama
-sin spec. Si saltó, no lo saltees, y son tres casos distintos: o estás en el caso «no necesita spec»
-—y entonces la rama igual no puede ser `main`—, o te falta el paso 3, o el spec ya está publicado y lo
+El hook de `PreToolUse` bloquea editar `src/`, `mcp-server/src/` y `docs/` desde las dos ramas
+compartidas —`main` y `staging`— o desde una rama sin spec. Si saltó, no lo saltees, y son tres casos
+distintos: o estás en el caso «no necesita spec» —y entonces la rama igual no puede ser ninguna de las
+dos—, o te falta el paso 3, o el spec ya está publicado y lo
 que falta es **la rama**, que desde ahora la abre el implementador y no este skill.
 
 `.claude/` y `specs/` **no** están protegidos, a propósito: son adonde este skill te manda a escribir

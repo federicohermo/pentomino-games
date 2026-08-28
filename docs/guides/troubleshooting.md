@@ -123,7 +123,7 @@ import { describe, it, expect } from 'vitest';
 Es deliberado, y **el motivo cambió con el spec 022**. Hasta ahí lo forzaba `@types/jest`, que estaba en
 el árbol declarando las mismas globales con firmas distintas; ese paquete se fue con las otras seis
 `devDependencies` huérfanas, así que hoy `globals: true` está **disponible y sin ejercer**. No se ejerce
-porque ejercerlo es sacarle el import a los 16 archivos de test y no compra nada: el import explícito
+porque ejercerlo es sacarle el import a los 48 archivos de test y no compra nada: el import explícito
 dice de dónde sale `describe`, que es lo que se pierde con las globales.
 
 ## Audio
@@ -198,5 +198,7 @@ Revisar la versión de node: el server pide **≥ 22.18** y con Node 20 no levan
 
 ## Deploy
 
-Ver [infra/deploy.md](../infra/deploy.md) para los dos errores clásicos de Netlify en este repo: la
-ruta de `publish` duplicada y la versión de Node.
+Ver [infra/deploy.md](../infra/deploy.md) para dónde vive la config y qué corre en el build. **Acá no
+hay ningún error de deploy anotado**, y es a propósito: la plataforma cambió con el spec 045 y los dos
+que estaban registrados eran de la anterior. Cuando se cometa uno en Vercel, va acá con lo que se midió
+—no antes, que sería inventarlo.

@@ -38,3 +38,8 @@ dist-ssr
 # historico de cada carpeta, porque NO se deriva del titulo del issue (7 de 35 no) — y los
 # dos gates de `specs/__tests__/`, que miran esos dos.
 specs/[0-9]*/
+
+# La CLI de Vercel escribe aca al linkear el proyecto, y su `project.json` lleva el
+# `projectId` y el `orgId`: son de la cuenta y no del repo, asi que commitearlos ataria
+# el clone de cualquier otro a este proyecto de Vercel.
+.vercel/

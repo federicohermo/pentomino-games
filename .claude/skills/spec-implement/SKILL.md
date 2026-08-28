@@ -64,13 +64,13 @@ escuchando, eso es un hallazgo sobre el spec —decilo— y no una casilla nueva
 ## Antes de arrancar
 
 - **La rama la abrís vos, y es el primer movimiento.** `spec-create` deja el spec publicado y su fila
-  en `main`, y nada más: escribir un spec y decidir implementarlo son dos decisiones distintas, y una
+  en `staging`, y nada más: escribir un spec y decidir implementarlo son dos decisiones distintas, y una
   rama abierta entre las dos queda colgada cada vez que no son la misma. Sale del `NNN` del mapa y se
   llama `feature/<NNN>-<descripcion-kebab>`, que **es de donde el gate del 037 saca el número** —una
   rama con otro nombre bloquea la primera edición de `src/`—.
 
   ```bash
-  git checkout main && git pull                          # el mapa ya tiene la fila del spec
+  git checkout staging && git pull                       # la rama de integración: ahí está la fila del spec
   git checkout -b feature/<NNN>-<descripcion-kebab>
   node .claude/scripts/hidratar-specs.mjs <NNN>          # specs/ es caché: hace falta en CADA worktree
   ```
@@ -83,7 +83,7 @@ escuchando, eso es un hallazgo sobre el spec —decilo— y no una casilla nueva
   mcp:test en paralelo y es lo único que typechequea cruzando el borde de paquete hacia
   `mcp-server/`, que importa 31 símbolos del dominio. `suite` son las dos pasadas de vitest —la
   limpia y la de coverage, con umbral 100— encadenadas a propósito (spec 029).
-- **El gestor es pnpm.** Nunca `npm install`: deja un `package-lock.json` que Netlify puede preferir.
+- **El gestor es pnpm.** Nunca `npm install`: deja un `package-lock.json` que el deploy puede preferir.
 
 ## Al cerrar
 
