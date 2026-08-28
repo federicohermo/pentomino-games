@@ -116,9 +116,11 @@ function lex(a: readonly number[], b: readonly number[]): number {
 }
 
 /**
- * El recorrido que visita todas las celdas de una forma moviendose lo mas posible a
- * una celda VECINA. Devuelve el ORDEN DE VISITA POR POSICION: el elemento `g` es el
- * indice de la celda que el camino pisa en el paso `g`.
+ * El recorrido que visita todas las celdas de una forma moviendose lo mas posible a una
+ * celda VECINA.
+ *
+ * Devuelve el ORDEN DE VISITA POR POSICION: el elemento `g` es el indice de la celda que
+ * el camino pisa en el paso `g`.
  *
  * Ojo con la direccion de lectura, porque es la inversa de la que devuelve
  * `degreeByCellIndex` —que es "el grado de la celda `k`"— y las dos son permutaciones

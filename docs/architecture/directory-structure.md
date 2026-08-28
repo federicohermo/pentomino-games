@@ -15,6 +15,7 @@ pentomino-games/           # raíz del repo: la app vive acá, sin subdirectorio
 ├── index.html             # Entry point de Vite (en la raíz, no en public/)
 ├── vite.config.ts         # Plugins: react() + tailwindcss()
 ├── eslint.config.js       # Flat config v9: zonas de dirección + las reglas de CLAUDE.md
+├── eslint-rules/          # Las dos reglas locales `local/comment-*` y su `__tests__/` (spec 051)
 ├── vercel.json            # Config de deploy (ver infra/deploy.md)
 ├── pnpm-workspace.yaml    # Workspace de dos paquetes: `.` y `mcp-server`
 ├── pnpm-lock.yaml         # Lockfile único, cubre los dos paquetes

@@ -6,8 +6,10 @@ import { MINI_BOX } from '../constants/layout.constants.ts';
 import type { PieceKey } from '../../domain/types/pieces.types.ts';
 
 /**
- * `miniCells` es la única aritmética nueva, y es de la clase que **compila
- * igual cuando está mal**: un `round` en lugar de un `floor`, o el ancho leído antes de
+ * `miniCells` es la única aritmética nueva, y es de la clase que **compila igual cuando
+ * está mal**.
+ *
+ * Un `round` en lugar de un `floor`, o el ancho leído antes de
  * normalizar, dejan la pieza pegada a un borde en algunas orientaciones y en otras no.
  * Por eso el recorrido es el espacio entero —12 piezas × 4 rotaciones × 2 reflexiones—
  * y no una muestra: es el mismo espacio que `check_invariants` recorre para lo suyo.

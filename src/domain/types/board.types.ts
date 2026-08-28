@@ -21,9 +21,10 @@ export interface PlacedPiece {
   mirror: boolean;
   cells: Cell[];
   /**
-   * La pieza ocupa su lugar y su tiempo en el circuito pero NO suena sus notas: donde
-   * habria ido su arpegio van cinco clicks, uno por celda, en los mismos offsets. El
-   * orden de visita, los offsets del resto y el largo del ciclo no cambian.
+   * La pieza ocupa su lugar y su tiempo en el circuito pero NO suena sus notas.
+   *
+   * Donde habria ido su arpegio van cinco clicks, uno por celda, en los mismos offsets.
+   * El orden de visita, los offsets del resto y el largo del ciclo no cambian.
    *
    * Va acá por el mismo argumento que `cells` y no por el que retiró a `notes`: **no es
    * derivable**. No sale de la pieza, ni de la rotacion, ni de las celdas — sale de un

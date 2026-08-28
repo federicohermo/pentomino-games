@@ -185,7 +185,7 @@ describe('useRuedaRota', () => {
     // La afirmacion de arriba es la del COMPORTAMIENTO; esta es la de la FORMA, y las
     // dos valen la pena porque fallan por motivos distintos: si algun dia alguien mueve
     // la rueda a una prop `onWheel`, la de arriba falla con un `defaultPrevented` en
-    // false —que no dice por que— y esta falla diciendo que ya no hay `addEventListener`.
+    // false —que no dice por que— y esta falla diciendo que falta el `addEventListener`.
     const el = tablero();
     const registro = vi.spyOn(el, 'addEventListener');
     await renderHook(() => useRuedaRota({ current: el }, vi.fn(), tap()));

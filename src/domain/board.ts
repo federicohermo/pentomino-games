@@ -24,11 +24,10 @@ import { CROSS_COST } from './constants/board.constants.ts';
  * par de celdas del borde se toca de mas. Medido sobre los 3.600 pares del tablero de
  * 10 x 6: acorta 496 (13,8 %) y baja la distancia maxima del tablero de 14 a 12.
  *
- * El orden ya NO lo lee nadie. Mientras la ruta se elegia con formula cerrada, los
- * dos extremos eran dos rutas distintas —`viaStart` y `viaEnd`— y habia que saber
- * cual era cual. Con `routeBetween` la costura es una arista mas del
- * grafo y se recorre en los dos sentidos sin nombre propio, asi que los dos son
- * intercambiables: lo unico que importa es que sean estas dos celdas.
+ * **El orden del par no significa nada.** `routeBetween` trata la costura como una arista
+ * mas del grafo y la recorre en los dos sentidos sin nombre propio, asi que los dos
+ * extremos son intercambiables: lo unico que importa es que sean estas dos celdas. Por que
+ * el orden llego a importar, en el issue del spec 011.
  *
  * **Es una funcion y no una constante.** Dejo de poder ser un
  * valor cuando las dimensiones dejaron de ser constantes: la costura son las dos esquinas
@@ -294,8 +293,8 @@ export function routeBetween(a: Cell, b: Cell, placed: readonly PlacedPiece[], d
  * **No cambia una sola ruta**, y eso esta verificado y no argumentado: el test de AC7 en
  * `__tests__/board.test.ts` contrasta este rutador contra `routeBetween` —que arma uno
  * nuevo por consulta, o sea la version sin cache— sobre tableros con PRNG determinista, en
- * el tablero de referencia y en uno de 26 x 15. Fuera del repo, el `compare.mjs` del
- * research comparo ademas la SECUENCIA entera en 279 tableros al azar, con cero
+ * el tablero de referencia y en uno de 26 x 15. Fuera del repo, el script de comparacion
+ * del research comparo ademas la SECUENCIA entera en 279 tableros al azar, con cero
  * diferencias. El argumento igual existe: `dist[]` es funcion de `(destino, placed)`, y
  * adentro de un rutador `placed` no cambia.
  */

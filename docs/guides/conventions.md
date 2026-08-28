@@ -385,6 +385,12 @@ y no del motivo, y bastaba un `void` para silenciarlo sin que nada dijera nada.
 **Los comentarios explican el porqué, no el qué.** El código dice qué hace; el comentario existe para lo
 que no se puede leer del código: una decisión, una restricción, un bug evitado.
 
+La formulación es de Ousterhout y es más operable que la nuestra: **un comentario tiene que estar en un
+nivel de abstracción DISTINTO del código.** De ahí sale su red flag *«Comment Repeats Code»*, y el motivo
+para preferirla es práctico: «¿esto es un porqué?» se contesta que sí casi siempre, y **«¿esto está en
+otro nivel que el código?» se contesta mirando**. `// normalized` arriba de `return c` falla la segunda
+pregunta sin discusión.
+
 Bien:
 
 ```ts
@@ -402,6 +408,62 @@ const ANCHOR_INDEX: Record<PieceKey, number> = { … };
 
 Los comentarios de este repo están **en español**, igual que los mensajes de commit y los specs.
 
+### Lo que se verifica es la exactitud, y no la longitud
+
+Éste es el criterio que ordena la sección entera, y hasta el spec 051 no estaba escrito. **El consumidor
+principal de los comentarios de este repo es un modelo leyendo el código para cambiarlo**, y para él los
+comentarios no se comportan como uno esperaría. Tres mediciones, y las tres empujan para el mismo lado:
+
+- **Sacarlos es caro, y justo en la tarea que se hace acá.** Desactivar los conceptos de comentario en
+  las representaciones internas de un modelo degrada la refinación de código **hasta un 90 %** y el
+  autocompletado hasta un 15 % ([arXiv:2512.16790](https://arxiv.org/html/2512.16790v1)). Refinar código
+  es exactamente lo que se hace en este repo. **La prosa larga es un activo medido.**
+- **Que uno mienta cuesta tanto como ofuscar el código.** CodeCrash midió sobre **17 modelos y 1279
+  tareas** que el lenguaje natural engañoso —comentarios incluidos— degrada el razonamiento sobre código
+  un **23,2 %** de media, y sigue costando **13,8 %** aun razonando paso a paso: tanto daño como
+  ofuscar la estructura ([arXiv:2504.14119](https://arxiv.org/html/2504.14119)).
+- **El volumen irrelevante desorienta, aunque sea verdadero.** El estudio de *context rot* sobre 18
+  modelos nombra la **interferencia por distractores**: contenido semánticamente parecido pero
+  irrelevante desorienta activamente. Una crónica de cómo se llegó a algo es literalmente eso — habla
+  del código, y es sobre un pasado que ya no rige.
+
+**La conclusión: lo que importa no es cuánto dice un comentario sino que lo que dice siga siendo
+cierto.** Un comentario largo y verdadero es barato; uno corto y podrido es caro. Por eso lo que se
+verifica ataca la exactitud, y **nada de este repo se acorta por ser largo**.
+
+### Cada cláusula, y quién la verifica
+
+Desde el spec 051 las dos reglas locales de `eslint-rules/` cierran la última convención que seguía
+siendo prosa. El detalle operable —para escribir, no para consultar— vive en
+[`.claude/rules/comentarios.md`](../../.claude/rules/comentarios.md), que se carga sola al tocar
+`src/**` o `mcp-server/src/**`.
+
+| Cláusula | Lo verifica |
+|---|---|
+| Un comentario no está vacío ni archiva código | `local/comment-shape`, `vacio` y `codigo` |
+| Un comentario JSX no reetiqueta el marcado | `local/comment-shape`, `etiqueta` |
+| El primer párrafo de un docblock no pasa de 2 líneas | `local/comment-shape`, `resumen` |
+| **Una cita tiene que resolver** | `local/comment-anchor`, `muerta` |
+| Un comentario no narra historia | `local/comment-anchor`, `historia` |
+| El comentario dice el porqué y está en otro nivel que el código | **Nadie: es la parte que un linter no puede evaluar** |
+
+La última fila es el punto de la tabla. Lo que el linter exige no se vuelve a explicar en prosa acá; lo
+que no puede evaluar se queda entero, porque ahí la prosa es lo único que hay.
+
+**Una cita tiene que resolver** es la cláusula que la sección no tenía, y viene de darle vuelta una regla
+prestada. El repo del que se portó **prohíbe** nombrar un archivo en un comentario, con un argumento que
+es bueno allá: sus citas apuntan afuera del repo. Acá se midió antes de decidir —**315 citas, 309
+vivas**— y prohibirlas habría sido 98 % ruido. Así que en vez de prohibir la cita se verifica que
+resuelva, que caza el modo de falla real: el archivo borrado o renombrado, que
+[arXiv:2212.01479](https://arxiv.org/abs/2212.01479) midió sobre más de 3000 proyectos. El caso que lo
+motivó acá fue `log.md`, citado **siete** veces —tres en producción— después de que la mudanza de los
+specs a Issues lo borrara.
+
+Y no es una preferencia de estilo: **un cambio que deja el comentario inconsistente tiene ~1,5 veces más
+probabilidad de terminar en un commit que introduce un bug** que uno consistente, medido sobre 1300
+millones de cambios a nivel AST en 1500 sistemas (Wen et al., ICPC 2019). Por eso es un gate y no una
+guía.
+
 ### El eje del tiempo: restricción vigente contra crónica
 
 «El porqué» tiene dos formas y sólo una envejece bien. **Se queda el comentario que describe una
@@ -413,6 +475,9 @@ mudanza. Fue `specs/revisiones.md` hasta el spec 035, que repartió sus 41 notas
 llegado a 89.316 bytes y ya no entraba en un issue, y nadie lo podaba—. El costo de tener la crónica en el código es que el lector tiene que separar, párrafo por
 párrafo, la restricción que sigue viva de la historia de cómo se llegó — y la segunda se pudre sola:
 cada spec nuevo deja una capa más de «antes esto decía otra cosa».
+
+**Desde el 051 lo marca `local/comment-anchor`, con `historia`.** La regla no decide: señala el
+candidato, y separar es un juicio.
 
 Se queda (restricción vigente — el código no puede escribirse de otra forma):
 
@@ -437,6 +502,27 @@ Tres reglas para aplicarlo sin perder nada:
   muda y deja el puntero.
 - **Sin objetivo numérico.** Un porcentaje es un incentivo a borrar el comentario largo, que acá es
   sistemáticamente el bueno.
+
+### Tres chequeos que se evaluaron y se rechazaron
+
+Están acá para que no se vuelvan a proponer. Los tres venían en las reglas portadas, y los tres se
+midieron sobre este árbol antes de decidir:
+
+- **Longitud (302 hallazgos) y densidad (49).** Son presupuestos de prosa: chocan con «sin objetivo
+  numérico» de arriba y con el 90 % de degradación en refinación. Recortar por número optimiza la
+  variable equivocada.
+- **El comentario al final de una línea de código (49).** **Se permite**, y es una decisión explícita:
+  ancla la explicación al token exacto sin gastar una línea, y ningún benchmark dice que dañe.
+  `no-inline-comments` del core de ESLint hace exactamente eso, y además está *frozen* con la
+  deprecación ya aceptada y sin reemplazo en `@stylistic`, así que atarse a ella sería comprar el
+  trabajo dos veces.
+- **Prohibir citar el issue de un spec (10).** Acá el puntero al issue **es** la convención, y la
+  escribió el 035.
+
+Corrida verbatim, la regla prestada daba **1007 hallazgos en 92 de 93 archivos**. Un gate que enciende
+en rojo el árbol entero no se arregla: se apaga. Con el recorte de arriba quedaron 186, y ninguno es un
+desacuerdo de estilo — son una cita que no resuelve, un primer párrafo que baja al cuerpo, o una crónica
+que ya tiene adónde mudarse.
 
 ## Estilos
 

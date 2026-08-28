@@ -466,10 +466,13 @@ describe('playheadOffset()', () => {
 
 describe('outputLatency — la cadena que TypeScript cree innecesaria', () => {
   /**
-   * `lib.dom.d.ts` declara `outputLatency` y `baseLatency` como `number` no opcional,
-   * pero Firefox no implementa el primero y ahi llega `undefined`. El fallback existe
-   * por eso, y hasta aca no lo ejercia nadie: los tests de `audio/` corren contra
-   * `node-web-audio-api`, donde estos numeros no describen ninguna salida real.
+   * Fabrica un navegador con `outputLatency` y `baseLatency` caidos, y devuelve como
+   * restaurarlos.
+   *
+   * `lib.dom.d.ts` los declara como `number` no opcional, pero Firefox no implementa el
+   * primero y ahi llega `undefined`. El fallback existe por eso, y hasta aca no lo
+   * ejercia nadie: los tests de `audio/` corren contra `node-web-audio-api`, donde estos
+   * numeros no describen ninguna salida real.
    *
    * Se fabrica el navegador que falta parcheando el prototipo ANTES de que el modulo
    * cree su contexto. No se puede llamar a la funcion directo —es privada del modulo,
@@ -584,7 +587,7 @@ describe('tick() — el despacho de las tres clases', () => {
 
     const e = await conReloj();
     expect(e.audio()).toBeNull();  // primera llamada: explota adentro del try
-    expect(e.audio()).toBeNull();  // segunda: el `ctx` a medio construir ya no esta
+    expect(e.audio()).toBeNull();  // segunda: el catch dejo `ctx` en null y vuelve a entrar al try
 
     e.setSequence(CICLO);
     e.startClock();

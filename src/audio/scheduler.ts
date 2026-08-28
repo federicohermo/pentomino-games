@@ -76,9 +76,10 @@ function firstOnsetAfter(after: number, origin: number, bar: number, phase: numb
 }
 
 /**
- * Decide QUE suena y CUANDO, sin producir sonido. Separarlo de scheduleVoice es
- * lo que hace testeable al scheduler: se lo puede llamar con tiempos arbitrarios
- * y comparar contra lo esperado, sin depender de tiempo real.
+ * Decide QUE suena y CUANDO, sin producir sonido.
+ *
+ * Separarlo de scheduleVoice es lo que hace testeable al scheduler: se lo puede llamar
+ * con tiempos arbitrarios y comparar contra lo esperado, sin depender de tiempo real.
  *
  * Los onsets de un paso son la progresion `origin + (k + offset / length) * ciclo`.
  * Resolver el primer `k` en forma cerrada, en vez de avanzar un cursor, es lo que

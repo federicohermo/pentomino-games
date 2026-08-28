@@ -22,8 +22,10 @@ import { GRID_DEFAULT } from '../../../src/domain/constants/board.constants.ts';
 
 /**
  * Estos tests miran el FORMATO de las respuestas, que es lo unico que el server
- * aporta: las reglas del dominio ya las cubren los tests de `src/domain/`, y
- * duplicarlas aca seria duplicar tambien el criterio.
+ * aporta.
+ *
+ * Las reglas del dominio ya las cubren los tests de `src/domain/`, y duplicarlas aca
+ * seria duplicar tambien el criterio.
  *
  * La excepcion son los numeros del AC4 y el AC7: no verifican el dominio sino
  * que el server lo este componiendo en el orden correcto.
@@ -360,10 +362,11 @@ describe('simulate_board', () => {
   const ciclo = (r: Record<string, unknown>) => r.cycle as { intervals: number; seconds: number };
 
   /**
-   * Tolerancia al comparar espaciados, en segundos. Los `at` de la respuesta vienen
-   * redondeados a 4 decimales, asi que un delta puede errarle hasta 2e-4; un evento
-   * de mas o de menos movería el delta un intervalo entero (0,1364 s a 110 bpm), o
-   * sea tres ordenes de magnitud por encima de esto.
+   * Tolerancia al comparar espaciados, en segundos.
+   *
+   * Los `at` de la respuesta vienen redondeados a 4 decimales, asi que un delta puede
+   * errarle hasta 2e-4; un evento de mas o de menos movería el delta un intervalo
+   * entero (0,1364 s a 110 bpm), o sea tres ordenes de magnitud por encima de esto.
    */
   const EPS = 1e-3;
 
@@ -382,10 +385,12 @@ describe('simulate_board', () => {
 
   /**
    * Un tablero cuyo recorrido SI pisa piezas: rodear la `X` de (1,1) cuesta mas que
-   * atravesarla. `BASE` no sirve para eso desde el spec 012 —sus tramos dejaron de rozar
-   * nada cuando las puertas se movieron— y es el mismo tablero que usan los tests del
-   * cruce en `src/domain/` y en `src/components/`, a proposito: si el dia de mañana deja
-   * de cruzar, los tres fallan juntos y no queda uno verde afirmando lo contrario.
+   * atravesarla.
+   *
+   * `BASE` no sirve para eso desde el spec 012 —sus tramos dejaron de rozar nada cuando
+   * las puertas se movieron— y este es el mismo tablero que usan los tests del cruce en
+   * `src/domain/` y en `src/components/`, a proposito: si el dia de mañana deja de
+   * cruzar, los tres fallan juntos y no queda uno verde afirmando lo contrario.
    */
   const CON_CRUCE = [
     { piece: 'X', at: [1, 1] },
@@ -419,8 +424,9 @@ describe('simulate_board', () => {
     // la columna 9 a la 0 se pasa por ahi y no dando la vuelta entera. Con las puertas
     // del 012 el atajo ademas sale GRATIS —la salida de una `I` es su punta de abajo y
     // la entrada de la otra su punta de arriba, o sea las dos bocas de la costura—, asi
-    // que el tramo mide 2 y `crossed` queda vacio. Antes costaba un rodeo de 9 pasos
-    // por la columna 8 mas el peaje de pisar `(0,0)`.
+    // que el tramo mide 2 y `crossed` queda vacio. Sin el atajo el tramo seria un rodeo
+    // de 9 pasos por la columna 8 mas el peaje de pisar `(0,0)`, que es la magnitud que
+    // esta asercion fija.
     assert.deepEqual(ruta(r).hops[2], {
       from: '2', to: '1', exit: [9, 4], entry: [0, 0], distance: 2,
       path: [[9, 5]],
@@ -526,11 +532,11 @@ describe('simulate_board', () => {
   });
 
   test('un click puede caer sobre una celda ocupada, y en la respuesta se ve', () => {
-    // Desde el spec 011 el camino YA NO ignora lo que hay en el medio: rodea cuando
-    // rodear sale mas barato (`CROSS_COST` solo se paga en celda ocupada) pero
-    // cruzar sigue siendo el camino mas barato en algunos tramos, y ahi el click cae
-    // sobre una pieza igual. Que esas celdas salgan en la respuesta —hoy con su nota,
-    // en `hops[].crossed`— es lo que permite verlo sin escuchar.
+    // Desde el spec 011 el camino NO ignora lo que hay en el medio: rodea cuando rodear
+    // sale mas barato (`CROSS_COST` solo se paga en celda ocupada) pero cruzar sigue
+    // siendo el camino mas barato en algunos tramos, y ahi el click cae sobre una pieza
+    // igual. Que esas celdas salgan en la respuesta —hoy con su nota, en
+    // `hops[].crossed`— es lo que permite verlo sin escuchar.
     const r = call(simulateBoard, { pieces: CON_CRUCE });
     const ocupadas = new Set(
       (r.placements as { cells: Cell[] }[]).flatMap(p => p.cells).map(([x, y]) => `${x},${y}`),
@@ -841,14 +847,15 @@ describe('find_symbol', () => {
 });
 
 /**
- * El registro real, leido aca en dos lineas en vez de compartir un helper con
+ * El registro real, leido aca en dos lineas.
+ *
+ * En dos lineas y no con un helper compartido con
  * `specs/__tests__/specs-convencion.test.ts`, por la misma razon que alla: un helper
  * compartido entre tests es codigo sin tests.
  *
- * Antes esto detectaba un **regimen** (spec 034), porque `specs/NNN-…/` podia estar o
- * no y `log.md` era lo unico seguro. Con el mapa esa bifurcacion se cae: `mapa.json`
- * esta trackeado y esta siempre, asi que la tool responde las mismas entradas
- * hidratado o no. Lo unico que cambia con la hidratacion es si viene `tareas`.
+ * No hace falta detectar ningun **regimen**: la carpeta de un spec puede estar o no,
+ * pero `mapa.json` esta trackeado y esta siempre, asi que la tool responde las mismas
+ * entradas hidratado o no. Lo unico que cambia con la hidratacion es si viene `tareas`.
  */
 const MAPA_REAL = JSON.parse(readFileSync(join(SPECS_DIR, 'mapa.json'), 'utf8')) as Record<string, unknown>;
 const IDS_REALES = Object.keys(MAPA_REAL).sort();
@@ -859,14 +866,11 @@ describe('spec_status', () => {
     const specs = r.specs as { id: string; dir: string; notas: string[] }[];
     const totales = r.totales as Record<string, number>;
 
-    // La red anti-vacio, y con el mapa vuelve a ser UNA. El 034 tuvo que partirla en
-    // dos ramas porque el registro eran las CARPETAS y las carpetas pueden no estar:
-    // la CI corre asi, y un worktree recien creado tambien. Sacarla y ya no era
-    // opcion —`[]` pasa todas las aserciones de abajo, que es el «fallar en verde» que
-    // el 034 vino a cerrar—, asi que la red se corria a lo que cada regimen garantiza.
-    //
-    // Con `mapa.json` trackeado la respuesta ya no depende de la hidratacion, asi que
-    // la red es la misma en los dos casos.
+    // La red anti-vacio, y es UNA sola. Sacarla no es opcion —`[]` pasa todas las
+    // aserciones de abajo, que es el «fallar en verde» que el 034 vino a cerrar— y no
+    // hace falta partirla por regimen: `mapa.json` esta trackeado, asi que la respuesta
+    // no depende de la hidratacion. Sin hidratar corre la CI, y un worktree recien
+    // creado tambien.
     assert.ok(IDS_REALES.length > 20, 'el mapa tiene entradas que mirar');
     assert.deepEqual(specs.map(s => s.id), IDS_REALES);
     assert.equal(totales.specs, specs.length);
@@ -930,9 +934,11 @@ describe('simulate_board — el tablero deja de ser 10x6 (spec 031)', () => {
 });
 
 /**
- * Las dos tools de `specs/` se testean contra un registro FABRICADO y no contra
- * el de verdad, y no es prolijidad: `spec_write` escribe. Correrla sobre
- * `specs/` dejaría el repo distinto después de cada `pnpm verify`.
+ * Las dos tools de `specs/` se testean contra un registro FABRICADO y no contra el de
+ * verdad.
+ *
+ * No es prolijidad: `spec_write` escribe, y correrla sobre `specs/` dejaría el repo
+ * distinto después de cada `pnpm verify`.
  *
  * Es también lo que hace alcanzables las dos ramas que el registro real no
  * tiene: un spec sin `tasks.md` (los 33 lo tienen) y una escritura que falla.

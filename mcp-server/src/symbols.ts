@@ -61,9 +61,11 @@ export interface ImportBinding {
   /** Los nombres tal como los EXPORTA el modulo de origen, no los locales. */
   names: string[];
   /**
-   * Si el import trae el binding por defecto. Va aparte de `names` porque del
-   * lado del export ese simbolo no tiene nombre: `import Tablero from './Board.tsx'`
-   * importa a `Board`, asi que casarlo por nombre daria falso.
+   * Si el import trae el binding por defecto.
+   *
+   * Va aparte de `names` porque del lado del export ese simbolo no tiene nombre:
+   * `import Tablero from './Board.tsx'` importa a `Board`, asi que casarlo por
+   * nombre daria falso.
    */
   porDefecto: boolean;
 }
@@ -364,7 +366,7 @@ export function findSymbol(index: CodeIndex, query: string, includeTests: boolea
  * El indice entero, agrupado por archivo y sin firmas.
  *
  * Sin firmas a proposito: agrupado asi sirve para orientarse —que hay y donde—, y
- * con firmas pasa de ~2 KB a ~16 KB, que ya no es un mapa sino el codigo otra vez.
+ * con firmas pasa de ~2 KB a ~16 KB, que deja de ser un mapa y es el codigo otra vez.
  */
 export function outline(index: CodeIndex, includeTests: boolean): Record<string, string[]> {
   const out: Record<string, string[]> = {};

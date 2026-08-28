@@ -15,9 +15,11 @@ import {
 } from './constants/layout.constants.ts';
 
 /**
- * Lo que mide `n` celdas, en CSS. Es la unica forma en que este archivo habla de tamanos
- * el numero vive en la custom property `--cell`, que escribe
- * `use-grid.ts` sobre el contenedor raiz y que hereda hasta aca.
+ * Lo que mide `n` celdas, en CSS. Es la unica forma en que este archivo habla de
+ * tamanos.
+ *
+ * El numero vive en la custom property `--cell`, que escribe `use-grid.ts` sobre el
+ * contenedor raiz y que hereda hasta aca.
  *
  * Va por estilo inline y nunca por clase, y eso no es preferencia: Tailwind escanea el
  * fuente, asi que un `w-[calc(var(--cell)*1)]` interpolado no se generaria.
@@ -132,42 +134,64 @@ interface Props {
   /** La reflexion del fantasma. Solo mueve el `#N`: la nota de una celda no la
       cambia la reflexion, el orden en que suenan si. */
   mirror: boolean;
-  /** Que hace la rotacion. Baja como prop porque `cellTextFor` se llama
-      ACA y no en `App.tsx`, y sin el las celdas mostrarian las notas del otro regimen:
-      la mitad visible de AC7. Vale para las dos llamadas —la pieza colocada y el
-      fantasma—, que es lo que hace que el fantasma prometa lo que la pieza va a decir. */
+  /**
+   * Que hace la rotacion.
+   *
+   * Baja como prop porque `cellTextFor` se llama ACA y no en `App.tsx`, y sin el las
+   * celdas mostrarian las notas del otro regimen: la mitad visible de AC7. Vale para las
+   * dos llamadas —la pieza colocada y el fantasma—, que es lo que hace que el fantasma
+   * prometa lo que la pieza va a decir.
+   */
   regimen: RegimenDeRotacion;
   /** El `altKey` cruza porque `Alt`+click MUTEA en vez de colocar o quitar:
       el gesto no se puede decidir sin el, y el `onClick` de la celda no pasaba el evento. */
   onCellClick: (x: number, y: number, altKey: boolean) => void;
   onCellEnter: (cell: Cell) => void;
   onMouseLeave: () => void;
-  /** El foco del DOM esta adentro del tablero. Es lo unico que `hover` no puede contestar
-      solo —el mouse tambien lo escribe— y es lo que decide si se pinta el anillo: sin el,
-      el anillo de foco aparecia bajo el cursor del mouse, que no tiene foco ninguno. */
+  /**
+   * El foco del DOM esta adentro del tablero.
+   *
+   * Es lo unico que `hover` no puede contestar solo —el mouse tambien lo escribe— y es lo
+   * que decide si se pinta el anillo: sin el, el anillo de foco aparecia bajo el cursor
+   * del mouse, que no tiene foco ninguno.
+   */
   focoEnTablero: boolean;
-  /** El foco entro a una celda, o se fue del tablero (`null`). Una sola prop para las dos
-      mitades porque son el mismo hecho contado dos veces, y del lado del shell las dos
-      lineas que la atienden son las mismas: `hover` pasa a valer lo que llegue —la celda
-      enfocada ES el cursor, y al salir se apaga— y `focoEnTablero`, si llego algo. */
+  /**
+   * El foco entro a una celda, o se fue del tablero (`null`).
+   *
+   * Una sola prop para las dos mitades porque son el mismo hecho contado dos veces, y del
+   * lado del shell las dos lineas que la atienden son las mismas: `hover` pasa a valer lo
+   * que llegue —la celda enfocada ES el cursor, y al salir se apaga— y `focoEnTablero`,
+   * si llego algo.
+   */
   onFoco: (celda: Cell | null) => void;
-  /** La celda bajo el cursor esta ocupada por la pieza que esta en la mano, o sea que el
-      click va a EDITARLA. Llega calculado por la misma pura que decide el click
-      (`esLaPiezaEnLaMano`), y no derivado aca: dos copias de esa condicion serian dos
-      formas de que el cursor prometa una cosa y el click haga otra. */
+  /**
+   * La celda bajo el cursor esta ocupada por la pieza que esta en la mano, o sea que el
+   * click va a EDITARLA.
+   *
+   * Llega calculado por la misma pura que decide el click (`esLaPiezaEnLaMano`), y no
+   * derivado aca: dos copias de esa condicion serian dos formas de que el cursor prometa
+   * una cosa y el click haga otra.
+   */
   hoverEdita: boolean;
   /** El boton derecho sobre el tablero alterna la reflexion. Handler y no
       logica: quien decide si el evento cuenta es `App.tsx` con `reflejaElContextMenu`. */
   onContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
-  /** Cuanto mide el tablero, en celdas. Llega por prop y no de una constante
-      porque sale del viewport, y quien lo mide es `useGrilla` en el shell: este componente
-      dibuja `dims.h` filas de `dims.w` celdas y no sabe de donde salio el numero. Lo leen
-      tambien los topes del movimiento por teclado y los `aria-*` de la grilla, que si no
-      dirian el tamano de otro tablero. */
+  /**
+   * Cuanto mide el tablero, en celdas.
+   *
+   * Llega por prop y no de una constante porque sale del viewport, y quien lo mide es
+   * `useGrilla` en el shell: este componente dibuja `dims.h` filas de `dims.w` celdas y no
+   * sabe de donde salio el numero. Lo leen tambien los topes del movimiento por teclado y
+   * los `aria-*` de la grilla, que si no dirian el tamano de otro tablero.
+   */
   dims: Dims;
-  /** El nodo al que `useRuedaRota` (`components/use-input.ts`) le engancha la rueda.
-      Este componente lo CUELGA y no lo lee: el `ref` se crea en `App.tsx`, que es quien
-      compone los dos hooks de entrada, asi que aca no hay ni estado ni efecto. */
+  /**
+   * El nodo al que `useRuedaRota` (`components/use-input.ts`) le engancha la rueda.
+   *
+   * Este componente lo CUELGA y no lo lee: el `ref` se crea en `App.tsx`, que es quien
+   * compone los dos hooks de entrada, asi que aca no hay ni estado ni efecto.
+   */
   boardRef: RefObject<HTMLDivElement | null>;
 }
 
@@ -226,8 +250,8 @@ export default function Board({
     }
     // Frena el default SIEMPRE, tambien en el borde donde el destino termina siendo la
     // misma celda: sin esto la flecha scrollea la pagina. Mismo trato que la rueda y por
-    // el mismo motivo. Llego a scrollear tambien el `overflow-x-auto` del
-    // tablero, que ya no existe.
+    // el mismo motivo. El tablero no tiene un segundo scroll que la flecha pueda mover:
+    // por que se retiro el `overflow-x-auto`, en el spec 031 (issue #93).
     e.preventDefault();
     // Se ACOTA en vez de salir por un `if`: en el borde la flecha deja el foco donde
     // estaba, que es lo que pide "sin salirse de la grilla", y de paso no agrega cuatro
@@ -263,12 +287,12 @@ export default function Board({
     if (!e.currentTarget.contains(e.relatedTarget)) onFoco(null);
   };
 
-  // La TARJETA se fue, y con ella la tabla de repartos de columnas que
-  // vivia aca: una cadena larga de mediciones sobre `col-span-7`, `col-span-8` y
-  // `col-span-9` para repartir un `max-w-6xl` entre dos tarjetas. Ya no hay dos tarjetas ni hay
-  // `max-w-6xl`: el tablero ES la pantalla y los dos paneles flotan encima.
+  // No hay tarjeta ni ancho maximo: el tablero ES la pantalla y los dos paneles flotan
+  // encima. La tabla de repartos de columnas que vivia aca —una cadena de mediciones sobre
+  // `col-span-7`, `col-span-8` y `col-span-9` para repartir un `max-w-6xl` entre dos
+  // tarjetas— y por que se retiro estan en el spec 021 (issue #83).
   //
-  // Lo que reemplaza a esa cadena entera son dos numeros que salen del mismo lugar:
+  // Lo que la reemplaza son dos numeros que salen del mismo lugar:
   // `components/grid-fit.ts` mira el viewport y contesta CUANTAS celdas entran y CUANTO
   // mide cada una. La grilla mide `dims.w x --cell` por `dims.h x --cell` y llena la
   // pantalla creciendo en CANTIDAD y no en tamano — que es la correccion al
@@ -286,9 +310,9 @@ export default function Board({
           El `overflow-hidden` del contenedor raiz pasa de ser la red a ser la garantia. */}
       {/* La cabeza lectora se monta ACA, dentro del `relative` que envuelve la grilla: un
           absoluto se posiciona contra la caja de padding de su contenedor posicionado, asi
-          que queda alineada con las celdas por construccion y no por aritmetica. Este
-          mismo argumento llego a decir «el contenedor que SCROLLEA», y ya no scrollea
-          nada. Se importa
+          que queda alineada con las celdas por construccion y no por aritmetica — el
+          contenedor no scrollea, y por que dejo de hacerlo esta en el spec 031
+          (issue #93). Se importa
           directo y no llega por una ranura de `children`: `Playhead` no recibe props, o
           sea que no le pide nada a `App`, y una ranura generica reabriria una puerta que
           se cerro midiendo. */}
@@ -322,9 +346,9 @@ export default function Board({
             estaban donde los hijos eran las celdas, y ahora los hijos son las filas.
             Dejarlo arriba pondria `dims.h` filas dentro de una grilla de `dims.w`
             columnas, que es el pixel que AC11 prohibe. El contenedor sigue siendo grid con su
-            columna implicita —una fila por renglon, ancho de contenido—. El `w-max` que
-            tenia se fue con el `overflow-x-auto`: sostenia el ancho de una
-            grilla que podia ser mas ancha que su caja, y ya no puede serlo.
+            columna implicita —una fila por renglon, ancho de contenido—. Sin `w-max`: ese
+            ancho sostenia una grilla capaz de ser mas ancha que su caja, y `grid-fit.ts`
+            garantiza que no puede serlo (spec 031, issue #93).
 
             `Playhead` no se entera: se posiciona con `transform` en pixeles contra el
             contenedor posicionado, no con colocacion de grid. */}
@@ -497,7 +521,7 @@ export default function Board({
                    a la celda que quedaba bajo el mouse: en el test de las flechas el cursor
                    saltaba de (5,2) a (4,0) sin que nadie tocara el mouse. Un salto de foco
                    silencioso es exactamente lo que este repo persigue, y el anillo separado
-                   del fantasma no puede pasar por este camino porque el mouse ya no mueve
+                   del fantasma no puede pasar por este camino porque el mouse no mueve
                    ninguno de los dos. */
                 onMouseEnter={() => { if (!focoEnTablero) onCellEnter([x, y]); }}
                 style={caja}

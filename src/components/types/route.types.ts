@@ -19,7 +19,7 @@ export type MarcaKind = (typeof MARCA)[keyof typeof MARCA];
  * era "hay marca y suena": `routeBetween` puede cruzar una celda OCUPADA sin que sea
  * el turno de esa pieza, y ese cruce suena una floritura (`Click.note`) que no es ni
  * la nota propia de una pieza ni el click mudo de siempre. Tres casos con marca mas la
- * ausencia, y un booleano ya no distingue los tres — de ahi el const-object.
+ * ausencia, y un booleano no distingue los tres — de ahi el const-object.
  */
 export interface Marca {
   cell: Cell;

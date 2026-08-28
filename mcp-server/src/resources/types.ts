@@ -2,8 +2,10 @@ import type { ReadResourceResult, ResourceMetadata } from '@modelcontextprotocol
 
 /**
  * El contrato de un resource: nombre, URI, metadata y handler COLOCADOS en un solo
- * archivo, igual que `tools/types.ts`. Agregar un resource es un archivo nuevo mas una
- * linea en `resources/index.ts`; el entrypoint no se toca y no hay ningun `switch`.
+ * archivo, igual que `tools/types.ts`.
+ *
+ * Agregar un resource es un archivo nuevo mas una linea en `resources/index.ts`; el
+ * entrypoint no se toca y no hay ningun `switch`.
  *
  * La diferencia con una tool es de INTENCION y no de mecanica: una tool es una pregunta
  * con argumentos y un resource es contenido que el cliente puede traerse entero y adjuntar
@@ -12,8 +14,10 @@ import type { ReadResourceResult, ResourceMetadata } from '@modelcontextprotocol
 
 /**
  * `config` se tipa `ResourceMetadata` PELADO y no `ResourceMetadata & { cacheHint }`, que
- * es lo que acepta `registerResource`. **No es una omision: es lo que hace que el chequeo
- * de propiedades de mas rechace un `cacheHint` escrito en un resource.**
+ * es lo que acepta `registerResource`.
+ *
+ * **No es una omision: es lo que hace que el chequeo de propiedades de mas rechace un
+ * `cacheHint` escrito en un resource.**
  *
  * El motivo es la propiedad entera de este server: lo que lo vuelve confiable es que nada
  * pueda quedar viejo —no hay build, no hay indice persistido, la respuesta sale del codigo
@@ -35,9 +39,10 @@ export interface ResourceDef {
 }
 
 /**
- * Respuesta normal de un resource: JSON serializado como texto. Es el `json` de las tools
- * con el sobre que pide el otro lado del protocolo —un resource contesta `contents` y no
- * `content`, y cada entrada repite la URI que se pidio—.
+ * Respuesta normal de un resource: JSON serializado como texto.
+ *
+ * Es el `json` de las tools con el sobre que pide el otro lado del protocolo —un resource
+ * contesta `contents` y no `content`, y cada entrada repite la URI que se pidio—.
  *
  * La URI se toma del parametro y no de la constante del resource: es la que el cliente
  * pidio, y devolver otra es contestar sobre algo que nadie pregunto.

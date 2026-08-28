@@ -34,14 +34,14 @@ const UN_COMPAS = 16;
  * reformulacion no cambio ningun instante es tener las dos implementaciones vivas
  * y compararlas. Si el reloj por origen se revierte, este bloque se borra con el.
  *
- * `interval` se recibe por parametro y ya no sale de `job.spread`, que dejo de
- * existir: el espaciado del arpegio dejo de ser un dato del job y paso
- * a derivarse del bpm. Pasarlo desde afuera no debilita el oraculo — lo que este
+ * `interval` se recibe por parametro y no de un `job.spread`, campo que no existe: el
+ * espaciado del arpegio no es un dato del job sino que se deriva
+ * del bpm. Pasarlo desde afuera no debilita el oraculo — lo que este
  * test compara es el mecanismo del RELOJ (cursor vs origen), no de donde sale el
  * espaciado, y las dos implementaciones siguen usando el mismo numero.
  *
- * El recorrido tampoco lo debilita: recibe los pasos sueltos porque `Job` ya no
- * existe, y se lo compara contra una secuencia de UN paso en offset 0 y ciclo de
+ * El recorrido tampoco lo debilita: recibe los pasos sueltos porque no hay `Job`
+ * que los agrupe, y se lo compara contra una secuencia de UN paso en offset 0 y ciclo de
  * 16 intervalos, que es un compas exacto. O sea el mismo periodo que este cursor
  * recorre, que es lo unico que el oraculo mide.
  */
@@ -68,8 +68,10 @@ function collectHitsPorCursor(
 
 /**
  * Corre `ticks` vueltas del temporizador desde t = 0, como el motor: una ventana de
- * LOOKAHEAD cada TICK_MS. El empalme del swap solo existe ENTRE dos llamadas
- * consecutivas, asi que una sola llamada no lo puede ver.
+ * LOOKAHEAD cada TICK_MS.
+ *
+ * El empalme del swap solo existe ENTRE dos llamadas consecutivas, asi que una sola
+ * llamada no lo puede ver.
  *
  * Devuelve tambien `comprometido`: hasta donde habia emitido la secuencia vieja en el
  * momento de encolar la nueva. Es el dato con el que se deriva el borde esperado sin
@@ -103,10 +105,12 @@ function simular(
 }
 
 /**
- * QUE evento es, mas alla de cuando: sin esto un onset de la secuencia vieja que
- * cae exacto en el borde se confunde con el de la nueva y el empalme parece sano
- * cuando en realidad sono la secuencia equivocada. Medido: la primera version de
- * este oraculo comparaba solo instantes y dejaba pasar esa mutacion entera.
+ * QUE evento es, mas alla de cuando.
+ *
+ * Sin esto un onset de la secuencia vieja que cae exacto en el borde se confunde con el
+ * de la nueva y el empalme parece sano cuando en realidad sono la secuencia equivocada.
+ * Medido: la primera version de este oraculo comparaba solo instantes y dejaba pasar
+ * esa mutacion entera.
  */
 const clave = (h: Hit) => (h.kind === HIT.click ? 'click' : `${h.kind}:${h.hz.toFixed(4)}`);
 
@@ -468,6 +472,8 @@ describe('el cruce por celda ocupada', () => {
   const interval = intervalDuration(BPM);
 
   /**
+   * El predicado que estrecha un `Hit` a la rama del cruce.
+   *
    * `filter` sobre una union no estrecha por si solo, y el `hz` vive en una sola rama.
    * El predicado explicito es lo que permite afirmar sobre el, que es justo la mitad
    * del contrato que un `hz?: number` habria dejado sin verificar.
@@ -479,9 +485,9 @@ describe('el cruce por celda ocupada', () => {
   // escrita a mano y no derivada de un tablero.
   //
   // NO es el caso testigo del spec, y vale decir por que: con `CROSS_COST = 5` ese
-  // tablero —`P` rot 1 en (3,2) e `Y` rot 1 en (7,2)— dejo de pisar nada, porque rodea
+  // tablero —`P` rot 1 en (3,2) e `Y` rot 1 en (7,2)— no pisa nada, porque rodea
   // por la fila 0 (lo fija `domain/__tests__/board.test.ts`, "el tramo de la P a la Y no
-  // pisa [7,1]"). Atar este test al testigo lo dejaria midiendo un cruce que ya no
+  // pisa [7,1]"). Atar este test al testigo lo dejaria midiendo un cruce que no
   // ocurre, que es la misma trampa que `components/__tests__/route-source.test.ts`
   // esquiva eligiendo la `X`.
   const F5 = 77;
@@ -615,7 +621,7 @@ describe('la secuencia cambia al cerrar el ciclo', () => {
     expect(hasta(conCambio.hits).map(conInstante)).toEqual(hasta(sinCambio.hits).map(conInstante));
     expect(hasta(conCambio.hits).length).toBeGreaterThan(4);   // que no pase por vacio
 
-    // Y despues del borde ya no son el mismo: el cambio efectivamente entro.
+    // Y despues del borde difieren: el cambio efectivamente entro.
     expect(conCambio.hits.length).not.toBe(sinCambio.hits.length);
   });
 

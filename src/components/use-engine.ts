@@ -13,9 +13,8 @@ import { proyectarAlMotor } from './engine-bridge.ts';
 import { encolar, reiniciar } from './route-source.ts';
 
 /**
- * Los cuatro efectos de reconciliación que mantienen al motor mirando el mismo tablero
- * que la pantalla: tempo, clicks, la secuencia contra el tablero, y la limpieza al
- * desmontar.
+ * Los cuatro efectos de reconciliación que mantienen al motor mirando el mismo tablero que
+ * la pantalla: tempo, clicks, la secuencia contra el tablero y la limpieza al desmontar.
  *
  * Estaban en `App.tsx` y se mudaron ENTEROS, en el mismo orden y con
  * sus docblocks: son argumentos ya medidos —el empalme al cierre de ciclo, la limpieza
@@ -109,7 +108,7 @@ export function useMotorSincronizado({ secuencia, placed, tempo, clicks }: Recon
   //
   // La `Sequence` de `buildSequence` no es la que espera el motor: la proyección vive en
   // `engine-bridge.ts` y su docblock explica qué se cae y por qué. Acá sólo se la llama, y por
-  // eso este efecto y el del desmontaje ya no pueden divergir.
+  // eso este efecto y el del desmontaje no pueden divergir.
   //
   // Las celdas no se pierden: siguen en la secuencia del dominio, y por eso este efecto
   // encola en DOS colas con la misma `secuencia`. Leerlas de `placed` —que es lo que

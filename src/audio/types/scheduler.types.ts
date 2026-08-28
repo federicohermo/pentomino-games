@@ -7,18 +7,18 @@ import type { HIT } from '../constants/scheduler.constants.ts';
  * las celdas que cruza entre una y otra suenan al pasar. En el dominio un cruce lleva
  * su celda ademas de su instante, porque alli el recorrido ES el modelo.
  *
- * Aca la celda igual no viaja, pero hay que decir POR QUE, porque
- * de las dos razones que habia sobrevive una sola:
+ * Aca la celda igual no viaja, y hay que decir POR QUE, porque de las dos razones que
+ * se le pueden poner vale una sola:
  *
- * - **Ya NO vale** que para sonar alcance con contar. Eso era cierto mientras todo
- *   cruce fuera un click sin altura; hoy el recorrido puede pisar
- *   una celda OCUPADA y ese cruce suena la nota de la celda, asi
- *   que `clicks` lleva su `note` en MIDI.
- * - **Sigue valiendo** que no podria verla: `Cell` vive en el dominio y el override
+ * - **Vale** que no podria verla: `Cell` vive en el dominio y el override
  *   de eslint sobre esta capa prohibe importarlo, tambien como `import type` (usa la
  *   variante de typescript-eslint, que si ve los imports de tipo). Importarlo no
  *   romperia el navegador —los tipos se borran—: rompe `pnpm lint`, que es donde la
  *   separacion de capas se verifica de verdad.
+ * - **NO vale** que para sonar alcance con contar. Eso seria cierto solo si todo
+ *   cruce fuera un click sin altura, y no lo es: el recorrido puede pisar
+ *   una celda OCUPADA y ese cruce suena la nota de la celda, asi
+ *   que `clicks` lleva su `note` en MIDI.
  *
  * O sea que el numero MIDI cruza el borde y la coordenada no, y eso no es un
  * accidente: el motor sabe sonar alturas y no sabe que es un tablero.
@@ -74,9 +74,10 @@ export interface ClockState {
   /** instante del compas 0 en el reloj del contexto */
   origin: number;
   /**
-   * Hasta donde ya se emitieron onsets. Sin esto cada onset se emitiria cuatro
-   * veces: los ticks son de 25 ms y el horizonte de 100 ms, asi que las ventanas
-   * consecutivas se solapan.
+   * Hasta donde ya se emitieron onsets.
+   *
+   * Sin esto cada onset se emitiria cuatro veces: los ticks son de 25 ms y el
+   * horizonte de 100 ms, asi que las ventanas consecutivas se solapan.
    */
   scheduledUntil: number;
 }

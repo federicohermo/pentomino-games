@@ -5,8 +5,10 @@ import { EDICION } from '../constants/input.constants.ts';
 import { REGIMEN } from '../../domain/constants/music.constants.ts';
 
 /**
- * Los cuatro casos del AC8: celda libre, ocupada, ocupada y muteada, y
- * el criterio de que el fantasma no entra. Es el mismo tipo de test que
+ * Los cuatro casos del AC8: celda libre, ocupada, ocupada y muteada, y el criterio de
+ * que el fantasma no entra.
+ *
+ * Es el mismo tipo de test que
  * `cell-text.test.ts` -puro, sin DOM y sin React, en el `environment: 'node'` del
  * resto del repo- por la misma razon: lo que un lector de pantalla va a anunciar
  * tambien es una decision, y sin este archivo viviria sin test adentro de
@@ -62,7 +64,7 @@ describe('anuncioDeEdicion — lo que dice la region aria-live', () => {
 
   it('quitar dice cual se fue y de donde, y no el muteo', () => {
     // Quitar es la operacion destructiva y no tiene deshacer, asi que la confirmacion es
-    // lo unico que queda. El muteo no entra: la pieza ya no esta.
+    // lo unico que queda. El muteo no entra: la pieza sale del tablero.
     expect(anuncioDeEdicion(EDICION.quitar, 'L', 0, 0, true))
       .toBe('pieza L quitada de fila 1, columna 1');
     expect(anuncioDeEdicion(EDICION.quitar, 'L', 0, 0, false))

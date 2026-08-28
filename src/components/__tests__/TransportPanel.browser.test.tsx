@@ -94,7 +94,7 @@ describe('TransportPanel', () => {
     const boton = page.getByRole('button', { name: /^Vaciar el tablero y frenar el transporte$/ });
     await expect.element(boton).toHaveTextContent('↺');
     expect(boton.element().getAttribute('title')).toBe('Vaciar el tablero y frenar el transporte');
-    // Y el nombre viejo ya no encuentra nada: es la contraparte falsable del renombre.
+    // Y ningun boton se llama `Reset`: es la contraparte falsable del renombre.
     expect(page.getByRole('button', { name: /^Reset$/ }).elements()).toHaveLength(0);
 
     await boton.click();

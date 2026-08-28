@@ -1,9 +1,10 @@
 import type { REGIMEN } from '../constants/music.constants.ts';
 
 /**
- * Que hace la rotacion: cambiar la ESCALA o cambiar el ORDEN. Ver `REGIMEN` en
- * `constants/music.constants.ts`, que es donde estan los dos valores y el porque de
- * que existan los dos.
+ * Que hace la rotacion: cambiar la ESCALA o cambiar el ORDEN.
+ *
+ * Ver `REGIMEN` en `constants/music.constants.ts`, que es donde estan los dos valores y
+ * el porque de que existan los dos.
  *
  * Derivado del const-object y no un `enum`: `erasableSyntaxOnly` rechaza los enums, y
  * es la misma opcion que permite que node cargue `src/domain/` sin compilar. Es el

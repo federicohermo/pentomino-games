@@ -4,9 +4,11 @@ import { PIECE_KEYS } from '../pieces.ts';
 import { checkAll } from '../../../src/domain/invariants.ts';
 
 /**
- * Los chequeos del modelo, corridos de verdad. Es la tool mas chica del spec
- * justamente porque **toda la logica ya vive en `src/domain/invariants.ts`**:
- * aca no hay ni un chequeo escrito, solo el formato de la respuesta.
+ * Los chequeos del modelo, corridos de verdad.
+ *
+ * Es la tool mas chica del spec justamente porque **toda la logica ya vive en
+ * `src/domain/invariants.ts`**: aca no hay ni un chequeo escrito, solo el formato
+ * de la respuesta.
  *
  * Itera sobre lo que devuelve `checkAll()` y no sobre una lista propia, y eso se
  * cobro: el spec 036 agrego el sexto —`piezas distintas`— y el 039 el septimo —`letras`—,

@@ -30,9 +30,9 @@ import type { PieceKey } from '../domain/types/pieces.types.ts';
  * natural, porque ahí se lo lee dos veces contra una— dejaría a la rueda sin forma de
  * ensuciarlo, y ahí vuelve el bug que el comentario de `useRuedaRota` documenta:
  * `Ctrl`+rueda hace zoom Y ADEMÁS refleja la pieza al soltar el `Ctrl`, que es el gesto
- * que D10 del 013 nombra por su nombre. Ningún test lo atrapa. Lo que antes sostenía un
- * cierre léxico en el mismo cuerpo de función lo sostiene ahora un parámetro con nombre
- * en las dos firmas, que es la mitad buena de la mudanza.
+ * que D10 del 013 nombra por su nombre. Ningún test lo atrapa. Lo sostiene un parámetro
+ * con nombre en las dos firmas y no un cierre léxico en un mismo cuerpo de función, que es
+ * la mitad buena de la mudanza.
  */
 
 /** Los cuatro gestos del teclado, ya resueltos por el shell. */
@@ -185,10 +185,10 @@ export function useRuedaRota(
       if (e.ctrlKey) return;
       // Un `deltaY` de 0 es un scroll horizontal puro, que no rota (lo dice también
       // `rotacionPorRueda`). Sale antes del `preventDefault` porque no hay nada nuestro que
-      // hacer con ese gesto, así que el navegador se lo queda entero. El
-      // motivo llegó a ser más concreto —este nodo era el `overflow-x-auto` con el que se recorría
-      // la grilla debajo de `md`, y frenarlo lo dejaba sin scroll—; ya no scrollea, y
-      // tragarse un default que no se usa sigue sin tener nada a favor.
+      // hacer con ese gesto, así que el navegador se lo queda entero. Este nodo no
+      // scrollea, así que el motivo es sólo ése: tragarse un default que no se usa no
+      // tiene nada a favor. El motivo más concreto que tuvo mientras era el
+      // `overflow-x-auto` de la grilla está en el spec 031 (issue #93).
       if (e.deltaY === 0) return;
       e.preventDefault();
       alRotar(e.deltaY);

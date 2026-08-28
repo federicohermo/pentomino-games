@@ -8,6 +8,8 @@ import tseslint from 'typescript-eslint'
 import vitest from '@vitest/eslint-plugin'
 import importX from 'eslint-plugin-import-x'
 import { globalIgnores } from 'eslint/config'
+import commentShape from './eslint-rules/comment-shape.mjs'
+import commentAnchor from './eslint-rules/comment-anchor.mjs'
 
 /**
  * Los paquetes de estado global que `CLAUDE.md` prohibe. Estaba escrito y no lo verificaba
@@ -169,8 +171,16 @@ const PRESET_MARKDOWN_APAGADO = Object.fromEntries(
 
 const NODOS_CON_RUTA = ['ImportDeclaration', 'ImportExpression', 'ExportNamedDeclaration', 'ExportAllDeclaration']
 
-/** El specifier local al que le falta la extension. */
-const SIN_EXTENSION = '[source.value=/^[.].*(?<![.]ts|[.]tsx|[.]css|[.]json)$/]'
+/**
+ * El specifier local al que le falta la extension.
+ *
+ * `.mjs` entro con el spec 051: los tests de las dos reglas locales importan la regla, que
+ * es un `.mjs`, y hasta ese spec ningun `.ts` de este repo podia importar uno —`allowJs`
+ * estaba apagado en los dos tsconfig, que es por lo que los scripts de `.claude/scripts/`
+ * se ejercen por subproceso—. Sin esta alternativa la regla lee `../comment-shape.mjs`
+ * como un import SIN extension, que es justo lo contrario de lo que pasa.
+ */
+const SIN_EXTENSION = '[source.value=/^[.].*(?<![.]ts|[.]tsx|[.]mjs|[.]css|[.]json)$/]'
 
 const REGLAS_DEL_REPO = [
   {
@@ -723,6 +733,7 @@ export default tseslint.config([
     files: [
       'src/**/__tests__/**/*.{ts,tsx}', '__tests__/*.ts', 'docs/__tests__/*.ts',
       'specs/__tests__/*.ts', '.claude/scripts/__tests__/*.ts',
+      'eslint-rules/__tests__/*.ts',
     ],
     plugins: { vitest },
     rules: {
@@ -759,6 +770,33 @@ export default tseslint.config([
         selector: 'CallExpression[callee.object.name=/^(test|it|describe|suite)$/][callee.property.name=/^(only|skip)$/]',
         message: 'Nada de .only ni .skip: dejan pasar la suite en verde. Arreglar el test o borrarlo.',
       }],
+    },
+  },
+
+  {
+    // ## Las dos reglas locales del spec 051
+    //
+    // Son la unica convencion de `conventions.md` que seguia siendo prosa despues del 030
+    // y del 049, y la que quedaba tenia el motivo medido de siempre: una regla escrita y
+    // no verificada esta desincronizada la mitad de las veces. Viven en `eslint-rules/`
+    // —portadas de otro repo del mismo dueno, pero NO copiadas: verbatim daban 1007
+    // hallazgos en 92 de 93 archivos— y el porque de cada chequeo que entro y de cada uno
+    // que se rechazo esta escrito arriba de su codigo.
+    //
+    // El criterio que ordena las dos: **exactitud, no longitud**. Ninguna mide cuanto dice
+    // un comentario; las dos miden si lo que dice sigue siendo cierto.
+    //
+    // Se declaran como plugin inline y no como paquete: son dos archivos de este repo y
+    // empaquetarlos pediria un `package.json` y una version para algo que nunca sale de
+    // aca. El prefijo `local/` es lo que las distingue en la salida del linter.
+    //
+    // Los dos arboles y no `**/*.{ts,tsx}`: `eslint-rules/` se lintea a si misma —seria un
+    // ciclo con el arranque de ESLint— y de `specs/[0-9]*/` no sale codigo.
+    files: ['src/**/*.{ts,tsx}', 'mcp-server/src/**/*.ts'],
+    plugins: { local: { rules: { 'comment-shape': commentShape, 'comment-anchor': commentAnchor } } },
+    rules: {
+      'local/comment-shape': 'error',
+      'local/comment-anchor': 'error',
     },
   },
 

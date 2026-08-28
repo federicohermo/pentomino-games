@@ -60,13 +60,14 @@ const placementSchema = z.object({
 const inputSchema = z.object({
   pieces: z.array(placementSchema).min(1).max(MAX_PIEZAS)
     .describe('Las piezas, en el orden en que se colocarían: cada una choca con las anteriores válidas.'),
-  // El tablero deja de ser 10x6 fijo con el spec 031: en la app lo decide el viewport, y
-  // acá hay que poder preguntar por el mismo tablero que se está mirando. El default es el
-  // de siempre, así que una consulta escrita antes del 031 contesta exactamente lo mismo.
+  // El tablero no es 10x6 fijo desde el spec 031: en la app lo decide el viewport, y acá
+  // hay que poder preguntar por el mismo tablero que se está mirando. El default es el de
+  // siempre, así que una consulta que no pase `dims` contesta exactamente lo mismo.
   //
-  // El tope de piezas NO sale del área y por eso `pieces` usa `MAX_PIEZAS` y ya no
-  // `GRID_W * GRID_H / CELLS_PER_PIECE`: hasta el 031 los dos números coincidían —60 ÷ 5—
-  // pero el que manda es el del circuito, que es exponencial en la cantidad de piezas.
+  // El tope de piezas NO sale del área, y por eso `pieces` usa `MAX_PIEZAS` en vez de
+  // `GRID_W * GRID_H / CELLS_PER_PIECE`: sobre el tablero de 10x6 los dos números
+  // coinciden —60 ÷ 5— y sobre cualquier otro no, porque el que manda es el del circuito,
+  // que es exponencial en la cantidad de piezas.
   dims: z.object({
     w: z.number().int().min(GRID_MIN.w).max(64),
     h: z.number().int().min(GRID_MIN.h).max(64),
@@ -185,9 +186,9 @@ function resolve(entries: z.output<typeof inputSchema>['pieces'], dims: Dims): {
     // rechazada no deja nada en el tablero.
     let gates: Gates | null = null;
     if (valid) {
-      // Sin `notes`: el arpegio ya no se guarda en la pieza, lo deriva `buildSequence`
-      // con la misma `arpeggioFor` que usa la app. Antes se componia aca a mano, que era
-      // una de las cuatro copias de esa derivacion.
+      // Sin `notes`: el arpegio no se guarda en la pieza, lo deriva `buildSequence` con
+      // la misma `arpeggioFor` que usa la app. Componerlo aca a mano seria otra copia de
+      // esa derivacion, y la derivacion tiene un solo dueño.
       const p: PlacedPiece = { id, piece: e.piece, rotation: e.rotation, mirror: e.mirror, cells, muted: e.muted };
       placed.push(p);
       gates = gatesOf(p);

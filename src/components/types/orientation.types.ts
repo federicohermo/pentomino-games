@@ -20,7 +20,7 @@ import type { PieceKey } from '../../domain/types/pieces.types.ts';
  * un refactor con su propio spec.
  *
  * Lo que sí cierra es la **vía**: la rotación entra al modelo desde `Orientacion`, así que
- * con la fuente acotada `domain/` ya no puede recibir un valor fuera de `0..3` por acá. El
+ * con la fuente acotada `domain/` no puede recibir un valor fuera de `0..3` por acá. El
  * escenario concreto está medido: con un índice de más, `base[j + rot]` daba
  * `undefined`, `midiName` no explotaba y la celda del tablero pintaba `undefinedNaN`.
  */

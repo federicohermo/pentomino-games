@@ -42,9 +42,9 @@ import { MARCA } from './route.constants.ts';
  * pinta afuera sin agrandar nada. La medicion que lo encontro es del layout viejo —con
  * `CELL_PX` en 63, grilla de 630 x 378, la cabeza en (9,5) y `scale(1.10)`, el
  * `scrollHeight` del entonces `overflow-x-auto` de `Board` pasaba de 378 a 381 y aparecian
- * las dos barras de desplazamiento—, y ese contenedor ya no scrollea: el
- * desborde lo recorta el `overflow-hidden` del raiz, asi que hoy el sintoma no seria una
- * barra sino una celda cortada en el borde. El MECANISMO no cambio, y es lo que decide.
+ * las dos barras de desplazamiento—, y ese contenedor no scrollea: el desborde lo recorta
+ * el `overflow-hidden` del raiz, asi que hoy el sintoma no seria una barra sino una celda
+ * cortada en el borde. El MECANISMO no cambio, y es lo que decide.
  *
  * Gris pizarra y no un color: el color es IDENTIDAD —que pieza es— y el estado nunca se
  * comunica con hue. Es la misma regla por la que el fantasma es gris y no verde.
@@ -55,17 +55,20 @@ export const BORDE_COLOR = '#0f172a';
 export const NOTA = { dentro: 3, fuera: 2 };
 
 /**
- * El cruce: la cabeza pasa sobre una celda OCUPADA que no es su turno
- * pero que igual suena una floritura (`Click.note`) — ni la nota propia de una pieza
- * ni el click mudo de siempre, asi que su borde va en el escalon intermedio entre los
- * otros dos. Los tres numeros —3/2, 2/1, 2/0— estan fijados en DESIGN.md.
+ * El cruce: la cabeza pasa sobre una celda OCUPADA que no es su turno pero que igual suena
+ * una floritura (`Click.note`).
+ *
+ * Ni la nota propia de una pieza ni el click mudo de siempre, asi que su borde va en el
+ * escalon intermedio entre los otros dos. Los tres numeros —3/2, 2/1, 2/0— estan fijados
+ * en DESIGN.md.
  */
 export const CRUCE = { dentro: 2, fuera: 1 };
 
 /**
- * Nota fuerte, cruce intermedio, click tenue (D7 mas D8 del 011): si dos
- * de los tres se vieran igual, el recorrido mentiria sobre cual de las tres cosas paso.
- * El click engorda solo hacia adentro y la mitad — se lee como un roce.
+ * Nota fuerte, cruce intermedio, click tenue (D7 mas D8 del 011).
+ *
+ * Si dos de los tres se vieran igual, el recorrido mentiria sobre cual de las tres cosas
+ * paso. El click engorda solo hacia adentro y la mitad — se lee como un roce.
  */
 export const CLICK = { dentro: 2, fuera: 0 };
 
@@ -76,14 +79,15 @@ export const BORDE_POR_KIND = { [MARCA.nota]: NOTA, [MARCA.cruce]: CRUCE, [MARCA
  * Las clases del velo van como literales enteros y no armadas por concatenacion:
  * Tailwind escanea el fuente, asi que solo genera lo que aparece escrito completo.
  *
- * **Lo que ya NO esta aca es la geometria**, y ese es el cambio. Hasta ahi
- * estas dos clases repetian el `p-[2px]` y el `rounded-lg` de la baldosa de `Board.tsx` a
- * proposito —es la misma caja, y poner los numeros a mano seria un segundo lugar donde
- * mantenerlos—. Con el 021 ese aire y ese radio pasaron a ser razones de `--cell`, y una
- * clase de Tailwind no puede interpolar una custom property: si se quedaran escritos aca,
- * a celda 180 el velo cubriria una baldosa de 4,93 px de aire con un margen de 2 y dejaria
- * un halo. El aire y el radio los escribe ahora `rearmar`, en `playhead-loop.ts`, al lado
- * de las cuatro coordenadas — que es el unico lugar donde ya se hablaba en pixeles.
+ * **La geometria NO esta aca**, y es lo que hay que respetar al tocar estas dos clases: el
+ * aire y el radio son razones de `--cell` desde el 021, y una clase de Tailwind no puede
+ * interpolar una custom property. Escritos aca, a celda 180 el velo cubriria una baldosa de
+ * 4,93 px de aire con un margen de 2 y dejaria un halo. Los escribe `rearmar`, en
+ * `playhead-loop.ts`, al lado de las cuatro coordenadas — que es el unico lugar donde ya se
+ * hablaba en pixeles.
+ *
+ * Que estas dos clases repitieran el `p-[2px]` y el `rounded-lg` de la baldosa de
+ * `Board.tsx`, y por que dejo de valer: spec 021 (issue #83).
  *
  * Lo que queda en la clase es lo que NO depende del tamano: el posicionamiento, el
  * relleno, el color y el filete. El `border-2 border-dashed` se queda fijo por el mismo

@@ -28,8 +28,10 @@ const RAIZ = join(import.meta.dirname, '..', '..', '..');
 
 /**
  * Las 14 esperadas, con shorthand: la clave sale del identificador importado y el valor,
- * del archivo real. Es tambien de donde sale el numero — contar `Object.keys` de esto es
- * contar imports, y escribir "14" a mano seria un dato mas que puede envejecer.
+ * del archivo real.
+ *
+ * Es tambien de donde sale el numero — contar `Object.keys` de esto es contar imports, y
+ * escribir "14" a mano seria un dato mas que puede envejecer.
  */
 const ESPERADAS: Record<string, unknown> = {
   GRID_MIN, GRID_DEFAULT, MAX_PIEZAS, CROSS_COST,

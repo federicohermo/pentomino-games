@@ -3,8 +3,10 @@ import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/serv
 
 /**
  * El contrato de una tool: nombre, titulo, anotaciones, descripcion, schema y
- * handler COLOCADOS en un solo archivo. Agregar una tool es un archivo nuevo mas
- * una linea en `tools/index.ts`; el entrypoint no se toca y no hay ningun `switch`.
+ * handler COLOCADOS en un solo archivo.
+ *
+ * Agregar una tool es un archivo nuevo mas una linea en `tools/index.ts`; el
+ * entrypoint no se toca y no hay ningun `switch`.
  *
  * Lo que NO hay aca es una capa de validacion de argumentos: la hace el SDK
  * contra el schema de zod antes de llamar al handler. Es la diferencia con el
@@ -13,11 +15,12 @@ import type { CallToolResult, ToolAnnotations } from '@modelcontextprotocol/serv
  */
 
 /**
- * `title` y `annotations` van OPCIONALES a proposito. Con un campo requerido, el
- * commit que amplia el contrato no compila hasta que las seis tools esten hechas,
- * y tres commits chicos se vuelven uno grande. Quien exige que ninguna se lo
- * saltee es el test de `__tests__/tools.test.ts`, no el tipo — y ese test cubre
- * ademas la tool numero siete, que es el modo de falla real.
+ * `title` y `annotations` van OPCIONALES a proposito.
+ *
+ * Con un campo requerido, el commit que amplia el contrato no compila hasta que las
+ * seis tools esten hechas, y tres commits chicos se vuelven uno grande. Quien exige
+ * que ninguna se lo saltee es el test de `__tests__/tools.test.ts`, no el tipo — y
+ * ese test cubre ademas la tool numero siete, que es el modo de falla real.
  *
  * `ToolAnnotations` se IMPORTA del SDK en vez de redeclararse: una copia local no
  * ve el hint que el protocolo agregue manana.
@@ -39,7 +42,7 @@ export interface ToolSpec<S extends z.ZodType> {
   run: (args: z.output<S>) => CallToolResult;
 }
 
-/** Lo que consume el registro: el schema ya no aparece en el tipo del handler. */
+/** Lo que consume el registro: el schema no aparece en el tipo del handler. */
 export interface ToolDef {
   name: string;
   description: string;

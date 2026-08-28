@@ -1,7 +1,6 @@
 /**
- * Las cuatro acciones que un gesto de entrada puede pedirle al shell: rotar la pieza
- * por colocar, alternar su reflexión, alternar el transporte, o **seleccionar** otra
- * pieza.
+ * Las cuatro acciones que un gesto de entrada puede pedirle al shell: rotar la pieza por
+ * colocar, alternar su reflexión, alternar el transporte o **seleccionar** otra pieza.
  *
  * `seleccionar` es la unica que no sale de un modificador: las
  * doce letras eligen su pentominó. Va acá adentro y no como una cuarta rama suelta del

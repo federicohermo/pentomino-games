@@ -114,8 +114,9 @@ describe('los chequeos detectan una regresion', () => {
   });
 
   /**
-   * La regresion mas peligrosa del repo, y la que motiva todo el chequeo 1: si una
-   * transformacion reordenara las celdas, el CONJUNTO seguiria siendo el mismo
+   * La regresion mas peligrosa del repo, y la que motiva todo el chequeo 1.
+   *
+   * Si una transformacion reordenara las celdas, el CONJUNTO seguiria siendo el mismo
    * —la pieza se dibujaria identica— pero `ANCHOR_INDEX` dejaria de apuntar a la
    * celda de agarre. No produce ningun error visible.
    *
@@ -143,9 +144,11 @@ describe('los chequeos detectan una regresion', () => {
 
   /**
    * El bug que motivo el chequeo, reproducido con la forma que la `Z` tuvo de verdad:
-   * `[[0,1],[1,1],[1,0],[2,0],[3,0]]` es la `N` reflejada. Los otros cinco chequeos la
-   * dan por buena —son cinco celdas, sin repetir, conexas— porque ninguno compara dos
-   * FORMAS: el unico que cruza piezas es `checkBaseMap`, y las cruza por su tonica.
+   * `[[0,1],[1,1],[1,0],[2,0],[3,0]]` es la `N` reflejada.
+   *
+   * Los otros cinco chequeos la dan por buena —son cinco celdas, sin repetir, conexas—
+   * porque ninguno compara dos FORMAS: el unico que cruza piezas es `checkBaseMap`, y
+   * las cruza por su tonica.
    */
   it('checkDistinct ve la Z que era la N reflejada', () => {
     conFormaMutada('Z', [[0,1],[1,1],[1,0],[2,0],[3,0]], () => {
@@ -159,9 +162,10 @@ describe('los chequeos detectan una regresion', () => {
 
   /**
    * Y una forma distinta escrita con las celdas en otro orden NO es un duplicado: el
-   * chequeo compara conjuntos, no arrays. Sin el `sort()` de `canonicalKey` esta `N`
-   * —la misma pieza, otro orden— se leeria como una pieza nueva y el duplicado real
-   * pasaria.
+   * chequeo compara conjuntos, no arrays.
+   *
+   * Sin el `sort()` de `canonicalKey` esta `N` —la misma pieza, otro orden— se leeria
+   * como una pieza nueva y el duplicado real pasaria.
    */
   it('checkDistinct compara el conjunto y no el orden del array', () => {
     conFormaMutada('N', [[3,1],[2,1],[1,1],[1,0],[0,0]], () => {
@@ -208,9 +212,11 @@ describe('los chequeos detectan una regresion', () => {
 
   /**
    * Y una forma que no es NINGUNO de los 12 se reporta como tal en vez de mentir un
-   * culpable. El mensaje del caso anterior sale de buscar la letra que la forma si es;
-   * cuando esa busqueda no encuentra nada —acá, cinco celdas desconectadas— decir «es el
-   * undefined» mandaria a revisar una pieza que no tiene nada que ver.
+   * culpable.
+   *
+   * El mensaje del caso anterior sale de buscar la letra que la forma si es; cuando esa
+   * busqueda no encuentra nada —acá, cinco celdas desconectadas— decir «es el undefined»
+   * mandaria a revisar una pieza que no tiene nada que ver.
    */
   it('checkLetters no le inventa letra a una forma que no es un pentomino', () => {
     conFormaMutada('Z', [[0,0],[1,0],[2,0],[3,0],[9,9]], () => {
@@ -273,7 +279,7 @@ describe('los chequeos detectan una regresion', () => {
 
   it('checkAnchors ve un ANCHOR_INDEX fuera de rango', () => {
     conFormaMutada('I', [[0,0],[1,0]], () => {
-      // ANCHOR_INDEX.I es 2, y la forma mutada tiene 2 celdas: el indice ya no existe.
+      // ANCHOR_INDEX.I es 2, y la forma mutada tiene 2 celdas: el indice cae fuera de rango.
       const r = checkAnchors();
       expect(r.ok).toBe(false);
       expect(r.failures.some(f => f.includes('fuera de'))).toBe(true);
@@ -310,9 +316,11 @@ describe('los chequeos detectan una regresion', () => {
   });
 
   /**
-   * El caso vacio de `isConnected`, que no es teorico: se llega por el camino de una
-   * forma que perdio todas sus celdas. Lo que se afirma es que el chequeo REPORTE la
-   * forma corta en vez de romperse leyendo `cells[0]` de un array vacio.
+   * El caso vacio de `isConnected`, que no es teorico: se llega por el camino de una forma
+   * que perdio todas sus celdas.
+   *
+   * Lo que se afirma es que el chequeo REPORTE la forma corta en vez de romperse leyendo
+   * `cells[0]` de un array vacio.
    */
   it('checkShapes ve una forma sin celdas y no explota buscando la primera', () => {
     conFormaMutada('I', [], () => {
@@ -370,10 +378,10 @@ describe('los chequeos detectan una regresion', () => {
   });
 
   /**
-   * El chequeo que el docblock de `checkNotes` explica: sin el,
-   * una formula de cuatro notas con `NOTES_PER_PIECE = 4` pasaba los cinco invariantes
-   * que habia entonces —hoy son siete— y todos los tests, y la celda de grado 4
-   * renderizaba `undefinedNaN`.
+   * El chequeo que el docblock de `checkNotes` explica.
+   *
+   * Sin el, una formula de cuatro notas con `NOTES_PER_PIECE = 4` pasa todos los demas
+   * invariantes y todos los tests, y la celda de grado 4 renderiza `undefinedNaN`.
    *
    * Se rompe por el lado barato —la constante, no la formula— y con eso caen los dos
    * mensajes: el del par que dejo de coincidir, y el del arpegio que ahora tiene una nota
@@ -435,9 +443,10 @@ describe('los chequeos detectan una regresion', () => {
 
   /**
    * El agujero que el doble modulo de `notesForRotation` tapa: un arpegio de `orden`
-   * cuya primera nota no esta en el de rotacion 0. Sin este camino el `indexOf` que
-   * devuelve -1 se usaria igual como indice, y el chequeo reportaria una permutacion
-   * rota en vez del problema real.
+   * cuya primera nota no esta en el de rotacion 0.
+   *
+   * Sin este camino el `indexOf` que devuelve -1 se usaria igual como indice, y el
+   * chequeo reportaria una permutacion rota en vez del problema real.
    */
   it('checkNotes ve un arpegio de orden que no sale del de rotacion 0', async () => {
     vi.resetModules();

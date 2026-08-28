@@ -11,10 +11,11 @@ const A4 = 69;
 const VEL = 0.8;
 
 /**
- * El release al tempo por defecto. Desde que esta en intervalos hay que elegir un bpm
- * para tener un numero, y 110 es el que da exactamente los 0,12 s que la constante
- * tenia antes: los tests que no hablan de tempo miden contra la misma envolvente de
- * siempre.
+ * El release al tempo por defecto.
+ *
+ * Al estar en intervalos hay que elegir un bpm para tener un numero, y 110 es el que da
+ * exactamente los 0,12 s que la constante tenia antes: los tests que no hablan de tempo
+ * miden contra la misma envolvente de siempre.
  */
 const REL = RELEASE_INTERVALS * intervalDuration(110);
 

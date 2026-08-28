@@ -165,9 +165,9 @@ describe('centroid', () => {
 
   it('solo I, X y Z tienen una celda parada sobre el centroide, y es la del indice 2', () => {
     // Medido, no supuesto: es la regla que saca esa celda del anillo angular y le da el
-    // primer lugar del anillo —`angularRank` 0—. Desde el spec 012 eso ya NO es el grado
-    // 0, que es la punta por donde se empieza a caminar la forma. Las otras 9 piezas no
-    // tienen ninguna.
+    // primer lugar del anillo —`angularRank` 0—, que NO es el grado 0: el grado 0 es la
+    // punta por donde se empieza a caminar la forma, y lo decide `pathThroughCells`. Las
+    // otras 9 piezas no tienen ninguna.
     //
     // La `Z` entro a esta lista con el spec 036, y es una consecuencia AUDIBLE del
     // arreglo: mientras fue la `N` reflejada su centroide caia en (1.4, 0.4), o sea en
@@ -295,9 +295,10 @@ function conSemilla(seed: number) {
 }
 
 /**
- * Los desempates con los que se ejerce la funcion. Son sinteticos a proposito: el que
- * usa la app es el orden angular, pero eso es una decision MUSICAL y esta capa no la
- * conoce —por eso `tiebreak` entra por parametro—. Con la identidad y su inversa se
+ * Los desempates con los que se ejerce la funcion, sinteticos a proposito.
+ *
+ * El que usa la app es el orden angular, pero eso es una decision MUSICAL y esta capa no
+ * la conoce —por eso `tiebreak` entra por parametro—. Con la identidad y su inversa se
  * cubren las dos direcciones posibles de cada camino, que es lo unico que el desempate
  * puede cambiar.
  */
@@ -367,7 +368,7 @@ describe('pathThroughCells', () => {
   });
 
   it('el criterio del paso largo al principio sigue decidiendo: la Y', () => {
-    // Con la diagonal aceptada, el tercer criterio ya no separa "continuo" de
+    // Con la diagonal aceptada, el tercer criterio no separa "continuo" de
     // "cortado" — todos los pasos llegan a una celda que se toca. Se queda porque es lo
     // unico que separa las dos versiones de la `Y`, las dos con un solo paso diagonal y
     // la misma suma: la elegida lo pone PRIMERO. Es la que trajo el pedido, dibujada a

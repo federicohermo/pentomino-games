@@ -3,8 +3,10 @@ import { offsetAt } from '../playhead.ts';
 
 /**
  * Ningun test de este archivo toca AudioContext, y es exactamente el motivo por el que
- * la cuenta vive fuera de `engine.ts`: el offset se puede afirmar con cuatro numeros,
- * la lectura del reloj no. Mismo argumento que separa `spectrum.ts` del AnalyserNode.
+ * la cuenta vive fuera de `engine.ts`.
+ *
+ * El offset se puede afirmar con cuatro numeros, la lectura del reloj no. Mismo
+ * argumento que separa `spectrum.ts` del AnalyserNode.
  *
  * Los tiempos usan intervalos de 0.25 s y origins enteros a proposito: son exactos en
  * binario, asi que un fallo es del algoritmo y no del redondeo.

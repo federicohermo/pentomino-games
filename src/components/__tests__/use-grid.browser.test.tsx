@@ -50,7 +50,7 @@ describe('useGrilla', () => {
     // los dos escribirían lo mismo. La caja del raíz mide `100dvh`, y en iOS `innerHeight`
     // incluye la barra del navegador — con la fórmula recibiendo uno y la caja teniendo el
     // otro, la grilla se calcula contra un alto que el contenedor no tiene y desborda unos
-    // píxeles. Eso no tiene red: el `overflow-x-auto` ya no está.
+    // píxeles. Eso no tiene red: no hay ningún `overflow-x-auto` que lo absorba.
     const chico = nodo(400, 400);
     const grande = nodo(1500, 900);
     const a = await renderHook(() => useGrilla(chico));
@@ -79,7 +79,7 @@ describe('useGrilla', () => {
 
     await unmount();
     // Y después del desmontaje nadie escribe: sin el `removeEventListener`, StrictMode
-    // —que monta dos veces— deja dos handlers vivos sobre un nodo que ya no está en el
+    // —que monta dos veces— deja dos handlers vivos sobre un nodo desmontado, fuera del
     // árbol de React.
     const ultima = ref.current!.style.getPropertyValue('--cell');
     ref.current!.style.width = '3000px';

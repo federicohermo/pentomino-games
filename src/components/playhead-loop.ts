@@ -23,8 +23,10 @@ import type { CeldaPorEstrenar } from './types/route.types.ts';
 
 /**
  * Lo que mide `n` celdas, en CSS — la misma funcion que `Board.tsx`, escrita dos veces a
- * proposito: son dos archivos que no se importan entre si y el string es de una linea.
- * Compartirla obligaria a un modulo mas para ahorrar veinte caracteres.
+ * proposito.
+ *
+ * Son dos archivos que no se importan entre si y el string es de una linea: compartirla
+ * obligaria a un modulo mas para ahorrar veinte caracteres.
  *
  * El numero vive en la custom property `--cell`, que escribe `use-grid.ts` sobre el
  * contenedor raiz. Escribir `calc()` y no el producto en pixeles es lo que hace que
@@ -37,8 +39,10 @@ const SIN_CABEZA = (): void => {};
 
 /**
  * El `box-shadow` de un grosor: el anillo de adentro siempre, el de afuera solo si el
- * escalon lo pide. Los tres grosores y su tabla viven en `playhead.constants.ts`; esto
- * es la funcion que los convierte en CSS.
+ * escalon lo pide.
+ *
+ * Los tres grosores y su tabla viven en `playhead.constants.ts`; esto es la funcion que
+ * los convierte en CSS.
  */
 export const borde = ({ dentro, fuera }: { dentro: number; fuera: number }): string =>
   `inset 0 0 0 ${dentro}px ${BORDE_COLOR}` + (fuera > 0 ? `, 0 0 0 ${fuera}px ${BORDE_COLOR}` : '');
@@ -150,9 +154,9 @@ export function iniciarCabeza(
       if (!marca) {
         el.style.display = 'none';
       } else {
-        // Inline y no clases de Tailwind, y el sujeto cambio con la celda variable: las
-        // coordenadas ya no salen de una constante sino de `var(--cell)`, que es una
-        // custom property que el navegador resuelve en cada elemento. La razon de fondo es
+        // Inline y no clases de Tailwind: las coordenadas salen de `var(--cell)` y no de
+        // una constante, y esa custom property la resuelve el navegador en cada elemento.
+        // La razon de fondo es
         // la misma —Tailwind escanea el fuente, una clase interpolada no se generaria— y
         // se le suma una: con la posicion escrita en `calc()`, redimensionar la ventana
         // reubica la cabeza sin que este bucle vuelva a escribir nada. Es lo que hace que

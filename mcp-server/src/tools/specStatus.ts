@@ -33,8 +33,9 @@ function sinCitas(s: SpecStatus): SpecStatus {
 
 /**
  * Los bytes que de verdad viajan: `JSON.stringify` compacto, el mismo que arma el
- * helper `json`. Medir una version indentada seria medir una respuesta que nadie
- * manda.
+ * helper `json`.
+ *
+ * Medir una version indentada seria medir una respuesta que nadie manda.
  */
 const bytes = (value: unknown): number => Buffer.byteLength(JSON.stringify(value), 'utf8');
 

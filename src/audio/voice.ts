@@ -27,7 +27,7 @@ export const midiToHz = (m: number): number => 440 * Math.pow(2, (m - 69) / 12);
  * no admite llegar a 0 — habria que rampar a un epsilon y cortar.
  *
  * `dur` y `rel` son obligatorios y sin default a proposito, igual que `phase` en
- * `Job`: los dos se cuentan en intervalos, o sea que dependen del tempo y ya no
+ * `Job`: los dos se cuentan en intervalos, o sea que dependen del tempo y no
  * pueden ser constantes. Un default seria un numero fijo en segundos que miente
  * sobre el bpm vigente, y el llamador que se olvidara el parametro no se
  * enteraria. Los calculos —`NOTE_INTERVALS * intervalDuration(bpm)` y

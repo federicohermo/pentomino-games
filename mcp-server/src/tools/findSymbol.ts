@@ -24,18 +24,20 @@ const SRC = join(ROOT, 'src');
 
 /**
  * Aporta aristas al grafo pero no simbolos: las tools importan 31 cosas del
- * dominio, asi que sin esto `usedBy` contesta 2 usuarios donde hay 4. Lo atrapa
- * `pnpm verify` igual —el tsconfig del server typechequea cruzando el borde de
- * paquete—, pero para entonces la estimacion ya se hizo con el numero mal.
+ * dominio, asi que sin esto `usedBy` contesta 2 usuarios donde hay 4.
+ *
+ * Lo atrapa `pnpm verify` igual —el tsconfig del server typechequea cruzando el
+ * borde de paquete—, pero para entonces la estimacion ya se hizo con el numero mal.
  */
 const GRAFO = [join(ROOT, 'mcp-server', 'src')];
 
 /**
- * Tope de la busqueda por subcadena. Sin tope, `find_symbol("set")` devuelve
- * decenas de matches CON firma, y la firma de `SHAPES` o `BASE_MAP` es el valor
- * entero: la tool que entra por costar 415 bytes contra 6.207 pasaba a costar mas
- * que el `grep` que vino a reemplazar. Se corta y se avisa que se corto, que es
+ * Tope de la busqueda por subcadena: se corta y se avisa que se corto, que es
  * distinto de devolver 20 y dejar creer que no hay mas.
+ *
+ * Sin tope, `find_symbol("set")` devuelve decenas de matches CON firma, y la firma
+ * de `SHAPES` o `BASE_MAP` es el valor entero: la tool que entra por costar 415
+ * bytes contra 6.207 terminaria costando mas que el `grep` que vino a reemplazar.
  */
 const LIMITE = 20;
 

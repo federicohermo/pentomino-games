@@ -55,10 +55,10 @@ const celdas = (n: number) => `calc(var(--cell) * ${n})`;
  * menos.
  *
  * El absoluto se posiciona contra el `relative` que envuelve la grilla (`Board.tsx`), asi
- * que queda alineado con las celdas por construccion. Ese contenedor llego a SCROLLEAR
- * —y el argumento era que la capa scrolleaba con la grilla debajo de
- * `md`—; el `overflow-x-auto` ya no esta y lo que queda es la mitad que siempre
- * importo: el posicionado.
+ * que queda alineado con las celdas por construccion. Ese contenedor no scrollea, asi que
+ * del argumento queda la mitad que siempre importo: el posicionado. La otra mitad —la capa
+ * scrolleando con la grilla debajo de `md`— se fue con el `overflow-x-auto`, spec 031
+ * (issue #93).
  *
  * ## Que dibuja y que NO calcula (D5, AC4)
  *

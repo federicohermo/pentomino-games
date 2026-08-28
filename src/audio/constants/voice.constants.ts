@@ -4,11 +4,11 @@ import type { VoiceOpts } from '../types/voice.types.ts';
  * El timbre por defecto. Cambiarlo alcanza para los DOS caminos a sonido —el
  * arpegio al colocar y el loop—, porque los dos terminan en `scheduleVoice`.
  *
- * Ya NO trae el release. Lo traia —0,12 s absolutos— y era lo unico del modelo
- * temporal que habia quedado fuera de las unidades musicales: 0,48 intervalos a
- * 60 bpm pero 1,28 a 160, o sea que el solape del arpegio crecia con el tempo en
- * vez de quedarse quieto. Hoy es `RELEASE_INTERVALS` y viaja como parametro, por
- * la misma razon por la que `dur` no tiene default.
+ * NO trae el release, y no puede traerlo: el release se cuenta en intervalos
+ * (`RELEASE_INTERVALS`) y viaja como parametro, por la misma razon por la que `dur`
+ * no tiene default. Un valor absoluto aca —los 0,12 s que seria natural poner— lo
+ * dejaria fuera de las unidades musicales: son 0,48 intervalos a 60 bpm pero 1,28 a
+ * 160, o sea que el solape del arpegio creceria con el tempo en vez de quedarse quieto.
  *
  * Lo que queda aca es lo que NO depende del tempo: attack y decay son el
  * transitorio del instrumento —su identidad perceptual es la brevedad absoluta,
