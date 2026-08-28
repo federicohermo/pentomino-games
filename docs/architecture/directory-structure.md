@@ -10,7 +10,7 @@ pentomino-games/           # raíz del repo: la app vive acá, sin subdirectorio
 ├── public/                # Assets servidos tal cual, copiados a dist/
 ├── src/                   # Todo el código de la app
 ├── mcp-server/            # MCP server de dominio: tooling, NO entra al bundle
-├── __tests__/             # Los gates de la raíz: index.html, public/manifest.json, README.md
+├── __tests__/             # Gates de lo que no vive en src/: los archivos de la raíz y el modelo de ramas
 ├── .mcp.json              # Registra el server; commiteado, sin nada que configurar
 ├── index.html             # Entry point de Vite (en la raíz, no en public/)
 ├── vite.config.ts         # Plugins: react() + tailwindcss()
@@ -212,19 +212,21 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 `pnpm test` corre Vitest en **dos proyectos y un solo comando** (spec 029). El corte no es por capa sino
 por lo que el test necesita:
 
-- **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre **cinco** raíces. Son 30
-  archivos: 20 en `src/`, 3 en la raíz, 3 en `docs/`, 2 en `specs/` y 2 en `.claude/scripts/`. El
+- **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre **cinco** raíces. Son 31
+  archivos: 20 en `src/`, 4 en la raíz, 3 en `docs/`, 2 en `specs/` y 2 en `.claude/scripts/`. El
   dominio es puro y el audio tiene una implementación nativa de Web Audio, así que corren ahí sin
   adaptación. Los que **no** son el test de un módulo leen un archivo **del disco**, porque el proyecto
   de navegador sirve su propio documento y nunca carga esos archivos, y **cada uno vive al lado del
   sujeto que verifica** — no de lo que el sujeto toca:
-  - `__tests__/` en la **raíz del repo** — los tres que cruzan una constante de la app contra un
-    archivo de la raíz que la envuelve: `documento.test.ts` (spec 025) verifica el `lang` de
+  - `__tests__/` en la **raíz del repo** — los cuatro que cruzan una afirmación contra los archivos
+    de fuera de `src/` que la sostienen: `documento.test.ts` (spec 025) verifica el `lang` de
     `index.html`, y `fondo-sincronizado.test.ts` y `nombre-sincronizado.test.ts` (spec 028) verifican
     que el color de fondo y el nombre de la app digan lo mismo en los tres lugares donde están
     escritos —`index.html`, `public/manifest.json`, `README.md`—. Eran lo único del repo que ningún
     test podía falsear. Vivieron en `src/__tests__/` hasta que se notó lo obvio: lo que miran está en
-    la raíz, no en `src/`.
+    la raíz, no en `src/`. El cuarto es `ramas-sincronizadas.test.ts` (spec 047), que cruza el modelo
+    de dos ramas entre los dos workflows, el `RAMAS_COMPARTIDAS` de `gate-de-spec.mjs` y
+    `docs/infra/ramas.md`.
   - `src/__tests__/` — lo que queda ahí es de la **app**: hoy solo `App.browser.test.tsx`, que corre
     en el otro proyecto.
   - `docs/__tests__/` — los tres gates de la **documentación**, mudados ahí por el issue #100 porque no

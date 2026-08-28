@@ -125,7 +125,8 @@ Spec 029. El corte no es por capa sino por lo que el test necesita:
   una implementación nativa de Web Audio, así que corre ahí sin adaptación. Su `include` tiene
   **cinco** raíces, y las cuatro de afuera son gates que **no importan una línea de `src/`**: cada uno
   vive al lado del **sujeto** que verifica, no de lo que el sujeto toca. `__tests__/` en la raíz son
-  los tres que miran archivos de la raíz —`index.html`, `public/manifest.json`, `README.md`—;
+  los cuatro que miran lo que no vive en `src/` —`index.html`, `public/manifest.json`, `README.md`, y
+  el modelo de dos ramas del spec 047—;
   `docs/__tests__/` los tres de la **documentación** —enlaces y anclas de todo `.md`, el mapa de
   `directory-structure.md` y el techo de 200 líneas de `CLAUDE.md`, issue #100—; `specs/__tests__/`
   los dos del **registro** —la convención y `mapa.json`, spec 035—; y `.claude/scripts/__tests__/` los

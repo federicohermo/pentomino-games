@@ -162,7 +162,8 @@ Con el orden en mano, el eje A cambia de forma para todo spec que no sea el prim
   hallazgo es el inverso: que el anterior **no** lo cree.
 - Una cita con número de línea a un archivo que un spec anterior reescribe **está podrida por
   construcción**. Se re-ancla a un símbolo, o el enunciado declara contra qué base vale.
-- Un número que aparece como `X → Y`: el `X` de abajo tiene que ser el `Y` de arriba, no el de `main`.
+- Un número que aparece como `X → Y`: el `X` de abajo tiene que ser el `Y` de arriba, no el de
+  `staging`.
 
 ## Paso 3 — N agentes de spec, más el de coherencia
 
