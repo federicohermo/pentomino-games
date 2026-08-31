@@ -272,9 +272,11 @@ export default function App() {
     x: window.innerWidth - DOCK_ANCHO_MAXIMO_PX - MARGEN_INICIAL_PX,
     y: MARGEN_INICIAL_PX,
   }));
+  // La franja mide UNA celda de alto —es lo que `caja` le pasa al chasis—, asi que se resta
+  // una y no dos. Con dos arrancaba a 84 px del borde de abajo en vez de a 8, medido.
   const [posicionSenal, setPosicionSenal] = useState<Posicion>(() => ({
     x: MARGEN_INICIAL_PX,
-    y: window.innerHeight - CELL_PX_OBJETIVO * 2 - MARGEN_INICIAL_PX,
+    y: window.innerHeight - CELL_PX_OBJETIVO - MARGEN_INICIAL_PX,
   }));
 
   // Si el tap del modificador que esta abajo sigue siendo limpio. Va en un ref y no en
