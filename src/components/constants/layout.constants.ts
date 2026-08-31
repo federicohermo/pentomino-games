@@ -145,23 +145,6 @@ export const MINI_BOX = 5;
  */
 export const MINI_CELL_PX = 8;
 
-/**
- * El ancho minimo de una columna de la grilla de miniaturas, en px.
- *
- * Derivado y no tipeado: es la caja del mini (`MINI_BOX x MINI_CELL_PX` = 40) mas el
- * `px-2` del boton que la contiene (8 por lado) mas su borde (1 por lado). Si alguno de
- * los dos numeros de arriba cambia, este lo sigue solo.
- *
- * Reemplaza a la tabla de breakpoints que `OrientationPanel` tenia: ahi las columnas salian
- * del ancho del VIEWPORT, que era una buena aproximacion del ancho de la tarjeta mientras la
- * tarjeta ocupaba una columna del grid.
- * Con el dock son dos variables distintas —el dock mide `calc(var(--cell) * 2)`, o sea
- * entre 146 y 360 px, mientras el viewport puede estar en `xl`— y la aproximacion se cae:
- * a 1366 x 768 el breakpoint pedia SEIS columnas adentro de una caja de 256 px. Con
- * `repeat(auto-fill, minmax(MINI_PISTA_PX, 1fr))` la cuenta la hace el navegador contra la
- * caja real, que es la misma decision de una sola fuente del numero que `--cell`.
- */
-export const MINI_PISTA_PX = MINI_BOX * MINI_CELL_PX + 16 + 2;
 
 /** Extremos del slider de tempo, en bpm. El valor inicial es DEFAULT_BPM del motor. */
 export const TEMPO_MIN = 60;
@@ -222,7 +205,7 @@ export const ANILLO_FOCO_CLARO_RAZON = AIRE_RAZON;
 /**
  * El lado de la casilla de la tabla periodica, en px.
  *
- * **Derivado y no tipeado**, igual que `MINI_PISTA_PX` y por el mismo motivo: es la caja
+ * **Derivado y no tipeado**, igual que las razones de arriba y por el mismo motivo: es la caja
  * del mini (`MINI_BOX x MINI_CELL_PX` = 40) mas el aire que la rodea. Si alguno de los dos
  * numeros de arriba cambia, la casilla lo sigue sola.
  *

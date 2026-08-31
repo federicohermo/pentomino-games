@@ -40,7 +40,7 @@ import type { PropsDeOrientacion } from './types/panel.types.ts';
  * Las columnas de la rejilla, resueltas una vez al cargar el módulo.
  *
  * **Es un valor fijo y no una medición**, y ése es el cambio entero. Hasta acá lo contestaba
- * `repeat(auto-fill, minmax(MINI_PISTA_PX, 1fr))`, o sea el navegador contra la caja real, y
+ * `repeat(auto-fill, minmax(…, 1fr))`, o sea el navegador contra la caja real, y
  * la caja real medía `calc(var(--cell) * 2)`: 108 px útiles después de la barra de scroll,
  * contra los 124 que piden dos pistas. Faltaban 16 px y el resultado era **1 columna × 12
  * filas**, 875 px de alto adentro de un scroller de 215.

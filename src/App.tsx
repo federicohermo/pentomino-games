@@ -561,11 +561,11 @@ export default function App() {
   // El porque de este `useMemo` —y el numero que lo justifica— esta abajo, al lado del
   // `<PiecePalette>` que lo consume: es donde estaba escrita la decision contraria.
   const orientacion = useMemo(() => ({
-    selected, orientaciones, regimen, noteSet,
+    selected, orientaciones, regimen,
     onSelect: elegirPieza,
     onRegimen: setRegimen,
     onResetOrientacion: resetearOrientacion,
-  }), [selected, orientaciones, regimen, noteSet, elegirPieza, resetearOrientacion]);
+  }), [selected, orientaciones, regimen, elegirPieza, resetearOrientacion]);
 
   // El tablero ES la pantalla. Murieron el `min-h-screen … p-4` y el
   // `max-w-6xl mx-auto grid grid-cols-12 gap-4`: no hay fila de tarjetas que repartir
