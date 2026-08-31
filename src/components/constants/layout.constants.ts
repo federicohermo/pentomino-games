@@ -218,3 +218,89 @@ export const TEMPO_MAX = 160;
  */
 export const ANILLO_FOCO_OSCURO_RAZON = AIRE_RAZON;
 export const ANILLO_FOCO_CLARO_RAZON = AIRE_RAZON;
+
+/**
+ * El lado de la casilla de la tabla periodica, en px.
+ *
+ * **Derivado y no tipeado**, igual que `MINI_PISTA_PX` y por el mismo motivo: es la caja
+ * del mini (`MINI_BOX x MINI_CELL_PX` = 40) mas el aire que la rodea. Si alguno de los dos
+ * numeros de arriba cambia, la casilla lo sigue sola.
+ *
+ * El aire es de 4 px por lado y ahi termina la cuenta: `CASILLA_PX` = 48. Es la medida que
+ * el prototipo del spec 052 midio en el DOM contra otras dos —40 y 56— y la unica que
+ * conserva entera la caja de 40 px que este archivo documenta como el minimo que deja leer
+ * la FORMA. Con 40 de casilla la caja tendria que achicarse; con 56 el dock se va a 252 px
+ * de ancho y tapa 20 celdas en vez de 16.
+ *
+ * **Cuadrada, y eso es lo que reemplaza al boton de 107,8 x 65,6 de antes.** El ancho de
+ * aquel boton lo decidia el `1fr` de la grilla y el alto su contenido, asi que la casilla
+ * cambiaba de forma con el ancho del dock. En una tabla periodica el simbolo vive en una
+ * casilla de lado fijo: es lo que hace que las doce se lean como un conjunto y no como una
+ * lista.
+ */
+export const CASILLA_AIRE_PX = 4;
+export const CASILLA_PX = MINI_BOX * MINI_CELL_PX + CASILLA_AIRE_PX * 2;
+
+/** La separacion entre casillas de la tabla periodica, en px. Es el `gap` del prototipo medido. */
+export const REJILLA_GAP_PX = 4;
+
+/**
+ * El ancho maximo de la rejilla de miniaturas, en px, y el UNICO parametro con el que se
+ * elige la forma del rectangulo.
+ *
+ * Con el chasis arrastrable la caja dejo de medirse en celdas y paso a medirse por su
+ * contenido, asi que la pregunta se dio vuelta: **las columnas son la entrada y el ancho es
+ * la salida**, no al reves. Hasta aca lo contestaba `calc(var(--cell) * 2)`, que fijaba el
+ * ancho y dejaba que `auto-fill` contara contra el — y contra 108 px utiles contaba UNA.
+ *
+ * Los anchos que pide cada cantidad, con `CASILLA_PX` = 48 y `REJILLA_GAP_PX` = 4, o sea
+ * `c x 48 + (c - 1) x 4`:
+ *
+ * ```
+ * 2 col -> 100 px      3 col -> 152 px      4 col -> 204 px
+ * 6 col -> 308 px     12 col -> 620 px
+ * ```
+ *
+ * 220 deja entrar hasta 4 y deja afuera a 6, y de ahi sale el `4 x 3` que el prototipo
+ * midio en 220 x 268 px: el mismo alto que el dock de hoy (278), 81 px mas de ancho y el
+ * contenido entero visible, contra 1192 px de desborde.
+ *
+ * **Es la palanca entera**: subirlo a 308 da un dock de `6 x 2` sin tocar una linea de
+ * `OrientationPanel`, porque quien elige es `columnasRectangulares` y no el navegador.
+ */
+export const REJILLA_ANCHO_TECHO_PX = 220;
+
+/**
+ * Cuanto se mueve un flotante con una flecha del teclado, en px.
+ *
+ * El arrastre por puntero es continuo y el del teclado no puede serlo, asi que este numero
+ * es todo el compromiso: con un paso muy chico cruzar la pantalla cuesta cientos de
+ * pulsaciones, y con uno muy grande el panel no se puede posicionar. A 16 px, cruzar un
+ * viewport de 1536 cuesta 96 pulsaciones y el panel llega a cualquier lado con un error
+ * menor al de la celda mas chica que el tablero dibuja.
+ */
+export const PASO_TECLADO_PX = 16;
+
+/**
+ * Cuanto de un flotante tiene que quedar SIEMPRE dentro del viewport, en px.
+ *
+ * Es lo que hace que el panel no se pueda perder: soltarlo en (-9999, -9999) lo deja
+ * alcanzable. 48 px es mas que el alto del asa, o sea que lo que queda visible siempre
+ * incluye una franja del control con el que se lo trae de vuelta.
+ *
+ * **En vertical el tope de arriba es 0 y no `-caja.alto + margen`, y no es simetria mal
+ * hecha**: el asa vive en el BORDE SUPERIOR del chasis. Dejar que el panel suba mas alla
+ * del viewport esconderia justo la franja con la que se agarra, y quedaria un panel visible
+ * e inmovil — que es peor que uno perdido, porque parece que anda.
+ */
+export const MARGEN_VISIBLE_PX = 48;
+
+/**
+ * Cuantos px de arrastre vertical vale un bpm en el reloj de tempo.
+ *
+ * A 2 px por bpm, el rango entero —`TEMPO_MIN` a `TEMPO_MAX`, 100 bpm— se recorre con 200
+ * px de arrastre, que entra en cualquier viewport sin soltar el puntero. El slider que
+ * reemplaza medía 107,8 px para el mismo rango, o sea 0,93 bpm por px: casi el doble de
+ * sensible, y con el numero saltando de a uno cada pixel.
+ */
+export const ARRASTRE_PX_POR_BPM = 2;
