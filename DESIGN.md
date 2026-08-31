@@ -151,7 +151,7 @@ tocan: ninguno de los dos le saca canal a los 12 colores.
 | Dónde | Qué hace el color | Por qué |
 |---|---|---|
 | `Board` | celda ocupada = color de pieza | identidad debajo, estado encima |
-| `OrientationPanel` (la tarjeta que compone `PiecePalette`) | **el fondo del botón no se toca**; el color pinta **la forma** de la pieza, dibujada en miniatura | el fondo ya es el canal de "seleccionado" |
+| `OrientationPanel` (la rejilla que compone el dock `PiecePalette`) | **el fondo del botón no se toca**; el color pinta **la forma** de la pieza, dibujada en miniatura | el fondo ya es el canal de "seleccionado" |
 
 *(`PlacedList` era el tercer caso y se fue con el spec 014: la letra iba **sobre** el color de pieza y
 no *pintada* del color, porque como texto sobre el blanco de la tarjeta el amarillo de `V` da **1,07 de
@@ -166,43 +166,117 @@ donde una es estrictamente mejor no es lenguaje visual, es alto de pantalla gast
 ### Los dos paneles flotan sobre el tablero
 
 Desde el spec 021 no hay fila de tarjetas: el tablero ocupa el viewport y los controles flotan encima,
-en una capa superior que **no empuja la grilla**. El de piezas es un dock de `2 × 4` celdas pegado al
-borde derecho; la señal es una franja de `3 × 1` en la esquina inferior izquierda.
+en una capa superior que **no empuja la grilla**. El de piezas es un dock de **220 × 357 px**; la señal
+es una franja de `3 × 1` celdas.
 
-**Las dos cajas se miden en celdas y no en píxeles**, y eso no es coherencia decorativa: es lo que hace
-que la cuenta de qué celdas tapan valga en cualquier viewport. Con medidas fijas, un dock de 640 px de
-alto centrado entra en la fila 5 a 1366 × 768 y tapa la última celda. Desde el spec 031 vale el doble:
-el tablero mide lo que entra en la pantalla, así que «la fila 5» no es la de abajo en ningún viewport
-en particular — medido en celdas, el dock tapa las mismas cuatro esté el tablero como esté.
+**El dock se mide por su contenido y la señal en celdas**, y la asimetría tiene un motivo de cada lado.
+Al dock lo llena una rejilla de casillas de lado fijo, así que su ancho es la **salida** de esa cuenta
+y no una entrada: fijarlo por afuera pone al contenido a desbordar la caja, y eso está medido —1192 px
+de desborde sobre un scroller de 215, 6,5 veces la caja—. La señal es al revés: adentro va un
+`<canvas>`, que **no tiene tamaño propio** —lo hereda del contenedor y lo lee su `ResizeObserver`—, así
+que la caja tiene que decirlo. Y lo dice en celdas porque
+así la franja es la misma proporción del tablero en cualquier viewport, que es lo que hace que la
+cuenta de qué celdas tapa valga en todos.
 
-`(0,0)` y la esquina opuesta no se tapan nunca, y ésa es la regla que decidió las dos posiciones: ahí es donde el
-circuito cierra (spec 009) y donde arranca la cabeza lectora (spec 010). Arriba se descartó por lo
-mismo — una barra superior tapa el borde de arriba entero, `(0,0)` incluida.
+`(0,0)` y la esquina opuesta no se tapan nunca —ahí es donde el circuito cierra (spec 009) y donde
+arranca la cabeza lectora (spec 010)—, y ésa es la regla que decide dónde **aparece** cada panel la
+primera vez. De ahí en más lo decide el usuario: los dos se arrastran, así que «qué celdas tapa» es una
+posición inicial y no una propiedad del diseño. Arriba se descarta por lo mismo — una barra superior
+tapa el borde de arriba entero, `(0,0)` incluida.
 
-Los dos se pliegan con un click en su encabezado y arrancan **desplegados**: un instrumento que arranca
-con los controles escondidos no se descubre. Plegado, cada panel deja sólo su encabezado —sigue
-diciendo qué es, en vez de volverse un icono suelto— y las once celdas que tapaba quedan libres. El
-fondo va semiopaco con desenfoque y no opaco: abajo hay celdas con nota, y un panel opaco las esconde
-mientras uno translúcido dice que están ahí.
+Los dos arrancan **desplegados**: un instrumento que arranca con los controles escondidos no se
+descubre. Plegado, cada panel deja sólo su encabezado —sigue diciendo qué es, en vez de volverse un
+icono suelto— y las celdas que tapaba quedan libres. El fondo va semiopaco con desenfoque y no opaco:
+abajo hay celdas con nota, y un panel opaco las esconde mientras uno translúcido dice que están ahí.
 
-### El botón de la paleta muestra la forma, no la letra
+### El chasis: se agarra del asa, y no se puede perder
 
-Desde el spec 016 cada botón dibuja **la pieza**, pintada con su color y **en su propia orientación**,
-con la letra chica debajo. Hasta el 020 los doce se dibujaban en la orientación de la pieza en la mano,
-que es lo mismo que decir que la orientación era del instrumento: rotar para acomodar una `F` movía 11
-de las 12 miniaturas. Antes del 016 decía sólo la letra, con un punto de 8 px al
-costado para la identidad — y esas doce letras son nombres arbitrarios: la `N` no se parece a una N, y
-la `V` y la `L` son la misma forma con un brazo de distinto largo.
+Los dos flotantes comparten un mismo chasis (`src/components/FloatingPanel.tsx`), y eso es lo que los
+vuelve dos ejemplares del mismo objeto en vez de dos idiomas conviviendo.
+
+- **Se agarra del asa, y el asa es el título.** El texto que dice qué panel es, es también lo que se
+  arrastra: no hay un pomo aparte que haya que descubrir.
+- **El asa y el plegado son dos botones y no uno.** El navegador sintetiza un `click` sobre el nodo
+  donde termina un arrastre, así que un asa que además plegara cerraría el panel cada vez que se lo
+  suelta. La otra salida —un umbral de píxeles que se coma ese `click`— deja un botón cuyo efecto
+  depende de cuánto se movió el puntero, y eso no se puede anunciar en el árbol de accesibilidad. Con
+  dos botones, cada uno tiene un trabajo y un nombre.
+- **El teclado mueve el panel igual que el puntero.** Con el asa enfocada, las cuatro flechas lo
+  desplazan `PASO_TECLADO_PX` = **16 px** por pulsación: cruzar un viewport de 1536 cuesta 96
+  pulsaciones, y el error de posicionamiento queda por debajo de la celda más chica que el tablero
+  dibuja. Sin esto el chasis sería un control sólo-mouse.
+- **No se puede perder.** Quedan siempre `MARGEN_VISIBLE_PX` = **48 px** del panel dentro del viewport,
+  que es más que el alto del asa: lo que sigue a la vista incluye la franja con la que se lo trae de
+  vuelta. Arriba el tope es **0** y no −48, y no es simetría mal hecha — el asa vive en el borde
+  superior del chasis, así que dejarlo subir escondería justo el control con el que se agarra, y un
+  panel visible e inmóvil es peor que uno perdido porque parece que anda.
+- **Los cuatro vértices van redondeados** (`rounded-2xl`). Redondear sólo los que no tocan el borde de
+  la pantalla vale mientras la posición es fija; un panel que se suelta en el medio del tablero tiene
+  los cuatro a la vista.
+
+### La paleta es una tabla periódica
+
+Los doce botones son **casillas cuadradas de lado fijo**, separadas y alineadas, cada una con su pieza
+dibujada en miniatura —pintada con su color y **en su propia orientación**, desde el spec 016— y su
+letra como **símbolo** en la esquina inferior derecha. El botón dibuja la forma y no la letra sola
+porque esas doce letras son nombres arbitrarios: la `N` no se parece a una N, y la `V` y la `L` son la
+misma forma con un brazo de distinto largo. Hasta el 020 los doce se dibujaban en la orientación de la
+pieza en la mano, que es lo mismo que decir que la orientación era del instrumento: rotar para acomodar
+una `F` movía 11 de las 12 miniaturas.
+
+**La casilla mide `CASILLA_PX` = 48 px de lado**, y ese número es derivado y no elegido: la caja de la
+forma son `MINI_BOX × MINI_CELL_PX` = 5 × 8 = **40 px**, más **4 px** de aire por lado. Cuadrada,
+porque en una tabla periódica el símbolo vive en una casilla de lado fijo, y es lo que hace que las doce
+se lean como un conjunto y no como una lista: con el ancho decidido por el reparto del contenedor y el
+alto por el contenido, la casilla cambia de forma en cada viewport.
+
+**Las doce forman un rectángulo lleno.** Se reparten en `c` columnas × `f` filas con `c × f = 12`
+exacto, así que `c` tiene que dividir a 12: las candidatas son las divisoras **propias**, `{2, 3, 4,
+6}` —`1` y `12` son las dos degeneraciones, la columna única y la barra de 620 px de ancho—. Quien
+elige es `columnasRectangulares` (`src/components/rejilla.ts`) y **no** `repeat(auto-fill, …)`, que
+contesta otra pregunta: devuelve la mayor cantidad que entre, divida o no, así que a un ancho que
+admita 5 deja tres huecos en la última fila.
+
+Lo que pide de ancho cada cantidad de columnas, con casilla 48 y separación 4 —`c × 48 + (c − 1) × 4`—:
+
+| columnas | 2 | 3 | **4** | 5 | 6 |
+|---|---|---|---|---|---|
+| ancho | 100 | 152 | **204** | 256 | 308 |
+
+El techo es `REJILLA_ANCHO_TECHO_PX` = **220 px**, y de ahí sale el default de **4 × 3**: el 5 entra y
+no divide a doce, que es exactamente el caso donde `auto-fill` contesta mal. Ese techo es la palanca
+entera — subirlo a 308 da un dock de `6 × 2` sin tocar una línea de la paleta.
+
+**La letra es el símbolo, y va en la esquina inferior derecha**, como el número atómico de una tabla
+periódica, y no debajo de la miniatura: la casilla mide 48 y la caja de la forma 40, así que apilarlas
+pediría 50, y esos 40 son el mínimo que deja leer la forma. Lo que cede es la posición del símbolo, no
+el tamaño de la forma. Y lleva **el fondo del botón detrás** y no `transparent`: el vértice inferior
+derecho de la caja de 5 × 5 está ocupado en varias de las 96 orientaciones, y una letra sobre el color
+de la pieza no tiene contraste garantizado contra ninguno de los doce. Con el fondo del botón debajo,
+el par letra/fondo es el mismo que el resto de la casilla ya usa.
+
+**Es un símbolo y no prosa, y por eso se queda.** La letra es el vocabulario con el que este repo habla
+de las piezas: lo usan `describe_piece`, el `title` del tablero y este archivo. Lo que el dock suelta es
+la **prosa** —de 210 caracteres de texto visible en 27 nodos a **30**—: una `F` de 6 px no es prosa, un
+`Rotación` de 56 px sí.
+
+**No es el teselado de pentominós, y conviene dejarlo escrito.** «Empacar las doce en un rectángulo»
+tiene una segunda lectura —el teselado clásico, 12 × 5 = 60 celdas en 6 × 10— que es hermosa y **no es
+esto**. Encastradas, las doce dejan de ser doce botones con su caja propia: la forma de cada una sólo
+se lee por su color, no hay dónde poner el símbolo, y rotar una —que es lo que estas miniaturas
+muestran, cada una en **su** orientación recordada— rompería el teselado en cada gesto. La tabla
+periódica es lo contrario: casillas iguales, separadas y alineadas.
 
 Tres cosas que hacen que eso sea posible sin romper nada de lo de arriba:
 
-- **La caja es fija, de 5×5 celdas** —y son celdas de la MINIATURA, que no escalan con `--cell`: el dock
-  se mide en celdas del tablero, pero lo que va adentro conserva su tamaño y usa el scroll interno—. Es
-  la más chica que contiene cualquier pentominó en cualquiera de sus 8 orientaciones. Sin ella, la `I`
-  —que pasa de 5×1 a 1×5— haría reflowear los doce botones en cada rotación, que es el mismo bug que la línea de notas de esa tarjeta ya tenía documentado: *un panel de
-  control que se acomoda solo cuando lo tocás mueve el botón justo cuando vas a apretarlo.* Con el spec
-  020 la caja fija pasa a ser **más** necesaria y no menos: las doce formas ya no cambian juntas, así
-  que cualquier ajuste al contenido puede mover una sola miniatura y descuadrar la fila entera.
+- **La caja de la forma es fija, de 5×5 celdas** —y son celdas de la MINIATURA, de `MINI_CELL_PX` = 8
+  px, que no escalan con `--cell`—. Es la más chica que contiene cualquier pentominó en cualquiera de
+  sus 8 orientaciones. Sin ella, la `I` —que pasa de 5×1 a 1×5— haría reflowear los doce botones en cada
+  rotación: *un panel de control que se acomoda solo cuando lo tocás mueve el botón justo cuando vas a
+  apretarlo.* Con el spec 020 la caja fija pasa a ser **más** necesaria y no menos: las doce formas ya
+  no cambian juntas, así que cualquier ajuste al contenido puede mover una sola miniatura y descuadrar
+  la fila entera. Y adentro del dock **no hay scroll**: `scrollHeight − clientHeight` = **0**, porque la
+  caja del panel la fija su contenido y no al revés.
 - **El fondo del botón sigue sin tocarse**, porque sigue siendo el único canal de «seleccionada».
 - **El punto de color se fue** y su borde se quedó, en cada celda de la miniatura: varios de los 12
   colores (el amarillo de `V`, el lima de `F`) casi no se ven contra el gris claro del botón sin

@@ -32,9 +32,11 @@ expresivo, no más difícil.
 │   Spectrum · Playhead    │  │   scheduler.ts lookahead  │
 │   OrientationPanel       │  │   engine.ts    singletons │
 │   TransportPanel         │  │   spectrum.ts  bins→barras│
+│   FloatingPanel (chasis) │  │                           │
 │   presentacionales:      │  │                           │
 │   props, sin estado      │  │                           │
 │   use-engine · use-input │  │                           │
+│   use-grid · use-drag    │  │                           │
 │   engine-bridge.ts       │  │                           │
 └───────┬──────────────────┘  │  voice y scheduler reciben│
         │                     │  el ctx por parámetro y NO│
@@ -75,8 +77,9 @@ podían montar ni testear. Lo que queda en `App.tsx` es el shell: estado, deriva
 composición de los componentes, con **cero `useEffect`**. Ninguna función pura y ningún literal de
 dominio.
 
-Los que había son ahora **dos archivos** de `components/`, y el corte es el que la lista ya dibujaba
-(el spec 021 suma un tercero —hoy `use-grid.ts`— por la misma regla y sin tocar el shell: sigue en cero):
+Los que había son ahora **dos archivos** de `components/`, y el corte es el que la lista ya dibujaba.
+Los otros dos entran después por la misma regla y sin tocar el shell —el 021 suma `use-grid.ts` y el
+052 `use-drag.ts`—, así que los cuatro hooks con efectos son éstos y el shell **sigue en cero**:
 
 - `use-engine.ts` — los **cuatro de reconciliación**: tempo, clicks, la secuencia contra el tablero, y la
   limpieza al desmontar. `useMotorSincronizado` los declara en ese orden y recibe la `secuencia` ya
@@ -87,6 +90,12 @@ Los que había son ahora **dos archivos** de `components/`, y el corte es el que
   shell y no del hook. El `tapLimpio` que comparten se queda en `App.tsx` y entra por parámetro a los
   dos — lo lee el teclado y lo escriben los dos, así que la arista va escrita en las dos firmas en vez
   de sostenerse por adyacencia.
+- `use-grid.ts` — el del **viewport** (specs 021 y 031): mide el contenedor raíz y escribe el tamaño de
+  celda en `--cell`, y devuelve las dimensiones del tablero como estado.
+- `use-drag.ts` — el del **arrastre** de un flotante (spec 052): el `pointerdown` sobre el asa, los tres
+  listeners de `window` —`pointermove`, `pointerup` y `pointercancel`— y la escritura de la posición.
+  Las dos decisiones que necesita no están acá sino en `drag.ts`, que es puro y corre en `node`, con el
+  mismo reparto que `grid-fit.ts` contra `use-grid.ts`.
 
 La **proyección** del `Sequence` del dominio al del motor es una pura, `proyectarAlMotor` en
 `components/engine-bridge.ts`: es el único módulo del repo que puede importar los dos tipos `Sequence`, y estaba
@@ -128,6 +137,8 @@ esta escala no hace falta, y agregarlo sería la clase de complejidad que un pro
 | `hover` | `Cell \| null` | Celda bajo el cursor, para el fantasma |
 | `piezasAbierto` | `boolean` | Si el dock de piezas está desplegado, desde el spec 021. Arranca en `true` —un instrumento que arranca con los controles escondidos no se descubre— y **no persiste**: recargar lo abre, como recargar vacía el tablero |
 | `senalAbierta` | `boolean` | Ídem para la franja de Señal. Son dos y no uno: se pliegan por separado, que es lo que deja destapar sólo las celdas que hagan falta |
+| `posicionPiezas` | `Posicion` | Dónde está el dock de piezas: `{x, y}` en px desde la esquina superior izquierda del viewport, desde el spec 052. El inicializador es **perezoso** porque lee el viewport, y **tampoco persiste**: recargar lo devuelve a su esquina, como lo reabre |
+| `posicionSenal` | `Posicion` | Ídem la franja de Señal. Lo escribe el `pointerup` y no el `pointermove`: durante el gesto la posición vive en `--panel-x`/`--panel-y` del nodo, así que arrastrar no re-renderiza el tablero |
 
 Derivados con `useMemo`: `transformedShape`, `secuencia`, `noteSet` y —desde el spec 027— el objeto
 `orientacion`. Ese cuarto no es una derivación cara sino **la otra mitad del `memo()` de
@@ -153,6 +164,24 @@ los hace testeables lo sostiene el grafo de imports. Detalle en [audio.md](./aud
 Uno por archivo, sin estado ni efectos propios: reciben datos y callbacks por props. `Spectrum.tsx` es
 la excepción deliberada — no recibe props y lee del motor por su cuenta, para que dibujar a 60 fps no
 re-renderice nada del tablero.
+
+**Los dos flotantes —el dock de piezas y la franja de Señal— comparten un solo chasis,
+`FloatingPanel.tsx`** (spec 052): el asa que se arrastra, el *disclosure* que pliega y el hueco donde
+va el contenido. Aplicarlo a uno solo dejaría dos idiomas conviviendo para el mismo objeto.
+
+Y **la posición se escribe en las custom properties `--panel-x` y `--panel-y`, no en el `transform`**,
+que React renderiza como un string constante: `translate3d(var(--panel-x), var(--panel-y), 0)`. Es el
+mismo reparto que `--cell` en `use-grid.ts` — React y el gesto escriben propiedades distintas del
+mismo nodo, así que ningún re-render del shell pisa la posición del gesto. Sostiene dos cosas:
+
+- **Arrastrar no re-renderiza nada.** La posición vive en un `useState` del shell y `Board` no tiene
+  `memo`: un `setState` por `pointermove` reconciliaría las hasta 390 celdas del tablero. El número
+  está medido para el gesto de la misma forma — el `hover`, que también vive en el shell, cuesta
+  **1,9 ms** de commit por celda cruzada *después* del `memo` de `OrientationPanel` (4,9 ms sin él), y
+  un `pointermove` llega más seguido que el cruce de una celda. Recién el `pointerup` commitea.
+- **La posición entra a `PiecePalette` por su propia prop** y nunca dentro del objeto `orientacion`:
+  ese objeto es la mitad de la barrera del `memo` de `OrientationPanel`, y un valor que cambia con cada
+  píxel de arrastre la rompería entera.
 
 ## Patrones clave
 
@@ -180,8 +209,9 @@ Los loops de audio no se agendan ni cancelan desde los handlers. Un único `useE
 está en las dependencias: la secuencia es función del tablero y no del transporte.
 
 Ese efecto **no vive en el shell**: desde el spec 022 está en `components/use-engine.ts` con los otros
-tres de reconciliación, y `App.tsx` sigue sin declarar un solo `useEffect` —el 021 le agregó un hook más,
-`use-grid.ts`, y lo puso donde van todos: en `components/`— (ver [Qué vive dónde](#qué-vive-dónde)). Lo
+tres de reconciliación, y `App.tsx` sigue sin declarar un solo `useEffect` —el 021 le agregó
+`use-grid.ts` y el 052 `use-drag.ts`, y los puso donde van todos: en `components/`— (ver
+[Qué vive dónde](#qué-vive-dónde)). Lo
 que se queda en el shell es la **derivación** —`secuencia` es un `useMemo` sobre
 `[visibles, regimen, dims]`, que desde el spec 031 son las tres cosas de las que depende: las piezas
 que entran en la grilla de ahora, el régimen y cuánto mide el tablero— y el hook recibe el resultado,
@@ -193,6 +223,6 @@ produjo el bug de loops huérfanos que sobrevivían a "Quitar" y "Reset". Ver
 
 ### El render no muta
 
-Los cálculos derivados del hover (`previewCells`, `previewValid`, `previewSet`) se recomputan en cada
+Los cálculos derivados del hover (`previewCells` y `previewValid`) se recomputan en cada
 render y no se guardan. Son baratos —cinco celdas— y guardarlos introduciría una segunda fuente de
 verdad que hay que invalidar.

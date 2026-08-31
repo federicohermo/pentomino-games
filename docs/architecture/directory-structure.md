@@ -104,7 +104,10 @@ src/
 │       ├── playhead.test.ts      #   offsetAt: borde de ciclo, t < origin y los degradados (AC2)
 │       └── test-context.ts       #   helpers de render y medición (no es un test)
 └── components/                   # un componente por archivo, presentacionales
-    ├── PiecePalette.tsx          # el dock flotante y la composición de los dos paneles, más las
+    ├── FloatingPanel.tsx         # el chasis de LOS DOS flotantes (spec 052): el asa que se
+    │                             #   arrastra, el disclosure que pliega y lo que contiene. Sin
+    │                             #   estado: la posición y el plegado viven en el shell
+    ├── PiecePalette.tsx          # el dock: compone los dos paneles adentro del chasis, más las
     │                             #   dos filas que quedan entre ellos (specs 022 y 019). Dejó de
     │                             #   ser una tarjeta en columna con el spec 021
     ├── OrientationPanel.tsx      # las doce miniaturas, cada una en SU orientación recordada
@@ -129,6 +132,11 @@ src/
     ├── orientation-text.ts       # la orientación en palabras, en dos fragmentos: la línea visible
     │                             #   del panel y el aria-label de las miniaturas la componen cada
     │                             #   uno a su formato (spec 019). Fuera del .tsx por lo mismo
+    ├── rejilla.ts                # columnasRectangulares: la mayor divisora PROPIA que entre en el
+    │                             #   techo, para que la última fila de las doce esté llena — la
+    │                             #   cuenta que repeat(auto-fill, …) no puede hacer (spec 052)
+    ├── tempo.ts                  # la conversión gesto → bpm del reloj: rueda, flechas y arrastre
+    │                             #   vertical, y todo lo que sale ya acotado a TEMPO_MIN/MAX
     ├── input.ts                  # la decisión de cada gesto de entrada: rueda, tecla, menú
     │                             #   contextual y click sobre una celda (specs 013 y 014)
     ├── engine-bridge.ts          # las dos puras del puente con el motor: proyectarAlMotor
@@ -143,11 +151,21 @@ src/
     │                             #   hook para poder testearla sin navegador
     ├── use-grid.ts               # el tercer hook de entrada: mide el contenedor raíz, escribe la
     │                             #   celda en --cell y devuelve las dimensiones como estado
+    ├── drag.ts                   # las dos puras del arrastre: moverPanel —acotado al viewport, y
+    │                             #   asimétrico en los dos ejes— y pasoDeTecla. Fuera del hook por
+    │                             #   lo mismo que grid-fit.ts: así se agotan sus ramas sin navegador
+    ├── use-drag.ts               # el cuarto hook de entrada: pointerdown sobre el asa,
+    │                             #   pointermove/pointerup/pointercancel sobre window, y la
+    │                             #   posición escrita en --panel-x / --panel-y (spec 052)
     ├── constants/
     │   ├── layout.constants.ts   # CELL_PX_OBJETIVO —el tamaño al que se apunta, 73— y las
     │   │                         #   razones que vuelven proporcional la baldosa · MINI_BOX ·
-    │   │                         #   MINI_CELL_PX · MINI_PISTA_PX · TEMPO_MIN · TEMPO_MAX · las
-    │   │                         #   dos razones del anillo de foco de la celda (spec 026)
+    │   │                         #   MINI_CELL_PX · CASILLA_PX y CASILLA_AIRE_PX ·
+    │   │                         #   REJILLA_GAP_PX · REJILLA_ANCHO_TECHO_PX · TEMPO_MIN ·
+    │   │                         #   TEMPO_MAX · ARRASTRE_PX_POR_BPM · PASO_TECLADO_PX ·
+    │   │                         #   MARGEN_VISIBLE_PX · PANEL_PADDING_PX ·
+    │   │                         #   DOCK_ANCHO_MAXIMO_PX · MARGEN_INICIAL_PX · las dos
+    │   │                         #   razones del anillo de foco de la celda (spec 026)
     │   ├── palette.constants.ts  # los 12 colores y su color de texto (ver DESIGN.md)
     │   ├── route.constants.ts    # MARCA: los estados de una celda bajo la cabeza lectora
     │   ├── input.constants.ts    # ACCION y EDICION: lo que puede pedir un gesto
@@ -161,7 +179,9 @@ src/
     │   ├── route.types.ts        # Marca · CeldaPorEstrenar
     │   ├── engine.types.ts       # MotorDeTransporte · SequenceDelMotor
     │   ├── orientation.types.ts  # Rotacion · Orientacion · MemoriaDeOrientacion (spec 020)
-    │   ├── panel.types.ts        # PropsDeOrientacion · PropsDeTransporte
+    │   ├── panel.types.ts        # PropsDeOrientacion · PropsDeTransporte · Posicion · Delta ·
+    │   │                         #   Caja: los tres del arrastre, y Delta es un tipo APARTE de
+    │   │                         #   Posicion para que sumarle una a otra no compile (spec 052)
     │   └── input.types.ts        # Accion · Edicion · los campos de evento que las puras miran
     └── __tests__/
         ├── palette.test.ts       # contraste WCAG recalculado desde el fondo; puro, sin jsdom
@@ -177,9 +197,15 @@ src/
         │                         #   miniatura no distingue den textos distintos (AC5 del 019)
         ├── orientation-constants.test.ts # las doce ranuras salen de SHAPES y arrancan en 0°
         │                         #   sin reflejar (spec 020)
-        └── grid-fit.test.ts      # la tabla de nueve viewports, que lo que sobra es menos de una
-                                  #   celda en los dos ejes, y los dos casos desproporcionados
-                                  #   (spec 031)
+        ├── grid-fit.test.ts      # la tabla de nueve viewports, que lo que sobra es menos de una
+        │                         #   celda en los dos ejes, y los dos casos desproporcionados
+        │                         #   (spec 031)
+        ├── drag.test.ts          # moverPanel contra los cuatro bordes —y contra el viewport que
+        │                         #   no da ni para el margen— y las cinco ramas de pasoDeTecla
+        ├── rejilla.test.ts       # las columnas de doce iconos contra cada techo, el piso cuando
+        │                         #   no entra ninguna, y el primo que devuelve 1
+        └── tempo.test.ts         # las cuatro puras del reloj, y que todo lo que sale está
+                                  #   acotado (AC7 del spec 052)
 ```
 
 ## La dirección de dependencia
@@ -213,8 +239,8 @@ grep -rq "App.css" src --include="*.tsx" --include="*.ts" --include="*.css"
 `pnpm test` corre Vitest en **dos proyectos y un solo comando** (spec 029). El corte no es por capa sino
 por lo que el test necesita:
 
-- **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre **cinco** raíces. Son 33
-  archivos: 20 en `src/`, 4 en la raíz, 3 en `docs/`, 2 en `specs/` y 4 en `.claude/scripts/`. El
+- **`node`** — `environment: 'node'` contra `node-web-audio-api`, sobre **cinco** raíces. Son 36
+  archivos: 23 en `src/`, 4 en la raíz, 3 en `docs/`, 2 en `specs/` y 4 en `.claude/scripts/`. El
   dominio es puro y el audio tiene una implementación nativa de Web Audio, así que corren ahí sin
   adaptación. Los que **no** son el test de un módulo leen un archivo **del disco**, porque el proyecto
   de navegador sirve su propio documento y nunca carga esos archivos, y **cada uno vive al lado del
@@ -248,8 +274,11 @@ por lo que el test necesita:
     (spec 048). Están acá y no en `specs/` porque **el test es del script**, y `specs/` es lo que el
     script manipula.
 - **`browser`** — Chromium de verdad, por Playwright, sobre `src/**/__tests__/*.browser.test.tsx`. Son
-  12: los seis componentes, `App.tsx`, el gate del árbol de accesibilidad (spec 050), los tres hooks
-  —el tercero es `use-grid.ts`, de los specs 021 y 031— y `audio/engine.ts`. Renderizan con
+  13: los siete componentes —el séptimo es `FloatingPanel.tsx`, el chasis del spec 052—, `App.tsx`,
+  el gate del árbol de accesibilidad (spec 050), los tres hooks
+  —el tercero es `use-grid.ts`, de los specs 021 y 031— y `audio/engine.ts`. `use-drag.ts` no suma un
+  cuarto: lo que decide vive en `drag.ts` y se cubre en `node`, y lo que cablea se ejercita
+  arrastrando el chasis en `FloatingPanel.browser.test.tsx`. Renderizan con
   `vitest-browser-react`, y el `setupFiles` (`browser-setup.ts`) importa la hoja de estilos **una** vez:
   sin ella `z-10` está en el `className` y `getComputedStyle` devuelve `auto`, o sea que un test de
   layout pasa o falla por el motivo equivocado y en silencio.
