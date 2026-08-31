@@ -13,11 +13,16 @@ import type { PieceKey } from "./domain/types/pieces.types.ts";
 import type { PlacedPiece } from "./domain/types/board.types.ts";
 import type { RegimenDeRotacion } from "./domain/types/music.types.ts";
 import PiecePalette from "./components/PiecePalette.tsx";
+import FloatingPanel from "./components/FloatingPanel.tsx";
 import Board from "./components/Board.tsx";
 import Spectrum from "./components/Spectrum.tsx";
 import { alternarTransporte } from "./components/engine-bridge.ts";
 import { MOTOR, frenarTransporte, reiniciarRecorrido, useMotorSincronizado } from "./components/use-engine.ts";
 import { useAtajosDeTeclado, useRuedaRota } from "./components/use-input.ts";
+import {
+  CELL_PX_OBJETIVO, DOCK_ANCHO_MAXIMO_PX, MARGEN_INICIAL_PX,
+} from "./components/constants/layout.constants.ts";
+import type { Posicion } from "./components/types/panel.types.ts";
 import { useGrilla } from "./components/use-grid.ts";
 import {
   rotacionPorRueda, siguienteRotacion, reflejaElContextMenu, accionDeClick, esLaPiezaEnLaMano,
@@ -243,6 +248,36 @@ export default function App() {
   // tablero.
   const [piezasAbierto, setPiezasAbierto] = useState<boolean>(true);
   const [senalAbierta, setSenalAbierta] = useState<boolean>(true);
+
+  // La posicion de cada flotante, uno por panel y al lado del plegado, que es el otro
+  // estado del shell que los dos ya tenian. Tampoco persiste: es estado del shell, no
+  // persistencia, asi que recargar los devuelve a su esquina igual que los reabre.
+  //
+  // Entran por su PROPIA prop y NUNCA dentro del objeto `orientacion`: ese objeto es la
+  // mitad de la barrera del `memo` de `OrientationPanel` —la otra es el `useMemo` de mas
+  // abajo— y meterle un valor que cambia con cada gesto la romperia. El numero esta en
+  // `OrientationPanel`.
+  //
+  // El inicializador es PEREZOSO porque lee el viewport: con la forma directa,
+  // `window.innerWidth` se evaluaria en cada render para un valor que solo se usa una vez.
+  //
+  // Las dos esquinas son las que los dos paneles ya ocupaban, y siguen saliendo de la misma
+  // medicion: arriba a la derecha y abajo a la izquierda dejan libres `(0,0)` —donde el
+  // circuito cierra— y `(9,5)` —donde arranca la cabeza lectora—. La diferencia con antes es
+  // que ahora eso es una posicion INICIAL y no una propiedad fija del diseno: si la pieza
+  // que interesa cae debajo, el panel se corre.
+  //
+  // `DOCK_ANCHO_MAXIMO_PX` es una COTA y no la medida exacta, y por que esta escrito ahi.
+  const [posicionPiezas, setPosicionPiezas] = useState<Posicion>(() => ({
+    x: window.innerWidth - DOCK_ANCHO_MAXIMO_PX - MARGEN_INICIAL_PX,
+    y: MARGEN_INICIAL_PX,
+  }));
+  // La franja mide UNA celda de alto —es lo que `caja` le pasa al chasis—, asi que se resta
+  // una y no dos. Con dos arrancaba a 84 px del borde de abajo en vez de a 8, medido.
+  const [posicionSenal, setPosicionSenal] = useState<Posicion>(() => ({
+    x: MARGEN_INICIAL_PX,
+    y: window.innerHeight - CELL_PX_OBJETIVO - MARGEN_INICIAL_PX,
+  }));
 
   // Si el tap del modificador que esta abajo sigue siendo limpio. Va en un ref y no en
   // `useState` porque cambia varias veces por gesto y no lo dibuja nadie: meterlo al
@@ -528,11 +563,11 @@ export default function App() {
   // El porque de este `useMemo` —y el numero que lo justifica— esta abajo, al lado del
   // `<PiecePalette>` que lo consume: es donde estaba escrita la decision contraria.
   const orientacion = useMemo(() => ({
-    selected, orientaciones, regimen, noteSet,
+    selected, orientaciones, regimen,
     onSelect: elegirPieza,
     onRegimen: setRegimen,
     onResetOrientacion: resetearOrientacion,
-  }), [selected, orientaciones, regimen, noteSet, elegirPieza, resetearOrientacion]);
+  }), [selected, orientaciones, regimen, elegirPieza, resetearOrientacion]);
 
   // El tablero ES la pantalla. Murieron el `min-h-screen … p-4` y el
   // `max-w-6xl mx-auto grid grid-cols-12 gap-4`: no hay fila de tarjetas que repartir
@@ -610,6 +645,8 @@ export default function App() {
         }}
         abierto={piezasAbierto}
         onToggle={() => setPiezasAbierto(v => !v)}
+        posicion={posicionPiezas}
+        onMover={setPosicionPiezas}
       />
 
       <Board
@@ -632,38 +669,37 @@ export default function App() {
         boardRef={boardRef}
       />
 
-      {/* La señal que sale por el master, como franja flotante abajo a la izquierda.
+      {/* La señal que sale por el master, como franja flotante.
             No recibe props: lee del motor por su cuenta, para que dibujar a 60
             fps no re-renderice nada de acá.
 
-            La posición sale de la medición igual que la del dock: `3 × 1` celdas en la
-            esquina inferior izquierda tapan `(0,5)`, `(1,5)` y `(2,5)` y dejan libre
-            `(9,5)`, que es donde arranca la cabeza lectora. Y `(0,0)` queda libre porque la
-            franja está abajo — es la celda donde el circuito cierra.
+            **Y comparte chasis con el dock** (AC11). Aplicarle el arrastre a uno solo de los
+            dos dejaría dos idiomas conviviendo, que es literalmente el desfasaje que el spec
+            052 abre: un panel que se mueve y otro clavado donde el diseño decidió.
 
-            El alto es UNA celda y el contenido se acomoda adentro con `flex-col`: el canvas
-            toma lo que queda después del encabezado. Con el `h-24` de 96 px que `Spectrum`
-            tenía, al piso el contenido pedía 132 px contra los 73 de la caja y la franja se
-            comía una segunda fila del tablero. */}
-      <aside
-        className="fixed left-0 bottom-0 z-20 flex flex-col rounded-tr-2xl shadow-lg bg-white/85 backdrop-blur p-2"
-        style={{ width: `calc(var(--cell) * 3)`, height: senalAbierta ? `calc(var(--cell) * 1)` : undefined }}
+            El ancho sigue midiéndose en celdas, y eso NO es lo que el 052 retira. Lo que se
+            fue es la caja en celdas del DOCK, que estaba fijada sin mirar su contenido —1407
+            px adentro de 215—. Acá la caja es la medida correcta: adentro va un `<canvas>`,
+            que no tiene tamaño propio y toma el que le den, y una franja de señal proporcional
+            a la baldosa es exactamente lo que se quiere. El alto es UNA celda y el contenido
+            se acomoda adentro con `flex-col`: el canvas toma lo que queda después del
+            encabezado. */}
+      <FloatingPanel
+        titulo="Señal"
+        idRegion="franja-senal"
+        abierto={senalAbierta}
+        onToggle={() => setSenalAbierta(v => !v)}
+        posicion={posicionSenal}
+        onMover={setPosicionSenal}
+        caja={{ width: `calc(var(--cell) * 3)`, height: senalAbierta ? `calc(var(--cell) * 1)` : undefined }}
       >
-        <button
-          type="button"
-          onClick={() => setSenalAbierta(v => !v)}
-          aria-expanded={senalAbierta}
-          aria-controls="franja-senal"
-          className="shrink-0 text-left text-sm font-semibold mb-1"
-        >Señal</button>
-        {/* `hidden` y no desmontar: el `ResizeObserver` de `spectrum-loop.ts` redibuja
-              porque su contenedor cambia de TAMAÑO, y si plegar desmontara el `<canvas>` no
-              habría observador que se dispare — se ejecutaría la limpieza de
-              `iniciarEspectro` y al desplegar se montaría un loop nuevo. */}
-        <div id="franja-senal" hidden={!senalAbierta} className="min-h-0 flex-1">
-          <Spectrum />
-        </div>
-      </aside>
+        {/* `hidden` y no desmontar lo resuelve el chasis, y de eso depende el
+            `ResizeObserver` de `spectrum-loop.ts`: redibuja porque su contenedor cambia de
+            TAMAÑO, y si plegar desmontara el `<canvas>` no habría observador que se dispare
+            — se ejecutaría la limpieza de `iniciarEspectro` y al desplegar se montaría un
+            loop nuevo. */}
+        <Spectrum />
+      </FloatingPanel>
 
       {/* La única región `aria-live` de `src/`.
           Anuncia el resultado de las TRES ediciones —colocar, quitar y mutear— porque son

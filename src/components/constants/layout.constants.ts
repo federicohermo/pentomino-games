@@ -132,36 +132,18 @@ export const MINI_BOX = 5;
  * fila, no hay tarjeta y el tamano de celda sale del viewport; la paleta es un dock `fixed`
  * que flota encima y no le quita un pixel a nadie.
  *
- * Lo que decide el numero ahora es la CAJA DEL DOCK, que mide `calc(var(--cell) * 2)` de
- * ancho — 146 px en el peor caso, que es el piso. Ahi adentro tienen que entrar las doce
- * miniaturas con su letra, y la tabla de columnas se resuelve contra el ancho real del
- * contenedor (`OrientationPanel.tsx`) y no contra el breakpoint del viewport, que no dice
- * nada sobre cuanto mide esta caja.
+ * Lo que decide el numero es la LEGIBILIDAD DE LA FORMA, y nada mas: 8 px es el mas chico
+ * que la deja leer, porque con `MINI_BOX = 5` la caja mide 40 px de lado y a menos que eso
+ * las piezas de tres celdas de ancho dejan de distinguirse entre si.
  *
- * 8 px se queda porque sigue siendo el mas chico que deja leer la FORMA: con `MINI_BOX = 5`
- * la caja mide 40 px de lado, y a menos que eso las piezas de tres celdas de ancho dejan de
- * distinguirse entre si. No se remidio con el dock puesto — si el dock cambia de ancho, este
- * es el numero a remedir.
+ * **Y ese es todo el criterio, porque la caja del dock dejo de ser una restriccion.** Con el
+ * chasis arrastrable el ancho del dock es la SALIDA y no la entrada: las columnas salen de
+ * `columnasRectangulares` contra `REJILLA_ANCHO_TECHO_PX`, la casilla sale de este numero
+ * (`CASILLA_PX` = `MINI_BOX x MINI_CELL_PX` mas el aire) y el panel mide lo que eso pida.
+ * Subir este 8 agranda el dock; no lo hace desbordar.
  */
 export const MINI_CELL_PX = 8;
 
-/**
- * El ancho minimo de una columna de la grilla de miniaturas, en px.
- *
- * Derivado y no tipeado: es la caja del mini (`MINI_BOX x MINI_CELL_PX` = 40) mas el
- * `px-2` del boton que la contiene (8 por lado) mas su borde (1 por lado). Si alguno de
- * los dos numeros de arriba cambia, este lo sigue solo.
- *
- * Reemplaza a la tabla de breakpoints que `OrientationPanel` tenia: ahi las columnas salian
- * del ancho del VIEWPORT, que era una buena aproximacion del ancho de la tarjeta mientras la
- * tarjeta ocupaba una columna del grid.
- * Con el dock son dos variables distintas —el dock mide `calc(var(--cell) * 2)`, o sea
- * entre 146 y 360 px, mientras el viewport puede estar en `xl`— y la aproximacion se cae:
- * a 1366 x 768 el breakpoint pedia SEIS columnas adentro de una caja de 256 px. Con
- * `repeat(auto-fill, minmax(MINI_PISTA_PX, 1fr))` la cuenta la hace el navegador contra la
- * caja real, que es la misma decision de una sola fuente del numero que `--cell`.
- */
-export const MINI_PISTA_PX = MINI_BOX * MINI_CELL_PX + 16 + 2;
 
 /** Extremos del slider de tempo, en bpm. El valor inicial es DEFAULT_BPM del motor. */
 export const TEMPO_MIN = 60;
@@ -218,3 +200,112 @@ export const TEMPO_MAX = 160;
  */
 export const ANILLO_FOCO_OSCURO_RAZON = AIRE_RAZON;
 export const ANILLO_FOCO_CLARO_RAZON = AIRE_RAZON;
+
+/**
+ * El lado de la casilla de la tabla periodica, en px.
+ *
+ * **Derivado y no tipeado**, igual que las razones de arriba y por el mismo motivo: es la caja
+ * del mini (`MINI_BOX x MINI_CELL_PX` = 40) mas el aire que la rodea. Si alguno de los dos
+ * numeros de arriba cambia, la casilla lo sigue sola.
+ *
+ * El aire es de 4 px por lado y ahi termina la cuenta: `CASILLA_PX` = 48. Es la medida que
+ * el prototipo del spec 052 midio en el DOM contra otras dos —40 y 56— y la unica que
+ * conserva entera la caja de 40 px que este archivo documenta como el minimo que deja leer
+ * la FORMA. Con 40 de casilla la caja tendria que achicarse; con 56 el dock se va a 252 px
+ * de ancho y tapa 20 celdas en vez de 16.
+ *
+ * **Cuadrada, y eso es lo que reemplaza al boton de 107,8 x 65,6 de antes.** El ancho de
+ * aquel boton lo decidia el `1fr` de la grilla y el alto su contenido, asi que la casilla
+ * cambiaba de forma con el ancho del dock. En una tabla periodica el simbolo vive en una
+ * casilla de lado fijo: es lo que hace que las doce se lean como un conjunto y no como una
+ * lista.
+ */
+export const CASILLA_AIRE_PX = 4;
+export const CASILLA_PX = MINI_BOX * MINI_CELL_PX + CASILLA_AIRE_PX * 2;
+
+/** La separacion entre casillas de la tabla periodica, en px. Es el `gap` del prototipo medido. */
+export const REJILLA_GAP_PX = 4;
+
+/**
+ * El ancho maximo de la rejilla de miniaturas, en px, y el UNICO parametro con el que se
+ * elige la forma del rectangulo.
+ *
+ * Con el chasis arrastrable la caja dejo de medirse en celdas y paso a medirse por su
+ * contenido, asi que la pregunta se dio vuelta: **las columnas son la entrada y el ancho es
+ * la salida**, no al reves. Hasta aca lo contestaba `calc(var(--cell) * 2)`, que fijaba el
+ * ancho y dejaba que `auto-fill` contara contra el — y contra 108 px utiles contaba UNA.
+ *
+ * Los anchos que pide cada cantidad, con `CASILLA_PX` = 48 y `REJILLA_GAP_PX` = 4, o sea
+ * `c x 48 + (c - 1) x 4`:
+ *
+ * ```
+ * 2 col -> 100 px      3 col -> 152 px      4 col -> 204 px
+ * 6 col -> 308 px     12 col -> 620 px
+ * ```
+ *
+ * 220 deja entrar hasta 4 y deja afuera a 6, y de ahi sale el `4 x 3` que el prototipo
+ * midio en 220 x 268 px: el mismo alto que el dock de hoy (278), 81 px mas de ancho y el
+ * contenido entero visible, contra 1192 px de desborde.
+ *
+ * **Es la palanca entera**: subirlo a 308 da un dock de `6 x 2` sin tocar una linea de
+ * `OrientationPanel`, porque quien elige es `columnasRectangulares` y no el navegador.
+ */
+export const REJILLA_ANCHO_TECHO_PX = 220;
+
+/**
+ * Cuanto se mueve un flotante con una flecha del teclado, en px.
+ *
+ * El arrastre por puntero es continuo y el del teclado no puede serlo, asi que este numero
+ * es todo el compromiso: con un paso muy chico cruzar la pantalla cuesta cientos de
+ * pulsaciones, y con uno muy grande el panel no se puede posicionar. A 16 px, cruzar un
+ * viewport de 1536 cuesta 96 pulsaciones y el panel llega a cualquier lado con un error
+ * menor al de la celda mas chica que el tablero dibuja.
+ */
+export const PASO_TECLADO_PX = 16;
+
+/**
+ * Cuanto de un flotante tiene que quedar SIEMPRE dentro del viewport, en px.
+ *
+ * Es lo que hace que el panel no se pueda perder: soltarlo en (-9999, -9999) lo deja
+ * alcanzable. 48 px es mas que el alto del asa, o sea que lo que queda visible siempre
+ * incluye una franja del control con el que se lo trae de vuelta.
+ *
+ * **En vertical el tope de arriba es 0 y no `-caja.alto + margen`, y no es simetria mal
+ * hecha**: el asa vive en el BORDE SUPERIOR del chasis. Dejar que el panel suba mas alla
+ * del viewport esconderia justo la franja con la que se agarra, y quedaria un panel visible
+ * e inmovil — que es peor que uno perdido, porque parece que anda.
+ */
+export const MARGEN_VISIBLE_PX = 48;
+
+/**
+ * Cuantos px de arrastre vertical vale un bpm en el reloj de tempo.
+ *
+ * A 2 px por bpm, el rango entero —`TEMPO_MIN` a `TEMPO_MAX`, 100 bpm— se recorre con 200
+ * px de arrastre, que entra en cualquier viewport sin soltar el puntero. El slider que
+ * reemplaza medía 107,8 px para el mismo rango, o sea 0,93 bpm por px: casi el doble de
+ * sensible, y con el numero saltando de a uno cada pixel.
+ */
+export const ARRASTRE_PX_POR_BPM = 2;
+
+/** El `p-2` del chasis, en px. Sale de la clase de Tailwind y esta acá para que la cuenta de abajo lo lea. */
+export const PANEL_PADDING_PX = 8;
+
+/**
+ * El ancho MAXIMO que puede llegar a tener el chasis del dock, en px.
+ *
+ * Es una cota y no una medida, y la diferencia importa: el ancho real lo fija la cantidad
+ * de columnas que `columnasRectangulares` elige, y esa cuenta pide el DOM. Acá alcanza con
+ * la cota porque lo unico que la usa es la posicion INICIAL del dock —donde aparece la
+ * primera vez—, y si el panel termina siendo mas angosto lo unico que pasa es que arranca
+ * unos pixeles mas separado del borde derecho. En cuanto alguien lo arrastra, `moverPanel`
+ * acota contra la caja medida de verdad.
+ *
+ * **Que sea una cota y no la medida exacta es lo que evita duplicar la cuenta.** Calcularla
+ * fina obligaria al shell a llamar a `columnasRectangulares` por su cuenta, y esa llamada
+ * ya vive en `OrientationPanel`: dos copias de la misma cuenta son dos formas de que el
+ * panel se dibuje de un ancho y se posicione contra otro.
+ */
+export const DOCK_ANCHO_MAXIMO_PX = REJILLA_ANCHO_TECHO_PX + PANEL_PADDING_PX * 2;
+
+/** La separacion inicial de un flotante contra el borde de la pantalla, en px. */
+export const MARGEN_INICIAL_PX = 8;

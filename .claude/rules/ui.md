@@ -14,8 +14,9 @@ paths:
 
 `App.tsx` es el shell: estado con `useState` local, derivados, handlers y la composición. Desde el spec
 022 **no declara un solo `useEffect`**: los cuatro de reconciliación viven en `components/use-engine.ts`,
-los dos de entrada en `components/use-input.ts` y el que mide el viewport para escribir `--cell` en
-`components/use-grid.ts` (specs 021 y 031). Ese último es el caso que muestra que la regla no es una
+los dos de entrada en `components/use-input.ts`, el que mide el viewport para escribir `--cell` en
+`components/use-grid.ts` (specs 021 y 031) y el del arrastre de los dos flotantes en
+`components/use-drag.ts` (spec 052). El del viewport es el caso que muestra que la regla no es una
 formalidad: un listener de `resize` es exactamente lo que la sección «Los listeners de entrada» ya
 resolvía, y el shell se quedó con el `ref` y la llamada. **Ninguna función pura y ningún literal de
 dominio** — y eso ya no significa «se va a `domain/`»: un `.tsx` no puede exportar nada además del
@@ -25,11 +26,10 @@ dos últimos lugares donde quedaba lógica encerrada: los bucles de `Playhead.ts
 salieron a `playhead-loop.ts` y `spectrum-loop.ts` sin cambiar una línea de comportamiento.
 
 Desde ese spec `components/` tiene **dos clases de test y las dos corren con `pnpm test`**: los `.ts`
-puros en el proyecto `node` —`input.ts`, `cell-text.ts`, `cell-name.ts`, `piece-mini.ts`,
-`orientation-text.ts`, `route-source.ts`, `engine-bridge.ts`, `palette.constants.ts` y los dos
-`-loop.ts`— y los
+puros en el proyecto `node` —toda decisión extraída de un `.tsx`, de `input.ts`, `cell-text.ts` y los
+dos `-loop.ts` a `drag.ts` y `rejilla.ts`, que sumó el 052— y los
 `*.browser.test.tsx` en un
-Chromium de verdad, que es donde se verifican los seis componentes, `App.tsx` y los dos hooks. El
+Chromium de verdad, que es donde se verifican los componentes, `App.tsx` y los hooks. El
 discriminante es el **sufijo**, no la carpeta. Y el umbral es 100 en las cuatro métricas: lo que se
 agregue acá viene con su test o no mergea.
 
@@ -49,6 +49,21 @@ con nodos que crea y destruye él mismo.
   van con `key={i}` y **sin refs ni `data-*`** justamente para que no haya handle; lo que el loop
   necesita pintar, lo pinta con nodos propios superpuestos. Partir el estilo de un mismo nodo entre los
   dos es lo que el review del spec 007 pagó caro.
+
+  **Y cuando React y un gesto tienen que escribir el mismo nodo, escriben propiedades distintas.** Es
+  la salida cuando no hay nodo aparte que darle al gesto, y el caso es el chasis de
+  `components/FloatingPanel.tsx`: la posición vive en las custom properties `--panel-x` / `--panel-y`
+  que escribe `components/use-drag.ts`, y React renderiza un
+  `transform: translate3d(var(--panel-x), var(--panel-y), 0)` que es un **string constante**. Con el
+  `transform` escrito por los dos, cualquier re-render del shell durante el arrastre pisa la posición
+  del gesto con la última committeada y el panel salta hacia atrás; con la indirección no hay nada que
+  pisar. Es el mismo reparto que `--cell` en `use-grid.ts`, y es lo que hace que esta regla se pueda
+  cumplir sin renunciar al gesto. El costo que lo justifica está medido del otro lado: el `hover`, que
+  también vive en el shell, cuesta **1,9 ms** de commit por celda cruzada —4,9 ms sin el `memo` de
+  `OrientationPanel`—, `pointermove` llega más seguido que el cruce de una celda, y el tablero tiene
+  hasta **390** celdas con un `Board` sin `memo`. **Con la unidad**, igual que `--cell`: un `--panel-x`
+  que valga `600` a secas deja inválido el `translate3d` entero y el panel se va a la esquina sin un
+  solo error en consola.
 
 - **Todo lo que suena en el loop pasa por el efecto de reconciliación**, que vive en
   `components/use-engine.ts` y no en el shell. Un único `useEffect` sobre `[secuencia, placed]` entrega
@@ -109,10 +124,20 @@ distinta y ahí no tiene que pasar nada.
   de unos **73 px** y lo que sale del viewport es **cuántas celdas hay** (spec 031): `grid-fit.ts`
   contesta las dos cosas y `components/use-grid.ts` las escribe. La celda va por la custom property
   `--cell` —**todo lo que dependa de ella la lee de ahí y nunca de una constante**: la grilla, la
-  baldosa entera, el velo, la cabeza lectora y las cajas de los dos flotantes—, y las dimensiones
+  baldosa entera, el velo, la cabeza lectora y la caja del flotante de señal—, y las dimensiones
   vuelven como estado, porque deciden cuántos nodos existen y eso el CSS no lo puede resolver. El
   reparto es por frecuencia: la celda cambia en cada píxel del arrastre y las dimensiones una o dos
   veces, así que el hook devuelve el objeto anterior cuando los números no cambiaron.
+
+  **De los dos flotantes, sólo el de señal mide su caja en celdas, y el motivo es lo que decide el
+  próximo** (spec 052): adentro va un `<canvas>`, que no tiene tamaño propio y toma el que le den, y
+  una franja de señal proporcional a la baldosa es exactamente lo que se quiere. **El dock se mide por
+  su contenido** —la rejilla de miniaturas sale de `components/rejilla.ts` contra el techo de
+  `REJILLA_ANCHO_TECHO_PX`, y el panel mide lo que esa cuenta pida—: una caja en celdas fijada sin
+  mirar lo que va adentro le da al scroller 1192 px de desborde y una rejilla de 1 × 12, contra los
+  220 × 357 px, desborde **0** y rejilla **4 × 3** que se miden hoy a `--cell` = 69,5 px. La regla es
+  la misma que la del reparto de arriba: **la celda es la unidad de lo que se dibuja contra el
+  tablero, no de lo que envuelve a un contenido que tiene su propia medida.**
 
   **Y no hay scroll.** `Board.tsx` se quedó sin `overflow-x-auto`, sin `max-h-full` y sin `w-max`: la
   grilla entra por construcción, porque `cols · cell ≤ vw`. Lo único que se queda fijo es el filete de
@@ -135,9 +160,13 @@ Las tres cláusulas, y las tres ya existían en el repo como comentarios sueltos
 - **Todo control que alterna lleva `aria-pressed`, y su nombre es lo que alterna, no el valor.** Un
   botón que se llama `OFF` tiene el nombre equivocado: lo que hace falta saber es **qué** se apaga. Y un
   grupo de selección única donde la selección es sólo un fondo oscuro no llega al árbol de ninguna forma
-  — va como `role="group"` con `aria-labelledby`, sobre un nodo que **ya exista**, y `aria-pressed` en
-  cada botón. **No** como `radiogroup`: eso obliga a un modelo de foco —una sola parada de tabulación y
-  flechas para moverse dentro— y ese modelo lo fija el spec 026 para el tablero. Tomarlo de refilón para
+  — va como `role="group"` **con nombre** y `aria-pressed` en cada botón. El nombre lo elige la tercera
+  cláusula, no el gusto: `aria-labelledby` sobre un nodo que **ya exista** cuando el grupo tiene texto
+  visible, y `aria-label` cuando no lo tiene. El grupo del régimen de `PiecePalette.tsx` es el segundo
+  caso —su etiqueta no está en pantalla, así que no hay `id` que referenciar— y el ancla de un
+  `aria-labelledby` es justo lo que un rediseño se lleva puesto sin que nada falle: el grupo queda con
+  `role` y sin nombre. **No** como `radiogroup`: eso obliga a un modelo de foco —una sola parada de
+  tabulación y flechas para moverse dentro— y ese modelo lo fija el spec 026 para el tablero. Tomarlo de refilón para
   cuatro botones sería decidirlo dos veces y probablemente distinto.
 - **La etiqueta se toma del texto visible con `aria-labelledby`, no se duplica en un `aria-label`.** El
   precedente es el `aria-label` de las doce miniaturas del spec 016 —«para que el lector de pantalla
@@ -175,9 +204,20 @@ botón es un toggle.
 
 **Un *disclosure* va con `aria-expanded`, no con `aria-pressed`.** La cláusula de arriba dice «todo
 control que alterna lleva `aria-pressed`» y leída al pie dejaría como deuda a los dos encabezados
-plegables (`App.tsx:652`, `PiecePalette.tsx:80`), que están bien: `aria-pressed` dice que un control
-está **hundido**, y `aria-expanded` que la región que controla está **abierta**. Un botón que muestra y
-esconde otra cosa es lo segundo.
+plegables, que están bien: `aria-pressed` dice que un control está **hundido**, y `aria-expanded` que
+la región que controla está **abierta**. Un botón que muestra y esconde otra cosa es lo segundo. Los
+dos son **el mismo componente** desde el spec 052 —el botón de plegado de
+`src/components/FloatingPanel.tsx`, que montan el dock y la franja de señal—, así que la cláusula se
+cumple en un solo lugar.
+
+**Y un control que se arrastra no puede ser ese mismo `<button>`.** El navegador sintetiza un `click`
+después del `pointerup` sobre el mismo nodo, así que un encabezado que pliegue y arrastre a la vez
+cierra el panel cada vez que se lo suelta. Las dos salidas son un asa aparte o un umbral de arrastre
+que se coma el `click`, y va **la primera**: la segunda deja un botón cuyo comportamiento depende de
+cuántos píxeles se movió el puntero, que es justo lo que no se puede anunciar en el árbol de
+accesibilidad. Con el asa aparte cada control tiene **un solo trabajo y un solo nombre accesible** —el
+título del panel es el asa y dice también el gesto, porque las flechas del teclado no se descubren de
+ninguna otra forma—, y el plegado se queda con su `aria-expanded`.
 
 Todos consultan por **rol y nombre**, nunca por `className`: preguntarle al árbol de accesibilidad es
 la diferencia entre verificar accesibilidad y verificar que se escribió un atributo. Ojo con

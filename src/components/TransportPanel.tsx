@@ -1,59 +1,107 @@
-import { TEMPO_MIN, TEMPO_MAX } from './constants/layout.constants.ts';
+import { useRef } from 'react';
+import type { PointerEvent as EventoDePuntero } from 'react';
+import { pasoDeRueda, pasoDeTempoDeTecla, tempoAcotado, tempoDeArrastre } from './tempo.ts';
 import type { PropsDeTransporte } from './types/panel.types.ts';
 
 /**
  * El transporte del instrumento: tempo, play/pausa, el recorrido en el vacio y el reset.
  *
- * Presentacional: sin estado, sin efectos. Recibe UN objeto —el del transporte— y nada
- * mas.
+ * Presentacional: sin estado y sin efectos. El unico `useRef` es el ancla del arrastre del
+ * reloj —ver abajo—, que no es ninguna de las dos cosas: no se dibuja y no se suscribe a
+ * nada.
  *
- * Es el bloque `border-t` que tenia `PiecePalette`, devuelto como el mismo `div` y sin
- * envolverlo en nada: agregarle un nodo cambiaria el ritmo vertical del `space-y-2` que lo
- * contiene con las clases intactas.
+ * ## El slider se fue, y con el la fila de tres cosas
  *
- * Llego a ser el unico subarbol CONTIGUO de los dos paneles, porque el boton de
- * los clicks caia entre dos bloques de orientacion. Hoy la fila de abajo
- * son los TRES botones del transporte, y con eso la interpolacion que aquel docblock
- * describia dejo de existir.
+ * `Tempo` era una etiqueta, un `input[type=range]` de 107,8 px y un lector `110 bpm`: **dos
+ * controles y una palabra para un numero de tres digitos**, en un panel donde el contenido
+ * desbordaba 1192 px. La fila entera se apilaba con `flex-wrap` porque no entraba de otra
+ * forma, y pesaba ~80 px de los 1407.
+ *
+ * Queda el numero solo, con `tabular-nums`, y los gestos de un reloj digital: rueda encima,
+ * flechas con el foco puesto y arrastre vertical. La conversion de cada gesto a bpm vive en
+ * `tempo.ts` y ya sale acotada a `[TEMPO_MIN, TEMPO_MAX]`.
  */
 export default function TransportPanel({ transporte }: { transporte: PropsDeTransporte }) {
   const { tempo, playing, clicks, onTempo, onTogglePlay, onToggleClicks, onReset } = transporte;
+
+  /**
+   * El ancla del arrastre: donde estaba el puntero y cuanto valia el tempo al empezar.
+   *
+   * Va en un `ref` y no en un `useState` porque no lo dibuja nadie —lo unico que se dibuja
+   * es el `tempo`, que vive en el shell— y un `useState` aca seria un re-render extra por
+   * cada `pointerdown`. Es la misma decision que `tapLimpio` en el shell.
+   *
+   * Se guarda el tempo del COMIENZO y no el actual porque el gesto se ancla ahi: el porque
+   * —que acumular paso a paso deja el numero clavado en el extremo cuando el arrastre sale
+   * del rango y vuelve— esta en `tempoDeArrastre`.
+   */
+  const arrastre = useRef<{ y: number; tempo: number } | null>(null);
+
+  const alBajarEnElReloj = (e: EventoDePuntero<HTMLButtonElement>) => {
+    arrastre.current = { y: e.clientY, tempo };
+    // Con la captura, los `pointermove` y el `pointerup` siguen llegando a ESTE boton aunque
+    // el puntero se vaya del nodo, asi que los handlers de abajo alcanzan y no hace falta
+    // ningun listener sobre `window` — o sea ningun efecto, que es lo que deja a este
+    // componente sin uno.
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const alMoverEnElReloj = (e: EventoDePuntero<HTMLButtonElement>) => {
+    const a = arrastre.current;
+    if (a === null) return;
+    onTempo(tempoDeArrastre(a.tempo, e.clientY - a.y));
+  };
+
+  // `pointerup` y `pointercancel` comparten handler: sin el segundo, un gesto que el
+  // navegador cancela dejaria el ancla puesta y el reloj seguiria al puntero.
+  const alTerminarEnElReloj = () => { arrastre.current = null; };
+
   return (
     <div className="mt-4 border-t pt-3 space-y-2">
-      {/* La fila de Tempo se APILA, y no es estetica: el dock mide 146 px al piso, contra
-          los ~349 de la tarjeta que reemplaza (spec 021, issue #83). Tres
-          cosas en una fila —la etiqueta, el slider y un lector de ancho fijo— no entran, y
-          el desborde seria HORIZONTAL: ni el `overflow-y` del dock lo corta ni un
-          `overflow-x` lo arregla, porque ese scroll es justamente lo que no puede haber.
-          Apilado, el slider toma el ancho que haya y el lector se acomoda debajo. */}
-      <div className="flex flex-wrap items-center justify-between gap-x-2">
-        <span id="tempo-etiqueta" className="font-medium">Tempo</span>
-        {/* `aria-labelledby` y no `aria-label`: el nombre toma el mismo texto que ya se
-            ve en el span de arriba, en vez de escribirlo dos veces. Si alguien cambia la
-            etiqueta visible, la anunciada lo sigue sola.
+      {/* EL RELOJ.
+          `<button>` y **nunca** `<div role="spinbutton">`, y no es una preferencia de
+          estilo: `esControl` en `use-input.ts:80` es
+          `t instanceof HTMLButtonElement || t instanceof HTMLInputElement`, y es lo que veta
+          el listener de teclado global. `accionDeTecla` abre con
+          `if (e.targetEsControl) return null`, asi que con el foco sobre un boton el atajo
+          global esta vetado entero. Un `div` con rol —que es la forma "correcta" de ARIA
+          para un control numerico, y por lo tanto la tentacion natural— NO lo veta, y como
+          `accionDeTecla` termina en `piezaDeTecla(e.key)`, tipear un tempo dejaria que cada
+          letra eligiera una pieza. AC8 es el test que lo fija.
 
-            Y `aria-valuetext` es el argumento del comentario de abajo —"110" a secas no
-            dice si son bpm o intervalos, y el instrumento maneja las
-            dos unidades— aplicado al oido, donde no hay span al lado que lo salve: un
-            `range` se anuncia con su valor numerico crudo salvo que lo tenga. */}
-        <input
-          type="range"
-          min={TEMPO_MIN}
-          max={TEMPO_MAX}
-          value={tempo}
-          onChange={e=>onTempo(Number(e.target.value))}
-          aria-labelledby="tempo-etiqueta"
-          aria-valuetext={`${tempo} bpm`}
-          className="w-full min-w-0 order-last"
-        />
-        {/* Con la unidad: "110" a secas no dice si son bpm o intervalos, y el
-            instrumento maneja las dos unidades. El `w-16` que tenia se fue con
-            el dock: era el ancho fijo que le reservaba lugar al numero en una fila de tres,
-            y en un dock de 146 px es justamente lo que la hacia desbordar. `tabular-nums`
-            sigue: es lo que mantiene el numero quieto al arrastrar, que es para lo que
-            estaba el ancho fijo — el ancho solo lo reservaba de mas. */}
-        <span className="tabular-nums text-right whitespace-nowrap">{tempo} <span className="text-slate-500">bpm</span></span>
-      </div>
+          No lleva `onClick`, y es deliberado: sus gestos son la rueda, las flechas y el
+          arrastre. Un click sobre un valor continuo no significa nada, y darle uno haria que
+          cada arrastre terminara moviendo el tempo una vez mas — el mismo `click` sintetico
+          que obliga a que el asa del chasis sea un boton aparte del que pliega.
+
+          `aria-label` y no `aria-labelledby`: el `<span id="tempo-etiqueta">Tempo</span>` al
+          que apuntaba se fue con la palabra, asi que la etiqueta pasa al atributo, que es lo
+          que `.claude/rules/ui.md` manda cuando no hay texto visible que referenciar. El
+          nombre dice la unidad porque "110" a secas no dice si son bpm o intervalos, y el
+          instrumento maneja las dos. `title` con el MISMO texto: el puntero y el lector no
+          pueden contar dos historias distintas del mismo boton.
+
+          `touch-none` para que el arrastre vertical funcione con el dedo: sin
+          `touch-action: none` el navegador se queda el gesto para scrollear. */}
+      <button
+        type="button"
+        onWheel={e => onTempo(tempoAcotado(tempo + pasoDeRueda(e.deltaY)))}
+        onKeyDown={e => {
+          const paso = pasoDeTempoDeTecla(e.key);
+          if (paso === null) return;
+          // Solo cuando la tecla es nuestra: si no, el navegador tiene que quedarse el
+          // evento entero. Es la misma regla que `frenaElDefault` en `use-input.ts`.
+          e.preventDefault();
+          onTempo(tempoAcotado(tempo + paso));
+        }}
+        onPointerDown={alBajarEnElReloj}
+        onPointerMove={alMoverEnElReloj}
+        onPointerUp={alTerminarEnElReloj}
+        onPointerCancel={alTerminarEnElReloj}
+        aria-label={`Tempo: ${tempo} bpm`}
+        title={`Tempo: ${tempo} bpm`}
+        className="w-full rounded bg-slate-100 hover:bg-slate-200 py-0.5 text-center text-2xl leading-none tabular-nums cursor-ns-resize touch-none"
+      >{tempo}</button>
       {/* Los TRES botones del transporte, los tres solo-icono. Esta fila
           es todo el vocabulario del instrumento en marcha: que suene, que se oiga el
           recorrido, y volver a empezar.
@@ -69,18 +117,17 @@ export default function TransportPanel({ transporte }: { transporte: PropsDeTran
           `aria-label` en los tres porque al sacar el texto se quedan sin nombre accesible:
           el glifo no lo es, y el SVG menos. `title` para que el puntero tambien lo diga, y
           con el MISMO texto: el puntero y el lector no pueden contar dos historias
-          distintas del mismo boton.
+          distintas del mismo boton. Son el precedente de lo que el spec 052 le pide al
+          resto del dock, y por eso no cambian.
 
           Corriendo, play usa el `bg-slate-900 text-white` con el que la tarjeta marca lo
-          activo — es el mismo idioma que usa el metronomo encendido y el que usaban las
-          filas que el 019 borro. En pausa NO cae a `bg-slate-100`, que es el "apagado" de
-          ese idioma, porque en la misma fila estan el metronomo apagado (`bg-slate-100`) y
-          `↺` (`bg-slate-200`): el boton principal del instrumento quedaria indistinguible
-          de los dos secundarios. El verde es lo que un transporte pide leer como "apreta
-          esto para que suene". */}
+          activo — es el mismo idioma que usa el metronomo encendido. En pausa NO cae a
+          `bg-slate-100`, que es el "apagado" de ese idioma, porque en la misma fila estan el
+          metronomo apagado (`bg-slate-100`) y `↺` (`bg-slate-200`): el boton principal del
+          instrumento quedaria indistinguible de los dos secundarios. El verde es lo que un
+          transporte pide leer como "apreta esto para que suene". */}
       {/* `flex-wrap` por lo mismo que la fila de arriba: son tres controles desde que el
-          019 le mudo el metronomo, y al piso del 021 el dock mide 146 px. Envolver es lo
-          unico que no desborda horizontalmente. */}
+          019 le mudo el metronomo, y el dock sigue siendo el panel mas angosto de la app. */}
       <div className="flex flex-wrap gap-2">
         <button
           type="button"

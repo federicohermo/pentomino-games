@@ -15,8 +15,6 @@ import type { MemoriaDeOrientacion } from './orientation.types.ts';
  * - `regimen` va con la ORIENTACIÓN aunque sea global como el tempo, porque gobierna QUÉ
  *   HACE la rotación: con `escala` cambia la fórmula de escala y con `orden`
  *   cambia por dónde arranca el arpegio, así que sin él la orientación no dice qué suena.
- * - `noteSet` va del mismo lado por lo mismo: es el arpegio de la pieza en la mano EN ESA
- *   orientación, y su `useMemo` en el shell ya depende de los cuatro campos de acá.
  * - `onReset` va con el TRANSPORTE y no con la orientación porque `resetBoard` frena el
  *   reloj además de vaciar el tablero, que es la mitad que su propio comentario declara
  *   «no cosmética».
@@ -46,7 +44,6 @@ export interface PropsDeOrientacion {
    * regimen paso a ser la fila.
    */
   regimen: RegimenDeRotacion;
-  noteSet: readonly number[];
   onSelect: (piece: PieceKey) => void;
   onRegimen: (regimen: RegimenDeRotacion) => void;
   /**
@@ -69,3 +66,27 @@ export interface PropsDeTransporte {
   onToggleClicks: () => void;
   onReset: () => void;
 }
+
+/**
+ * La posicion de un flotante, en px desde la esquina superior izquierda del viewport.
+ *
+ * Vive acá y no adentro de `PropsDeOrientacion` **a proposito**: ese objeto es la mitad de
+ * la barrera del `memo` de `OrientationPanel` —la otra es su `useMemo` en el shell— y
+ * meterle un valor que cambia con cada pixel de arrastre la romperia entera. Medido en el
+ * spec 016: el commit por celda cruzada baja de 4,9 a 1,9 ms con la memo puesta, sobre 337
+ * elementos que no dependen de nada de esto.
+ */
+export interface Posicion { x: number; y: number }
+
+/**
+ * Un desplazamiento en px.
+ *
+ * Misma forma que `Posicion` y **tipo distinto a proposito**: sumarle una posicion a otra
+ * no significa nada, y con los mismos nombres de campo TypeScript dejaria pasar el error.
+ * Con `dx`/`dy` los dos tipos no son intercambiables por estructura, que es la unica forma
+ * de que el compilador lo diga.
+ */
+export interface Delta { dx: number; dy: number }
+
+/** Un ancho y un alto en px: el viewport, o la caja de un flotante. */
+export interface Caja { ancho: number; alto: number }

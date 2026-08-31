@@ -4,8 +4,9 @@ import { page } from 'vitest/browser';
 
 /**
  * El gate del árbol de accesibilidad: las reglas de `.claude/rules/ui.md`, sección «El árbol
- * de accesibilidad dice lo que el color pinta», que hasta el spec 050 no verificaba ninguna
- * máquina.
+ * de accesibilidad dice lo que el color pinta».
+ *
+ * Es la sección que hasta el spec 050 no verificaba ninguna máquina.
  *
  * Qué cubre cada aserción, contra la cláusula que le corresponde:
  *
@@ -66,8 +67,10 @@ import { page } from 'vitest/browser';
 
 /**
  * El motor, mockeado igual que en `App.browser.test.tsx` y por el mismo motivo: montar la
- * app entera no debería arrancar audio de verdad para contar etiquetas. Lo demás —el
- * dominio, los componentes y el DOM— es real, que es de donde tiene que salir el árbol.
+ * app entera no debería arrancar audio de verdad para contar etiquetas.
+ *
+ * Lo demás —el dominio, los componentes y el DOM— es real, que es de donde tiene que salir
+ * el árbol.
  */
 const motor = vi.hoisted(() => ({
   setSequence: vi.fn(),
@@ -88,9 +91,11 @@ const App = (await import('../App.tsx')).default;
 
 /**
  * Un viewport de escritorio, por lo mismo que `App.browser.test.tsx`: sin fijarlo,
- * Playwright arranca en 414 x 896 y el tablero sale de seis columnas. Acá no cambia el
- * veredicto —las etiquetas son las mismas—, pero sí cuántos controles se recorren, y un
- * gate que mide menos según la ventana es un gate que se puede aflojar sin tocarlo.
+ * Playwright arranca en 414 x 896 y el tablero sale de seis columnas.
+ *
+ * Acá no cambia el veredicto —las etiquetas son las mismas—, pero sí cuántos controles se
+ * recorren, y un gate que mide menos según la ventana es un gate que se puede aflojar sin
+ * tocarlo.
  */
 const VIEWPORT: [number, number] = [1024, 768];
 

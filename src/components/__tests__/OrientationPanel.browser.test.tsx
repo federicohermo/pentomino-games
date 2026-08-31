@@ -44,7 +44,6 @@ const orientacion = (over: Partial<PropsDeOrientacion> = {}): PropsDeOrientacion
   // visible cuando paso a consumir la pura de `orientation-text.ts`.
   orientaciones: ORIENTACIONES_INICIALES,
   regimen: REGIMEN.escala,
-  noteSet: [60, 62, 64, 67, 69],
   onSelect: vi.fn(),
   onRegimen: vi.fn(),
   onResetOrientacion: vi.fn(),
@@ -52,13 +51,43 @@ const orientacion = (over: Partial<PropsDeOrientacion> = {}): PropsDeOrientacion
 });
 
 describe('OrientationPanel', () => {
-  it('son las doce, cada una con su letra', async () => {
+  it('son las doce, cada una nombrada por su letra', async () => {
+    // La vuelta va por el NOMBRE ACCESIBLE y no por el `textContent` del panel. El simbolo
+    // de la casilla es `aria-hidden`, para que el lector no deletree la letra dos veces, asi
+    // que el texto visible que el panel expone al arbol de accesibilidad es cero: una
+    // asercion sobre `textContent` verificaria un canal que ningun usuario de lector recibe,
+    // y seguiria verde con el boton entero sin nombre.
     const { container } = await render(<OrientationPanel orientacion={orientacion()} />);
-    const botones = container.querySelectorAll('button');
-    expect(botones.length).toBe(PIEZAS.length);
+    expect(container.querySelectorAll('button').length).toBe(PIEZAS.length);
     for (const key of PIEZAS) {
-      expect(container.textContent).toContain(key);
+      await expect.element(page.getByRole('button', { name: new RegExp(`^${key},`) })).toBeVisible();
     }
+  });
+
+  it('052 — las doce forman un rectangulo lleno, medido en coordenadas', async () => {
+    // AC1. Se miden las CAJAS y no `gridTemplateColumns` ni la clase: declarar cuatro pistas
+    // y que el navegador reparta otra cosa es exactamente el modo de falla que este spec
+    // cierra —`auto-fill` contra 108 px utiles contestaba una sola columna—, y una asercion
+    // sobre el `style` lo habria dado por bueno. Donde caen los botones es lo unico que
+    // contesta cuantas columnas hay de verdad.
+    const { container } = await render(<OrientationPanel orientacion={orientacion()} />);
+    const cajas = [...container.querySelectorAll('button')].map(b => b.getBoundingClientRect());
+    expect(cajas.length).toBe(PIEZAS.length);
+    // Que el layout exista: en jsdom las doce cajas darian el mismo cero y el rectangulo
+    // saldria 1 × 1, o sea el test pasaria vacio por el otro lado.
+    expect(cajas[0].width).toBeGreaterThan(0);
+
+    const columnas = new Set(cajas.map(c => Math.round(c.x)));
+    const filas = new Set(cajas.map(c => Math.round(c.y)));
+
+    // LLENO: `c × f` da exactamente doce. Una ultima fila con huecos infla la cuenta —cinco
+    // columnas por tres filas son quince casilleros para doce iconos— y esta linea la caza.
+    expect(columnas.size * filas.size).toBe(PIEZAS.length);
+    // Y NO degenerado: `{2, 3, 4, 6}` son las divisoras propias de doce. Las dos que quedan
+    // afuera son la misma degeneracion por sus dos ejes —una columna de doce filas, o una
+    // barra de doce columnas— y las dos son rectangulos llenos que reprueban aca.
+    expect([2, 3, 4, 6]).toContain(columnas.size);
+    expect(filas.size).toBe(PIEZAS.length / columnas.size);
   });
 
   it('el nombre accesible dice la orientacion ACTUAL, no la canonica', async () => {

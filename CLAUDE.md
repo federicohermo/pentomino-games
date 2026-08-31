@@ -8,13 +8,13 @@ averiguar mirando un archivo. El detalle vive en `docs/`, las reglas por capa en
 ## Qué es
 
 Un prototipo de **instrumento musical**, no un juego con reglas de resolución. El usuario coloca
-pentominós en un tablero que **mide lo que entra en la pantalla** —26×15 en un escritorio de
-1920×1080, 5×9 en un teléfono, con la celda siempre en unos 73 px (spec 031)— y cada pieza dispara un
-arpegio de cinco notas —salvo que esté
-**muteada**, que desde el spec 014 la deja ocupando su lugar y su tiempo sin sonar—. Desde el spec 009 el
-tablero es un **recorrido**, no un compás: un circuito cerrado visita las piezas, y el orden y los
-silencios salen de la geometría. No hay puntaje ni condición de victoria — al evaluar una feature, la
-pregunta es si vuelve al instrumento más expresivo, no más difícil.
+pentominós en un tablero que **mide lo que entra en la pantalla** —26×15 en un escritorio de 1920×1080,
+5×9 en un teléfono, con la celda siempre en unos 73 px (spec 031)— y cada pieza dispara un arpegio de
+cinco notas —salvo que esté **muteada**, que desde el spec 014 la deja ocupando su lugar y su tiempo sin
+sonar—. Desde el spec 009 el tablero es un **recorrido**, no un compás: un circuito cerrado visita las
+piezas, y el orden y los silencios salen de la geometría. Los dos paneles flotan encima y **se
+arrastran** (spec 052): qué celdas tapan lo decide quien toca. No hay puntaje ni condición de victoria —
+al evaluar una feature, la pregunta es si vuelve al instrumento más expresivo, no más difícil.
 
 **Stack:** Vite 7 · React 19 · TypeScript 5.8 · Tailwind CSS 4 · Web Audio (sin librería de audio)
 
@@ -65,9 +65,9 @@ board.ts + music.ts ← sequence.ts          components/ y App.tsx importan de l
    mapeo del espectro.
 3. **`components/`** — un componente por archivo, presentacionales.
 4. **`App.tsx`** — el shell: estado, derivados, handlers y la composición. Desde el spec 022 **sin un
-   solo `useEffect`**: los cuatro de reconciliación viven en `components/use-engine.ts`, los dos de
-   entrada en `components/use-input.ts` y —desde el 021— el que mide el viewport y escribe `--cell` en
-   `components/use-grid.ts`.
+   solo `useEffect`**: los cuatro de reconciliación viven en `components/use-engine.ts`, los dos de entrada
+   en `components/use-input.ts`, el que mide el viewport y escribe `--cell` en `components/use-grid.ts`
+   (spec 021) y el del arrastre de los flotantes en `components/use-drag.ts` (spec 052).
 
 `domain/` y `audio/` son **hermanos sin aristas entre ellos**: el motor habla números MIDI y no sabe
 qué es un pentominó.
