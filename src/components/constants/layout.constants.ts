@@ -132,16 +132,15 @@ export const MINI_BOX = 5;
  * fila, no hay tarjeta y el tamano de celda sale del viewport; la paleta es un dock `fixed`
  * que flota encima y no le quita un pixel a nadie.
  *
- * Lo que decide el numero ahora es la CAJA DEL DOCK, que mide `calc(var(--cell) * 2)` de
- * ancho — 146 px en el peor caso, que es el piso. Ahi adentro tienen que entrar las doce
- * miniaturas con su letra, y la tabla de columnas se resuelve contra el ancho real del
- * contenedor (`OrientationPanel.tsx`) y no contra el breakpoint del viewport, que no dice
- * nada sobre cuanto mide esta caja.
+ * Lo que decide el numero es la LEGIBILIDAD DE LA FORMA, y nada mas: 8 px es el mas chico
+ * que la deja leer, porque con `MINI_BOX = 5` la caja mide 40 px de lado y a menos que eso
+ * las piezas de tres celdas de ancho dejan de distinguirse entre si.
  *
- * 8 px se queda porque sigue siendo el mas chico que deja leer la FORMA: con `MINI_BOX = 5`
- * la caja mide 40 px de lado, y a menos que eso las piezas de tres celdas de ancho dejan de
- * distinguirse entre si. No se remidio con el dock puesto — si el dock cambia de ancho, este
- * es el numero a remedir.
+ * **Y ese es todo el criterio, porque la caja del dock dejo de ser una restriccion.** Con el
+ * chasis arrastrable el ancho del dock es la SALIDA y no la entrada: las columnas salen de
+ * `columnasRectangulares` contra `REJILLA_ANCHO_TECHO_PX`, la casilla sale de este numero
+ * (`CASILLA_PX` = `MINI_BOX x MINI_CELL_PX` mas el aire) y el panel mide lo que eso pida.
+ * Subir este 8 agranda el dock; no lo hace desbordar.
  */
 export const MINI_CELL_PX = 8;
 
