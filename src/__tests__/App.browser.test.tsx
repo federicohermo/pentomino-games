@@ -6,6 +6,7 @@ import { grillaPara } from '../components/grid-fit.ts';
 import { MAX_PIEZAS } from '../domain/constants/board.constants.ts';
 import { REGIMEN } from '../domain/constants/music.constants.ts';
 import { DEFAULT_BPM } from '../audio/constants/engine.constants.ts';
+import { MARGEN_VISIBLE_PX, PASO_TECLADO_PX } from '../components/constants/layout.constants.ts';
 import { arpeggioFor } from '../domain/music.ts';
 import { cellsAt } from '../domain/board.ts';
 import { rotateN, reflect } from '../domain/transform.ts';
@@ -171,6 +172,21 @@ const tapDeModificador = (el: EventTarget, key: string) => {
   el.dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true }));
 };
 
+/**
+ * El asa de un flotante, por su nombre accesible.
+ *
+ * El asa y el *disclosure* del mismo panel empiezan los dos con el título, y `getByRole`
+ * empareja el nombre por SUBCADENA: un `name: 'Señal'` sin anclar caza los dos y la
+ * consulta deja de decir cuál de los dos controles se está tocando. El nombre va entero.
+ */
+const asaDe = (titulo: string) =>
+  page.getByRole('button', { name: `${titulo} — arrastrar el panel, o moverlo con las flechas` })
+    .element() as HTMLElement;
+
+/** El *disclosure* de un flotante. Su nombre dice lo que alterna, así que cambia al plegar. */
+const plegadoDe = (titulo: string) =>
+  page.getByRole('button', { name: new RegExp(`^(Plegar|Desplegar) ${titulo}$`) });
+
 const hover = (el: HTMLElement) => el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
 const click = (el: HTMLElement, init: MouseEventInit = {}) =>
   el.dispatchEvent(new MouseEvent('click', { bubbles: true, ...init }));
@@ -183,19 +199,28 @@ describe('App — la composicion', () => {
     const { container } = await render(<App />);
     expect(celdas(container).length).toBe(DIMS.w * DIMS.h);
 
-    // Los dos flotantes existen y son plegables: el encabezado es un control, no un `<h2>`.
-    await expect.element(page.getByRole('button', { name: /^Piezas$/, expanded: true })).toBeInTheDocument();
-    await expect.element(page.getByRole('button', { name: /^Señal$/, expanded: true })).toBeInTheDocument();
+    // Los dos flotantes existen y traen los DOS controles del chasis: el asa —lo que se
+    // agarra— y el *disclosure* —lo que pliega—. Son dos botones y no uno porque el `click`
+    // sintetico con el que termina cualquier arrastre cerraria el panel al soltarlo, que es
+    // el AC12 y el motivo escrito en `FloatingPanel.tsx`.
+    for (const titulo of ['Piezas', 'Señal']) {
+      await expect.element(page.getByRole('button', {
+        name: `${titulo} — arrastrar el panel, o moverlo con las flechas`,
+      })).toBeInTheDocument();
+      await expect.element(page.getByRole('button', {
+        name: new RegExp(`^Plegar ${titulo}$`), expanded: true,
+      })).toBeInTheDocument();
+    }
 
     // Y no EMPUJAN la grilla: los dos son `fixed`, o sea que salen del flujo.
     for (const flotante of container.querySelectorAll('aside')) {
       expect(getComputedStyle(flotante).position).toBe('fixed');
     }
 
-    // La leyenda de gestos sobrevivio a la mudanza del `<footer>`: es el unico lugar donde
-    // los cuatro gestos del 013 y la letra del 018 estan escritos.
-    expect(container.textContent).toContain('Rueda sobre el tablero');
-    expect(container.textContent).toContain('arranca y para');
+    // El gesto se dice en el NOMBRE ACCESIBLE del asa y no en una leyenda de prosa, que es
+    // lo que lo ata al control que lo implementa: una leyenda aparte y el comportamiento se
+    // separan sin que nada falle. Las flechas del AC4 no se descubren de ninguna otra forma.
+    expect(container.textContent).not.toContain('Rueda sobre el tablero');
   });
 
   it('021 AC1 — la pagina no scrollea: el tablero mide exactamente el viewport', async () => {
@@ -211,42 +236,51 @@ describe('App — la composicion', () => {
     // `ResizeObserver` del espectro —que redibuja porque su contenedor cambia de TAMAÑO— y
     // la barrera del `memo` de `OrientationPanel`, que se pagaria entera al remontar.
     const { container } = await render(<App />);
-    const senal = page.getByRole('button', { name: /^Señal$/ });
+    // Se vuelve a consultar en cada apretada y no se guarda el nodo: el nombre del
+    // *disclosure* dice QUE hace y no en que estado esta, asi que alterna entre `Plegar
+    // Señal` y `Desplegar Señal` y un locator guardado dejaria de encontrarlo.
     const region = container.querySelector('#franja-senal')!;
     expect(region.hasAttribute('hidden')).toBe(false);
     expect(region.querySelector('canvas')).not.toBeNull();
 
-    await senal.click();
+    await plegadoDe('Señal').click();
     await vi.waitFor(() => expect(region.hasAttribute('hidden')).toBe(true));
     // El canvas sigue en el DOM: es lo que hace que el observador siga observando.
     expect(region.querySelector('canvas')).not.toBeNull();
 
-    await senal.click();
+    await plegadoDe('Señal').click();
     await vi.waitFor(() => expect(region.hasAttribute('hidden')).toBe(false));
 
     // Y el dock de piezas, con el mismo mecanismo y su propio estado: son dos plegados
     // independientes, no uno compartido. Acá también OCULTA y no desmonta — de eso depende
     // la barrera del `memo` de `OrientationPanel`, que remontar pagaría entera.
-    const piezas = page.getByRole('button', { name: /^Piezas$/ });
     const dock = container.querySelector('#dock-piezas')!;
     expect(dock.hasAttribute('hidden')).toBe(false);
-    await piezas.click();
+    await plegadoDe('Piezas').click();
     await vi.waitFor(() => expect(dock.hasAttribute('hidden')).toBe(true));
     // La franja no se plegó con él.
     expect(region.hasAttribute('hidden')).toBe(false);
     // Las doce miniaturas siguen en el DOM.
     expect(dock.querySelectorAll('button').length).toBeGreaterThan(12);
-    await piezas.click();
+    await plegadoDe('Piezas').click();
     await vi.waitFor(() => expect(dock.hasAttribute('hidden')).toBe(false));
   });
 
   it('arranca con el tempo del motor y el regimen de siempre', async () => {
     // `DEFAULT_BPM` es una sola declaracion: el estado del shell y el del motor no
     // pueden discrepar porque salen del mismo numero.
-    const { container } = await render(<App />);
-    expect(container.textContent).toContain(String(DEFAULT_BPM));
-    // Abrir la app suena como sonaba (AC11 del 017).
-    await expect.element(page.getByRole('button', { name: REGIMEN.escala })).toHaveClass(/bg-slate-900/);
+    //
+    // Se lee del NOMBRE ACCESIBLE y no del `textContent`: en pantalla el reloj son tres
+    // digitos pelados, asi que `110` a secas no dice si son bpm o intervalos y buscarlo en
+    // el texto de la app cazaria cualquier otro numero de tres cifras.
+    await render(<App />);
+    await expect.element(page.getByRole('button', { name: `Tempo: ${DEFAULT_BPM} bpm` }))
+      .toBeInTheDocument();
+    // Abrir la app suena como sonaba (AC11 del 017). Los dos botones del regimen son `⇗` y
+    // `⇄`, o sea que el valor de `REGIMEN` no aparece en pantalla: el nombre accesible dice
+    // la frase entera y es lo unico que distingue a uno del otro.
+    await expect.element(page.getByRole('button', { name: /fórmula de escala$/ }))
+      .toHaveClass(/bg-slate-900/);
   });
 });
 
@@ -423,8 +457,17 @@ describe('App — el transporte', () => {
 
   it('el tempo y los clicks bajan al motor', async () => {
     await render(<App />);
-    await page.getByRole('slider').fill('128');
-    await vi.waitFor(() => expect(motor.setBpm).toHaveBeenLastCalledWith(128));
+    // El tempo es un `<button>` con los gestos de un reloj digital —rueda, flechas con el
+    // foco puesto y arrastre vertical— y no un `input[type=range]`, asi que no hay `slider`
+    // en el arbol y no hay valor que llenar. Se lo busca por su nombre accesible, que es la
+    // etiqueta `Tempo` y la unidad mudadas a `aria-label`.
+    //
+    // La flecha y no el arrastre: lo que este test verifica es el CABLEADO del shell
+    // —`onTempo` → `setTempo` → el motor— y una tecla lo ejerce con un solo evento. La
+    // conversion de cada gesto a bpm es de `tempo.ts` y tiene sus tests ahi.
+    const reloj = page.getByRole('button', { name: /^Tempo: / }).element();
+    reloj.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true }));
+    await vi.waitFor(() => expect(motor.setBpm).toHaveBeenLastCalledWith(DEFAULT_BPM + 1));
 
     // El recorrido dejo de ser una fila con etiqueta visible y paso a ser
     // el metronomo de la fila de transporte: se lo busca por su nombre accesible, que es
@@ -548,7 +591,9 @@ describe('App — la orientacion, por panel y por gesto', () => {
     await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length));
     const enEscala = notaDelFantasma(container);
 
-    await page.getByRole('button', { name: REGIMEN.orden }).click();
+    // Por el nombre accesible: el boton dice `⇄` y el valor de `REGIMEN` no llega a
+    // pantalla, asi que buscarlo por su texto no encuentra nada.
+    await page.getByRole('button', { name: /arranque del arpegio$/ }).click();
     hover(celda(container, 4, 3));
     await vi.waitFor(() => expect(notaDelFantasma(container)).not.toBe(enEscala));
   });
@@ -625,7 +670,10 @@ describe('App — la orientacion, por panel y por gesto', () => {
     await page.getByRole('button', { name: 'I, rotación 0°' }).click();
     hover(celda(container, 4, 3));
     await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.I.length));
-    expect(container.textContent).toContain('tónica');
+    // Que la mano cambio lo dice el ARBOL y no una linea `F → tónica C`: la miniatura de la
+    // `I` queda apretada, que es el mismo dato sin una segunda copia que mantener.
+    await expect.element(page.getByRole('button', { name: /^I, / }))
+      .toHaveAttribute('aria-pressed', 'true');
   });
 
   it('la LETRA elige la pieza, sin ir al panel', async () => {
@@ -670,10 +718,12 @@ describe('App — lo que llega al arbol de accesibilidad', () => {
     // Llegaron a ser 22, con los cuatro grados y el ON/OFF de Reflexion, y sin el del
     // recorrido mudado: 12 + 2 + 3 = 17. La orientacion por pieza devuelve UNO —el `0°` de la linea de
     // orientacion— y son 18. El 021 suma los DOS encabezados de los flotantes, que pasan de
-    // `<h2>` a `<button>` con `aria-expanded`: 20.
+    // `<h2>` a `<button>` con `aria-expanded`: 20. El 052 suma tres: el chasis parte cada
+    // encabezado en asa y *disclosure* —dos botones por flotante en vez de uno— y el tempo
+    // deja de ser un `input[type=range]` para ser el boton del reloj. Son 23.
     const { container } = await render(<App />);
     const botones = [...container.querySelectorAll('button')];
-    expect(botones.length).toBe(20);
+    expect(botones.length).toBe(23);
     for (const boton of botones) {
       expect(boton.getAttribute('type'), boton.textContent ?? '').toBe('button');
     }
@@ -1203,5 +1253,139 @@ describe('App — el tablero crece hasta la pantalla', () => {
     // `previewValid` da `false` y pintaba las 45 celdas de `cursor-not-allowed`, diciendo
     // "aca no entra" justo donde la jugada entra.
     expect(celdas(container).filter(e => e.className.includes('cursor-not-allowed'))).toEqual([]);
+  });
+});
+
+/**
+ * El arrastre de los dos flotantes, desde el shell.
+ *
+ * Lo que sólo existe acá es el cruce entre el chasis y el resto de la app: que la posición
+ * viva en el shell —o sea que sobreviva a un re-render— y que el gesto de mover un panel no
+ * sea también un gesto sobre el tablero que hay debajo. `drag.ts` tiene las dos decisiones
+ * agotadas en `node` y `use-drag.ts` su cableado; ninguno de los dos ve la app entera.
+ *
+ * Los tres criterios se verifican sobre el flotante de SEÑAL y no sobre el dock, y ésa es
+ * la mitad que le da sentido a repetirlos: el chasis es uno solo (AC11), así que lo que hay
+ * que falsear es que esté puesto en los DOS. Verificarlo sobre el dock lo dejaría cumplido
+ * por el panel que lo estrenó.
+ */
+const arrastrar = (asa: HTMLElement, dx: number, dy: number) => {
+  const r = asa.getBoundingClientRect();
+  const x = r.left + r.width / 2;
+  const y = r.top + r.height / 2;
+  // Se reemplaza sobre el nodo antes de empezar: un `pointerId` sintético no existe para el
+  // navegador y `setPointerCapture` TIRA, con lo que el gesto ni siquiera arranca. Lo que
+  // la captura compra —que el gesto siga llegando cuando el puntero se sale del asa— acá lo
+  // da despachar sobre `window`, que es donde `use-drag.ts` escucha las otras dos mitades.
+  asa.setPointerCapture = () => undefined;
+  asa.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, clientX: x, clientY: y }));
+  window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: x + dx, clientY: y + dy }));
+  window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: x + dx, clientY: y + dy }));
+};
+
+/** Cuánto se movió un panel, redondeado: el navegador devuelve subpíxeles y el gesto es entero. */
+const movio = (panel: Element, antes: DOMRect) => {
+  const r = panel.getBoundingClientRect();
+  return [Math.round(r.left - antes.left), Math.round(r.top - antes.top)];
+};
+
+describe('App — los dos flotantes se arrastran', () => {
+  it('052 AC3 y AC11 — la señal se arrastra, y sigue ahí después de un re-render', async () => {
+    const { container } = await render(<App />);
+    const asa = asaDe('Señal');
+    const panel = asa.closest('aside')!;
+    const antes = panel.getBoundingClientRect();
+
+    // Un desplazamiento que cae lejos de los cuatro topes del acotado: lo que este caso
+    // afirma es que el panel siga al puntero, y contra un borde seguiría al acotado.
+    arrastrar(asa, 140, -260);
+    await vi.waitFor(() => expect(movio(panel, antes)).toEqual([140, -260]));
+
+    // Y ahora la mitad que hace falta el shell: la posición vive en un `useState` de
+    // `App.tsx` y el `transform` que React renderiza es una constante, así que un commit no
+    // puede pisar lo que el gesto escribió en las custom properties. Mover el cursor sobre
+    // el tablero re-renderiza el árbol entero, que es el commit más barato de provocar.
+    hover(celda(container, 4, 3));
+    await vi.waitFor(() => expect(conNota(container)).toBe(SHAPES.F.length));
+    expect(movio(panel, antes)).toEqual([140, -260]);
+  });
+
+  it('052 AC4 y AC11 — con el asa de la señal enfocada, las cuatro flechas la mueven', async () => {
+    // Sin esto el chasis sería un control sólo-mouse, y el arrastre resolvería «la celda que
+    // me interesa está tapada» nada más que para quien tiene puntero.
+    await render(<App />);
+    const asa = asaDe('Señal');
+    const panel = asa.closest('aside')!;
+    asa.focus();
+
+    // Sobre el ASA y con `bubbles`, nunca sobre `window`: una tecla de verdad nace en el
+    // elemento enfocado y sube, y despachada en `window` llega con `target === window`, que
+    // no es ningún control. Medido: con el disparo sobre `window` este caso sale en rojo.
+    for (const [key, dx, dy] of [
+      ['ArrowRight', PASO_TECLADO_PX, 0],
+      ['ArrowDown', 0, PASO_TECLADO_PX],
+      ['ArrowLeft', -PASO_TECLADO_PX, 0],
+      ['ArrowUp', 0, -PASO_TECLADO_PX],
+    ] as const) {
+      const antes = panel.getBoundingClientRect();
+      asa.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+      await vi.waitFor(() => expect(movio(panel, antes), key).toEqual([dx, dy]));
+    }
+  });
+
+  it('052 AC5 y AC11 — soltada en (-9999, -9999), la señal sigue estando', async () => {
+    const { container } = await render(<App />);
+    const asa = asaDe('Señal');
+    const panel = asa.closest('aside')!;
+
+    arrastrar(asa, -9999, -9999);
+    await vi.waitFor(() => {
+      const r = panel.getBoundingClientRect();
+      // «Alcanzable» quiere decir que el rect siga intersecando el viewport, y eso es lo
+      // primero que se afirma: sin esto, un acotado roto dejaría el panel en cualquier
+      // lado del plano y no habría gesto que lo traiga de vuelta.
+      expect(r.right, 'derecha').toBeGreaterThan(0);
+      expect(r.bottom, 'abajo').toBeGreaterThan(0);
+      expect(r.left, 'izquierda').toBeLessThan(container.clientWidth);
+
+      // Y la franja que queda adentro es exactamente la que el acotado promete, leída del
+      // símbolo: escribir `48` acá dejaría este caso verde con el margen cambiado.
+      expect(Math.round(r.right), 'la franja visible').toBe(MARGEN_VISIBLE_PX);
+      // En vertical el tope de arriba es 0 y no un margen, y no es simetría mal hecha: el
+      // asa vive en el borde superior del chasis, así que dejarlo subir escondería justo el
+      // control con el que se lo trae de vuelta.
+      expect(Math.round(r.top), 'el tope de arriba').toBe(0);
+    });
+  });
+
+  it('052 AC6 — un arrastre que cruza el tablero no coloca, no rota y no refleja', async () => {
+    // El chasis flota `fixed` con `z-20` encima de la grilla, así que un gesto que lo mueve
+    // pasa por arriba de celdas que responden al click, a la rueda y al botón derecho. Los
+    // dos oráculos se leen del DOM: cuántas celdas se llaman «pieza» —el fantasma no cuenta,
+    // porque una celda con fantasma se llama «libre»— y los doce nombres de las miniaturas,
+    // que dicen la rotación y la reflexión de cada pieza.
+    const { container } = await render(<App />);
+    const conPieza = () => celdas(container).filter(e => e.getAttribute('aria-label')!.includes('pieza')).length;
+    const orientaciones = () => [...container.querySelectorAll('button')]
+      .map(b => b.getAttribute('aria-label'))
+      .filter(n => n !== null && /^[A-Z], rotación/.test(n));
+    const antes = orientaciones();
+    expect(antes).toHaveLength(12);
+
+    // El gesto termina sobre el medio de la grilla, que es donde el chasis y el tablero
+    // comparten más superficie.
+    const asa = asaDe('Piezas');
+    const dock = asa.closest('aside')!;
+    const cajaDelDock = dock.getBoundingClientRect();
+    const origen = asa.getBoundingClientRect();
+    const destino = celda(container, Math.floor(anchoDe(container) / 2), 3).getBoundingClientRect();
+    arrastrar(asa, destino.left - origen.left, destino.top - origen.top);
+
+    // Que el gesto OCURRIÓ se afirma primero, y es lo que vuelve falseable el par de abajo:
+    // un arrastre que no arranca deja el tablero intacto por el motivo equivocado.
+    await vi.waitFor(() => expect(movio(dock, cajaDelDock)).not.toEqual([0, 0]));
+    await new Promise(r => setTimeout(r, 30));
+    expect(conPieza()).toBe(0);
+    expect(orientaciones()).toEqual(antes);
   });
 });
