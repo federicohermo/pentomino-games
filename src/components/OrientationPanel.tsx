@@ -1,86 +1,96 @@
 import { memo } from 'react';
 import { SHAPES } from '../domain/constants/pieces.constants.ts';
 import type { PieceKey } from '../domain/types/pieces.types.ts';
-import { MINI_BOX, MINI_CELL_PX, MINI_PISTA_PX } from './constants/layout.constants.ts';
+import {
+  CASILLA_PX, MINI_BOX, MINI_CELL_PX, REJILLA_ANCHO_TECHO_PX, REJILLA_GAP_PX,
+} from './constants/layout.constants.ts';
 import { PIECE_COLOR } from './constants/palette.constants.ts';
+import { columnasRectangulares } from './rejilla.ts';
 import { miniCells } from './piece-mini.ts';
 import { textoDeOrientacion } from './orientation-text.ts';
 import type { Orientacion } from './types/orientation.types.ts';
 import type { PropsDeOrientacion } from './types/panel.types.ts';
 
 /**
- * Las doce miniaturas, cada una en la orientacion actual: elegir la pieza que va a la
- * mano.
+ * Las doce miniaturas como una **tabla periódica**: casillas cuadradas de lado fijo,
+ * separadas y alineadas, cada una en la orientación que su pieza recuerda.
  *
- * Presentacional: sin estado, sin efectos. Recibe UN objeto —el de la orientacion— y
- * nada mas.
+ * Presentacional: sin estado, sin efectos. Recibe UN objeto —el de la orientación— y nada
+ * más.
  *
- * Devuelve el mismo `div` de la grilla que tenia `PiecePalette` y no lo envuelve en
- * nada: es un hijo directo de la tarjeta, y agregarle un nodo cambiaria el ritmo
- * vertical con las clases intactas.
+ * Va envuelto en `memo`, y el motivo es un número. `hover` vive en `App.tsx`, así que cada
+ * celda que el cursor cruza re-renderiza el árbol entero — y esto son 337 elementos de los
+ * que ninguno depende del hover. Medido con `Profiler`, el commit por celda cruzada pasa de
+ * 4,9 ms a 1,9 ms: el 61 % del trabajo era este subárbol reconciliándose para llegar al
+ * mismo DOM. La otra mitad de la barrera es el `useMemo` del objeto `orientacion` en
+ * `App.tsx`, y por eso **ni la posición del panel ni la cantidad de columnas entran ahí**:
+ * un valor que cambia con cada píxel de arrastre la rompería entera.
  *
- * Va envuelto en `memo`, y el motivo es un numero. `hover` vive en
- * `App.tsx`, asi que cada celda que el cursor cruza re-renderiza el arbol entero — y esto
- * son 337 elementos de los que ninguno depende del hover. Medido con `Profiler`, el commit
- * por celda cruzada pasa de 4,9 ms a 1,9 ms: el 61 % del trabajo era este subarbol
- * reconciliandose para llegar al mismo DOM.
+ * ## No es el teselado, y conviene dejarlo escrito
  *
- * La otra mitad de la barrera es el `useMemo` del objeto `orientacion` en `App.tsx`: sin el,
- * la prop tiene identidad nueva por render y la memo no cierra nunca. El argumento entero
- * —incluido por que el que habia antes era circular— esta ahi, que es donde estaba escrita
- * la decision contraria.
+ * «Empacar las doce en un rectángulo» tiene una segunda lectura: el teselado clásico, 12 × 5
+ * = 60 celdas en 6 × 10. Es hermoso y **no es esto**. Encastradas, las piezas dejan de ser
+ * doce botones con su caja propia: la forma de cada una sólo se lee por su color, no hay
+ * dónde poner el símbolo, y rotar una —que es lo que estas miniaturas muestran, cada una en
+ * SU orientación recordada— rompería el teselado en cada gesto. La tabla periódica es lo
+ * contrario del teselado: casillas iguales, separadas y alineadas.
  */
+
+/**
+ * Las columnas de la rejilla, resueltas una vez al cargar el módulo.
+ *
+ * **Es un valor fijo y no una medición**, y ése es el cambio entero. Hasta acá lo contestaba
+ * `repeat(auto-fill, minmax(MINI_PISTA_PX, 1fr))`, o sea el navegador contra la caja real, y
+ * la caja real medía `calc(var(--cell) * 2)`: 108 px útiles después de la barra de scroll,
+ * contra los 124 que piden dos pistas. Faltaban 16 px y el resultado era **1 columna × 12
+ * filas**, 875 px de alto adentro de un scroller de 215.
+ *
+ * Con el chasis arrastrable la caja dejó de medirse en celdas, así que la pregunta se dio
+ * vuelta: las columnas son la entrada y el ancho del panel es la salida. Y elegirlas dejó de
+ * poder delegarse, porque `auto-fill` devuelve **la mayor cantidad que entre, divida o no**
+ * — a un ancho que admita 5 deja 3 huecos en la última fila. El porqué de cada regla está
+ * en `rejilla.ts`; la palanca para cambiar la forma del rectángulo es
+ * `REJILLA_ANCHO_TECHO_PX` y ningún otro lugar.
+ *
+ * La cantidad de piezas sale de `SHAPES` y no del `12` escrito: el día que el modelo cambie
+ * de pentominós, la rejilla lo sigue sola.
+ */
+const PIEZAS = Object.keys(SHAPES).length;
+const COLUMNAS = columnasRectangulares(PIEZAS, REJILLA_ANCHO_TECHO_PX, CASILLA_PX, REJILLA_GAP_PX);
+
 export default memo(function OrientationPanel({ orientacion }: { orientacion: PropsDeOrientacion }) {
   const { selected, orientaciones, onSelect } = orientacion;
-  // La MISMA derivacion que la linea visible del panel, en el otro formato. Los
-  // dos textos no se pueden unificar —bajar este al visible le saca el sustantivo
-  // "rotación" y le mete un separador que el lector de pantalla deletrea— pero el CALCULO
-  // si, que era lo que estaba escrito dos veces y desde el 022 ni siquiera en el mismo
-  // archivo.
+  // La MISMA derivacion que hace `PiecePalette` para la pieza en la mano, en el otro
+  // formato. Los dos textos no se pueden unificar —bajar este al visible le saca el
+  // sustantivo "rotación" y le mete un separador que el lector de pantalla deletrea— pero el
+  // CALCULO si, que era lo que estaba escrito dos veces.
   //
-  // Se compone DOCE veces y no una: cada boton dice SU orientacion,
-  // no la de la pieza en la mano. Con una orientacion global las doce miniaturas se
-  // dibujaban con el mismo par —medido, 11 de 12 se movian en cada cuarto de vuelta— y
-  // el `aria-label` repetia esa mentira al oido.
+  // Se compone DOCE veces y no una: cada boton dice SU orientacion, no la de la pieza en la
+  // mano. Con una orientacion global las doce miniaturas se dibujaban con el mismo par
+  // —medido, 11 de 12 se movian en cada cuarto de vuelta— y el `aria-label` repetia esa
+  // mentira al oido.
   const hablada = (o: Orientacion) => {
     const { grados, reflejada } = textoDeOrientacion(o.rotation, o.mirror);
     return `rotación ${grados}${reflejada === null ? '' : `, ${reflejada}`}`;
   };
   return (
-    /* El ancho lo gobierna la caja de la miniatura, que mide 5 × `MINI_CELL_PX` = 40 px
-       y **no depende ni de la pieza ni de la orientacion**: el peor caso es el mismo
-       para las doce.
+    /* Columnas FIJAS de `CASILLA_PX` y no `1fr`, y las dos mitades importan.
+       Las columnas, porque son las que garantizan que la última fila esté llena: `COLUMNAS`
+       divide a doce por construcción. El ancho fijo, porque un `1fr` volvería a hacer que la
+       casilla cambie de forma con el ancho del contenedor, que es de donde salía el botón de
+       107,8 × 65,6 px que esto reemplaza — ancho decidido por el reparto y alto por el
+       contenido, o sea una casilla distinta en cada viewport.
 
-       La METRICA a mirar es el **padding efectivo**, `(pista - 42) / 2` con los 40 de la
-       caja mas 2 de borde, y no el scroll: el `1fr` no produce scroll —el contenido se
-       sale del PADDING del boton, que tiene `overflow: visible`— asi que un desborde no
-       se ve como desborde sino como aire que desaparece. Es la metrica que atrapo el bug
-       del esquema anterior.
-
-       **La tabla de columnas la resuelve el navegador y no un breakpoint**, y ese es el
-       cambio. Hasta ahi eran cuatro escalones
-       —`grid-cols-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6`— atados al ancho del
-       VIEWPORT, que era una buena aproximacion del ancho de esta caja mientras la caja era
-       una tarjeta de `md:col-span-4`. Con el dock dejaron de ser la misma variable:
-       el dock mide `calc(var(--cell) * 2)` y el viewport puede estar en `xl` igual.
-       Medido: a 1366 x 768 el breakpoint pedia SEIS columnas adentro de una caja de 256 px,
-       y con la celda al piso pedia tres adentro de 146. La celda ronda
-       siempre los 73 px, asi que la caja ronda siempre los 146 y el desacople es total —el
-       ancho del dock no depende del viewport y el del breakpoint si—.
-       A 146 entra una sola columna de miniaturas, y eso sigue sin resolverse.
-
-       `repeat(auto-fill, minmax(MINI_PISTA_PX, 1fr))` hace la cuenta contra la caja real.
-       `MINI_PISTA_PX` sale de la caja del mini mas el `px-2` del boton mas su borde, o sea
-       de los mismos numeros que dibujan la miniatura y no de uno tipeado al lado. Y el
-       `1fr` reparte lo que sobra, que es lo que deja el padding efectivo simetrico sin
-       tener que calcularlo.
-
-       La METRICA a mirar sigue siendo el padding efectivo y no el scroll, por lo que dice
-       el parrafo de arriba. Lo que cambio es quien la garantiza: antes una tabla medida a
-       mano contra cuatro anchos, ahora el `minmax`. */
+       Con la casilla cuadrada la rejilla mide `COLUMNAS × 48 + (COLUMNAS − 1) × 4` y el
+       panel se mide por ella, no al revés. Va por estilo inline y no por clase porque los
+       números salen de constantes, y Tailwind escanea el fuente: una clase interpolada no se
+       generaría. */
     <div
-      className="grid gap-2"
-      style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${MINI_PISTA_PX}px, 1fr))` }}
+      className="grid"
+      style={{
+        gridTemplateColumns: `repeat(${COLUMNAS}, ${CASILLA_PX}px)`,
+        gap: `${REJILLA_GAP_PX}px`,
+      }}
     >
       {/* El fondo del boton NO toma el color de pieza: ese fondo es el canal de
           "seleccionada" y pintarlo dejaria a la paleta sin decir cual esta activa. La
@@ -88,17 +98,17 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
 
           Las celdas de la miniatura llevan borde: varios de los 12 colores (el amarillo
           de `V`, el lima de `F`) casi no se ven contra el gris claro del boton sin
-          apoyarse, y ademas es el idioma del tablero, donde todas las
-          baldosas tienen borde por el mismo motivo. El color del borde se INVIERTE con el
-          estado, y los numeros estan abajo, en la celda. Antes de la miniatura esto era un
-          punto de color, que no decia la forma.
+          apoyarse, y ademas es el idioma del tablero, donde todas las baldosas tienen borde
+          por el mismo motivo. El color del borde se INVIERTE con el estado, y los numeros
+          estan abajo, en la celda.
 
-          La letra se queda abajo y en chico. No es decoracion: es el vocabulario con
-          el que se habla de las piezas en `describe_piece`, en el `title` del tablero
-          y en `DESIGN.md`, y ademas es el unico nombre accesible que el boton tenia
-          —una forma dibujada con `div`s no tiene ninguno—. El `aria-label` dice
-          tambien la orientacion, para que el lector de pantalla diga lo que el ojo
-          ve: la miniatura muestra la orientacion ACTUAL, no la canonica. */}
+          La letra se queda y pasa a ser el SIMBOLO de la casilla. No es decoracion ni un
+          texto que acompana: es el vocabulario con el que se habla de las piezas en
+          `describe_piece`, en el `title` del tablero y en `DESIGN.md`, y en una tabla
+          periodica el simbolo ES el contenido. Lo que el spec 052 saca del dock es la PROSA
+          —227 px de leyenda, `Rotación`, `Notas actuales`— y una `F` de 6 px no es prosa.
+          El `aria-label` dice tambien la orientacion, para que el lector de pantalla diga lo
+          que el ojo ve: la miniatura muestra la orientacion ACTUAL, no la canonica. */}
       {(Object.keys(SHAPES) as PieceKey[]).map(key=> {
         // La orientacion de ESTA pieza, no la de la que esta en la mano. El
         // `Record` tiene las doce ranuras garantizadas por su tipo, derivado de `SHAPES`,
@@ -107,15 +117,13 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
         const celdas = miniCells(key, suya.rotation, suya.mirror);
         const ocupada = new Set(celdas.map(([x, y]) => `${x},${y}`));
         // Una sola copia de "es la que esta en la mano": la leen el fondo del boton,
-        // el borde de la miniatura y el `aria-pressed`, y tienen que invertirse en el
-        // mismo momento.
+        // el borde de la miniatura, el fondo del simbolo y el `aria-pressed`, y tienen que
+        // invertirse en el mismo momento.
         const activo = selected === key;
-        // `type="button"` y no el default, aca y en los otros cuatro sitios de JSX que
-        // renderizan los 17 botones de la app: hoy no hay un `<form>`,
-        // asi que no hay bug. Pero el default de un `<button>` DENTRO de un formulario es
-        // `submit`, y en esta app eso significa recargar la pagina perdiendo el tablero
-        // entero, y no hay deshacer. Va sin excepcion y sin discutir
-        // caso por caso: un boton de esta app nunca envia nada.
+        // `type="button"` y no el default, aca y en los otros sitios de JSX que renderizan
+        // los botones de la app: hoy no hay un `<form>`, asi que no hay bug. Pero el default
+        // de un `<button>` DENTRO de un formulario es `submit`, y en esta app eso significa
+        // recargar la pagina perdiendo el tablero entero, y no hay deshacer.
         return (
           <button
             key={key}
@@ -123,16 +131,20 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
             onClick={()=> onSelect(key)}
             aria-label={`${key}, ${hablada(suya)}`}
             aria-pressed={activo}
-            className={`px-2 py-1 rounded-lg border text-sm flex flex-col items-center justify-center gap-1 ${activo? 'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}
+            // CUADRADA y de lado fijo: es lo que hace que las doce se lean como un conjunto
+            // y no como una lista. `relative` porque el simbolo se posiciona contra ella.
+            style={{ width: `${CASILLA_PX}px`, height: `${CASILLA_PX}px` }}
+            className={`relative rounded-lg border flex items-center justify-center ${activo? 'bg-slate-900 text-white':'bg-slate-100 hover:bg-slate-200'}`}
           >
             {/* CINCO pistas fijas y no `min-content` ni `auto`: es lo que hace que el
                 tamano de la caja no dependa de que celdas esten ocupadas, y por lo
                 tanto que rotar no mueva un pixel de la grilla de botones. Con pistas
                 automaticas la `I` sola haria saltar la fila entera entre 5 y 1
                 celdas de ancho, que es el reflow que la caja fija existe para evitar.
-                Va por estilo inline y no por clase porque el numero sale de una
-                constante, y Tailwind escanea el fuente: `grid-cols-[repeat(5,8px)]`
-                interpolado no se generaria. */}
+
+                5 × 8 = 40 px adentro de una casilla de 48, o sea 4 px de aire por lado: es
+                la cuenta que `CASILLA_PX` documenta, y por eso la casilla se achica sola si
+                alguna vez se achica la caja. */}
             <div
               className="grid"
               style={{
@@ -164,6 +176,9 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
                 // `slate-400` da 6,96 sobre el oscuro. Un solo color no cubre los dos
                 // estados: fijo en `slate-400` serian 2,34 sobre el claro, o sea las
                 // siete apoyadas en un borde que tampoco llega al piso.
+                //
+                // Este bloque NO se toca en el spec 052: es la razon WCAG medida contra
+                // los dos fondos y no tiene nada que ver con la forma de la casilla.
                 return (
                   <div key={i}
                     className={llena ? (activo ? 'border border-slate-400' : 'border border-slate-900') : ''}
@@ -172,7 +187,25 @@ export default memo(function OrientationPanel({ orientacion }: { orientacion: Pr
                 );
               })}
             </div>
-            <span className="text-xs leading-none">{key}</span>
+            {/* El simbolo en la esquina, como el numero atomico de una tabla periodica, y
+                NO debajo de la miniatura: la casilla mide 48 y la caja de la forma 40, asi
+                que apilarlos pediria 50 y la caja de 40 es el minimo que deja leer la forma
+                —lo dice `MINI_CELL_PX`—. Lo que cede es la posicion del simbolo, no el
+                tamano de la forma.
+
+                Lleva el fondo del boton y no `transparent`: el vertice inferior derecho de
+                la caja de 5 × 5 esta ocupado en varias de las 96 orientaciones, y una letra
+                sobre el color de la pieza no tiene contraste garantizado contra ninguno de
+                los doce. Con el fondo del boton debajo, el par letra/fondo es siempre el
+                mismo que el resto de la casilla ya usa.
+
+                `aria-hidden` porque el nombre accesible lo da el boton, y ahi la letra ya
+                esta dicha junto con la orientacion: sin esto el lector la anunciaria dos
+                veces. */}
+            <span
+              aria-hidden="true"
+              className={`absolute bottom-0 right-0 rounded-tl px-0.5 text-[9px] leading-[1.2] font-medium ${activo? 'bg-slate-900':'bg-slate-100'}`}
+            >{key}</span>
           </button>
         );
       })}

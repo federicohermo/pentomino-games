@@ -4,9 +4,12 @@ import { MARGEN_VISIBLE_PX, PASO_TECLADO_PX } from '../constants/layout.constant
 import type { Caja, Posicion } from '../types/panel.types.ts';
 
 /**
- * Las dos decisiones del arrastre, sin navegador. El cableado —la captura del puntero, los
- * dos listeners sobre `window`, el `transform` sobre el nodo— vive en
- * `FloatingPanel.browser.test.tsx`.
+ * Las dos decisiones del arrastre, sin navegador: adónde va el panel y qué desplazamiento
+ * pide una tecla.
+ *
+ * El cableado —la captura del puntero, los listeners sobre `window`, la escritura de la
+ * posición en el nodo— se verifica del otro lado, en el proyecto de navegador que monta el
+ * chasis y dispara eventos de verdad.
  *
  * Lo que este archivo fija es AC5 por sus cuatro bordes y AC4 por sus cuatro flechas, que
  * son justo las ramas que desde el navegador costarían un evento sintético cada una.

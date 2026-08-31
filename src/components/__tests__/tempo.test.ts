@@ -3,9 +3,10 @@ import { pasoDeRueda, pasoDeTempoDeTecla, tempoAcotado, tempoDeArrastre } from '
 import { ARRASTRE_PX_POR_BPM, TEMPO_MAX, TEMPO_MIN } from '../constants/layout.constants.ts';
 
 /**
- * La conversión gesto → bpm, sin navegador. Que la rueda y las flechas lleguen al reloj
- * —y que con el reloj enfocado la `f` no elija una pieza, que es AC8— vive en
- * `TransportPanel.browser.test.tsx`.
+ * La conversión gesto → bpm, sin navegador.
+ *
+ * Que la rueda y las flechas lleguen de verdad al reloj —y que con el reloj enfocado la `f`
+ * no elija una pieza, que es AC8— se verifica del otro lado, en el proyecto de navegador.
  *
  * Lo que este archivo agota es la mitad que el `input[type=range]` hacía adentro del
  * navegador y que al sacarlo se volvió código nuestro: el acotado.

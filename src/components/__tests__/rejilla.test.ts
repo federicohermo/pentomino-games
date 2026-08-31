@@ -22,7 +22,7 @@ describe('052 AC1 — las doce forman un rectángulo lleno', () => {
     for (const [cols, ancho] of esperado) {
       expect(anchoDe(cols), `${cols} columnas`).toBe(ancho);
       expect(columnasRectangulares(12, ancho, CASILLA_PX, REJILLA_GAP_PX), `${ancho} px`).toBe(cols);
-      // Y un píxel menos ya no le alcanza: es lo que fija que la comparación sea `<=` y no
+      // Y con un píxel menos no entra: es lo que fija que la comparación sea `<=` y no
       // `<`, o el default de 4 columnas con techo 220 caería en 3.
       //
       // Sobre la MENOR candidata no se pregunta, y no es una excepción cómoda: ahí abajo no
