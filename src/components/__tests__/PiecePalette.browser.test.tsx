@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from 'vitest-browser-react';
+import { eventoDePuntero, stubearCaptura } from './gesto-de-puntero.ts';
 import { page } from 'vitest/browser';
 import Dock from '../PiecePalette.tsx';
 import { REGIMEN } from '../../domain/constants/music.constants.ts';
@@ -272,16 +273,13 @@ describe('PiecePalette', () => {
     );
     const asa = page.getByRole('button', { name: ASA }).element();
 
-    // `setPointerCapture` con un `pointerId` que el navegador no emitio tira `NotFoundError`
-    // en un Chromium de verdad, y el error se lleva puesto el `pointerdown` entero: el
-    // arrastre no arrancaria y este test pasaria en verde por el motivo equivocado.
-    asa.setPointerCapture = () => undefined;
-    asa.dispatchEvent(new PointerEvent('pointerdown', {
-      bubbles: true, pointerId: 1, clientX: 200, clientY: 200,
-    }));
-    // Sobre `window`, que es donde `use-drag.ts` escucha estos dos.
-    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 260, clientY: 240 }));
-    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 260, clientY: 240 }));
+    // El porque del stub —y de despachar sobre `window`— esta escrito una sola vez, en
+    // `gesto-de-puntero.ts`. Aca el gesto va desarmado y no con el helper `arrastrar`
+    // porque lo que este caso necesita es el `click` sintetico del final, que es su sujeto.
+    stubearCaptura(asa);
+    asa.dispatchEvent(eventoDePuntero('pointerdown', 200, 200));
+    window.dispatchEvent(eventoDePuntero('pointermove', 260, 240));
+    window.dispatchEvent(eventoDePuntero('pointerup', 260, 240));
     // El `click` sintetico con el que termina cualquier arrastre. Es la mitad del caso que
     // no se puede omitir: sin el, la implementacion ingenua tambien pasa.
     asa.dispatchEvent(new MouseEvent('click', { bubbles: true }));

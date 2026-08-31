@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from 'vitest-browser-react';
+import { arrastrar } from '../components/__tests__/gesto-de-puntero.ts';
 import { page, userEvent } from 'vitest/browser';
 import { SHAPES, ANCHOR_INDEX } from '../domain/constants/pieces.constants.ts';
 import { grillaPara } from '../components/grid-fit.ts';
@@ -1269,19 +1270,6 @@ describe('App — el tablero crece hasta la pantalla', () => {
  * que falsear es que esté puesto en los DOS. Verificarlo sobre el dock lo dejaría cumplido
  * por el panel que lo estrenó.
  */
-const arrastrar = (asa: HTMLElement, dx: number, dy: number) => {
-  const r = asa.getBoundingClientRect();
-  const x = r.left + r.width / 2;
-  const y = r.top + r.height / 2;
-  // Se reemplaza sobre el nodo antes de empezar: un `pointerId` sintético no existe para el
-  // navegador y `setPointerCapture` TIRA, con lo que el gesto ni siquiera arranca. Lo que
-  // la captura compra —que el gesto siga llegando cuando el puntero se sale del asa— acá lo
-  // da despachar sobre `window`, que es donde `use-drag.ts` escucha las otras dos mitades.
-  asa.setPointerCapture = () => undefined;
-  asa.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, clientX: x, clientY: y }));
-  window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: x + dx, clientY: y + dy }));
-  window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: x + dx, clientY: y + dy }));
-};
 
 /** Cuánto se movió un panel, redondeado: el navegador devuelve subpíxeles y el gesto es entero. */
 const movio = (panel: Element, antes: DOMRect) => {

@@ -6,6 +6,7 @@ import FloatingPanel from '../FloatingPanel.tsx';
 import { useArrastre } from '../use-drag.ts';
 import { MARGEN_VISIBLE_PX, PASO_TECLADO_PX } from '../constants/layout.constants.ts';
 import type { Posicion } from '../types/panel.types.ts';
+import { eventoDePuntero, stubearCaptura } from './gesto-de-puntero.ts';
 
 /**
  * El CABLEADO del chasis, con un nodo de verdad y eventos de puntero de verdad.
@@ -22,24 +23,6 @@ import type { Posicion } from '../types/panel.types.ts';
  *    sintético que el navegador manda después del `pointerup`; y
  * 6. que la limpieza saque los tres listeners de `window` — StrictMode monta dos veces.
  */
-
-/**
- * `setPointerCapture` con un `pointerId` sintético tira `NotFoundError` en un navegador de
- * verdad: no hay puntero activo con ese id.
- *
- * Se stubea sobre el nodo y no se saltea la llamada, porque la captura es justamente lo que
- * hace que el gesto sobreviva a salirse del asa: taparla acá y no llamarla en producción
- * serían dos cosas distintas.
- */
-const conCapturaStubeada = (el: HTMLElement) => {
-  el.setPointerCapture = () => {};
-  el.releasePointerCapture = () => {};
-  return el;
-};
-
-const evento = (tipo: string, x: number, y: number) => new PointerEvent(tipo, {
-  pointerId: 1, bubbles: true, cancelable: true, clientX: x, clientY: y, isPrimary: true,
-});
 
 /** Un cuadro de gracia: el `pointerup` commitea al estado y React pinta en el siguiente. */
 const unCuadro = () => new Promise<void>(r => requestAnimationFrame(() => requestAnimationFrame(() => r())));
@@ -93,7 +76,7 @@ const piezas = (contenedor: HTMLElement) => {
   const botones = [...contenedor.querySelectorAll('aside button')];
   return {
     panel: panel as HTMLElement,
-    asa: conCapturaStubeada(botones[0] as HTMLElement),
+    asa: stubearCaptura(botones[0] as HTMLElement),
     plegar: botones[1] as HTMLElement,
   };
 };
@@ -121,15 +104,15 @@ describe('052 AC3 — el panel se mueve y se queda donde lo soltaron', () => {
     const x0 = r.x + r.width / 2;
     const y0 = r.y + r.height / 2;
 
-    asa.dispatchEvent(evento('pointerdown', x0, y0));
-    window.dispatchEvent(evento('pointermove', x0 + 120, y0 + 60));
+    asa.dispatchEvent(eventoDePuntero('pointerdown', x0, y0));
+    window.dispatchEvent(eventoDePuntero('pointermove', x0 + 120, y0 + 60));
     // Durante el gesto la posición la escribe el hook sobre el nodo, sin pasar por React:
     // el desplazamiento ya se ve antes del `pointerup`.
     const enVuelo = panel.getBoundingClientRect();
     expect(enVuelo.x - antes.x).toBeCloseTo(120, 0);
     expect(enVuelo.y - antes.y).toBeCloseTo(60, 0);
 
-    window.dispatchEvent(evento('pointerup', x0 + 120, y0 + 60));
+    window.dispatchEvent(eventoDePuntero('pointerup', x0 + 120, y0 + 60));
     await unCuadro();
     const despues = panel.getBoundingClientRect();
     expect(despues.x - antes.x).toBeCloseTo(120, 0);
@@ -141,9 +124,9 @@ describe('052 AC3 — el panel se mueve y se queda donde lo soltaron', () => {
     const { panel, asa } = piezas(container);
     const antes = panel.getBoundingClientRect();
     const r = asa.getBoundingClientRect();
-    asa.dispatchEvent(evento('pointerdown', r.x, r.y));
-    window.dispatchEvent(evento('pointermove', r.x + 90, r.y + 45));
-    window.dispatchEvent(evento('pointerup', r.x + 90, r.y + 45));
+    asa.dispatchEvent(eventoDePuntero('pointerdown', r.x, r.y));
+    window.dispatchEvent(eventoDePuntero('pointermove', r.x + 90, r.y + 45));
+    window.dispatchEvent(eventoDePuntero('pointerup', r.x + 90, r.y + 45));
     await unCuadro();
 
     // El re-render del padre que no toca la posición: es la mitad de AC3 que el arrastre
@@ -202,9 +185,9 @@ describe('052 AC5 — el panel no se puede perder fuera de la pantalla', () => {
     const { container } = await render(<Arnes abierto />);
     const { panel, asa } = piezas(container);
     const r = asa.getBoundingClientRect();
-    asa.dispatchEvent(evento('pointerdown', r.x, r.y));
-    window.dispatchEvent(evento('pointermove', -9999, -9999));
-    window.dispatchEvent(evento('pointerup', -9999, -9999));
+    asa.dispatchEvent(eventoDePuntero('pointerdown', r.x, r.y));
+    window.dispatchEvent(eventoDePuntero('pointermove', -9999, -9999));
+    window.dispatchEvent(eventoDePuntero('pointerup', -9999, -9999));
     await unCuadro();
 
     const perdido = panel.getBoundingClientRect();
@@ -230,9 +213,9 @@ describe('052 AC12 — arrastrar el panel no lo pliega', () => {
     const r = asa.getBoundingClientRect();
     const x0 = r.x + r.width / 2;
     const y0 = r.y + r.height / 2;
-    asa.dispatchEvent(evento('pointerdown', x0, y0));
-    window.dispatchEvent(evento('pointermove', x0 + 40, y0 + 40));
-    window.dispatchEvent(evento('pointerup', x0, y0));
+    asa.dispatchEvent(eventoDePuntero('pointerdown', x0, y0));
+    window.dispatchEvent(eventoDePuntero('pointermove', x0 + 40, y0 + 40));
+    window.dispatchEvent(eventoDePuntero('pointerup', x0, y0));
     // El `click` que el navegador sintetiza después de un `pointerup` sobre el mismo nodo, y
     // que es exactamente lo que cerraría el panel si el asa fuera el mismo botón que pliega.
     asa.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
@@ -303,8 +286,8 @@ describe('use-drag — el cableado y sus guardas', () => {
     const antes = panel.getBoundingClientRect();
     // Los tres listeners viven sobre `window` todo el tiempo, así que tienen que saber
     // distinguir un gesto propio de uno ajeno: el puntero se mueve por la pantalla siempre.
-    window.dispatchEvent(evento('pointermove', 500, 500));
-    window.dispatchEvent(evento('pointerup', 500, 500));
+    window.dispatchEvent(eventoDePuntero('pointermove', 500, 500));
+    window.dispatchEvent(eventoDePuntero('pointerup', 500, 500));
     await unCuadro();
     expect(panel.getBoundingClientRect().x).toBeCloseTo(antes.x, 0);
   });
@@ -314,16 +297,16 @@ describe('use-drag — el cableado y sus guardas', () => {
     const { panel, asa } = piezas(container);
     const antes = panel.getBoundingClientRect();
     const r = asa.getBoundingClientRect();
-    asa.dispatchEvent(evento('pointerdown', r.x, r.y));
-    window.dispatchEvent(evento('pointermove', r.x + 70, r.y));
-    window.dispatchEvent(evento('pointercancel', r.x + 70, r.y));
+    asa.dispatchEvent(eventoDePuntero('pointerdown', r.x, r.y));
+    window.dispatchEvent(eventoDePuntero('pointermove', r.x + 70, r.y));
+    window.dispatchEvent(eventoDePuntero('pointercancel', r.x + 70, r.y));
     await unCuadro();
     expect(panel.getBoundingClientRect().x - antes.x).toBeCloseTo(70, 0);
 
     // Y el gesto quedó cerrado: sin escuchar `pointercancel` el ancla seguiría puesta y el
     // panel seguiría al puntero sin que nadie lo esté arrastrando.
     const quieto = panel.getBoundingClientRect();
-    window.dispatchEvent(evento('pointermove', r.x + 400, r.y + 400));
+    window.dispatchEvent(eventoDePuntero('pointermove', r.x + 400, r.y + 400));
     await unCuadro();
     expect(panel.getBoundingClientRect().x).toBeCloseTo(quieto.x, 0);
   });
@@ -335,10 +318,10 @@ describe('use-drag — el cableado y sus guardas', () => {
     const { container } = await render(<SondaSinNodo onMover={onMover} />);
     const sonda = container.querySelector('button');
     expect(sonda).not.toBeNull();
-    const el = conCapturaStubeada(sonda as HTMLElement);
-    el.dispatchEvent(evento('pointerdown', 10, 10));
-    window.dispatchEvent(evento('pointermove', 90, 90));
-    window.dispatchEvent(evento('pointerup', 90, 90));
+    const el = stubearCaptura(sonda as HTMLElement);
+    el.dispatchEvent(eventoDePuntero('pointerdown', 10, 10));
+    window.dispatchEvent(eventoDePuntero('pointermove', 90, 90));
+    window.dispatchEvent(eventoDePuntero('pointerup', 90, 90));
     el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
     await unCuadro();
     expect(onMover).not.toHaveBeenCalled();
